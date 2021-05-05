@@ -111,7 +111,13 @@ function parameters_base_get_nnz_compressed(this) result(nnz)
   class(t_parameters_base), intent(in) :: this
   integer :: nnz
 
-  nnz = int(this%nelements * this%ndata * this%compression_rate) + 1
+  nnz = int(this%compression_rate * this%nelements * this%ndata) + 1
+
+  ! Sanity check.
+  if (nnz <= 1) then
+    print *, "Bad nnz value in get_nnz_compressed!"
+    stop
+  endif
 end function
 
 !=========================================================================
