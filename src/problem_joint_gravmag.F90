@@ -1,0 +1,571 @@
+
+!========================================================================
+!
+!                    T O M O F A S T X  Version 1.0
+!                  ----------------------------------
+!
+!              Main authors: Vitaliy Ogarko, Roland Martin,
+!                   Jeremie Giraud, Dimitri Komatitsch.
+! CNRS, France, and University of Western Australia.
+! (c) CNRS, France, and University of Western Australia. January 2018
+!
+!
+! If you use this code for your own research, please cite some (or all) of
+! these articles:
+!
+!  @article{MaMoKoPeJeBoLi2013,
+!  author = {Martin, Roland and Monteiller, Vadim and Komatitsch, Dimitri
+!  and Perrouty, Stephane and Jessell, Mark and Bonvalot, Sylvain and Lindsay, Mark},
+!  title = {Gravity inversion using wavelet-based compression on parallel hybrid
+!  {CPU/GPU} systems: application to southwest {G}hana},
+!  volume = {195},
+!  number = {3},
+!  pages = {1594-1619},
+!  year = {2013},
+!  doi = {10.1093/gji/ggt334},
+!  journal = {Geophysical Journal International}}
+!
+!
+! This software is a computer program whose purpose is to perform
+! capacitance, gravity, magnetic, or joint gravity and magnetic tomography.
+! This program is free software; you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation; either version 2 of the License, or
+! (at your option) any later version.
+!
+! This program is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License along
+! with this program; if not, write to the Free Software Foundation, Inc.,
+! 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+!
+! The full text of the license is available in file "LICENSE".
+!
+!========================================================================
+
+!===============================================================================================
+! A class for solving joint gravity & magnetism problem.
+!
+! Vitaliy Ogarko, UWA, CET, Australia, 2015-2017.
+!===============================================================================================
+module problem_joint_gravmag
+
+  use global_typedefs
+  use parameters_grav
+  use parameters_mag
+  use parameters_gravmag
+  use parameters_inversion
+  use inversion_arrays
+  use forward_problem_gravmag
+  use weights_gravmag
+  use joint_inverse_problem
+  use costs
+  use data_gravmag
+  use parallel_tools
+  use filter
+  use noise
+  use compare_models
+  use string, only: str
+
+  implicit none
+
+  private
+
+  ! Flags for writing data for visualization.
+  logical, parameter :: WRITE_SENSITIVITY     = .true.
+  logical, parameter :: WRITE_DAMPING_WEIGHT  = .false.
+
+  ! Unit number for cost file handle.
+  integer, parameter :: FILE_COSTS = 1234567
+
+  type, public :: t_problem_joint_gravmag
+    private
+
+    ! Local number of elements of one problem.
+    integer :: nelements
+
+    ! Model change (update) at inversion iteration.
+    real(kind=CUSTOM_REAL), allocatable :: delta_model(:)
+
+  contains
+    private
+
+    procedure, public, pass :: initialize => problem_joint_gravmag_initialize
+    procedure, public, pass :: solve_problem_joint_gravmag
+
+    procedure, private, nopass :: calculate_model_costs
+    procedure, private, nopass :: write_sensitivity_matrix
+    procedure, private, nopass :: read_model
+
+    ! Destructor. (Note: bug in gcc 4.9 with warning about 'array final procedure'.)
+    final :: problem_joint_gravmag_destructor
+  end type t_problem_joint_gravmag
+
+contains
+
+!================================================================================================
+! Initialization.
+!================================================================================================
+subroutine problem_joint_gravmag_initialize(this, nelements, myrank)
+  class(t_problem_joint_gravmag), intent(inout) :: this
+  integer, intent(in) :: nelements, myrank
+
+  integer :: ierr
+
+  this%nelements = nelements
+
+  ierr = 0
+
+  if (.not. allocated(this%delta_model)) &
+    allocate(this%delta_model(2 * this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in problem_joint_gravmag_initialize!", myrank, ierr)
+
+end subroutine problem_joint_gravmag_initialize
+
+!===================================================================================
+! Solves gravity AND magnetism joint problem (forward + inversion).
+!===================================================================================
+subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
+  class(t_problem_joint_gravmag), intent(inout) :: this
+  type(t_parameters_grav), intent(in) :: gpar
+  type(t_parameters_mag), intent(in) :: mpar
+  type(t_parameters_inversion), intent(in) :: ipar
+  integer, intent(in) :: myrank, nbproc
+
+  type(t_joint_inversion) :: joint_inversion
+  ! Data arrays for (1) gravity and (2) magnetism inversions.
+  type(t_inversion_arrays) :: iarr(2)
+  type(t_data) :: data(2)
+  type(t_weights) :: weights
+  type(t_parallel_tools) :: pt
+  type(t_filter) :: filter
+  type(t_compare_models) :: comp
+  real(kind=CUSTOM_REAL) :: compres(2)
+  real(kind=CUSTOM_REAL) :: cost_data(2)
+  real(kind=CUSTOM_REAL) :: cost_model(2)
+  integer :: it, i, j, m, number_prior_models, ierr
+  real(kind=CUSTOM_REAL) :: Xdata_min, Xdata_max
+  real(kind=CUSTOM_REAL) :: Ydata_min, Ydata_max
+  character(len=256) :: path_output_parfile
+  character(len=256) :: grav_prior_model_filename, mag_prior_model_filename
+
+  if (myrank == 0) print *, "Solving problem joint grav/mag."
+
+  ! Initialize joint inversion object.
+  ! Read the clustering parameters from file inside.
+  call joint_inversion%initialize(ipar, gpar%get_nnz_compressed() + mpar%get_nnz_compressed(), myrank, nbproc)
+
+  ! (I) MODEL ALLOCATION.  ---------------------------------------------------------------
+
+  if (myrank == 0) print *, "(I) MODEL ALLOCATION."
+
+  ! Initialize inversion arrays dimensions.
+  call iarr(1)%initialize(ipar%nelements, ipar%ndata(1), ipar%nx, ipar%ny, ipar%nz)
+  call iarr(2)%initialize(ipar%nelements, ipar%ndata(2), ipar%nx, ipar%ny, ipar%nz)
+
+  ! Allocate memory for model (with grid) objects.
+  call iarr(1)%init_model(myrank, nbproc)
+  call iarr(2)%init_model(myrank, nbproc)
+
+  ! Reading the full grid and model.
+  call iarr(1)%model%read(gpar%model_files(1), .true., myrank)
+  call iarr(2)%model%read(mpar%model_files(1), .true., myrank)
+
+#ifndef SUPPRESS_OUTPUT
+  ! Write the model read to a file for Paraview visualization.
+  call iarr(1)%model%write('grav_read_', .false., myrank, nbproc)
+  call iarr(2)%model%write('mag_read_', .false., myrank, nbproc)
+#endif
+
+  ! Distribute the model and grid among CPUs.
+  call iarr(1)%model%distribute(myrank, nbproc)
+  call iarr(2)%model%distribute(myrank, nbproc)
+  
+  ! (I2) SETTING ADMM BOUNDS --------------------------------------------------------------
+
+  if (ipar%admm_type > 0) then
+    do i = 1, 2
+      if (ipar%problem_weight(i) > 0.d0) then
+        ! Reading min/max ADMM bounds from file.
+        call iarr(i)%model%allocate_bound_arrays(ipar%nlithos, myrank)
+        call iarr(i)%model%read_bound_constraints(ipar%bounds_ADMM_file(i), myrank, nbproc)
+      endif
+    enddo
+  endif
+
+  ! (II) DATA ALLOCATION. -----------------------------------------------------------------
+
+  if (myrank == 0) print *, "(II) DATA ALLOCATION."
+
+  ! Allocate memory for data objects.
+  call data(1)%initialize(gpar%ndata, myrank)
+  call data(2)%initialize(mpar%ndata, myrank)
+
+  ! Reading the GRID ONLY for data point (needed to generate sensitivity matrix).
+  call data(1)%read(gpar%data_grid_file, myrank)
+  call data(2)%read(mpar%data_grid_file, myrank)
+ 
+  ! (III) SENSITIVITY MATRIX ALLOCATION  ---------------------------------------------------
+
+  if (myrank == 0) print *, "(III) SENSITIVITY MATRIX ALLOCATION."
+
+  if (gpar%calc_data_directly /= 1) then
+    ! Memory allocation for inversion arrays (except model objects).
+    call iarr(1)%allocate(.false., gpar%get_nnz_compressed(), myrank)
+    call iarr(2)%allocate(.false., mpar%get_nnz_compressed(), myrank)
+  endif
+
+  !-----------------------------------------------------------------------------------------
+  ! Solve forward problems for gravity and magnetism.
+  if (ipar%problem_weight(1) /= 0.d0) call solve_forward_problem(gpar, iarr(1), data(1), myrank)
+  if (ipar%problem_weight(2) /= 0.d0) call solve_forward_problem(mpar, iarr(2), data(2), myrank)
+
+#ifndef SUPPRESS_OUTPUT
+  ! Write data calculated from the model read.
+  call data(1)%write('grav_calc_read_', 2, myrank)
+  call data(2)%write('mag_calc_read_', 2, myrank)
+#endif
+
+  if (gpar%calc_data_directly == 1) then
+    return
+  endif
+
+  ! Reading the data. Read here to allow the use of the above calculated data from the (original) model read.
+  call data(1)%read(gpar%data_file, myrank)
+  call data(2)%read(mpar%data_file, myrank)
+
+#ifndef SUPPRESS_OUTPUT
+  ! Write the observed (measured) data.
+  call data(1)%write('grav_observed_', 1, myrank)
+  call data(2)%write('mag_observed_', 1, myrank)
+#endif
+
+  !-----------------------------------------------------------------------------------------
+  ! Calculates weights.
+  if (ipar%problem_weight(1) /= 0.d0) call weights%calculate(gpar, iarr(1), data(1)%X, data(1)%Y, myrank, nbproc)
+  if (ipar%problem_weight(2) /= 0.d0) call weights%calculate(mpar, iarr(2), data(2)%X, data(2)%Y, myrank, nbproc)
+
+  ! Precondition the column weights to control the effect of the cross-grad term.
+  iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight
+  iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
+
+  !-----------------------------------------------------------------------------------------
+  number_prior_models = gpar%number_prior_models
+  path_output_parfile = path_output
+
+  !******************************************************************************************
+  ! Loop over different prior models.
+  !******************************************************************************************
+  do m = 1, number_prior_models
+
+    ! Define prior model and output folder names.
+    if (m > 1) then
+      path_output = trim(path_output_parfile)//'_'//trim(str(m))//'/'
+      grav_prior_model_filename = trim(gpar%model_files(2))//'_'//trim(str(m))
+      mag_prior_model_filename = trim(mpar%model_files(2))//'_'//trim(str(m))
+    else
+      grav_prior_model_filename = gpar%model_files(2)
+      mag_prior_model_filename = mpar%model_files(2)
+    endif
+
+    if (myrank == 0) then
+      print *
+      print *, '********************************************************************************'
+      print *, 'Solve problem for prior model #', m, ', output folder = ', trim(path_output)
+      print *, '********************************************************************************'
+    endif
+
+    if (m > 1) call joint_inversion%reset()
+    
+    ! SETTING PRIOR MODEL FOR INVERSION  -----------------------------------------------------
+    call read_model(iarr(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank, nbproc)
+    call read_model(iarr(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, myrank, nbproc)
+
+    ! Set the prior model.
+    iarr(1)%model_prior = iarr(1)%model%val
+    iarr(2)%model_prior = iarr(2)%model%val
+
+#ifndef SUPPRESS_OUTPUT
+    ! Write the prior model to a file for visualization.
+    call iarr(1)%model%write('grav_prior_', .false., myrank, nbproc)
+    call iarr(2)%model%write('mag_prior_', .false., myrank, nbproc)
+#endif
+
+    !-----------------------------------------------------------------------------------------
+    ! Calculate data from the prior model.
+    call iarr(1)%model%calculate_data(ipar%ndata(1), iarr(1)%matrix_sensit, data(1)%val_calc, myrank)
+    call iarr(2)%model%calculate_data(ipar%ndata(2), iarr(2)%matrix_sensit, data(2)%val_calc, myrank)
+
+#ifndef SUPPRESS_OUTPUT
+    ! Write data calculated from the prior model.
+    call data(1)%write('grav_calc_prior_', 2, myrank)
+    call data(2)%write('mag_calc_prior_', 2, myrank)
+#endif
+
+    ! SETTING STARTING MODEL FOR INVERSION  -----------------------------------------------------
+    call read_model(iarr(1), gpar%start_model_type, gpar%start_model_val, gpar%model_files(3), myrank, nbproc)
+    call read_model(iarr(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), myrank, nbproc)
+
+#ifndef SUPPRESS_OUTPUT
+    ! Write the starting model to a file for visualization.
+    call iarr(1)%model%write('grav_starting_', .true., myrank, nbproc)
+    call iarr(2)%model%write('mag_starting_', .true., myrank, nbproc)
+#endif
+
+    !-----------------------------------------------------------------------------------------
+    ! Calculate data from the starting model.
+    call iarr(1)%model%calculate_data(ipar%ndata(1), iarr(1)%matrix_sensit, data(1)%val_calc, myrank)
+    call iarr(2)%model%calculate_data(ipar%ndata(2), iarr(2)%matrix_sensit, data(2)%val_calc, myrank)
+
+#ifndef SUPPRESS_OUTPUT
+    ! Write data calculated from the starting model.
+    call data(1)%write('grav_calc_starting_', 2, myrank)
+    call data(2)%write('mag_calc_starting_', 2, myrank)
+#endif
+
+    !-----------------------------------------------------------------------------------------
+    ! Calculate initial cost (misfit).
+    call calculate_cost(ipar%ndata(1), data(1)%val_meas, data(1)%val_calc, cost_data(1), myrank)
+    call calculate_cost(ipar%ndata(2), data(2)%val_meas, data(2)%val_calc, cost_data(2), myrank)
+
+    ! Calculate costs for the models (damping term in the cost function).
+    call calculate_model_costs(ipar, iarr, cost_model, myrank, nbproc)
+
+#ifndef SUPPRESS_OUTPUT
+    ! Stores costs.
+    if (myrank == 0) &
+      open(FILE_COSTS, file=trim(path_output)//'costs', access='stream', form='formatted', status='unknown', action='write')
+#endif
+
+    ! Non-linear inversion loop.
+    do it = 1, ipar%ninversions
+
+      if (myrank == 0) then
+        print *, '======================================================='
+        print *, 'Iteration, prior model =', it, ' ', m
+        print *, '======================================================='
+      endif
+
+      ! Calculate data residuals.
+      iarr(1)%residuals = data(1)%val_meas - data(1)%val_calc
+      iarr(2)%residuals = data(2)%val_meas - data(2)%val_calc
+
+      ! Resets the joint inversion.
+      if (it > 1) call joint_inversion%reset()
+
+      ! Solve joint inverse problem.
+      call joint_inversion%solve(ipar, iarr, this%delta_model, myrank, nbproc)
+
+      ! Update the local models.
+      call iarr(1)%model%update(this%delta_model(1:this%nelements))
+      call iarr(2)%model%update(this%delta_model(this%nelements + 1:))
+
+      ! Update the full models (needed e.g. for cross-gradient right-hand-side).
+      call pt%get_full_array(iarr(1)%model%val, ipar%nelements, iarr(1)%model%val_full, .true., myrank, nbproc)
+      call pt%get_full_array(iarr(2)%model%val, ipar%nelements, iarr(2)%model%val_full, .true., myrank, nbproc)
+
+      ! Calculate data based on the new model from inversion.
+      call iarr(1)%model%calculate_data(ipar%ndata(1), iarr(1)%matrix_sensit, data(1)%val_calc, myrank)
+      call iarr(2)%model%calculate_data(ipar%ndata(2), iarr(2)%matrix_sensit, data(2)%val_calc, myrank)
+
+#ifndef SUPPRESS_OUTPUT
+      ! Write costs (for the previous iteration).
+      if (myrank == 0) write(FILE_COSTS, *) it - 1, cost_data(1), cost_data(2), cost_model(1), cost_model(2), &
+                                            joint_inversion%get_cross_grad_cost(), &
+                                            joint_inversion%get_clustering_cost(1), joint_inversion%get_clustering_cost(2)
+#endif
+
+      ! Calculate new costs for data misfits.
+      call calculate_cost(ipar%ndata(1), data(1)%val_meas, data(1)%val_calc, cost_data(1), myrank)
+      call calculate_cost(ipar%ndata(2), data(2)%val_meas, data(2)%val_calc, cost_data(2), myrank)
+
+      ! Calculate new costs for the models (damping term in the cost function).
+      call calculate_model_costs(ipar, iarr, cost_model, myrank, nbproc)
+
+      ! Store final models from the single (non-join) inversions.
+      do i = 1, 2
+        if (ipar%single_problem_complete(i, it) .and. .not. ipar%single_problem_complete(i, it - 1)) then
+          iarr(i)%model%val_final0 = iarr(i)%model%val
+        endif
+      enddo
+
+    enddo
+
+#ifndef SUPPRESS_OUTPUT
+    ! Write final costs (excluding cross-gradient cost, as it is being calculated only during solution).
+    if (myrank == 0) write(FILE_COSTS, *) ipar%ninversions, cost_data(1), cost_data(2), cost_model(1), cost_model(2)
+    if (myrank == 0) close(FILE_COSTS)
+#endif
+
+#ifndef SUPPRESS_OUTPUT
+    if (myrank == 0) then
+      ! Print model value bounds.
+      do i = 1, 2
+        print *, 'Model', i , 'min/max values =', minval(iarr(i)%model%val_full), maxval(iarr(i)%model%val_full)
+      enddo
+    endif
+#endif
+
+#ifndef SUPPRESS_OUTPUT
+    ! Compare final models of single and joint inversions.
+    call comp%compare(iarr(1)%model, ipar%derivative_type, compres(1), myrank, nbproc)
+    call comp%compare(iarr(2)%model, ipar%derivative_type, compres(2), myrank, nbproc)
+
+    if (myrank == 0) print *, 'Model comparison:', ipar%column_weight_multiplier(1), ipar%column_weight_multiplier(2), &
+                              compres(1), compres(2), ipar%cross_grad_weight, joint_inversion%get_cross_grad_cost()
+#endif
+
+#ifndef SUPPRESS_OUTPUT
+    ! Write the final model to a file.
+    call iarr(1)%model%write('grav_final_', .false., myrank, nbproc)
+    call iarr(2)%model%write('mag_final_', .false., myrank, nbproc)
+#endif
+
+#ifndef SUPPRESS_OUTPUT
+    ! Write data calculated from final model.
+    call data(1)%write('grav_calc_final_', 2, myrank)
+    call data(2)%write('mag_calc_final_', 2, myrank)
+#endif
+
+#ifndef SUPPRESS_OUTPUT
+    if (joint_inversion%add_cross_grad) then
+      ! Write final cross-gradient vector magnitude to a file.
+      iarr(1)%model%val_full = joint_inversion%get_cross_grad()
+
+      call iarr(1)%model%write('cross_grad_final_', .false., myrank, nbproc)
+    endif
+#endif
+
+#ifndef SUPPRESS_OUTPUT
+    if (joint_inversion%add_clustering) then
+      ! Write final clustering probabilities, i.e., P(m) per cell.
+      iarr(1)%model%val_full = joint_inversion%get_clustering()
+
+      call iarr(1)%model%write('clustering_final_', .false., myrank, nbproc)
+
+      call joint_inversion%clustering%write_data('clustering_data.txt', iarr(1)%model%grid_full, myrank)
+    endif
+#endif
+
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+  enddo ! loop over prior models
+  !******************************
+
+#ifndef SUPPRESS_OUTPUT
+    if (WRITE_DAMPING_WEIGHT) then
+      ! Write the damping weight.
+      iarr(1)%model%val = iarr(1)%damping_weight
+      iarr(2)%model%val = iarr(2)%damping_weight
+
+      call iarr(1)%model%write('damping_weight_grav_', .true., myrank, nbproc)
+      call iarr(2)%model%write('damping_weight_mag_', .true., myrank, nbproc)
+    endif
+#endif
+
+#ifndef SUPPRESS_OUTPUT
+    if (WRITE_SENSITIVITY) then
+      ! Write a root mean square sensitivity (integrated sensitivity).
+      call write_sensitivity_matrix(ipar%nelements, iarr, myrank, nbproc)
+    endif
+#endif
+
+end subroutine solve_problem_joint_gravmag
+
+!========================================================================================
+! Write a root mean square sensitivity (integrated sensitivity) to a file.
+!========================================================================================
+subroutine write_sensitivity_matrix(nelements, iarr, myrank, nbproc)
+  integer, intent(in) :: nelements
+  type(t_inversion_arrays), intent(inout) :: iarr(2)
+  integer, intent(in) :: myrank, nbproc
+
+  integer :: i, j, ierr
+  real(kind=CUSTOM_REAL), allocatable :: sensit_column(:)
+
+  ! Loop over problems.
+  do j = 1, 2
+    allocate(sensit_column(iarr(j)%ndata), source=0._CUSTOM_REAL, stat=ierr)
+
+    do i = 1, nelements
+      ! Extract a column from the sensitivity matrix stored in sparse (CSR) format.
+      call iarr(j)%matrix_sensit%get_column(i, sensit_column)
+
+      ! Average contribution of all data to the i-th model cell.
+      iarr(j)%model%val(i) = norm2(sensit_column)
+    enddo
+
+    deallocate(sensit_column)
+  enddo
+
+   ! Write sensitivity to files.
+  call iarr(1)%model%write('sensit_grav_', .true., myrank, nbproc)
+  call iarr(2)%model%write('sensit_mag_', .true., myrank, nbproc)
+
+end subroutine write_sensitivity_matrix
+
+!========================================================================================
+! Computes and prints norm Lp of the difference between inverted and prior models.
+!========================================================================================
+subroutine calculate_model_costs(ipar, iarr, cost_model, myrank, nbproc)
+  type(t_parameters_inversion), intent(in) :: ipar
+  type(t_inversion_arrays), intent(in) :: iarr(2)
+  integer, intent(in) :: myrank, nbproc
+  real(kind=CUSTOM_REAL), intent(out) :: cost_model(2)
+
+  integer :: i
+
+  do i = 1, 2
+    call calculate_cost_model(ipar%nelements, ipar%norm_power, iarr(i)%model%val, iarr(i)%model_prior, &
+                              iarr(i)%damping_weight, cost_model(i), nbproc)
+
+    if (myrank == 0) print *, 'model cost =', cost_model(i)
+  enddo
+end subroutine calculate_model_costs
+
+!========================================================================================
+! Computes and prints norm Lp of the difference between inverted and prior models.
+!========================================================================================
+subroutine read_model(iarr, model_type, model_val, model_file, myrank, nbproc)
+  integer, intent(in) :: model_type, myrank, nbproc
+  real(kind=CUSTOM_REAL), intent(in) :: model_val
+  character(len=256), intent(in) :: model_file
+    type(t_inversion_arrays), intent(inout) :: iarr
+  
+  if (model_type == 1) then
+    ! Setting homogeneous starting value.
+    iarr%model%val_full = model_val
+
+  else if (model_type == 2) then
+    ! Reading from file.
+    call iarr%model%read(model_file, .false., myrank)
+
+  else
+    print *, "Unknown model type!"
+    stop
+  endif
+
+  ! Distribute the model and grid among CPUs.
+  call iarr%model%distribute(myrank, nbproc)
+end subroutine read_model
+
+!========================================================================================
+! Destructor.
+!========================================================================================
+subroutine problem_joint_gravmag_destructor(this)
+  type(t_problem_joint_gravmag), intent(inout) :: this
+  integer :: ierr
+
+  ierr = 0
+
+  if (allocated(this%delta_model)) deallocate(this%delta_model, stat=ierr)
+
+  if (ierr /= 0) print *, "Error in deallocating memory in problem_joint_gravmag_destructor!", ierr
+
+end subroutine problem_joint_gravmag_destructor
+
+end module problem_joint_gravmag
