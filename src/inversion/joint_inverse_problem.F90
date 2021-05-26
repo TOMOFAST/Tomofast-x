@@ -447,24 +447,26 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
 
   ! ***** Cross-gradient *****
 
-  if (par%derivative_type /= 4) then
-    if (par%derivative_type == 3) then
-    ! Mixed derivative - switch derivative type every iteration.
-      if (mod(ncalls, 2) == 0) then
-        der_type = 1
+  if (this%add_cross_grad) then
+    if (par%derivative_type /= 4) then
+      if (par%derivative_type == 3) then
+      ! Mixed derivative - switch derivative type every iteration.
+        if (mod(ncalls, 2) == 0) then
+          der_type = 1
+        else
+          der_type = 2
+        endif
       else
-        der_type = 2
+        der_type = par%derivative_type
       endif
-    else
-      der_type = par%derivative_type
-    endif
 
-    call this%add_cross_grad_constraints(par, arr, der_type, ncalls, myrank, nbproc)
-  else
-  ! Adding two cross-grad terms with different derivatives.
-    call this%add_cross_grad_constraints(par, arr, 1, ncalls, myrank, nbproc)
-    call this%matrix_B%reset()
-    call this%add_cross_grad_constraints(par, arr, 2, ncalls, myrank, nbproc)
+      call this%add_cross_grad_constraints(par, arr, der_type, ncalls, myrank, nbproc)
+    else
+    ! Adding two cross-grad terms with different derivatives.
+      call this%add_cross_grad_constraints(par, arr, 1, ncalls, myrank, nbproc)
+      call this%matrix_B%reset()
+      call this%add_cross_grad_constraints(par, arr, 2, ncalls, myrank, nbproc)
+    endif
   endif
 
   ! ***** Clustering *****
