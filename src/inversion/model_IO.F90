@@ -309,7 +309,7 @@ subroutine model_write(this, name_prefix, gather_full_model, myrank, nbproc)
     call pt%get_full_array(this%val, this%nelements, this%val_full, .false., myrank, nbproc)
   endif
 
-!  call this%write_paraview(name_prefix, myrank)
+  call this%write_paraview(name_prefix, myrank)
 !  call this%write_qgis(name_prefix, myrank)
 
   ! Write the full model on voxels format.
@@ -348,6 +348,8 @@ subroutine model_write_paraview(this, name_prefix, myrank)
 
   ! Write files my master CPU only.
   if (myrank /= 0) return
+
+  print *, 'Writing models for Paraview visualization for ', trim(name_prefix)
 
   nx = this%grid_full%nx
   ny = this%grid_full%ny
@@ -448,6 +450,7 @@ subroutine model_write_paraview(this, name_prefix, myrank)
 
   ! Invert the Z-axis direction.
   zgrid = - zgrid
+  zgrid_lego = - zgrid_lego
 
   step_x = 1
   step_y = 1
