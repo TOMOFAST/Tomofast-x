@@ -205,7 +205,10 @@ subroutine model_read_voxels_format(this, file_name, read_grid, myrank)
                                  this%cov_full(i)
 
         ! Sanity check.
-        if (this%grid_full%i_(i) > this%grid_full%nx .or. &
+        if (this%grid_full%i_(i) < 1 .or. &
+            this%grid_full%j_(i) < 1 .or. &
+            this%grid_full%k_(i) < 1 .or. &
+            this%grid_full%i_(i) > this%grid_full%nx .or. &
             this%grid_full%j_(i) > this%grid_full%ny .or. &
             this%grid_full%k_(i) > this%grid_full%nz) then
 
