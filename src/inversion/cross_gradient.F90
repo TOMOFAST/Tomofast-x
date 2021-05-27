@@ -130,6 +130,8 @@ subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, myrank)
   this%nparams_loc = nparams_loc
   this%nparams = nx * ny * nz
 
+  this%cost = 0._CUSTOM_REAL
+
   ierr = 0
 
   if (.not. allocated(this%cross_grad)) allocate(this%cross_grad(this%nparams), stat=ierr)
