@@ -50,8 +50,6 @@
 
 program program_tomofast3D
 
-  use stopwatch
-  use timers, only: get_CPU_times
   use global_typedefs
   use ftnunit, only: runtests_init, runtests, runtests_final
   use unit_tests, only: test_all
@@ -67,10 +65,6 @@ program program_tomofast3D
 
   ! MPI variables (error code, rank of this process, total number of ranks).
   integer :: ierr, myrank, nbproc
-
-  ! Timer variables.
-  type(watchtype) :: watch_prog
-  real :: time_accum, time_min, time_max
 
   ! ECT (forward) problem parameters.
   type(t_parameters_ect) :: epar
@@ -91,10 +85,6 @@ program program_tomofast3D
   call MPI_INIT(ierr)
   call MPI_COMM_RANK(MPI_COMM_WORLD, myrank, ierr)
   call MPI_COMM_SIZE(MPI_COMM_WORLD, nbproc, ierr)
-
-  ! Start timers.
-  call create_watch(watch_prog)
-  call start_watch(watch_prog)
 
   !----------------------------------------------------------------------------
   ! UNIT TESTING.
@@ -138,14 +128,6 @@ program program_tomofast3D
   endif
 
   if (myrank == 0) print *, 'THE END.'
-
-  call stop_watch(watch_prog)
-  call get_CPU_times(watch_prog, time_accum, time_min, time_max)
-  call destroy_watch(watch_prog)
-
-  if (myrank == 0) print *, 'Total CPU accumulated time: ', time_accum
-  if (myrank == 0) print *, 'Total CPU minimum time:     ', time_min
-  if (myrank == 0) print *, 'Total CPU maximum time:     ', time_max
 
   !----------------------------------------------------------------------------
   ! ALL DONE.

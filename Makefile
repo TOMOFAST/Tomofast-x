@@ -143,13 +143,10 @@ vpath %.F90 ./src/tests
 
 # External libraries.
 SRC_LIST_LIBS = \
-ftnunit.f90 \
-stopwatch_timers.f90 \
-cpusec_c1.c
+ftnunit.f90
 
 SRC_LIST_UTILS = \
 mpi_tools.f90 \
-timers.f90 \
 costs.f90 \
 vector.f90 \
 string.f90 \
