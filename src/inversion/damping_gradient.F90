@@ -75,8 +75,6 @@ module damping_gradient
     procedure, public, pass :: add => damping_gradient_add
     procedure, public, pass :: get_cost => damping_gradient_get_cost
 
-    final :: damping_gradient_destructor
-
   end type t_damping_gradient
 contains
 
@@ -234,15 +232,5 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
   !if (myrank == 0) print *, 'Damping_gradient added lines: ', row_end - row_beg + 1
 
 end subroutine damping_gradient_add
-
-!=========================================================================
-! Destructor.
-!=========================================================================
-subroutine damping_gradient_destructor(this)
-  type(t_damping_gradient), intent(inout) :: this
-
-  if (allocated(this%grad_weight)) deallocate(this%grad_weight)
-
-end subroutine damping_gradient_destructor
 
 end module damping_gradient

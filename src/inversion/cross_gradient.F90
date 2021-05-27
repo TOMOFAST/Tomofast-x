@@ -109,8 +109,6 @@ module cross_gradient
 
     procedure, private, pass :: get_num_deriv => cross_gradient_get_num_deriv
 
-    ! Destructor. (Note: bug in gcc 4.9 with warning about 'array final procedure'.)
-    final :: cross_gradient_destructor
   end type t_cross_gradient
 
 contains
@@ -904,15 +902,5 @@ subroutine cross_gradient_normalize_tau(this, tau, model1, model2, i, j, k, myra
   enddo
 
 end subroutine cross_gradient_normalize_tau
-
-!=========================================================================
-! Destructor.
-!=========================================================================
-subroutine cross_gradient_destructor(this)
-  type(t_cross_gradient), intent(inout) :: this
-
-  if (allocated(this%cross_grad)) deallocate(this%cross_grad)
-
-end subroutine cross_gradient_destructor
 
 end module cross_gradient

@@ -118,8 +118,6 @@ module clustering
     procedure, private, pass :: calculate_Gaussian_mixture => clustering_calculate_Gaussian_mixture
     procedure, private, pass :: calculate_Gaussian_mixture_max => clustering_calculate_Gaussian_mixture_max
 
-    ! Destructor. (Note: bug in gcc 4.9 with warning about 'array final procedure'.)
-    final :: clustering_destructor
   end type t_clustering
 
 contains
@@ -700,23 +698,5 @@ function clustering_calculate_Gaussian_mixture_max(this, cluster_weight, myrank)
   res = gauss_max
 
 end function clustering_calculate_Gaussian_mixture_max
-
-!=========================================================================
-! Destructor.
-!=========================================================================
-subroutine clustering_destructor(this)
-  type(t_clustering), intent(inout) :: this
-  integer :: ierr
-
-  ierr = 0
-
-  if (allocated(this%mixture_mu)) deallocate(this%mixture_mu, stat=ierr)
-  if (allocated(this%mixture_sigma)) deallocate(this%mixture_sigma, stat=ierr)
-  if (allocated(this%cell_weight)) deallocate(this%cell_weight, stat=ierr)
-  if (allocated(this%mixture_max)) deallocate(this%mixture_max, stat=ierr)
-
-  if (ierr /= 0) print *, "Error in deallocating memory in clustering_destructor!", ierr
-
-end subroutine clustering_destructor
 
 end module clustering

@@ -60,9 +60,6 @@ module admm_method
     procedure, public, pass :: initialize => admm_method_initialize
     procedure, public, pass :: iterate_admm_arrays => admm_method_iterate_admm_arrays
 
-    ! Destructor. (Note: bug in gcc 4.9 with warning about 'array final procedure'.)
-    final :: admm_method_destructor
-
   end type t_admm_method
 
 contains
@@ -172,21 +169,5 @@ subroutine admm_method_iterate_admm_arrays(this, nlithos, xmin, xmax, x, x0, myr
   x0 = this%z - this%u
 
 end subroutine admm_method_iterate_admm_arrays
-
-!==================================================================================
-! Destructor.
-!==================================================================================
-subroutine admm_method_destructor(this)
-  type(t_admm_method), intent(inout) :: this
-  integer :: ierr
-
-  ierr = 0
-
-  if (allocated(this%z)) deallocate(this%z, stat=ierr)
-  if (allocated(this%u)) deallocate(this%u, stat=ierr)
-
-  if (ierr /= 0) print *, "Error in deallocating memory in admm_method_destructor!", ierr
-
-end subroutine admm_method_destructor
 
 end module admm_method

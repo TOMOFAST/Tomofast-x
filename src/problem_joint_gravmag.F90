@@ -100,8 +100,6 @@ module problem_joint_gravmag
     procedure, private, nopass :: write_sensitivity_matrix
     procedure, private, nopass :: read_model
 
-    ! Destructor. (Note: bug in gcc 4.9 with warning about 'array final procedure'.)
-    final :: problem_joint_gravmag_destructor
   end type t_problem_joint_gravmag
 
 contains
@@ -552,20 +550,5 @@ subroutine read_model(iarr, model_type, model_val, model_file, myrank, nbproc)
   ! Distribute the model and grid among CPUs.
   call iarr%model%distribute(myrank, nbproc)
 end subroutine read_model
-
-!========================================================================================
-! Destructor.
-!========================================================================================
-subroutine problem_joint_gravmag_destructor(this)
-  type(t_problem_joint_gravmag), intent(inout) :: this
-  integer :: ierr
-
-  ierr = 0
-
-  if (allocated(this%delta_model)) deallocate(this%delta_model, stat=ierr)
-
-  if (ierr /= 0) print *, "Error in deallocating memory in problem_joint_gravmag_destructor!", ierr
-
-end subroutine problem_joint_gravmag_destructor
 
 end module problem_joint_gravmag

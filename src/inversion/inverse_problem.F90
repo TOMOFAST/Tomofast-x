@@ -76,8 +76,6 @@ module inverse_problem
     procedure, public, pass :: solve => inversion_solve
     procedure, public, pass :: get_model_change => inversion_get_model_change
 
-    ! Destructor. (Note: bug in gcc 4.9 with warning about 'array final procedure'.)
-    final :: inversion_destructor
   end type t_inversion
 
 contains
@@ -188,16 +186,5 @@ subroutine inversion_solve(this, par, arr, myrank, nbproc)
   call rescale_model(this%delta_model, arr%column_weight, par%nelements)
 
 end subroutine inversion_solve
-
-!=========================================================================
-! Destructor.
-!=========================================================================
-subroutine inversion_destructor(this)
-  type(t_inversion), intent(inout) :: this
-
-  if (allocated(this%b_RHS)) deallocate(this%b_RHS)
-  if (allocated(this%delta_model)) deallocate(this%delta_model)
-
-end subroutine inversion_destructor
 
 end module inverse_problem

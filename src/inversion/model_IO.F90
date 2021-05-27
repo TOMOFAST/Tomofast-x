@@ -65,8 +65,6 @@ module model_IO
     procedure, private, pass :: write_qgis => model_write_qgis
     procedure, private, pass :: write_paraview => model_write_paraview
 
-    ! Destructor. (Note: bug in gcc 4.9 with warning about 'array final procedure'.)
-    !final :: model_destructor
   end type t_model_IO
 
 contains
@@ -627,4 +625,3 @@ subroutine model_write_qgis(this, name_prefix, myrank)
 end subroutine model_write_qgis
 
 end module model_IO
-
