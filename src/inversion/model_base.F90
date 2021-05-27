@@ -100,8 +100,6 @@ module model_base
     procedure, public, pass :: get_Ymin => model_get_Ymin
     procedure, public, pass :: get_Ymax => model_get_Ymax
 
-    ! Destructor. (Note: bug in gcc 4.9 with warning about 'array final procedure'.)
-    final :: model_destructor
   end type t_model_base
 
 contains
@@ -266,25 +264,4 @@ pure function model_get_Ymax(this) result(res)
   res = maxval(this%grid_full%Y2)
 end function model_get_Ymax
 
-!=========================================================================
-! Destructor.
-!=========================================================================
-subroutine model_destructor(this)
-  type(t_model_base), intent(inout) :: this
-  integer :: ierr
-
-  ierr = 0
-
-  if (allocated(this%val)) deallocate(this%val, stat=ierr)
-  if (allocated(this%val_final0)) deallocate(this%val_final0, stat=ierr)
-  if (allocated(this%val_full)) deallocate(this%val_full, stat=ierr)
-
-  if (allocated(this%cov)) deallocate(this%cov, stat=ierr)
-  if (allocated(this%cov_full)) deallocate(this%cov_full, stat=ierr)
-
-  if (ierr /= 0) print *, "Error in deallocating memory in model_destructor!", ierr
-
-end subroutine model_destructor
-
 end module model_base
-

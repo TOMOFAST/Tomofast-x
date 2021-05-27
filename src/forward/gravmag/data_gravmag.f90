@@ -67,8 +67,6 @@ module data_gravmag
     procedure, pass :: broadcast => data_broadcast
     procedure, pass :: read_points_format => data_read_points_format
 
-    ! Destructor.
-    final :: data_destructor
   end type t_data
 
 contains
@@ -223,19 +221,5 @@ subroutine data_write(this, name_prefix, which, myrank)
   close(20)
 
 end subroutine data_write
-
-!=========================================================================
-! Destructor.
-!=========================================================================
-subroutine data_destructor(this)
-  type(t_data), intent(inout) :: this
-
-  if (allocated(this%X)) deallocate(this%X)
-  if (allocated(this%Y)) deallocate(this%Y)
-  if (allocated(this%Z)) deallocate(this%Z)
-  if (allocated(this%val_meas)) deallocate(this%val_meas)
-  if (allocated(this%val_calc)) deallocate(this%val_calc)
-
-end subroutine data_destructor
 
 end module data_gravmag

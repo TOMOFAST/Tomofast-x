@@ -103,8 +103,7 @@ module sparse_matrix
     procedure, private, pass :: validate => sparse_matrix_validate
 
     procedure, private, pass :: allocate_arrays => sparse_matrix_allocate_arrays
-    ! Destructor. (Note: bug in gcc 4.9 with warning about 'array final procedure'.)
-    final :: sparse_matrix_destructor
+
   end type t_sparse_matrix
 
 contains
@@ -514,18 +513,5 @@ subroutine sparse_matrix_allocate_variance_array(this, isize, myrank)
     call exit_MPI("Dynamic memory allocation error in sparse_matrix_allocate_variance_array!", myrank, ierr)
 
 end subroutine sparse_matrix_allocate_variance_array
-
-!=========================================================================
-! Destructor.
-!=========================================================================
-subroutine sparse_matrix_destructor(this)
-  type(t_sparse_matrix), intent(inout) :: this
-
-  if (allocated(this%sa)) deallocate(this%sa)
-  if (allocated(this%ijl)) deallocate(this%ijl)
-  if (allocated(this%ija)) deallocate(this%ija)
-  if (allocated(this%lsqr_var)) deallocate(this%lsqr_var)
-
-end subroutine sparse_matrix_destructor
 
 end module sparse_matrix

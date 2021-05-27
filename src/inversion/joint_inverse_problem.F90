@@ -126,8 +126,6 @@ module joint_inverse_problem
     procedure, private, pass :: add_cross_grad_constraints => joint_inversion_add_cross_grad_constraints
     procedure, private, pass :: add_clustering_constraints => joint_inversion_add_clustering_constraints
 
-    ! Destructor. (Note: bug in gcc 4.9 with warning about 'array final procedure'.)
-    final :: joint_inversion_destructor
   end type t_joint_inversion
 
 contains
@@ -695,20 +693,5 @@ pure function joint_inversion_get_clustering_cost(this, problem_type) result(res
   res = this%clustering%get_cost(problem_type)
 
 end function joint_inversion_get_clustering_cost
-
-!=========================================================================
-! Destructor.
-!=========================================================================
-subroutine joint_inversion_destructor(this)
-  type(t_joint_inversion), intent(inout) :: this
-
-  if (allocated(this%b_RHS)) deallocate(this%b_RHS)
-  if (allocated(this%d_RHS)) deallocate(this%d_RHS)
-  if (allocated(this%column_norm)) deallocate(this%column_norm)
-
-  if (allocated(this%x0_ADMM)) deallocate(this%x0_ADMM)
-  if (allocated(this%weight_ADMM)) deallocate(this%weight_ADMM)
-
-end subroutine joint_inversion_destructor
 
 end module joint_inverse_problem

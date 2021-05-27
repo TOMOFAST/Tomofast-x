@@ -79,9 +79,6 @@ module grid
     procedure, public, pass :: get_Y_cell_center => grid_get_Y_cell_center
     procedure, public, pass :: get_Z_cell_center => grid_get_Z_cell_center
 
-    ! Destructor.
-    ! Note: in gcc 4.9 there is a bug with warning about array final procedure.
-    final :: grid_destructor
   end type t_grid
 
 contains
@@ -267,26 +264,5 @@ pure function grid_get_Z_cell_center(this, cell_index) result(res)
   res = 0.5d0 * (this%Z1(cell_index) + this%Z2(cell_index))
 
 end function grid_get_Z_cell_center
-
-!=========================================================================
-! Destructor.
-!=========================================================================
-subroutine grid_destructor(this)
-  type(t_grid), intent(inout) :: this
-
-  if (allocated(this%X1)) deallocate(this%X1)
-  if (allocated(this%X2)) deallocate(this%X2)
-  if (allocated(this%Y1)) deallocate(this%Y1)
-  if (allocated(this%Y2)) deallocate(this%Y2)
-  if (allocated(this%Z1)) deallocate(this%Z1)
-  if (allocated(this%Z2)) deallocate(this%Z2)
-
-  if (allocated(this%i_)) deallocate(this%i_)
-  if (allocated(this%j_)) deallocate(this%j_)
-  if (allocated(this%k_)) deallocate(this%k_)
-
-  if (allocated(this%ind)) deallocate(this%ind)
-
-end subroutine grid_destructor
 
 end module grid

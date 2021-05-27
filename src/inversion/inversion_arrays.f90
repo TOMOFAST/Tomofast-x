@@ -83,9 +83,6 @@ module inversion_arrays
     procedure, public, pass :: allocate => inversion_arrays_allocate
     procedure, public, pass :: init_model => inversion_arrays_init_model
 
-    ! Destructor. (Note: bug in gcc 4.9 with warning about 'array final procedure'.)
-    final :: inversion_arrays_destructor
-
   end type t_inversion_arrays
 
 contains
@@ -174,19 +171,5 @@ subroutine inversion_arrays_init_model(this, myrank, nbproc)
   if (myrank == 0) print *, "grid done."
 
 end subroutine inversion_arrays_init_model
-
-!==================================================================================
-! Destructor.
-!==================================================================================
-subroutine inversion_arrays_destructor(this)
-  type(t_inversion_arrays), intent(inout) :: this
-
-  if (allocated(this%sensitivity)) deallocate(this%sensitivity)
-  if (allocated(this%column_weight)) deallocate(this%column_weight)
-  if (allocated(this%damping_weight)) deallocate(this%damping_weight)
-  if (allocated(this%residuals)) deallocate(this%residuals)
-  if (allocated(this%model_prior)) deallocate(this%model_prior)
-
-end subroutine inversion_arrays_destructor
 
 end module inversion_arrays
