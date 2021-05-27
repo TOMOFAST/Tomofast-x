@@ -360,7 +360,7 @@ subroutine visualise_sensitivity(par, sensit, column_weight, r, theta, z, myrank
                                           dims%nr,dims%ntheta,dims%nz,dims%nzlocal,sensit_pair,xgrid,ygrid,zgrid)
 
           call paraview_write_3d_profiles(myrank,"sensit3d_",ielectrode,&
-                                          dims%nr,dims%ntheta,dims%nzlocal,sensit_pair,xgrid,ygrid,zgrid,8*dims%nr/9)
+                                          dims%nr,dims%ntheta,dims%nzlocal,sensit_pair,xgrid,ygrid,zgrid)
         endif
       endif
     enddo

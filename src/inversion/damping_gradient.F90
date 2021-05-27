@@ -78,9 +78,9 @@ module damping_gradient
   end type t_damping_gradient
 contains
 
-!===========================================================================================
+!=================================================================================================
 ! Initialization.
-!===========================================================================================
+!=================================================================================================
 subroutine damping_gradient_initialize(this, beta, problem_weight, nx, ny, nz, nelements, myrank)
   class(t_damping_gradient), intent(inout) :: this
   real(kind=CUSTOM_REAL), intent(in) :: beta, problem_weight
@@ -98,8 +98,11 @@ subroutine damping_gradient_initialize(this, beta, problem_weight, nx, ny, nz, n
   this%nelements_total = nx * ny * nz
   this%cost = 0.d0
 
+  ierr = 0
   if (.not. allocated(this%grad_weight)) &
     allocate(this%grad_weight(this%nelements_total), source=1._CUSTOM_REAL, stat=ierr)
+
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in damping_gradient_initialize!", myrank, ierr)
 
 end subroutine damping_gradient_initialize
 

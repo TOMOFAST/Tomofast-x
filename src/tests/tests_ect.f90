@@ -347,7 +347,7 @@ subroutine test_geometry(size,ilevel_coarse,ifixed_elecgeo,sens)
     call set_geometry(ilevel,par,nr_at_level(ilevel),ntheta_at_level(ilevel),nz_at_level(ilevel),&
                       r(ilevel)%p,dr(ilevel)%p,theta(ilevel)%p,dz(ilevel)%p,&
                       z(ilevel)%p,izspace(ilevel),kguards_at_level(ilevel),&
-                      i1(ilevel),i2(ilevel),elecs(ilevel)%p,guards(ilevel),myrank)
+                      i1(ilevel),i2(ilevel),elecs(ilevel)%p,guards(ilevel))
   enddo
 
   ! Tests.
@@ -629,7 +629,7 @@ subroutine test_boundary_conditions(size, ilevel_coarse, ifixed_elecgeo, sens)
     call set_geometry(ilevel,par,nr_at_level(ilevel),ntheta_at_level(ilevel),nz_at_level(ilevel),&
                       r(ilevel)%p,dr(ilevel)%p,theta(ilevel)%p,dz(ilevel)%p,&
                       z(ilevel)%p,izspace(ilevel),kguards_at_level(ilevel),&
-                      i1(ilevel),i2(ilevel),elecs(ilevel)%p,guards(ilevel),myrank)
+                      i1(ilevel),i2(ilevel),elecs(ilevel)%p,guards(ilevel))
   enddo
 
   !----------------------------------------------------------------------------------
@@ -676,7 +676,7 @@ subroutine test_boundary_conditions(size, ilevel_coarse, ifixed_elecgeo, sens)
     ! (!!!) The function being tested.
     ! It is called only on the fine level!
     call solution_init(phi(ilevel_fine)%p,val(ilevel_fine)%p,flag(ilevel_fine)%p,&
-                       x2(ilevel_fine)%p,par%dims,.false.,&
+                       x2(ilevel_fine)%p,par%dims,&
                        myrank,i2(ilevel_fine),elecs(ilevel_fine)%p(ielectrode))
 
     ! The solution is set to zero everywhere at the outermost cylinder i=nr+1.
@@ -892,7 +892,7 @@ subroutine test_analytical_comparison(bc_type, size, ilevel_coarse, itmax, sens)
     call set_geometry(ilevel,par,nr_at_level(ilevel),ntheta_at_level(ilevel),nz_at_level(ilevel),&
                       r(ilevel)%p,dr(ilevel)%p,theta(ilevel)%p,dz(ilevel)%p,&
                       z(ilevel)%p,izspace(ilevel),kguards_at_level(ilevel),&
-                      i1(ilevel),i2(ilevel),elecs(ilevel)%p,guards(ilevel),myrank)
+                      i1(ilevel),i2(ilevel),elecs(ilevel)%p,guards(ilevel))
 
     ! TODO: initialize xgrid,ygrid,zgrid
   enddo

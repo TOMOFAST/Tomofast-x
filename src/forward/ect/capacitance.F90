@@ -48,7 +48,7 @@ module capacitance
 
   private :: validate_capacitance
   private :: capacitance_2d_surf
-  private :: capacitance_3d_surf
+  !private :: capacitance_3d_surf
   private :: capacitance_plane
 
 contains
@@ -430,183 +430,183 @@ end subroutine validate_capacitance
 ! surf_type=2 for the lower guard,
 ! surf_type=3 for the upper guard.
 !=========================================================================================
-subroutine capacitance_3d_surf(nr,ntheta,nz,nzlocal,phi,theta,r,z,&
-                               permit0,permit_air,permit_isolated_tube,i2,&
-                               itheta_start,itheta_end,iz_start,iz_end,myrank,capacity,surf_type)
-  integer, intent(in) :: nr,ntheta,nz,nzlocal
-  real(kind=CUSTOM_REAL), intent(in) :: phi(0:nr+1,0:ntheta+1,0:nzlocal+1)
-  real(kind=CUSTOM_REAL), intent(in) :: theta(0:ntheta+1)
-  real(kind=CUSTOM_REAL), intent(in) :: r(0:2*nr+1)
-  real(kind=CUSTOM_REAL), intent(in) :: z(0:nz+1)
-
-  real(kind=CUSTOM_REAL), intent(in) :: permit0,permit_air,permit_isolated_tube
-  integer, intent(in) :: i2,itheta_start,itheta_end,iz_start,iz_end
-  integer, intent(in) :: myrank
-  integer, intent(in) :: surf_type
-
-  real(kind=CUSTOM_REAL), intent(out) :: capacity
-
-  real(kind=CUSTOM_REAL) :: dtheta,capac_loc,dz,dr
-  real(kind=CUSTOM_REAL) :: perm,normal
-  integer :: i_start,i_end,j_start,j_end,k_start,k_end
-  integer :: i,j,k,k1
-
-  ! DISABLED: Sanity check validate_capacitance (Cij < 0 for i /= j) is not passing.
-  print *, 'Subroutine capacitance_3d_surf() should not be used before it is fixed!'
-  stop
-
-  i_start = i2 - 1
-  i_end   = i2 + 1
-
-  if (surf_type == 1) then
-    j_start = itheta_start - 1
-    j_end   = itheta_end + 1
-  else
-    ! For guards do exactly full circle 360 degrees, from 1 to ntheta+1.
-    j_start = itheta_start
-    j_end   = itheta_end
-  endif
-
-  k_start = iz_start - 1
-  k_end   = iz_end + 1
-
-  capacity = 0._CUSTOM_REAL
-
-  ! Vertical surfaces (parallel to the electrode/guard).
-  do k=1,nzlocal
-    k1=myrank*nzlocal+k
-
-    if (k1 >= k_start .and. k1 <= k_end) then
-      ! Use trapezoidal integration rule (with varying step).
-      dz = getstep(k1,1,k_start,k_end,nz+1,z)
-
-      do j=j_start,j_end
-        ! Use trapezoidal integration rule (with varying step).
-        dtheta = getstep(j,1,j_start,j_end,ntheta+1,theta)
-
-        ! Inner (i_start) and outer surfaces (i_end).
-        do i=i_start,i_end,i_end-i_start
-
-          if (i < i2) then
-            normal = -1._CUSTOM_REAL
-            perm = permit0*permit_isolated_tube
-          else if (i > i2) then
-            normal = 1._CUSTOM_REAL
-            perm = permit0*permit_air
-          endif
-
-          capac_loc = -perm*(phi(i+1,j,k)-phi(i-1,j,k))/(r(2*i+1)-r(2*i-3))
-
-          capac_loc = capac_loc*normal*dtheta*r(2*i-1)*dz
-
-          capacity = capacity + capac_loc
-        enddo
-      enddo
-    endif
-  enddo
-
-  ! Top & bottom surfaces.
-  do k=1,nzlocal
-    k1=myrank*nzlocal+k
-
-    if ((surf_type == 1 .and. (k1 == k_start .or. k1 == k_end)) .or. &
-        (surf_type == 2 .and. k1 == k_end) .or. &
-        (surf_type == 3 .and. k1 == k_start)) then
-    ! Exclude bottom surface for the lower guard, and top surface for the upper guard.
-
-      do j=j_start,j_end
-        ! Use trapezoidal integration rule (with varying step).
-        dtheta = getstep(j,1,j_start,j_end,ntheta+1,theta)
-
-        do i=i_start,i_end
-
-          ! Use trapezoidal integration rule (with varying step).
-          dr = getstep(2*i-1,2,2*i_start-1,2*i_end-1,2*nr+1,r)
-
-          if (i < i2) then
-            perm = permit0*permit_isolated_tube
-          else if (i > i2) then
-            perm = permit0*permit_air
-          else
-            perm = permit0*avg2(permit_isolated_tube,permit_air)
-          endif
-
-          if (k1 == k_start) then
-            normal = -1._CUSTOM_REAL
-          else if (k1 == k_end) then
-            normal = 1._CUSTOM_REAL
-          endif
-
-          capac_loc = -perm*(phi(i,j,k+1)-phi(i,j,k-1))/(z(k1+1)-z(k1-1))
-
-          ! TODO: Confirm area calculation.
-          if (i < i_end) then
-            capac_loc = capac_loc*normal*0.5_CUSTOM_REAL*dtheta*((r(2*i-1)+dr)**2-r(2*i-1)**2)
-          else if (i == i_end) then
-            capac_loc = capac_loc*normal*0.5_CUSTOM_REAL*dtheta*(r(2*i-1)**2-(r(2*i-1)-dr)**2)
-          endif
-
-!          if (i == i_start) then
-!            capac_loc = capac_loc*normal*0.5_CUSTOM_REAL*dtheta*(r(2*i+1)**2-r(2*i-1)**2)*0.5_CUSTOM_REAL
-!          else if (i == i_end) then
-!            capac_loc = capac_loc*normal*0.5_CUSTOM_REAL*dtheta*(r(2*i-1)**2-r(2*i-3)**2)*0.5_CUSTOM_REAL
-!          else
-!            capac_loc = capac_loc*normal*0.5_CUSTOM_REAL*dtheta*(r(2*i+1)**2-r(2*i-3)**2)*0.5_CUSTOM_REAL
+!subroutine capacitance_3d_surf(nr,ntheta,nz,nzlocal,phi,theta,r,z,&
+!                               permit0,permit_air,permit_isolated_tube,i2,&
+!                               itheta_start,itheta_end,iz_start,iz_end,myrank,capacity,surf_type)
+!  integer, intent(in) :: nr,ntheta,nz,nzlocal
+!  real(kind=CUSTOM_REAL), intent(in) :: phi(0:nr+1,0:ntheta+1,0:nzlocal+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: theta(0:ntheta+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: r(0:2*nr+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: z(0:nz+1)
+!
+!  real(kind=CUSTOM_REAL), intent(in) :: permit0,permit_air,permit_isolated_tube
+!  integer, intent(in) :: i2,itheta_start,itheta_end,iz_start,iz_end
+!  integer, intent(in) :: myrank
+!  integer, intent(in) :: surf_type
+!
+!  real(kind=CUSTOM_REAL), intent(out) :: capacity
+!
+!  real(kind=CUSTOM_REAL) :: dtheta,capac_loc,dz,dr
+!  real(kind=CUSTOM_REAL) :: perm,normal
+!  integer :: i_start,i_end,j_start,j_end,k_start,k_end
+!  integer :: i,j,k,k1
+!
+!  ! DISABLED: Sanity check validate_capacitance (Cij < 0 for i /= j) is not passing.
+!  print *, 'Subroutine capacitance_3d_surf() should not be used before it is fixed!'
+!  stop
+!
+!  i_start = i2 - 1
+!  i_end   = i2 + 1
+!
+!  if (surf_type == 1) then
+!    j_start = itheta_start - 1
+!    j_end   = itheta_end + 1
+!  else
+!    ! For guards do exactly full circle 360 degrees, from 1 to ntheta+1.
+!    j_start = itheta_start
+!    j_end   = itheta_end
+!  endif
+!
+!  k_start = iz_start - 1
+!  k_end   = iz_end + 1
+!
+!  capacity = 0._CUSTOM_REAL
+!
+!  ! Vertical surfaces (parallel to the electrode/guard).
+!  do k=1,nzlocal
+!    k1=myrank*nzlocal+k
+!
+!    if (k1 >= k_start .and. k1 <= k_end) then
+!      ! Use trapezoidal integration rule (with varying step).
+!      dz = getstep(k1,1,k_start,k_end,nz+1,z)
+!
+!      do j=j_start,j_end
+!        ! Use trapezoidal integration rule (with varying step).
+!        dtheta = getstep(j,1,j_start,j_end,ntheta+1,theta)
+!
+!        ! Inner (i_start) and outer surfaces (i_end).
+!        do i=i_start,i_end,i_end-i_start
+!
+!          if (i < i2) then
+!            normal = -1._CUSTOM_REAL
+!            perm = permit0*permit_isolated_tube
+!          else if (i > i2) then
+!            normal = 1._CUSTOM_REAL
+!            perm = permit0*permit_air
 !          endif
-
-          capacity = capacity + capac_loc
-        enddo
-      enddo
-    endif
-  enddo
-
-
-  if (surf_type == 1) then
-  ! Only for electrodes. Not for guards, because they are periodic.
-
-    ! Side surfaces (perpendicular to electrode).
-    do k=1,nzlocal
-      k1=myrank*nzlocal+k
-
-      if (k1 >= k_start .and. k1 <= k_end) then
-        ! Use trapezoidal integration rule (with varying step).
-        dz = getstep(k1,1,k_start,k_end,nz+1,z)
-
-        do j=j_start,j_end,j_end-j_start
-
-          if (j == j_start) then
-            normal = -1._CUSTOM_REAL
-          else if (j == j_end) then
-            normal = 1._CUSTOM_REAL
-          endif
-
-          do i=i_start,i_end
-            ! Use trapezoidal integration rule (with varying step).
-            dr = getstep(2*i-1,2,2*i_start-1,2*i_end-1,2*nr+1,r)
-
-            if (i < i2) then
-              perm = permit0*permit_isolated_tube
-            else if (i > i2) then
-              perm = permit0*permit_air
-            else
-              perm = permit0*avg2(permit_isolated_tube,permit_air)
-            endif
-
-            if (j-1 < 1) then
-              capac_loc = perm*(phi(i,j+1,k)-phi(i,j-1+ntheta,k))/(theta(j+1)-theta(j-1+ntheta)-2._CUSTOM_REAL*PI)/r(2*i-1)
-            else
-              capac_loc = perm*(phi(i,j+1,k)-phi(i,j-1,k))/(theta(j+1)-theta(j-1))/r(2*i-1)
-            endif
-
-            capac_loc = capac_loc*normal*dr*dz
-
-            capacity = capacity + capac_loc
-          enddo
-        enddo ! j
-      endif
-    enddo
-  endif
-
-end subroutine capacitance_3d_surf
+!
+!          capac_loc = -perm*(phi(i+1,j,k)-phi(i-1,j,k))/(r(2*i+1)-r(2*i-3))
+!
+!          capac_loc = capac_loc*normal*dtheta*r(2*i-1)*dz
+!
+!          capacity = capacity + capac_loc
+!        enddo
+!      enddo
+!    endif
+!  enddo
+!
+!  ! Top & bottom surfaces.
+!  do k=1,nzlocal
+!    k1=myrank*nzlocal+k
+!
+!    if ((surf_type == 1 .and. (k1 == k_start .or. k1 == k_end)) .or. &
+!        (surf_type == 2 .and. k1 == k_end) .or. &
+!        (surf_type == 3 .and. k1 == k_start)) then
+!    ! Exclude bottom surface for the lower guard, and top surface for the upper guard.
+!
+!      do j=j_start,j_end
+!        ! Use trapezoidal integration rule (with varying step).
+!        dtheta = getstep(j,1,j_start,j_end,ntheta+1,theta)
+!
+!        do i=i_start,i_end
+!
+!          ! Use trapezoidal integration rule (with varying step).
+!          dr = getstep(2*i-1,2,2*i_start-1,2*i_end-1,2*nr+1,r)
+!
+!          if (i < i2) then
+!            perm = permit0*permit_isolated_tube
+!          else if (i > i2) then
+!            perm = permit0*permit_air
+!          else
+!            perm = permit0*avg2(permit_isolated_tube,permit_air)
+!          endif
+!
+!          if (k1 == k_start) then
+!            normal = -1._CUSTOM_REAL
+!          else if (k1 == k_end) then
+!            normal = 1._CUSTOM_REAL
+!          endif
+!
+!          capac_loc = -perm*(phi(i,j,k+1)-phi(i,j,k-1))/(z(k1+1)-z(k1-1))
+!
+!          ! TODO: Confirm area calculation.
+!          if (i < i_end) then
+!            capac_loc = capac_loc*normal*0.5_CUSTOM_REAL*dtheta*((r(2*i-1)+dr)**2-r(2*i-1)**2)
+!          else if (i == i_end) then
+!            capac_loc = capac_loc*normal*0.5_CUSTOM_REAL*dtheta*(r(2*i-1)**2-(r(2*i-1)-dr)**2)
+!          endif
+!
+!!          if (i == i_start) then
+!!            capac_loc = capac_loc*normal*0.5_CUSTOM_REAL*dtheta*(r(2*i+1)**2-r(2*i-1)**2)*0.5_CUSTOM_REAL
+!!          else if (i == i_end) then
+!!            capac_loc = capac_loc*normal*0.5_CUSTOM_REAL*dtheta*(r(2*i-1)**2-r(2*i-3)**2)*0.5_CUSTOM_REAL
+!!          else
+!!            capac_loc = capac_loc*normal*0.5_CUSTOM_REAL*dtheta*(r(2*i+1)**2-r(2*i-3)**2)*0.5_CUSTOM_REAL
+!!          endif
+!
+!          capacity = capacity + capac_loc
+!        enddo
+!      enddo
+!    endif
+!  enddo
+!
+!
+!  if (surf_type == 1) then
+!  ! Only for electrodes. Not for guards, because they are periodic.
+!
+!    ! Side surfaces (perpendicular to electrode).
+!    do k=1,nzlocal
+!      k1=myrank*nzlocal+k
+!
+!      if (k1 >= k_start .and. k1 <= k_end) then
+!        ! Use trapezoidal integration rule (with varying step).
+!        dz = getstep(k1,1,k_start,k_end,nz+1,z)
+!
+!        do j=j_start,j_end,j_end-j_start
+!
+!          if (j == j_start) then
+!            normal = -1._CUSTOM_REAL
+!          else if (j == j_end) then
+!            normal = 1._CUSTOM_REAL
+!          endif
+!
+!          do i=i_start,i_end
+!            ! Use trapezoidal integration rule (with varying step).
+!            dr = getstep(2*i-1,2,2*i_start-1,2*i_end-1,2*nr+1,r)
+!
+!            if (i < i2) then
+!              perm = permit0*permit_isolated_tube
+!            else if (i > i2) then
+!              perm = permit0*permit_air
+!            else
+!              perm = permit0*avg2(permit_isolated_tube,permit_air)
+!            endif
+!
+!            if (j-1 < 1) then
+!              capac_loc = perm*(phi(i,j+1,k)-phi(i,j-1+ntheta,k))/(theta(j+1)-theta(j-1+ntheta)-2._CUSTOM_REAL*PI)/r(2*i-1)
+!            else
+!              capac_loc = perm*(phi(i,j+1,k)-phi(i,j-1,k))/(theta(j+1)-theta(j-1))/r(2*i-1)
+!            endif
+!
+!            capac_loc = capac_loc*normal*dr*dz
+!
+!            capacity = capacity + capac_loc
+!          enddo
+!        enddo ! j
+!      endif
+!    enddo
+!  endif
+!
+!end subroutine capacitance_3d_surf
 
 end module capacitance

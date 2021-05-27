@@ -344,7 +344,7 @@ pure subroutine sparse_matrix_get_line(this, j, b)
   class(t_sparse_matrix), intent(in) :: this
   integer, intent(in) :: j
   real(kind=CUSTOM_REAL), intent(out) :: b(:)
-  integer :: i, k
+  integer :: k
 
   b = 0._CUSTOM_REAL
 

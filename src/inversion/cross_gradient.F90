@@ -100,14 +100,14 @@ module cross_gradient
     procedure, public, pass :: get_magnitude => cross_gradient_get_magnitude
     procedure, public, pass :: get_num_elements => cross_gradient_get_num_elements
 
-    procedure, private, pass :: calculate_tau => cross_gradient_calculate_tau
-    procedure, private, pass :: normalize_tau => cross_gradient_normalize_tau
+    procedure, private, nopass :: calculate_tau => cross_gradient_calculate_tau
+    procedure, private, nopass :: normalize_tau => cross_gradient_normalize_tau
 
-    procedure, private, pass :: calculate_tau_mixed_gradients => cross_gradient_calculate_tau_mixed_gradients
-    procedure, private, pass :: calculate_tau2 => cross_gradient_calculate_tau2
-    procedure, private, pass :: calculate_tau_backward => cross_gradient_calculate_tau_backward
+    procedure, private, nopass :: calculate_tau_mixed_gradients => cross_gradient_calculate_tau_mixed_gradients
+    procedure, private, nopass :: calculate_tau2 => cross_gradient_calculate_tau2
+    procedure, private, nopass :: calculate_tau_backward => cross_gradient_calculate_tau_backward
 
-    procedure, private, pass :: get_num_deriv => cross_gradient_get_num_deriv
+    procedure, private, nopass :: get_num_deriv => cross_gradient_get_num_deriv
 
   end type t_cross_gradient
 
@@ -157,8 +157,7 @@ end function cross_gradient_get_num_elements
 !=============================================================================================
 ! Returns the number of derivatives depending on the finite difference scheme.
 !=============================================================================================
-pure function cross_gradient_get_num_deriv(this, der_type) result(num_deriv)
-  class(t_cross_gradient), intent(in) :: this
+pure function cross_gradient_get_num_deriv(der_type) result(num_deriv)
   integer, intent(in) :: der_type
   integer :: num_deriv
 
@@ -383,8 +382,7 @@ end function cross_gradient_get_magnitude
 ! der_type = 1:  using a forward difference scheme (Geophys. Res. Lett., Vol. 33, L07303).
 ! der_type /= 1: using a central difference scheme.
 !==================================================================================================
-function cross_gradient_calculate_tau(this, model1, model2, i, j, k, der_type) result(tau)
-  class(t_cross_gradient), intent(in) :: this
+function cross_gradient_calculate_tau(model1, model2, i, j, k, der_type) result(tau)
   type(t_model), intent(in) :: model1
   type(t_model), intent(in) :: model2
   integer, intent(in) :: i, j, k, der_type
@@ -517,8 +515,7 @@ end function cross_gradient_calculate_tau
 !
 ! Same as cross_gradient_calculate_tau but uses three-point forward difference scheme.
 !==================================================================================================
-function cross_gradient_calculate_tau2(this, model1, model2, i, j, k) result(tau)
-  class(t_cross_gradient), intent(in) :: this
+function cross_gradient_calculate_tau2(model1, model2, i, j, k) result(tau)
   type(t_model), intent(in) :: model1
   type(t_model), intent(in) :: model2
   integer, intent(in) :: i, j, k
@@ -614,8 +611,7 @@ end function cross_gradient_calculate_tau2
 !
 ! Same as cross_gradient_calculate_tau but uses backward finite difference.
 !==================================================================================================
-function cross_gradient_calculate_tau_backward(this, model1, model2, i, j, k) result(tau)
-  class(t_cross_gradient), intent(in) :: this
+function cross_gradient_calculate_tau_backward(model1, model2, i, j, k) result(tau)
   type(t_model), intent(in) :: model1
   type(t_model), intent(in) :: model2
   integer, intent(in) :: i, j, k
@@ -699,8 +695,7 @@ end function cross_gradient_calculate_tau_backward
 !
 ! Same as cross_gradient_calculate_tau but uses forward and central difference at the same time.
 !==================================================================================================
-function cross_gradient_calculate_tau_mixed_gradients(this, model1, model2, i, j, k) result(tau)
-  class(t_cross_gradient), intent(in) :: this
+function cross_gradient_calculate_tau_mixed_gradients(model1, model2, i, j, k) result(tau)
   type(t_model), intent(in) :: model1
   type(t_model), intent(in) :: model2
   integer, intent(in) :: i, j, k
@@ -872,11 +867,10 @@ end function cross_gradient_calculate_tau_mixed_gradients
 ! Normalize the cross gradient function.
 ! (See N Linde, J Doetsch, Joint inversion of crosshole GPR and Seismic traveltime data.)
 !==============================================================================================
-subroutine cross_gradient_normalize_tau(this, tau, model1, model2, i, j, k, myrank)
-  class(t_cross_gradient), intent(in) :: this
+subroutine cross_gradient_normalize_tau(tau, model1, model2, i, j, k)
   type(t_model), intent(in) :: model1
   type(t_model), intent(in) :: model2
-  integer, intent(in) :: i, j, k, myrank
+  integer, intent(in) :: i, j, k
 
   type(t_tau), intent(inout) :: tau
 
@@ -890,8 +884,8 @@ subroutine cross_gradient_normalize_tau(this, tau, model1, model2, i, j, k, myra
   if (val1 /= 0._CUSTOM_REAL .and. val2 /= 0._CUSTOM_REAL) then
     scale = 1._CUSTOM_REAL / abs(val1 * val2)
   else
+  ! Zero denominator!
     scale = 1._CUSTOM_REAL
-    !call exit_MPI("Zero denominator in cross_gradient_normalize_tau!", myrank, 0)
   endif
 
   tau%val = scale * tau%val

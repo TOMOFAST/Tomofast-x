@@ -115,7 +115,7 @@ subroutine calculate_sensitivity(par, grid, data, sensit_matrix, distance_thresh
     do i = 1, par%ndata
       call mag_field%magprism(par%nelements, i, grid, data%X, data%Y, data%Z, sensit_line)
 
-      call compress_matrix_line(par%nelements, sensit_line, data, i, grid, distance_threshold, comp_rate, myrank)
+      call compress_matrix_line(par%nelements, sensit_line, data, i, grid, distance_threshold, comp_rate)
 
       if (comp_rate < comp_rate_min) comp_rate_min = comp_rate
       if (comp_rate > comp_rate_max) comp_rate_max = comp_rate
@@ -147,7 +147,7 @@ subroutine calculate_sensitivity(par, grid, data, sensit_matrix, distance_thresh
         call graviprism_full(par, grid, data%X(i), data%Y(i), data%Z(i), &
                              sensit_line, sensit_line2, sensit_line3, myrank)
 
-        call compress_matrix_line(par%nelements, sensit_line3, data, i, grid, distance_threshold, comp_rate, myrank)
+        call compress_matrix_line(par%nelements, sensit_line3, data, i, grid, distance_threshold, comp_rate)
 
         if (comp_rate < comp_rate_min) comp_rate_min = comp_rate
         if (comp_rate > comp_rate_max) comp_rate_max = comp_rate
@@ -237,12 +237,11 @@ end subroutine calc_data_directly
 !==========================================================================================================
 ! Compresses matrix line.
 !==========================================================================================================
-subroutine compress_matrix_line(nelements, line, data, idata, grid, distance_threshold, comp_rate, myrank)
+subroutine compress_matrix_line(nelements, line, data, idata, grid, distance_threshold, comp_rate)
   integer, intent(in) :: nelements, idata
   type(t_data), intent(in) :: data
   type(t_grid), intent(in) :: grid
   real(kind=CUSTOM_REAL), intent(in) :: distance_threshold
-  integer, intent(in) :: myrank
 
   real(kind=CUSTOM_REAL), intent(inout) :: line(:)
   real(kind=CUSTOM_REAL), intent(out) :: comp_rate

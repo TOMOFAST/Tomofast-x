@@ -49,11 +49,10 @@ contains
 !===========================================================================================
 ! Initialize initial solution x2 and phi, and val used to set the right hand side.
 !===========================================================================================
-subroutine solution_init(phi, val, flag, x2, dims, read_guess_from_file, myrank, i2, elec)
+subroutine solution_init(phi, val, flag, x2, dims, myrank, i2, elec)
 
   type(t_dimensions), intent(in) :: dims
   integer, intent(in) :: myrank
-  logical, intent(in) :: read_guess_from_file
   integer, intent(in) :: i2
   type(t_electrode), intent(in) :: elec
   integer, intent(in) :: flag(0:, 0:, 0:)
@@ -128,14 +127,14 @@ end subroutine solution_init
 !===========================================================================================
 ! Create Paraview files for the potential phi visualization.
 !===========================================================================================
-subroutine visualize_solution(dims, phi, xgrid, ygrid, zgrid, i2, ielectrode, myrank)
+subroutine visualize_solution(dims, phi, xgrid, ygrid, zgrid, ielectrode, myrank)
   type(t_dimensions), intent(in) :: dims
   real(kind=CUSTOM_REAL), intent(in) :: phi(0:, 0:, 0:)
   ! Coordinates of points in the grid.
   real(kind=CUSTOM_REAL), intent(in) :: xgrid(0:, 0:, 0:)
   real(kind=CUSTOM_REAL), intent(in) :: ygrid(0:, 0:, 0:)
   real(kind=CUSTOM_REAL), intent(in) :: zgrid(0:, 0:, 0:)
-  integer, intent(in) :: i2, ielectrode, myrank
+  integer, intent(in) :: ielectrode, myrank
 
   call paraview_write_2d_profiles(myrank, "phi2d_", ielectrode, &
                                   dims%nr,dims%ntheta,dims%nz,dims%nzlocal, &
@@ -143,7 +142,7 @@ subroutine visualize_solution(dims, phi, xgrid, ygrid, zgrid, i2, ielectrode, my
 
   call paraview_write_3d_profiles(myrank, "phi3d_", ielectrode, &
                                   dims%nr,dims%ntheta,dims%nzlocal, &
-                                  phi, xgrid, ygrid, zgrid, i2)
+                                  phi, xgrid, ygrid, zgrid)
 
 end subroutine visualize_solution
 

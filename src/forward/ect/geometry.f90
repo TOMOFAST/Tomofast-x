@@ -131,12 +131,12 @@ end subroutine calc_electrode_coordinates
 ! Sets the system geometry.
 !=============================================================================================
 subroutine set_geometry(ilevel, par, nr, ntheta, nz, r, dr, theta, dz, z, izspace, kguards, &
-                        i1, i2, elecs, guards, myrank)
+                        i1, i2, elecs, guards)
   ! Parameters.
   type(t_parameters_ect), intent(in) :: par
   ! Dimensions (locally).
   integer, intent(in) :: nr, ntheta, nz, kguards
-  integer, intent(in) :: ilevel, myrank
+  integer, intent(in) :: ilevel
   ! theta, r and z angle, radius and size of each point, step along r and z
   real(kind=CUSTOM_REAL), intent(out) :: r(0:)
   real(kind=CUSTOM_REAL), intent(out) :: dr(0:)

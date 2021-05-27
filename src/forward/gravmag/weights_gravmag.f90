@@ -95,7 +95,7 @@ subroutine weights_calculate(par, iarr, xdata, ydata, myrank, nbproc)
     ! Method II: use only sensitivity values directly below the data (i.e., z-column).
     ! Calculate damping weight using sensitivity kernel.
     call calculate_depth_weight_sensit(iarr%model%grid, xdata, ydata, iarr%sensitivity, iarr%damping_weight, &
-                                       iarr%nelements, iarr%ndata, myrank, nbproc)
+                                       iarr%nelements, iarr%ndata, myrank)
 
   else if (par%depth_weighting_type == 3) then
 
@@ -182,11 +182,11 @@ end function calculate_depth_weight
 ! Calculates the damping weight using sensitivity kernel below the data location.
 !========================================================================================
 subroutine calculate_depth_weight_sensit(grid, xdata, ydata, sensit, damping_weight, &
-                                         nelements, ndata, myrank, nbproc)
+                                         nelements, ndata, myrank)
   type(t_grid), intent(in) :: grid
   real(kind=CUSTOM_REAL), intent(in) :: xdata(:), ydata(:)
   real(kind=CUSTOM_REAL), intent(in) :: sensit(:, :)
-  integer, intent(in) :: nelements, ndata, myrank, nbproc
+  integer, intent(in) :: nelements, ndata, myrank
   real(kind=CUSTOM_REAL), intent(out) :: damping_weight(:)
 
   integer :: p, i, idata
@@ -206,16 +206,13 @@ subroutine calculate_depth_weight_sensit(grid, xdata, ydata, sensit, damping_wei
     enddo
 
     if (idata == 0) then
-      print *, 'Error: Not found data corresponding to the pixel p =', p
-      stop
-      return
+      call exit_MPI("Error: Not found data corresponding to the pixel!", myrank, 0)
     endif
 
     if (sensit(p, idata) >= 0) then
       damping_weight(p) = sqrt(sensit(p, idata))
     else
-      print *, 'Error: Negative sensitivity, cannot calculate damping weight!', sensit(p, idata)
-      stop
+      call exit_MPI("Error: Negative sensitivity, cannot calculate damping weight!", myrank, 0)
     endif
   enddo
 

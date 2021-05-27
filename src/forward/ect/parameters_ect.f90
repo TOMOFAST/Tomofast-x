@@ -293,6 +293,7 @@ pure function t_parameters_ect_get_electrode_index(this, data_index, elec_type) 
   integer :: elec_index
   integer :: ielectrode, jelectrode, l
 
+  elec_index = 0
   l = 0
 
   do jelectrode=1,this%nel

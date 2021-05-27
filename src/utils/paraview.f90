@@ -125,7 +125,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, xgr
   ! I/O error code.
   integer :: ierr
   integer :: npoints
-  integer :: i, j, ind
+  integer :: i, ind
 
   ! (+) Copied from visualisation_paraview -----------------------------------
   call system('mkdir -p '//trim(path_output)//"/Paraview/")
