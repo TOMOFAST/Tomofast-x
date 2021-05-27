@@ -92,7 +92,7 @@ end subroutine paraview_write_2d_profiles
 ! This subroutine writes the 3d horizontal profiles for Paraview visualization.
 !================================================================================================
 subroutine paraview_write_3d_profiles(myrank, name_prefix, ielectrode, nr, ntheta, nzlocal, &
-                                      sol, xgrid, ygrid, zgrid, i2)
+                                      sol, xgrid, ygrid, zgrid)
   ! MPI rank of this process.
   integer, intent(in) :: myrank
   ! Prefix for the file name.
@@ -107,26 +107,13 @@ subroutine paraview_write_3d_profiles(myrank, name_prefix, ielectrode, nr, nthet
   real(kind=CUSTOM_REAL), intent(in) :: xgrid(0:, 0:, 0:)
   real(kind=CUSTOM_REAL), intent(in) :: ygrid(0:, 0:, 0:)
   real(kind=CUSTOM_REAL), intent(in) :: zgrid(0:, 0:, 0:)
-  integer, intent(in) :: i2
 
   character(len=60) :: name
   integer :: kmin, kmax
 
-!    kmin = 0
-!    kmax = nzlocal+1
-
   ! To visualize the model.
   kmin = 1
   kmax = nzlocal + 1
-
-  ! Visualize a side of the cylinder, at radius=i2.
-!  write(name, '("side_nzlocal",i3.3,"_e",i2.2,"_r",i2.2,".vtk")') nzlocal, ielectrode, myrank
-!
-!  name = name_prefix//name
-!
-!  call visualisation_paraview(name, myrank, nr, ntheta, nzlocal, &
-!                              sol, xgrid, ygrid, zgrid, &
-!                              i2-1, i2, 0, ntheta, kmin, kmax, 1, 1, 1, 'POINT_DATA')
 
   ! Visualize a vertical profile of the cylinder.
   write(name, '("half_nzlocal",i3.3,"_e",i2.2,"_r",i2.2,".vtk")') nzlocal, ielectrode, myrank

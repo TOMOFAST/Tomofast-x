@@ -37,15 +37,11 @@
 !
 ! Vitaliy Ogarko, UWA, CET, Australia, 2015.
 !==============================================================================================
-! TODO: rename to misfit
 module sensitivity_matrix
 
   use global_typedefs
   use mpi_tools, only: exit_MPI
-  use model
   use sparse_matrix
-  use sparse_matrix
-  !use wavelet_transforms (DISABLED)
 
   implicit none
 
@@ -81,11 +77,10 @@ contains
 !===================================================================================================
 ! Initialization.
 !===================================================================================================
-subroutine sensitivity_matrix_initialize(this, ndata, nelements, problem_weight, myrank)
+subroutine sensitivity_matrix_initialize(this, ndata, nelements, problem_weight)
   class(t_sensitivity_matrix), intent(inout) :: this
   integer, intent(in) :: ndata, nelements
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
-  integer, intent(in) :: myrank
 
   this%ndata = ndata
   this%nelements = nelements
@@ -94,17 +89,15 @@ subroutine sensitivity_matrix_initialize(this, ndata, nelements, problem_weight,
 end subroutine sensitivity_matrix_initialize
 
 !==============================================================================================
-! (DISABLED currently) 1. Compresses the sensitivity matrix using wavelets.
-! 2. Adds the sensitivity matrix in the sparse format to the big matrix 'matrix'.
-! 3. Initializes the corresponding rows of the right hand side (of the SLAE).
+! 1. Adds the sensitivity matrix in the sparse format to the big matrix 'matrix'.
+! 2. Initializes the corresponding rows of the right hand side (of the SLAE).
 !
 ! Use legacy sensitivity matrix format, when the flag USE_LEGACY_SENSIT_MATRIX is true,
 ! to support the ECT inversion.
 !==============================================================================================
 subroutine sensitivity_matrix_add(this, matrix, b_RHS, param_shift, sensitivity, sensit_sparse, &
-                                  model, column_weight, residuals, USE_LEGACY_SENSIT_MATRIX, myrank)
+                                  column_weight, residuals, USE_LEGACY_SENSIT_MATRIX, myrank)
   class(t_sensitivity_matrix), intent(inout) :: this
-  type(t_model), intent(in) :: model
   real(kind=CUSTOM_REAL), intent(in) :: sensitivity(:, :)
   type(t_sparse_matrix), intent(in) :: sensit_sparse
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
@@ -148,13 +141,7 @@ subroutine sensitivity_matrix_add(this, matrix, b_RHS, param_shift, sensitivity,
     line = this%problem_weight * line
 
     ! Sensitivity matrix columns scaling.
-    call this%scale(line, column_weight, myrank)
-
-! DISABLED.
-!    if (par%compress_matrix) then
-!      ! Wavelet transform.
-!      call FWT(line, par%nx, par%ny, par%nz)
-!    endif
+    call this%scale(line, column_weight)
 
     do p = 1, this%nelements
       call matrix%add(line(p), param_shift + p, myrank)
@@ -181,10 +168,9 @@ end subroutine sensitivity_matrix_add
 !================================================================================
 ! Scales the columns of the sensitivity matrix (excluding damping).
 !================================================================================
-subroutine sensitivity_matrix_scale(this, sensit_line, column_weight, myrank)
+subroutine sensitivity_matrix_scale(this, sensit_line, column_weight)
   class(t_sensitivity_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
-  integer, intent(in) :: myrank
 
   real(kind=CUSTOM_REAL), intent(inout) :: sensit_line(:)
 

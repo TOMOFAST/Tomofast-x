@@ -182,7 +182,6 @@ subroutine clustering_read_mixtures(this, file_clusters, file_weights, myrank)
   integer, intent(in) :: myrank
 
   integer :: i, nclusters_read
-  integer :: nx_read, ny_read, nz_read
   integer :: p, nelements_total_read
   integer :: ierr
   character(len=256) :: msg
@@ -287,7 +286,7 @@ subroutine clustering_read_mixtures(this, file_clusters, file_weights, myrank)
 
   ! Calculating the maximum of Gaussian mixture.
   do p = 1, this%nelements_total
-    this%mixture_max(p) = this%calculate_Gaussian_mixture_max(this%cell_weight(p, :), myrank)
+    this%mixture_max(p) = this%calculate_Gaussian_mixture_max(this%cell_weight(p, :))
   enddo
 
   if (myrank == 0) print *, 'Clustering mixture_max =', maxval(this%mixture_max)
@@ -326,7 +325,6 @@ subroutine clustering_write_mixtures(this, file_name, myrank)
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank
 
-  integer :: i
   real(kind=CUSTOM_REAL) :: gauss, deriv(2)
   real(kind=CUSTOM_REAL) :: gauss_loc(this%nclusters)
   real(kind=CUSTOM_REAL) :: dx(2), xmin(2), xmax(2), x(2)
@@ -354,7 +352,7 @@ subroutine clustering_write_mixtures(this, file_name, myrank)
     do while (x(1) < xmax(1))
       do while (x(2) < xmax(2))
 
-        call this%calculate_Gaussian_mixture(x, gauss, deriv, gauss_loc, this%cell_weight(1, :), myrank)
+        call this%calculate_Gaussian_mixture(x, gauss, deriv, gauss_loc, this%cell_weight(1, :))
 
         write(10, *) x(1), x(2), gauss
 
@@ -460,7 +458,7 @@ subroutine clustering_add(this, model1, model2, column_weight1, column_weight2, 
     model_val(1) = model1%val_full(p)
     model_val(2) = model2%val_full(p)
 
-    call this%calculate_Gaussian_mixture(model_val, gauss, deriv, gauss_loc, this%cell_weight(p, :), myrank)
+    call this%calculate_Gaussian_mixture(model_val, gauss, deriv, gauss_loc, this%cell_weight(p, :))
 
     if (this%optimization_type == 2) then
     ! Minimizing g(x) = - log(f(x)), so derivative  g'(x) = - f'(x) / f(x).
@@ -615,11 +613,10 @@ end function clustering_calculate_Gaussian
 ! Calculate the Gaussian mixture for a given model value.
 ! Return the Gaussian and its derivative.
 !===========================================================================================================
-subroutine clustering_calculate_Gaussian_mixture(this, val, gauss, deriv, gauss_loc, cluster_weight, myrank)
+subroutine clustering_calculate_Gaussian_mixture(this, val, gauss, deriv, gauss_loc, cluster_weight)
   class(t_clustering), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: val(2)
   real(kind=CUSTOM_REAL), intent(in) :: cluster_weight(:)
-  integer, intent(in) :: myrank
 
   real(kind=CUSTOM_REAL), intent(out) :: gauss
   real(kind=CUSTOM_REAL), intent(out) :: deriv(2)
@@ -672,10 +669,9 @@ end subroutine clustering_calculate_Gaussian_mixture
 !==============================================================================================
 ! Calculate the maximum of the Gaussian mixture.
 !==============================================================================================
-function clustering_calculate_Gaussian_mixture_max(this, cluster_weight, myrank) result(res)
+function clustering_calculate_Gaussian_mixture_max(this, cluster_weight) result(res)
   class(t_clustering), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: cluster_weight(:)
-  integer, intent(in) :: myrank
 
   real(kind=CUSTOM_REAL) :: res
 
@@ -690,7 +686,7 @@ function clustering_calculate_Gaussian_mixture_max(this, cluster_weight, myrank)
   ! NOTE: assuming the maximum is located at one of the cluster center.
   do i = 1, this%nclusters
     ! Calculate the value of Gaussian mixture at the center (mean of Gaussian) of cluster i.
-    call this%calculate_Gaussian_mixture(this%mixture_mu(:, i), gauss, deriv, gauss_loc, cluster_weight, myrank)
+    call this%calculate_Gaussian_mixture(this%mixture_mu(:, i), gauss, deriv, gauss_loc, cluster_weight)
 
     if (gauss > gauss_max) gauss_max = gauss
   enddo

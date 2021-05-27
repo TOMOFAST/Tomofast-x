@@ -140,14 +140,11 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   type(t_data) :: data(2)
   type(t_weights) :: weights
   type(t_parallel_tools) :: pt
-  type(t_filter) :: filter
   type(t_compare_models) :: comp
   real(kind=CUSTOM_REAL) :: compres(2)
   real(kind=CUSTOM_REAL) :: cost_data(2)
   real(kind=CUSTOM_REAL) :: cost_model(2)
-  integer :: it, i, j, m, number_prior_models, ierr
-  real(kind=CUSTOM_REAL) :: Xdata_min, Xdata_max
-  real(kind=CUSTOM_REAL) :: Ydata_min, Ydata_max
+  integer :: it, i, m, number_prior_models, ierr
   character(len=256) :: path_output_parfile
   character(len=256) :: grav_prior_model_filename, mag_prior_model_filename
 
@@ -155,7 +152,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
   ! Initialize joint inversion object.
   ! Read the clustering parameters from file inside.
-  call joint_inversion%initialize(ipar, gpar%get_nnz_compressed() + mpar%get_nnz_compressed(), myrank, nbproc)
+  call joint_inversion%initialize(ipar, gpar%get_nnz_compressed() + mpar%get_nnz_compressed(), myrank)
 
   ! (I) MODEL ALLOCATION.  ---------------------------------------------------------------
 

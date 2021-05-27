@@ -79,10 +79,10 @@ contains
 !===========================================================================================
 ! Initialization.
 !===========================================================================================
-subroutine damping_initialize(this, nelements, alpha, problem_weight, norm_power, myrank)
+subroutine damping_initialize(this, nelements, alpha, problem_weight, norm_power)
   class(t_damping), intent(inout) :: this
   real(kind=CUSTOM_REAL), intent(in) :: alpha, problem_weight, norm_power
-  integer, intent(in) :: nelements, myrank
+  integer, intent(in) :: nelements
 
   this%nelements = nelements
   this%alpha = alpha
@@ -115,7 +115,7 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, damping_weight, &
 
   integer :: i, nsmaller, nelements_total
   integer :: row_beg, row_end
-  real(kind=CUSTOM_REAL) :: value, alpha
+  real(kind=CUSTOM_REAL) :: value
   type(t_parallel_tools) :: pt
 
   ! The number of elements on CPUs with rank smaller than myrank.
@@ -176,7 +176,6 @@ subroutine damping_add_RHS(this, b_RHS, model, model_ref, damping_weight, myrank
 
   real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(:)
   type(t_parallel_tools) :: pt
-  real(kind=CUSTOM_REAL) :: alpha
   integer :: i
 
   do i = 1, this%nelements

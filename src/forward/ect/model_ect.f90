@@ -251,8 +251,8 @@ end subroutine init_model_from_inversion
 ! Create Paraview files for permittivity model visualization.
 ! For this, first create the shifted grid where the permittivity is defined.
 !====================================================================================================
-subroutine visualize_model(permit, r, theta, z, dims, i2, ielectrode, myrank)
-  integer, intent(in) :: i2, ielectrode, myrank
+subroutine visualize_model(permit, r, theta, z, dims, ielectrode, myrank)
+  integer, intent(in) :: ielectrode, myrank
   type(t_dimensions), intent(in) :: dims
 
   real(kind=CUSTOM_REAL), intent(in) :: permit(0:, 0:, 0:)
@@ -279,7 +279,7 @@ subroutine visualize_model(permit, r, theta, z, dims, i2, ielectrode, myrank)
 
   call paraview_write_3d_profiles(myrank, "model3d_", ielectrode, &
                                   dims%nr, dims%ntheta, dims%nzlocal, &
-                                  permit, xgrid, ygrid, zgrid, i2)
+                                  permit, xgrid, ygrid, zgrid)
 
   deallocate(zgrid)
   deallocate(ygrid)

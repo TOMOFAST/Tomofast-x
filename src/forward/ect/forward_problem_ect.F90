@@ -382,7 +382,7 @@ subroutine solve_forward_problem_ect(par, sensit, cdata, model, column_weight, d
     call set_geometry(ilevel,par,dims_at_level(ilevel)%nr,dims_at_level(ilevel)%ntheta,dims_at_level(ilevel)%nz,&
                       r(ilevel)%p,dr(ilevel)%p,theta(ilevel)%p,dz(ilevel)%p,&
                       z(ilevel)%p,izspace(ilevel),dims_at_level(ilevel)%kguards,&
-                      i1(ilevel),i2(ilevel),elecs(ilevel)%p,guards(ilevel),myrank)
+                      i1(ilevel),i2(ilevel),elecs(ilevel)%p,guards(ilevel))
 
     if (.not. suppress_output .and. myrank == 0) print *,'GEOMETRY_INIT, level, index of R1 and R2, and izspace',ilevel,&
                             'i1=',i1(ilevel),'i2=',i2(ilevel),'izspace=',izspace(ilevel)
@@ -455,7 +455,7 @@ subroutine solve_forward_problem_ect(par, sensit, cdata, model, column_weight, d
 #ifndef SUPPRESS_OUTPUT
       ! Write Paraview images of the model.
       call visualize_model(permit(ilevel_fine)%p, r(ilevel_fine)%p, theta(ilevel_fine)%p, z(ilevel_fine)%p, &
-                           par%dims, i2(ilevel_fine), ielectrode, myrank)
+                           par%dims, ielectrode, myrank)
 #endif
 
       ! Matrix construction (assembly), needed on every level.
@@ -507,7 +507,7 @@ subroutine solve_forward_problem_ect(par, sensit, cdata, model, column_weight, d
     ! Assign potentials val at electrode locations for ielectrode problem.
     ! Only needed on the finest grid.
     call solution_init(phi(ilevel_fine)%p,val(ilevel_fine)%p,flag(ilevel_fine)%p,x2(ilevel_fine)%p,par%dims,&
-                       par%read_guess_from_file,myrank,i2(ilevel_fine),elecs(ilevel_fine)%p(ielectrode))
+                       myrank,i2(ilevel_fine),elecs(ilevel_fine)%p(ielectrode))
 
     if (.not. suppress_output .and. myrank == 0) print *, 'END SOLUTION INIT'
 
@@ -572,7 +572,7 @@ subroutine solve_forward_problem_ect(par, sensit, cdata, model, column_weight, d
       ! Output the electric potential data for visualization in Paraview.
       call visualize_solution(par%dims, phi(ilevel_fine)%p, &
                               xgrid(ilevel_fine)%p, ygrid(ilevel_fine)%p, zgrid(ilevel_fine)%p, &
-                              i2(ilevel_fine), ielectrode, myrank)
+                              ielectrode, myrank)
     endif
 #endif
 

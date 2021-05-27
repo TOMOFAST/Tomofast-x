@@ -112,7 +112,6 @@ subroutine read_bound_constraints(this, file_name, myrank, nbproc)
   integer :: ierr, nsmaller, ind, i, nelements_read, nlithos_read
   character(len=256) :: msg
   type(t_parallel_tools) :: pt
-  real(kind=CUSTOM_REAL) :: dummy
   character(len=200) :: dummy_line
 
   if (myrank == 0) print *, 'Reading local bound constraints from file ', trim(file_name)
@@ -335,13 +334,12 @@ subroutine model_write_paraview(this, name_prefix, myrank)
   real(kind=CUSTOM_REAL), allocatable :: ygrid_lego(:)
   real(kind=CUSTOM_REAL), allocatable :: zgrid_lego(:)
 
-  real(kind=CUSTOM_REAL) :: cell_size
   real(kind=CUSTOM_REAL) :: Xmax, Ymax, Zmax
-  real(kind=CUSTOM_REAL) :: zshift
+  !real(kind=CUSTOM_REAL) :: zshift
   integer :: step_x, step_y, step_z
-  integer :: istep, jstep, kstep
-  integer :: nx, ny, nz, mx, my, mz
-  integer :: ind, x, y, z
+  integer :: nx, ny, nz, mx, my, mz, ind
+  !integer :: istep, jstep, kstep
+  !integer :: x, y, z
   character(len=256) :: filename
 
   ! Write files my master CPU only.

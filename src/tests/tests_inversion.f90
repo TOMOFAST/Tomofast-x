@@ -114,7 +114,7 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
   call isensit%initialize(par%ndata(1) + par%nelements_total, &
                           par%ndata(1) * par%nelements + par%nelements, myrank)
 
-  call damping%initialize(par%nelements, par%alpha(1), par%problem_weight(1), par%norm_power, myrank)
+  call damping%initialize(par%nelements, par%alpha(1), par%problem_weight(1), par%norm_power)
 
   ! Create an identity matrix.
   call damping%add(isensit, b_RHS, arr%column_weight, arr%damping_weight, &

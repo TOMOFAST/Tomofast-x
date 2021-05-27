@@ -75,7 +75,7 @@ subroutine sca_solve(niter, rmin, matrix, b, x, myrank, nbproc)
   real(kind=CUSTOM_REAL), intent(out) :: x(:)
 
   ! Local variables.
-  integer :: iter, k, i, j, ierr
+  integer :: iter, k, j, ierr
   integer :: nrows, nelements
   real(kind=CUSTOM_REAL) :: r, xk, b_norm
   real(kind=CUSTOM_REAL), allocatable :: mu(:)

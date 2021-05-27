@@ -74,7 +74,6 @@ subroutine compare_models_compare(model, der_type, res, myrank, nbproc)
   type(t_gradient) :: grad
   integer :: i, j, k, p
   integer :: ierr
-  real(kind=CUSTOM_REAL) :: cg_norm
 
   real(kind=CUSTOM_REAL), intent(out) :: res
 

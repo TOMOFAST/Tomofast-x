@@ -60,8 +60,8 @@ contains
 !=============================================================================================
 ! Perform test for a (ncolumns x nrows) matrix with some zero columns.
 !=============================================================================================
-subroutine test_get_value(myrank, nbproc)
-  integer, intent(in) :: myrank, nbproc
+subroutine test_get_value(myrank)
+  integer, intent(in) :: myrank
 
   type(t_sparse_matrix) :: matrix
   integer :: nrows, ncolumns
@@ -109,8 +109,8 @@ end subroutine test_get_value
 !=============================================================================================
 ! Perform test for a (ncolumns x nrows) matrix with some zero columns.
 !=============================================================================================
-subroutine test_normalize_columns(myrank, nbproc)
-  integer, intent(in) :: myrank, nbproc
+subroutine test_normalize_columns(myrank)
+  integer, intent(in) :: myrank
 
   type(t_sparse_matrix) :: matrix
   integer :: nrows, ncolumns
@@ -192,8 +192,8 @@ end subroutine test_normalize_columns
 ! A = (3 4)
 !     (5 6)
 !=============================================================================================
-subroutine test_trans_mult_matrix(myrank, nbproc)
-  integer, intent(in) :: myrank, nbproc
+subroutine test_trans_mult_matrix(myrank)
+  integer, intent(in) :: myrank
 
   type(t_sparse_matrix) :: matrix
   integer :: nrows, ncolumns

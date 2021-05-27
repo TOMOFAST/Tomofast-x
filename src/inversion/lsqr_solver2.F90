@@ -83,7 +83,6 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   ! Local variables.
   integer :: iter, ierr
   integer :: N_lines
-  integer :: d_size
   ! Local (at current CPU) number of parameters.
   integer :: nelements
   real(kind=CUSTOM_REAL) :: alpha, beta, rho, rhobar, phi, phibar, theta
@@ -122,7 +121,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   u = b
 
   ! Normalize u and initialize beta.
-  if (.not. normalize(u, beta, .false., myrank)) then
+  if (.not. normalize(u, beta, .false.)) then
     call exit_MPI("Could not normalize initial u, zero denominator!", myrank, 0)
   endif
 
@@ -134,7 +133,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   call matrix%trans_mult_vector(u, v)
 
   ! Normalize v and initialize alpha.
-  if (.not. normalize(v, alpha, .true., myrank)) then
+  if (.not. normalize(v, alpha, .true.)) then
     call exit_MPI("Could not normalize initial v, zero denominator!", myrank, 0)
   endif
 
@@ -160,7 +159,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
     u = u + Hv
 
     ! Normalize u and update beta.
-    if (.not. normalize(u, beta, .false., myrank)) then
+    if (.not. normalize(u, beta, .false.)) then
       ! Achieved an exact solution. Happens in the unit test test_lsqr_underdetermined_2.
       if (myrank == 0) print *, 'WARNING: u = 0. Possibly found an exact solution in the LSQR solver!'
     endif
@@ -174,7 +173,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
     v = v + v0
 
     ! Normalize v and update alpha.
-    if (.not. normalize(v, alpha, .true., myrank)) then
+    if (.not. normalize(v, alpha, .true.)) then
       ! Achieved an exact solution. Happens in the unit test test_method_of_weights_1.
       if (myrank == 0) print *, 'WARNING: v = 0. Possibly found an exact solution in the LSQR solver!'
     endif
@@ -317,14 +316,12 @@ end function get_norm_parallel
 ! Set in_parallel=true, if x is split between CPUs.
 ! Also returns the norm (s).
 !============================================================================
-function normalize(x, s, in_parallel, myrank) result(res)
-  integer, intent(in) :: myrank
+function normalize(x, s, in_parallel) result(res)
   logical, intent(in) :: in_parallel
   real(kind=CUSTOM_REAL), intent(out) :: s
   real(kind=CUSTOM_REAL), intent(inout) :: x(:)
   logical :: res
 
-  integer :: ierr
   real(kind=CUSTOM_REAL) :: ss
 
   res = .true.

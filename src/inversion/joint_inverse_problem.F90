@@ -133,10 +133,10 @@ contains
 !=================================================================================
 ! Initialize joint inversion.
 !=================================================================================
-subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank, nbproc)
+subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
-  integer, intent(in) :: nnz_sensit, myrank, nbproc
+  integer, intent(in) :: nnz_sensit, myrank
   integer :: ierr
   integer :: nl, nnz
 
@@ -275,7 +275,6 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
   type(t_damping_gradient) :: damping_gradient
   type(t_parameters_lsqr) :: par_lsqr
   integer :: i, j, k, param_shift(2)
-  integer :: ibeg, iend
   ! Adjusted problem weights for joint inversion.
   real(kind=CUSTOM_REAL) :: problem_weight_adjusted(2), cost
   logical :: solve_gravity_only
@@ -326,10 +325,10 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
 
     if (myrank == 0) print *, 'Adding joint problem #', i, ' weight =', problem_weight_adjusted(i)
 
-    call sensit%initialize(par%ndata(i), par%nelements, problem_weight_adjusted(i), myrank)
+    call sensit%initialize(par%ndata(i), par%nelements, problem_weight_adjusted(i))
 
     call sensit%add(this%matrix, this%b_RHS, param_shift(i), matrix_dummy, arr(i)%matrix_sensit, &
-                    arr(i)%model, arr(i)%column_weight, arr(i)%residuals, .false., myrank)
+                    arr(i)%column_weight, arr(i)%residuals, .false., myrank)
 
     if (myrank == 0) print *, 'misfit term cost = ', sensit%get_cost()
     if (myrank == 0) print *, 'nel = ', this%matrix%get_number_elements()
@@ -337,8 +336,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
     if (this%add_damping) then
       if (myrank == 0) print *, 'adding damping with alpha =', par%alpha(i)
 
-      call damping%initialize(par%nelements, par%alpha(i), problem_weight_adjusted(i), &
-                              par%norm_power, myrank)
+      call damping%initialize(par%nelements, par%alpha(i), problem_weight_adjusted(i), par%norm_power)
 
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, arr(i)%damping_weight, &
                        arr(i)%model, arr(i)%model_prior, param_shift(i), myrank, nbproc)
@@ -424,8 +422,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
       !this%weight_ADMM = 1.d0
       this%weight_ADMM = arr(i)%damping_weight
 
-      call damping%initialize(par%nelements, par%rho_ADMM(i), problem_weight_adjusted(i), &
-                              par%norm_power, myrank)
+      call damping%initialize(par%nelements, par%rho_ADMM(i), problem_weight_adjusted(i), par%norm_power)
 
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, this%weight_ADMM, &
                        arr(i)%model, this%x0_ADMM, param_shift(i), myrank, nbproc)
