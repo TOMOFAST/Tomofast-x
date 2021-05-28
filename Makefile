@@ -146,7 +146,7 @@ SRC_LIST_LIBS = \
 ftnunit.f90
 
 SRC_LIST_UTILS = \
-mpi_tools.f90 \
+mpi_tools.F90 \
 costs.f90 \
 vector.f90 \
 string.f90 \
