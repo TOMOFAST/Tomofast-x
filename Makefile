@@ -151,8 +151,7 @@ costs.f90 \
 vector.f90 \
 string.f90 \
 noise.f90 \
-paraview.f90 \
-visualisation_paraview.f90
+paraview.f90
 
 # Source files for inversion.
 SRC_LIST_INVERSION = \
@@ -188,6 +187,7 @@ conjugate_gradient.F90 \
 parameters_ect.f90 \
 geometry.f90 \
 flag_init_bc.f90 \
+paraview_ect.f90 \
 solution_ect.f90 \
 matrix_init.f90 \
 model_ect.f90 \

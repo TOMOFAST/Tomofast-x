@@ -30,7 +30,6 @@
 !
 !========================================================================
 
-! TODO: Move to ect/utils
 module paraview_ect
 
   use global_typedefs, only: CUSTOM_REAL, path_output
