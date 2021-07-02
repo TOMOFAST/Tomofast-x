@@ -50,8 +50,36 @@ module init_parameters
   public :: get_problem_type
 
   private :: read_parfile
+  private :: read_parfile2
+
+  private :: print_arg_int
+  private :: print_arg_dbl
+
+  ! For overloading the 'print_arg' function.
+  interface print_arg
+    module procedure print_arg_int, print_arg_dbl
+  end interface
 
 contains
+
+!==========================================================================
+! Functions for printing the parameter values.
+!==========================================================================
+subroutine print_arg_int(myrank, name, value)
+  character(len=128), intent(in) :: name
+  integer, intent(in) :: myrank
+  integer, intent(in) :: value
+
+  if (myrank == 0) print *, trim(name)//" =", value
+end subroutine print_arg_int
+
+subroutine print_arg_dbl(myrank, name, value)
+  character(len=128), intent(in) :: name
+  real(kind=CUSTOM_REAL), intent(in) :: value
+  integer, intent(in) :: myrank
+
+  if (myrank == 0) print *, trim(name)//" =", value
+end subroutine print_arg_dbl
 
 !==========================================================================
 ! Get problem type (ECT / Gravity).
@@ -105,7 +133,9 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
   if (myrank == 0) then
     ! Read Parfile data, only the master does this,
     ! and then broadcasts all the information to the other processes.
-    call read_parfile(epar, gpar, mpar, ipar, myrank)
+    call read_parfile2(epar, gpar, mpar, ipar, myrank)
+
+    stop
 
     ! Global sanity checks.
     if (problem_type == 1) then
@@ -234,6 +264,177 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
              'nelements=', ipar%nelements, 'ndata=', ipar%ndata
 
 end subroutine initialize_parameters
+
+!===================================================================================
+! Read input parameters from Parfile.
+!===================================================================================
+subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
+  integer, intent(in) :: myrank
+
+  type(t_parameters_ect), intent(out) :: epar
+  type(t_parameters_grav), intent(out) :: gpar
+  type(t_parameters_mag), intent(out) :: mpar
+  type(t_parameters_inversion), intent(out) :: ipar
+
+  integer :: itmp, tmparr(2)
+
+  ! This is junk in order to ignore the variable name at the beginning of the line.
+  ! This ignores exactly 40 characters.
+  character(len=1) :: ch
+  character(len=40) :: junk
+  character(len=256) :: parfile_name
+  character(len=128) :: parname
+  character(len=256) :: line
+  integer :: symbol_index, i
+  integer :: ios
+
+  ! The name of the Parfile can be passed in via the command line,
+  ! if no argument is given, the default value is used.
+  call get_command_argument(2,parfile_name)
+  if (len_trim(parfile_name) == 0) parfile_name = "parfiles/Parfile_MASTER.txt"
+
+  open(unit=10,file=parfile_name,status='old',iostat=itmp,action='read')
+  if (itmp /= 0) call exit_MPI("Parfile """ // trim(parfile_name) // """ cannot be opened!",myrank,15)
+
+  !---------------------------------------------------------------------------------
+  ! Define here the DEFAULT parameter values:
+  !---------------------------------------------------------------------------------
+  ! INVERSION parameters.
+  ipar%ninversions = 10
+  ipar%niter = 100
+  ipar%rmin = 1.d-13
+  ipar%method = 1 ! LSQR = 1
+  ipar%gamma = 0. ! soft threshold ("L1-norm", no=0.)
+
+  ! MODEL DAMPING (m - m_prior).
+  ipar%alpha(1) = 1.d-9
+  ipar%alpha(2) = 1.d-11
+  ipar%norm_power = 2.d0
+
+  ! JOINT INVERSION parameters.
+  ipar%problem_weight(1) = 1.d0
+  ipar%problem_weight(2) = 0.d0
+  ipar%column_weight_multiplier(1) = 4.d+3
+  ipar%column_weight_multiplier(2) = 1.d0
+  ipar%niter_single(1) = 0
+  ipar%niter_single(2) = 0
+
+  !---------------------------------------------------------------------------------
+  ! Reading parameter values from Parfile.
+  !---------------------------------------------------------------------------------
+  do
+    read(10, '(A)', iostat=ios) line
+    symbol_index = index(line, '=')
+    parname = line(:symbol_index - 1)
+    backspace(10)
+
+    ! Reading file line until the end of '=' symbol.
+    do i = 1, symbol_index
+      read(10, '(a)', advance='NO') ch
+    enddo
+
+    select case(trim(parname))
+      ! INVERSION parameters -------------------------------
+
+      case("inversion.nMajorIterations")
+        read(10, 2) ipar%ninversions
+        call print_arg(myrank, parname, ipar%ninversions)
+
+      case("inversion.nMinorIterations")
+        read(10, 2) ipar%niter
+        call print_arg(myrank, parname, ipar%niter)
+
+      case("inversion.minResidual")
+        read(10, 1) ipar%rmin
+        call print_arg(myrank, parname, ipar%rmin)
+
+      case("inversion.solver")
+        read(10, 2) ipar%method
+        call print_arg(myrank, parname, ipar%method)
+
+      case("inversion.softThresholdL1")
+        read(10, 1) ipar%gamma
+        call print_arg(myrank, parname, ipar%gamma)
+
+      ! MODEL DAMPING (m - m_prior) ------------------------
+
+      case("inversion.modelDamping.weight1")
+        read(10, 1) ipar%alpha(1)
+        call print_arg(myrank, parname, ipar%alpha(1))
+
+      case("inversion.modelDamping.weight2")
+        read(10, 1) ipar%alpha(2)
+        call print_arg(myrank, parname, ipar%alpha(2))
+
+      case("inversion.modelDamping.normPower")
+        read(10, 1) ipar%norm_power
+        call print_arg(myrank, parname, ipar%norm_power)
+
+      ! JOINT INVERSION parameters -------------------------------
+
+      case("inversion.joint.problemWeight1")
+        read(10, 1) ipar%problem_weight(1)
+        call print_arg(myrank, parname, ipar%problem_weight(1))
+
+      case("inversion.joint.problemWeight2")
+        read(10, 1) ipar%problem_weight(2)
+        call print_arg(myrank, parname, ipar%problem_weight(2))
+
+      case("inversion.joint.columnWeightMultiplier1")
+        read(10, 1) ipar%column_weight_multiplier(1)
+        call print_arg(myrank, parname, ipar%column_weight_multiplier(1))
+
+      case("inversion.joint.columnWeightMultiplier2")
+        read(10, 1) ipar%column_weight_multiplier(2)
+        call print_arg(myrank, parname, ipar%column_weight_multiplier(2))
+
+      case("inversion.joint.nIterSingleProblem1")
+        read(10, 2) ipar%niter_single(1)
+        call print_arg(myrank, parname, ipar%niter_single(1))
+
+      case("inversion.joint.nIterSingleProblem2")
+        read(10, 2) ipar%niter_single(2)
+        call print_arg(myrank, parname, ipar%niter_single(2))
+
+      ! DAMPING-GRADIENT constraints -------------------------------
+!      case("inversion.dampingGradient.weightType")
+!
+!      case("inversion.dampingGradient.weightProblem1")
+!      case("inversion.dampingGradient.weightProblem2")
+!
+!          ! Damping-gradient constraints -------------------------------
+!
+!  read(10,'(a)') dum
+!  if (myrank == 0) print *, trim(dum)
+!
+!  read(10,2) junk, ipar%damp_grad_weight_type
+!  if (myrank == 0) print *, junk, ipar%damp_grad_weight_type
+!
+!  read(10,1) junk, ipar%beta(1)
+!  if (myrank == 0) print *, junk, ipar%beta(1)
+!
+!  read(10,1) junk, ipar%beta(2)
+!  if (myrank == 0) print *, junk, ipar%beta(2)
+
+      case default
+        read(10, 3, iostat=ios) line
+    end select
+
+    if (ios /= 0) exit
+  enddo
+
+  print *, "Finished reading the file."
+
+! Format to read a floating-point value.
+ 1 format(f16.8)
+
+! Format to read an integer value.
+ 2 format(i8)
+
+! Format to read a string.
+ 3 format(a)
+
+ end subroutine read_parfile2
 
 !===================================================================================
 ! Read input parameters from Parfile.
@@ -592,13 +793,11 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
   read(10,1) junk, ipar%column_weight_multiplier(2)
   if (myrank == 0) print *, junk, ipar%column_weight_multiplier(2)
 
-  read(10,2) junk, tmparr(1)
-  if (myrank == 0) print *, junk, tmparr(1)
+  read(10,2) junk, ipar%niter_single(1)
+  if (myrank == 0) print *, junk, ipar%niter_single(1)
 
-  read(10,2) junk, tmparr(2)
-  if (myrank == 0) print *, junk, tmparr(2)
-
-  call ipar%set_niter_single(tmparr)
+  read(10,2) junk, ipar%niter_single(2)
+  if (myrank == 0) print *, junk, ipar%niter_single(2)
 
   ! Damping-gradient constraints -------------------------------
 

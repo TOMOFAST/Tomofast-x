@@ -88,7 +88,7 @@ module parameters_inversion
     real(kind=CUSTOM_REAL) :: column_weight_multiplier(2)
 
     ! Parameters controlling single-to-joint inversion switch (by the number of single inversion iterations).
-    integer, private :: niter_single(2)
+    integer :: niter_single(2)
 
     ! ------ Cross-gradient constraints ------------------------------------
     ! Contribution of the cross-gradient to the cost function.
@@ -125,23 +125,12 @@ module parameters_inversion
   contains
     private
 
-    procedure, public, pass :: set_niter_single => parameters_set_niter_single
     procedure, public, pass :: single_problem_complete => parameters_single_problem_complete
     procedure, public, pass :: broadcast => parameters_inversion_broadcast
 
   end type t_parameters_inversion
 
 contains
-
-!==================================================================================
-! Setter for niter_single.
-!==================================================================================
-subroutine parameters_set_niter_single(this, niter_single)
-  class(t_parameters_inversion), intent(inout) :: this
-  integer, intent(in) :: niter_single(2)
-
-  this%niter_single = niter_single
-end subroutine parameters_set_niter_single
 
 !==============================================================================================
 ! Determines if single domaing problem is complete with respect to niter_single parameter.
