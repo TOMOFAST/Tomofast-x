@@ -1,0 +1,123 @@
+******* GLOBAL ***********************************
+path to the output folder              =output/kim/
+******* DIMENSIONS *******************************
+nr (number of grid points)             = 36
+ntheta                                 = 0
+nz                                     = 0
+******* GEOMETRY *********************************
+nel (number of electrodes)             = 36
+nrings (elec rings 1 or 2)             = 3
+kguards (number of guards)             = 0
+fixed electrodes by geometry           = 0
+refinement (NO = 0, YES = 1)           = 0
+location R1                            = 0.045
+location R2                            = 0.06
+location R3                            = 0.07
+height sensor                          = 0.2
+space between guards                   = 0.00e0
+space between electrodes(deg)          = 0.00e0
+******* MODEL ************************************
+num bubbles (0=no bubbles)             = 4
+location of the bubbles                =data/ECT/bubble_4vert.dat
+absolute permittivity                  = 1.
+permittivity air                       = 1.
+permittivity isol tube                 = 3.5
+permittivity oil                       = 2.
+******* SOLVER parameters ************************
+PCG precond (0=NO, YES>0)              = 1
+relaxation omega1 PCG precon           = 0.8d0
+type of norms: 1=L2, 2=max             = 1
+max num. of lin. solv. iters           = 1000
+output freq linsolver (iters)          = 20
+tolerance of linear solver             = 1.d-12
+******* GRAVITY / MAGNETISM parameters *************
+grid size (nx, ny, nz)                 = 1 1 192
+grav model and grid file               =data/gravmag/kim/kim_grid.txt
+mag  model and grid file               =data/gravmag/kim/kim_grid.txt
+Depth weighting (1-pow,2-sens,3-isens) = 3
+******* GRAV / MAG DATA parameters ****************
+grav number of data                    = 3
+mag number of data                     = 3
+grav data grid file                    =data/gravmag/kim/data.txt
+mag  data grid file                    =data/gravmag/kim/data.txt
+grav data values file                  =data/gravmag/kim/data.txt
+mag  data values file                  =data/gravmag/kim/data.txt
+calc. data without sensit (debug)      = 0
+******* PRIOR MODEL *******************************
+model type(1-set, 2-file)              = 1
+number prior models (for model type 2) = 1
+set prior model grav (if no smoothing) = 0.d0
+set prior model mag (if no smoothing)  = 10.d-9
+grav prior model file                  =NILL
+mag prior model file                   =NILL
+******* STARTING MODEL ****************************
+model type(1-set, 2-file)              = 1
+set prior model grav (if no smoothing) = 0.d0
+set prior model mag (if no smoothing)  = 10.d-9
+grav prior model file                  =NILL
+mag prior model file                   =NILL
+******* MAGNETIC constants ************************
+mag field inclination                  = 75.d0
+mag field declination                  = 25.d0
+ambient field inclination              = 75.d0
+ambient field declination              = 25.d0
+ambient field intensity (nT)           = 50000.d0
+X-axis declination                     = 0.d0
+Depth weighting power, beta**          = 1.4d0
+Depth weighting constant, Z0**         = 0.d0
+******* GRAVITY constants *************************
+Depth weighting power, beta**          = 1.4d0
+Depth weighting constant, Z0**         = 0.0d0
+******* MATRIX COMPRESSION parameters *************
+distance threshold (source to cell)    = 1.d+10
+compression rate (1.0 = full matrix)   = 1.0d0
+
+******* INVERSION parameters **********************
+inversion.nMajorIterations             = 10
+inversion.nMinorIterations             = 100
+inversion.minResidual                  = 1.d-13
+inversion.solver                       = 1
+inversion.softThresholdL1              = 0.
+
+******* MODEL DAMPING (m - m_prior) ***************
+inversion.modelDamping.weight1         = 1.d-13
+inversion.modelDamping.weight2         = 0.d-11
+inversion.modelDamping.normPower       = 2.d0
+
+******* JOINT INVERSION parameters ****************
+inversion.joint.problemWeight1         = 1.d0
+inversion.joint.problemWeight2         = 0.d0
+inversion.joint.columnWeightMultiplier1 = 4.d+3
+inversion.joint.columnWeightMultiplier2 = 1.d0
+inversion.joint.nIterSingleProblem1     = 0
+inversion.joint.nIterSingleProblem2     = 0
+
+******* Damping-gradient constraints **************
+weight type (1-global, 2-local)        = 1
+damping gradient for model1 (grav)     = 0.d0
+damping gradient fro model2 (mag)      = 0.d0
+******* Cross-gradient constraints ****************
+cross-gradient weight                  = 0.d-3
+num of iterations in method of weights = 0
+x-grad deriv (1-fwd, 2-cent, 3-mixed)  = 1
+******* Clustering constraints ********************
+clustering problem1 (grav) weight      = 0.d-7
+clustering problem2 (mag)  weight      = 0.d-9
+number of clusters                     = 4
+clustering mixtures                    =NILL
+clustering geol weights per cell       =NILL
+type of optimization (1-normal,2-log)  = 2
+type of constraints (1-global,2-local) = 2
+******* ADMM constraints **************************
+enable admm? (0-no, 1-yes)             = 0
+number of lithologies                  = 5
+grav local bound constraints file      =NILL
+mag local bound constraints file       =NILL
+global weight rho (grav)               = 11.d-8
+global weight rho (mag)                = 1.d+5
+
+=============================================================
+******* DO NOT MOVE THE LOCATION OF THE EQUAL SIGNS, THEY MUST BE EXACTLY ON THE 40TH CHARACTER *******
+*Depth weighting:
+W(Z) = 1 / (Z + Z0)**(beta / 2)
+
