@@ -299,6 +299,7 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
   !---------------------------------------------------------------------------------
   ! Define here the DEFAULT parameter values:
   !---------------------------------------------------------------------------------
+
   ! INVERSION parameters.
   ipar%ninversions = 10
   ipar%niter = 100
@@ -320,9 +321,14 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
   ipar%niter_single(2) = 0
 
   ! DAMPING-GRADIENT constraints.
-  ipar%damp_grad_weight_type = 1
+  ipar%damp_grad_weight_type = 1 ! 1-global, 2-local
   ipar%beta(1) = 0.d0
   ipar%beta(2) = 0.d0
+
+  ! CROSS-GRADIENT constraints.
+  ipar%cross_grad_weight = 0.d0
+  ipar%method_of_weights_niter = 0
+  ipar%derivative_type = 1 ! 1-fwd, 2-cent, 3-mixed
 
   !---------------------------------------------------------------------------------
   ! Reading parameter values from Parfile.
@@ -415,6 +421,20 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
       case("inversion.dampingGradient.weightProblem2")
         read(10, 1) ipar%beta(2)
         call print_arg(myrank, parname, ipar%beta(2))
+
+      ! CROSS-GRADIENT constraints ---------------------------------
+
+      case("inversion.crossGradient.weight")
+        read(10, 1) ipar%cross_grad_weight
+        call print_arg(myrank, parname, ipar%cross_grad_weight)
+
+      case("inversion.crossGradient.nIterMethodOfWeight")
+        read(10, 2) ipar%method_of_weights_niter
+        call print_arg(myrank, parname, ipar%method_of_weights_niter)
+
+      case("inversion.crossGradient.derivativeType")
+        read(10, 2) ipar%derivative_type
+        call print_arg(myrank, parname, ipar%derivative_type)
 
       case default
         read(10, 3, iostat=ios) line
