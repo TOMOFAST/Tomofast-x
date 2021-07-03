@@ -73,29 +73,36 @@ distance threshold (source to cell)    = 1.d+10
 compression rate (1.0 = full matrix)   = 1.0d0
 
 ******* INVERSION parameters **********************
+
 inversion.nMajorIterations             = 10
 inversion.nMinorIterations             = 100
 inversion.minResidual                  = 1.d-13
+# LSQR=1
 inversion.solver                       = 1
 inversion.softThresholdL1              = 0.
 
 ******* MODEL DAMPING (m - m_prior) ***************
-inversion.modelDamping.weight1         = 1.d-13
-inversion.modelDamping.weight2         = 0.d-11
+
+inversion.modelDamping.weightProblem1  = 1.d-13
+inversion.modelDamping.weightProblem2  = 0.d-11
 inversion.modelDamping.normPower       = 2.d0
 
 ******* JOINT INVERSION parameters ****************
-inversion.joint.problemWeight1         = 1.d0
-inversion.joint.problemWeight2         = 0.d0
+
+inversion.joint.problemWeight1          = 1.d0
+inversion.joint.problemWeight2          = 0.d0
 inversion.joint.columnWeightMultiplier1 = 4.d+3
 inversion.joint.columnWeightMultiplier2 = 1.d0
-inversion.joint.nIterSingleProblem1     = 0
-inversion.joint.nIterSingleProblem2     = 0
+inversion.joint.nIterSingle1            = 0
+inversion.joint.nIterSingle2            = 0
 
 ******* Damping-gradient constraints **************
-weight type (1-global, 2-local)        = 1
-damping gradient for model1 (grav)     = 0.d0
-damping gradient fro model2 (mag)      = 0.d0
+
+# 1-global, 2-local
+inversion.dampingGradient.weightType     = 1
+inversion.dampingGradient.weightProblem1 = 0.d0
+inversion.dampingGradient.weightProblem2 = 0.d0
+
 ******* Cross-gradient constraints ****************
 cross-gradient weight                  = 0.d-3
 num of iterations in method of weights = 0

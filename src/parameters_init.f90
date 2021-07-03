@@ -319,6 +319,11 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
   ipar%niter_single(1) = 0
   ipar%niter_single(2) = 0
 
+  ! DAMPING-GRADIENT constraints.
+  ipar%damp_grad_weight_type = 1
+  ipar%beta(1) = 0.d0
+  ipar%beta(2) = 0.d0
+
   !---------------------------------------------------------------------------------
   ! Reading parameter values from Parfile.
   !---------------------------------------------------------------------------------
@@ -334,6 +339,7 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
     enddo
 
     select case(trim(parname))
+
       ! INVERSION parameters -------------------------------
 
       case("inversion.nMajorIterations")
@@ -358,11 +364,11 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
 
       ! MODEL DAMPING (m - m_prior) ------------------------
 
-      case("inversion.modelDamping.weight1")
+      case("inversion.modelDamping.weightProblem1")
         read(10, 1) ipar%alpha(1)
         call print_arg(myrank, parname, ipar%alpha(1))
 
-      case("inversion.modelDamping.weight2")
+      case("inversion.modelDamping.weightProblem2")
         read(10, 1) ipar%alpha(2)
         call print_arg(myrank, parname, ipar%alpha(2))
 
@@ -388,33 +394,27 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         read(10, 1) ipar%column_weight_multiplier(2)
         call print_arg(myrank, parname, ipar%column_weight_multiplier(2))
 
-      case("inversion.joint.nIterSingleProblem1")
+      case("inversion.joint.nIterSingle1")
         read(10, 2) ipar%niter_single(1)
         call print_arg(myrank, parname, ipar%niter_single(1))
 
-      case("inversion.joint.nIterSingleProblem2")
+      case("inversion.joint.nIterSingle2")
         read(10, 2) ipar%niter_single(2)
         call print_arg(myrank, parname, ipar%niter_single(2))
 
       ! DAMPING-GRADIENT constraints -------------------------------
-!      case("inversion.dampingGradient.weightType")
-!
-!      case("inversion.dampingGradient.weightProblem1")
-!      case("inversion.dampingGradient.weightProblem2")
-!
-!          ! Damping-gradient constraints -------------------------------
-!
-!  read(10,'(a)') dum
-!  if (myrank == 0) print *, trim(dum)
-!
-!  read(10,2) junk, ipar%damp_grad_weight_type
-!  if (myrank == 0) print *, junk, ipar%damp_grad_weight_type
-!
-!  read(10,1) junk, ipar%beta(1)
-!  if (myrank == 0) print *, junk, ipar%beta(1)
-!
-!  read(10,1) junk, ipar%beta(2)
-!  if (myrank == 0) print *, junk, ipar%beta(2)
+
+      case("inversion.dampingGradient.weightType")
+        read(10, 2) ipar%damp_grad_weight_type
+        call print_arg(myrank, parname, ipar%damp_grad_weight_type)
+
+      case("inversion.dampingGradient.weightProblem1")
+        read(10, 1) ipar%beta(1)
+        call print_arg(myrank, parname, ipar%beta(1))
+
+      case("inversion.dampingGradient.weightProblem2")
+        read(10, 1) ipar%beta(2)
+        call print_arg(myrank, parname, ipar%beta(2))
 
       case default
         read(10, 3, iostat=ios) line
