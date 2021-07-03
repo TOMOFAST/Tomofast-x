@@ -79,6 +79,7 @@ inversion.nMinorIterations             = 100
 inversion.minResidual                  = 1.d-13
 # LSQR=1
 inversion.solver                       = 1
+# Soft threshold ("L1-norm", no=0.)
 inversion.softThresholdL1              = 0.
 
 ******* MODEL DAMPING (m - m_prior) ***************
@@ -104,9 +105,12 @@ inversion.dampingGradient.weightProblem1 = 0.d0
 inversion.dampingGradient.weightProblem2 = 0.d0
 
 ******* Cross-gradient constraints ****************
-cross-gradient weight                  = 0.d-3
-num of iterations in method of weights = 0
-x-grad deriv (1-fwd, 2-cent, 3-mixed)  = 1
+
+inversion.crossGradient.weight               = 0.d0
+inversion.crossGradient.nIterMethodOfWeight  = 0
+# 1-fwd, 2-cent, 3-mixed
+inversion.crossGradient.derivativeType       = 1
+
 ******* Clustering constraints ********************
 clustering problem1 (grav) weight      = 0.d-7
 clustering problem2 (mag)  weight      = 0.d-9
