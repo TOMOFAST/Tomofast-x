@@ -347,6 +347,14 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
   ipar%clustering_opt_type = 2 ! 1-normal, 2-log
   ipar%clustering_constraints_type = 2 ! 1-global, 2-local
 
+  ! ADMM constraints.
+  ipar%admm_type = 0 ! 0-no admm, 1-enable admm
+  ipar%nlithos = 5
+  ipar%bounds_ADMM_file(1) = "NILL"
+  ipar%bounds_ADMM_file(2) = "NILL"
+  ipar%rho_ADMM(1) = 1.d-7
+  ipar%rho_ADMM(2) = 1.d+5
+
   !---------------------------------------------------------------------------------
   ! Reading parameter values from Parfile.
   !---------------------------------------------------------------------------------
@@ -460,7 +468,7 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         read(10, 2) ipar%derivative_type
         call print_arg(myrank, parname, ipar%derivative_type)
 
-      ! CLUSTERING constraints --------------------------------------
+      ! CLUSTERING constraints ---------------------------------------
 
       case("inversion.clustering.weightProblem1")
         read(10, 1) ipar%clustering_weight_glob(1)
@@ -489,6 +497,32 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
       case("inversion.clustering.constraintsType")
         read(10, 2) ipar%clustering_constraints_type
         call print_arg(myrank, parname, ipar%clustering_constraints_type)
+
+      ! ADMM constraints --------------------------------------------
+
+      case("inversion.admm.enableADMM")
+        read(10, 2) ipar%admm_type
+        call print_arg(myrank, parname, ipar%admm_type)
+
+      case("inversion.admm.nLithologies")
+        read(10, 2) ipar%nlithos
+        call print_arg(myrank, parname, ipar%nlithos)
+
+      case("inversion.admm.localBoundsFile1")
+        read(10, 3) ipar%bounds_ADMM_file(1)
+        call print_arg(myrank, parname, ipar%bounds_ADMM_file(1))
+
+      case("inversion.admm.localBoundsFile2")
+        read(10, 3) ipar%bounds_ADMM_file(2)
+        call print_arg(myrank, parname, ipar%bounds_ADMM_file(2))
+
+      case("inversion.admm.weightProblem1")
+        read(10, 1) ipar%rho_ADMM(1)
+        call print_arg(myrank, parname, ipar%rho_ADMM(1))
+
+      case("inversion.admm.weightProblem2")
+        read(10, 1) ipar%rho_ADMM(2)
+        call print_arg(myrank, parname, ipar%rho_ADMM(2))
 
       case default
         read(10, 3, iostat=ios) line
