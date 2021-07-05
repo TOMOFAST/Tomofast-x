@@ -57,7 +57,7 @@ module init_parameters
 
   ! For overloading the 'print_arg' function.
   interface print_arg
-    module procedure print_arg_int, print_arg_dbl
+    module procedure print_arg_int, print_arg_dbl, print_arg_str
   end interface
 
 contains
@@ -72,7 +72,7 @@ subroutine print_arg_int(myrank, name, value)
 
   if (myrank == 0) print *, trim(name)//" =", value
 end subroutine print_arg_int
-
+!-----------------------------------------------
 subroutine print_arg_dbl(myrank, name, value)
   character(len=128), intent(in) :: name
   real(kind=CUSTOM_REAL), intent(in) :: value
@@ -80,6 +80,14 @@ subroutine print_arg_dbl(myrank, name, value)
 
   if (myrank == 0) print *, trim(name)//" =", value
 end subroutine print_arg_dbl
+!-----------------------------------------------
+subroutine print_arg_str(myrank, name, value)
+  character(len=128), intent(in) :: name
+  character(len=256), intent(in) :: value
+  integer, intent(in) :: myrank
+
+  if (myrank == 0) print *, trim(name)//" =", trim(value)
+end subroutine print_arg_str
 
 !==========================================================================
 ! Get problem type (ECT / Gravity).
@@ -330,11 +338,27 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
   ipar%method_of_weights_niter = 0
   ipar%derivative_type = 1 ! 1-fwd, 2-cent, 3-mixed
 
+  ! CLUSTERING constraints.
+  ipar%clustering_weight_glob(1) = 0.d0
+  ipar%clustering_weight_glob(2) = 0.d0
+  ipar%nclusters = 4
+  ipar%mixture_file = "NILL"
+  ipar%cell_weights_file = "NILL"
+  ipar%clustering_opt_type = 2 ! 1-normal, 2-log
+  ipar%clustering_constraints_type = 2 ! 1-global, 2-local
+
   !---------------------------------------------------------------------------------
   ! Reading parameter values from Parfile.
   !---------------------------------------------------------------------------------
   do
     read(10, '(A)', iostat=ios) line
+
+    if (line(1:3) == "***") then
+    ! Printing 'newline' when the line starts with "***".
+      print *
+      cycle
+    endif
+
     symbol_index = index(line, '=')
     parname = line(:symbol_index - 1)
     backspace(10)
@@ -435,6 +459,36 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
       case("inversion.crossGradient.derivativeType")
         read(10, 2) ipar%derivative_type
         call print_arg(myrank, parname, ipar%derivative_type)
+
+      ! CLUSTERING constraints --------------------------------------
+
+      case("inversion.clustering.weightProblem1")
+        read(10, 1) ipar%clustering_weight_glob(1)
+        call print_arg(myrank, parname, ipar%clustering_weight_glob(1))
+
+      case("inversion.clustering.weightProblem2")
+        read(10, 1) ipar%clustering_weight_glob(2)
+        call print_arg(myrank, parname, ipar%clustering_weight_glob(2))
+
+      case("inversion.clustering.nClusters")
+        read(10, 2) ipar%nclusters
+        call print_arg(myrank, parname, ipar%nclusters)
+
+      case("inversion.clustering.mixtureFile")
+        read(10, 3) ipar%mixture_file
+        call print_arg(myrank, parname, ipar%mixture_file)
+
+      case("inversion.clustering.cellWeightsFile")
+        read(10, 3) ipar%cell_weights_file
+        call print_arg(myrank, parname, ipar%cell_weights_file)
+
+      case("inversion.clustering.optimizationType")
+        read(10, 2) ipar%clustering_opt_type
+        call print_arg(myrank, parname, ipar%clustering_opt_type)
+
+      case("inversion.clustering.constraintsType")
+        read(10, 2) ipar%clustering_constraints_type
+        call print_arg(myrank, parname, ipar%clustering_constraints_type)
 
       case default
         read(10, 3, iostat=ios) line
