@@ -85,7 +85,7 @@ inversion.softThresholdL1              = 0.
 ******* MODEL DAMPING (m - m_prior) ***************
 
 inversion.modelDamping.weightProblem1  = 1.d-13
-inversion.modelDamping.weightProblem2  = 0.d-11
+inversion.modelDamping.weightProblem2  = 1.d-11
 inversion.modelDamping.normPower       = 2.d0
 
 ******* JOINT INVERSION parameters ****************
@@ -124,15 +124,15 @@ inversion.clustering.optimizationType = 2
 inversion.clustering.constraintsType = 2
 
 ******* ADMM constraints **************************
-enable admm? (0-no, 1-yes)             = 0
-number of lithologies                  = 5
-grav local bound constraints file      =NILL
-mag local bound constraints file       =NILL
-global weight rho (grav)               = 11.d-8
-global weight rho (mag)                = 1.d+5
 
-=============================================================
-******* DO NOT MOVE THE LOCATION OF THE EQUAL SIGNS, THEY MUST BE EXACTLY ON THE 40TH CHARACTER *******
+inversion.admm.enableADMM              = 0
+inversion.admm.nLithologies            = 5
+inversion.admm.localBoundsFile1        = NILL
+inversion.admm.localBoundsFile2        = NILL
+inversion.admm.weightProblem1          = 1.d-7
+inversion.admm.weightProblem2          = 1.d+5
+
+***************************************************
 *Depth weighting:
 W(Z) = 1 / (Z + Z0)**(beta / 2)
 
