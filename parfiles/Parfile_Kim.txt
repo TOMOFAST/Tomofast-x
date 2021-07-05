@@ -112,13 +112,17 @@ inversion.crossGradient.nIterMethodOfWeight  = 0
 inversion.crossGradient.derivativeType       = 1
 
 ******* Clustering constraints ********************
-clustering problem1 (grav) weight      = 0.d-7
-clustering problem2 (mag)  weight      = 0.d-9
-number of clusters                     = 4
-clustering mixtures                    =NILL
-clustering geol weights per cell       =NILL
-type of optimization (1-normal,2-log)  = 2
-type of constraints (1-global,2-local) = 2
+
+inversion.clustering.weightProblem1   = 0.d0
+inversion.clustering.weightProblem2   = 0.d0
+inversion.clustering.nClusters        = 4
+inversion.clustering.mixtureFile      = NILL
+inversion.clustering.cellWeightsFile  = NILL
+# 1-normal, 2-log
+inversion.clustering.optimizationType = 2
+# 1-global, 2-local
+inversion.clustering.constraintsType = 2
+
 ******* ADMM constraints **************************
 enable admm? (0-no, 1-yes)             = 0
 number of lithologies                  = 5
