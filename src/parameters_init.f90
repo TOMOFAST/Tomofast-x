@@ -51,6 +51,7 @@ module init_parameters
 
   private :: read_parfile
   private :: read_parfile2
+  private :: set_default_parameters
 
   private :: print_arg_int
   private :: print_arg_dbl
@@ -139,6 +140,9 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
   integer :: nelements, ierr
 
   if (myrank == 0) then
+    ! Setting default parameter values.
+    call set_default_parameters(epar, gpar, mpar, ipar)
+
     ! Read Parfile data, only the master does this,
     ! and then broadcasts all the information to the other processes.
     call read_parfile2(epar, gpar, mpar, ipar, myrank)
@@ -274,39 +278,17 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
 end subroutine initialize_parameters
 
 !===================================================================================
-! Read input parameters from Parfile.
+! Set default parameters.
 !===================================================================================
-subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
-  integer, intent(in) :: myrank
-
+subroutine set_default_parameters(epar, gpar, mpar, ipar)
   type(t_parameters_ect), intent(out) :: epar
   type(t_parameters_grav), intent(out) :: gpar
   type(t_parameters_mag), intent(out) :: mpar
   type(t_parameters_inversion), intent(out) :: ipar
 
-  integer :: itmp, tmparr(2)
-
-  ! This is junk in order to ignore the variable name at the beginning of the line.
-  ! This ignores exactly 40 characters.
-  character(len=1) :: ch
-  character(len=40) :: junk
-  character(len=256) :: parfile_name
-  character(len=128) :: parname
-  character(len=256) :: line
-  integer :: symbol_index, i
-  integer :: ios
-
-  ! The name of the Parfile can be passed in via the command line,
-  ! if no argument is given, the default value is used.
-  call get_command_argument(2,parfile_name)
-  if (len_trim(parfile_name) == 0) parfile_name = "parfiles/Parfile_MASTER.txt"
-
-  open(unit=10,file=parfile_name,status='old',iostat=itmp,action='read')
-  if (itmp /= 0) call exit_MPI("Parfile """ // trim(parfile_name) // """ cannot be opened!",myrank,15)
-
-  !---------------------------------------------------------------------------------
+  !-----------------------------------------------
   ! Define here the DEFAULT parameter values:
-  !---------------------------------------------------------------------------------
+  !-----------------------------------------------
 
   ! MAGNETIC FIELD constants.
   mpar%mi = 75.d0
@@ -380,6 +362,39 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
   ipar%bounds_ADMM_file(2) = "NILL"
   ipar%rho_ADMM(1) = 1.d-7
   ipar%rho_ADMM(2) = 1.d+5
+
+end subroutine set_default_parameters
+
+!===================================================================================
+! Read input parameters from Parfile.
+!===================================================================================
+subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
+  integer, intent(in) :: myrank
+
+  type(t_parameters_ect), intent(inout) :: epar
+  type(t_parameters_grav), intent(inout) :: gpar
+  type(t_parameters_mag), intent(inout) :: mpar
+  type(t_parameters_inversion), intent(inout) :: ipar
+
+  integer :: itmp
+
+  ! This is junk in order to ignore the variable name at the beginning of the line.
+  ! This ignores exactly 40 characters.
+  character(len=1) :: ch
+  character(len=40) :: junk
+  character(len=256) :: parfile_name
+  character(len=128) :: parname
+  character(len=256) :: line
+  integer :: symbol_index, i
+  integer :: ios
+
+  ! The name of the Parfile can be passed in via the command line,
+  ! if no argument is given, the default value is used.
+  call get_command_argument(2,parfile_name)
+  if (len_trim(parfile_name) == 0) parfile_name = "parfiles/Parfile_MASTER.txt"
+
+  open(unit=10,file=parfile_name,status='old',iostat=itmp,action='read')
+  if (itmp /= 0) call exit_MPI("Parfile """ // trim(parfile_name) // """ cannot be opened!",myrank,15)
 
   !---------------------------------------------------------------------------------
   ! Reading parameter values from Parfile.
@@ -635,7 +650,7 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
   type(t_parameters_mag), intent(out) :: mpar
   type(t_parameters_inversion), intent(out) :: ipar
 
-  integer :: itmp, tmparr(2)
+  integer :: itmp
 
   ! This is junk in order to ignore the variable name at the beginning of the line.
   ! This ignores exactly 40 characters.
