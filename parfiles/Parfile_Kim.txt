@@ -68,9 +68,13 @@ Depth weighting constant, Z0**         = 0.d0
 ******* GRAVITY constants *************************
 Depth weighting power, beta**          = 1.4d0
 Depth weighting constant, Z0**         = 0.0d0
+
 ******* MATRIX COMPRESSION parameters *************
-distance threshold (source to cell)    = 1.d+10
-compression rate (1.0 = full matrix)   = 1.0d0
+
+# Source to the cell distance (m).
+forward.gravmag.matrixCompression.distanceThreshold = 1.d+10
+# 1.0 = full matrix
+forward.gravmag.matrixCompression.compressionRate   = 1.d0
 
 ******* INVERSION parameters **********************
 
