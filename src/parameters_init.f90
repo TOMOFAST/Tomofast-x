@@ -308,6 +308,14 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
   ! Define here the DEFAULT parameter values:
   !---------------------------------------------------------------------------------
 
+  ! MATRIX COMPRESSION parameters.
+  gpar%distance_threshold = 1.d+10 ! Source to the cell distance (m).
+  gpar%compression_rate = 1.d0 ! 1.0 = full matrix
+
+  ! The same for grav & mag problems.
+  mpar%distance_threshold = gpar%distance_threshold
+  mpar%compression_rate = gpar%compression_rate
+
   ! INVERSION parameters.
   ipar%ninversions = 10
   ipar%niter = 100
@@ -377,6 +385,17 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
     enddo
 
     select case(trim(parname))
+
+      ! MATRIX COMPRESSION parameters -----------------------
+      case("forward.gravmag.matrixCompression.distanceThreshold")
+        read(10, 1) gpar%distance_threshold
+        call print_arg(myrank, parname, gpar%distance_threshold)
+        mpar%distance_threshold = gpar%distance_threshold
+
+      case("forward.gravmag.matrixCompression.compressionRate")
+        read(10, 1) gpar%compression_rate
+        call print_arg(myrank, parname, gpar%compression_rate)
+        mpar%compression_rate = gpar%compression_rate
 
       ! INVERSION parameters -------------------------------
 
