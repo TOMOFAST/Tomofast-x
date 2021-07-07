@@ -290,9 +290,19 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! Define here the DEFAULT parameter values:
   !-----------------------------------------------
 
+  ! PRIOR MODEL parameters.
+  gpar%prior_model_type = 1 ! 1-set value, 2-read from file.
+  mpar%prior_model_type = 1
+  gpar%number_prior_models = 1 ! Number of prior models, for the model type = 2
+  mpar%number_prior_models = 1
+  gpar%prior_model_val = 0.d0
+  mpar%prior_model_val = 1.d-9
+  gpar%model_files(2) = "NILL"
+  mpar%model_files(2) = "NILL"
+
   ! STARTING MODEL parameters.
   gpar%start_model_type = 1 ! 1-set value, 2-read from file.
-  mpar%start_model_type = gpar%start_model_type
+  mpar%start_model_type = 1
   gpar%start_model_val = 0.d0
   mpar%start_model_val = 1.d-9
   gpar%model_files(3) = "NILL"
@@ -417,6 +427,34 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
     enddo
 
     select case(trim(parname))
+
+      ! PRIOR MODEL -----------------------------------------
+
+      case("forward.gravmag.priorModel.type")
+        read(10, 2) gpar%prior_model_type
+        call print_arg(myrank, parname, gpar%prior_model_type)
+        mpar%prior_model_type = gpar%prior_model_type
+
+      case("forward.gravmag.priorModel.nModels")
+        read(10, 2) gpar%number_prior_models
+        call print_arg(myrank, parname, gpar%number_prior_models)
+        mpar%number_prior_models = gpar%number_prior_models
+
+      case("forward.gravmag.priorModel.grav.value")
+        read(10, 1) gpar%prior_model_val
+        call print_arg(myrank, parname, gpar%prior_model_val)
+
+      case("forward.gravmag.priorModel.mag.value")
+        read(10, 1) mpar%prior_model_val
+        call print_arg(myrank, parname, mpar%prior_model_val)
+
+      case("forward.gravmag.priorModel.grav.file")
+        read(10, 3) gpar%model_files(2)
+        call print_arg(myrank, parname, gpar%model_files(2))
+
+      case("forward.gravmag.priorModel.mag.file")
+        read(10, 3) mpar%model_files(2)
+        call print_arg(myrank, parname, mpar%model_files(2))
 
       ! STARTING MODEL -------------------------------------
 
