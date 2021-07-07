@@ -363,17 +363,22 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
   ipar%rho_ADMM(1) = 1.d-7
   ipar%rho_ADMM(2) = 1.d+5
 
+  ! DEPTH WEIGHTING parameters.
+  ! 1-power, 2-sens, 3-isens
+  gpar%depth_weighting_type = 3
+  ! TODO: update beta-power to a number from tests. Also to update the default value in ParametersDefault.md file
+  ! Power weight function: W(Z) = 1 / (Z + Z0)**(beta / 2)
+  gpar%beta = 1.4d0
+  gpar%Z0 = 0.d0
+  mpar%beta = 1.4d0
+  mpar%Z0 = 0.d0
+
   !---------------------------------------------------------------------------------
   ! Reading parameter values from Parfile.
   !---------------------------------------------------------------------------------
   do
     read(10, '(A)', iostat=ios) line
-
-    if (line(1:3) == "***") then
-    ! Printing 'newline' when the line starts with "***".
-      print *
-      cycle
-    endif
+    if (ios /= 0) exit
 
     symbol_index = index(line, '=')
     parname = line(:symbol_index - 1)
@@ -386,7 +391,31 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
 
     select case(trim(parname))
 
-      ! MATRIX COMPRESSION parameters -----------------------
+      ! DEPTH WEIGHTING parameters -------------------------
+
+      case("forward.gravmag.depthWeighting.type")
+        read(10, 2) gpar%depth_weighting_type
+        call print_arg(myrank, parname, gpar%depth_weighting_type)
+        mpar%depth_weighting_type = gpar%depth_weighting_type
+
+      case("forward.gravmag.depthWeighting.powerWeight.grav.beta")
+        read(10, 1) gpar%beta
+        call print_arg(myrank, parname, gpar%beta)
+
+      case("forward.gravmag.depthWeighting.powerWeight.grav.Z0")
+        read(10, 1) gpar%Z0
+        call print_arg(myrank, parname, gpar%Z0)
+
+      case("forward.gravmag.depthWeighting.powerWeight.mag.beta")
+        read(10, 1) mpar%beta
+        call print_arg(myrank, parname, mpar%beta)
+
+      case("forward.gravmag.depthWeighting.powerWeight.mag.Z0")
+        read(10, 1) mpar%Z0
+        call print_arg(myrank, parname, mpar%Z0)
+
+      ! MATRIX COMPRESSION parameters ----------------------
+
       case("forward.gravmag.matrixCompression.distanceThreshold")
         read(10, 1) gpar%distance_threshold
         call print_arg(myrank, parname, gpar%distance_threshold)
@@ -546,8 +575,6 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
       case default
         read(10, 3, iostat=ios) line
     end select
-
-    if (ios /= 0) exit
   enddo
 
   print *, "Finished reading the file."
