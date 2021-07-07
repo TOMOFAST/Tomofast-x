@@ -34,7 +34,6 @@ tolerance of linear solver             = 1.d-12
 grid size (nx, ny, nz)                 = 1 1 192
 grav model and grid file               =data/gravmag/kim/kim_grid.txt
 mag  model and grid file               =data/gravmag/kim/kim_grid.txt
-Depth weighting (1-pow,2-sens,3-isens) = 3
 ******* GRAV / MAG DATA parameters ****************
 grav number of data                    = 3
 mag number of data                     = 3
@@ -63,11 +62,16 @@ ambient field inclination              = 75.d0
 ambient field declination              = 25.d0
 ambient field intensity (nT)           = 50000.d0
 X-axis declination                     = 0.d0
-Depth weighting power, beta**          = 1.4d0
-Depth weighting constant, Z0**         = 0.d0
-******* GRAVITY constants *************************
-Depth weighting power, beta**          = 1.4d0
-Depth weighting constant, Z0**         = 0.0d0
+
+******* DEPTH WEIGHTING parameters ****************
+
+# 1-power, 2-sens, 3-isens
+forward.gravmag.depthWeighting.type                  = 3
+# powerWeight: W(Z) = 1 / (Z + Z0)**(beta / 2)
+forward.gravmag.depthWeighting.powerWeight.grav.beta = 1.5d0
+forward.gravmag.depthWeighting.powerWeight.grav.Z0   = 0.d0
+forward.gravmag.depthWeighting.powerWeight.mag.beta  = 1.4d0
+forward.gravmag.depthWeighting.powerWeight.mag.Z0    = 0.d0
 
 ******* MATRIX COMPRESSION parameters *************
 
@@ -135,8 +139,3 @@ inversion.admm.localBoundsFile1        = NILL
 inversion.admm.localBoundsFile2        = NILL
 inversion.admm.weightProblem1          = 1.d-7
 inversion.admm.weightProblem2          = 1.d+5
-
-***************************************************
-*Depth weighting:
-W(Z) = 1 / (Z + Z0)**(beta / 2)
-
