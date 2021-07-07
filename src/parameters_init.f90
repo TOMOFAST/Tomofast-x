@@ -302,6 +302,16 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! Define here the DEFAULT parameter values:
   !-----------------------------------------------
 
+  ! MODEL GRID parameters.
+  gpar%nx = 0
+  gpar%ny = 0
+  gpar%nz = 0
+  mpar%nx = 0
+  mpar%ny = 0
+  mpar%nz = 0
+  gpar%model_files(1) = "NILL"
+  mpar%model_files(1) = "NILL"
+
   ! DATA parameters.
   gpar%ndata = 0
   mpar%ndata = 0
@@ -449,6 +459,23 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
     enddo
 
     select case(trim(parname))
+
+      ! MODEL GRID parameters -------------------------------
+
+      case("modelGrid.size")
+        read(10, *) gpar%nx, gpar%ny, gpar%nz
+        if (myrank == 0) print *, trim(parname)//" =", gpar%nx, gpar%ny, gpar%nz
+        mpar%nx = gpar%nx
+        mpar%ny = gpar%ny
+        mpar%nz = gpar%nz
+
+      case("modelGrid.grav.file")
+        call read_filename(10, gpar%model_files(1))
+        call print_arg(myrank, parname, gpar%model_files(1))
+
+      case("modelGrid.mag.file")
+        call read_filename(10, mpar%model_files(1))
+        call print_arg(myrank, parname, mpar%model_files(1))
 
       ! DATA parameters -------------------------------------
 
