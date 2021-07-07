@@ -49,12 +49,15 @@ set prior model grav (if no smoothing) = 0.d0
 set prior model mag (if no smoothing)  = 10.d-9
 grav prior model file                  =NILL
 mag prior model file                   =NILL
+
 ******* STARTING MODEL ****************************
-model type(1-set, 2-file)              = 1
-set prior model grav (if no smoothing) = 0.d0
-set prior model mag (if no smoothing)  = 10.d-9
-grav prior model file                  =NILL
-mag prior model file                   =NILL
+
+# 1-set value, 2-read from file.
+forward.gravmag.startingModel.type        = 1
+forward.gravmag.startingModel.grav.value  = 0.d0
+forward.gravmag.startingModel.mag.value   = 1.d-9
+forward.gravmag.startingModel.grav.file   = NILL
+forward.gravmag.startingModel.mag.file    = NILL
 
 ******* MAGNETIC FIELD constants ******************
 
@@ -67,9 +70,9 @@ forward.magneticField.XaxisDeclination     = 0.d0
 
 ******* DEPTH WEIGHTING parameters ****************
 
-# 1-power, 2-sens, 3-isens
+# 1-power, 2-sens, 3-isens.
 forward.gravmag.depthWeighting.type                  = 3
-# powerWeight: W(Z) = 1 / (Z + Z0)**(beta / 2)
+# Power function: W(Z) = 1 / (Z + Z0)**(beta / 2)
 forward.gravmag.depthWeighting.powerWeight.grav.beta = 1.5d0
 forward.gravmag.depthWeighting.powerWeight.grav.Z0   = 0.d0
 forward.gravmag.depthWeighting.powerWeight.mag.beta  = 1.4d0
@@ -109,7 +112,7 @@ inversion.joint.nIterSingle2            = 0
 
 ******* Damping-gradient constraints **************
 
-# 1-global, 2-local
+# 1-global, 2-local.
 inversion.dampingGradient.weightType     = 1
 inversion.dampingGradient.weightProblem1 = 0.d0
 inversion.dampingGradient.weightProblem2 = 0.d0
@@ -118,7 +121,7 @@ inversion.dampingGradient.weightProblem2 = 0.d0
 
 inversion.crossGradient.weight               = 0.d0
 inversion.crossGradient.nIterMethodOfWeight  = 0
-# 1-fwd, 2-cent, 3-mixed
+# 1-forward, 2-central, 3-mixed.
 inversion.crossGradient.derivativeType       = 1
 
 ******* Clustering constraints ********************
@@ -128,9 +131,9 @@ inversion.clustering.weightProblem2   = 0.d0
 inversion.clustering.nClusters        = 4
 inversion.clustering.mixtureFile      = NILL
 inversion.clustering.cellWeightsFile  = NILL
-# 1-normal, 2-log
+# 1-normal, 2-log.
 inversion.clustering.optimizationType = 2
-# 1-global, 2-local
+# 1-global, 2-local.
 inversion.clustering.constraintsType = 2
 
 ******* ADMM constraints **************************
