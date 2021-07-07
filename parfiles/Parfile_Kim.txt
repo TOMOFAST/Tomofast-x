@@ -42,13 +42,17 @@ mag  data grid file                    =data/gravmag/kim/data.txt
 grav data values file                  =data/gravmag/kim/data.txt
 mag  data values file                  =data/gravmag/kim/data.txt
 calc. data without sensit (debug)      = 0
+
 ******* PRIOR MODEL *******************************
-model type(1-set, 2-file)              = 1
-number prior models (for model type 2) = 1
-set prior model grav (if no smoothing) = 0.d0
-set prior model mag (if no smoothing)  = 10.d-9
-grav prior model file                  =NILL
-mag prior model file                   =NILL
+
+# 1-set value, 2-read from file.
+forward.gravmag.priorModel.type           = 1
+# Number of prior models, for the model type = 2.
+forward.gravmag.priorModel.nModels        = 1
+forward.gravmag.priorModel.grav.value     = 0.d0
+forward.gravmag.priorModel.mag.value      = 1.d-9
+forward.gravmag.priorModel.grav.file      = NILL
+forward.gravmag.priorModel.mag.file       = NILL
 
 ******* STARTING MODEL ****************************
 
