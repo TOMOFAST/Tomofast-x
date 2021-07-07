@@ -31,11 +31,12 @@ max num. of lin. solv. iters           = 1000
 output freq linsolver (iters)          = 20
 tolerance of linear solver             = 1.d-12
 
-******* GRID parameters ***************************
+******* MODEL GRID parameters *********************
 
-grid size (nx, ny, nz)                 = 1 1 192
-grav model and grid file               =data/gravmag/kim/kim_grid.txt
-mag  model and grid file               =data/gravmag/kim/kim_grid.txt
+# nx ny nz
+modelGrid.size                             = 1 1 192
+modelGrid.grav.file                        = data/gravmag/kim/kim_grid.txt
+modelGrid.mag.file                         = data/gravmag/kim/kim_grid.txt
 
 ******* DATA parameters ***************************
 
@@ -76,47 +77,47 @@ forward.gravmag.matrixCompression.compressionRate   = 1.d0
 ******* PRIOR MODEL *******************************
 
 # 1-set value, 2-read from file.
-inversion.priorModel.type           = 1
-# Number of prior models, for the model type = 2.
-inversion.priorModel.nModels        = 1
-inversion.priorModel.grav.value     = 0.d0
-inversion.priorModel.mag.value      = 1.d-9
-inversion.priorModel.grav.file      = NILL
-inversion.priorModel.mag.file       = NILL
+inversion.priorModel.type                = 1
+# Number of models for model type 2.
+inversion.priorModel.nModels             = 1
+inversion.priorModel.grav.value          = 0.d0
+inversion.priorModel.mag.value           = 1.d-9
+inversion.priorModel.grav.file           = NILL
+inversion.priorModel.mag.file            = NILL
 
 ******* STARTING MODEL ****************************
 
 # 1-set value, 2-read from file.
-inversion.startingModel.type        = 1
-inversion.startingModel.grav.value  = 0.d0
-inversion.startingModel.mag.value   = 1.d-9
-inversion.startingModel.grav.file   = NILL
-inversion.startingModel.mag.file    = NILL
+inversion.startingModel.type             = 1
+inversion.startingModel.grav.value       = 0.d0
+inversion.startingModel.mag.value        = 1.d-9
+inversion.startingModel.grav.file        = NILL
+inversion.startingModel.mag.file         = NILL
 
 ******* INVERSION parameters **********************
 
-inversion.nMajorIterations             = 10
-inversion.nMinorIterations             = 100
-inversion.minResidual                  = 1.d-13
+inversion.nMajorIterations               = 10
+inversion.nMinorIterations               = 100
+inversion.minResidual                    = 1.d-13
 # LSQR=1
-inversion.solver                       = 1
+inversion.solver                         = 1
 # Soft threshold ("L1-norm", no=0.)
-inversion.softThresholdL1              = 0.
+inversion.softThresholdL1                = 0.
 
 ******* MODEL DAMPING (m - m_prior) ***************
 
-inversion.modelDamping.weightProblem1  = 1.d-13
-inversion.modelDamping.weightProblem2  = 1.d-11
-inversion.modelDamping.normPower       = 2.d0
+inversion.modelDamping.weightProblem1    = 1.d-13
+inversion.modelDamping.weightProblem2    = 1.d-11
+inversion.modelDamping.normPower         = 2.d0
 
 ******* JOINT INVERSION parameters ****************
 
-inversion.joint.problemWeight1          = 1.d0
-inversion.joint.problemWeight2          = 0.d0
-inversion.joint.columnWeightMultiplier1 = 4.d+3
-inversion.joint.columnWeightMultiplier2 = 1.d0
-inversion.joint.nIterSingle1            = 0
-inversion.joint.nIterSingle2            = 0
+inversion.joint.problemWeight1           = 1.d0
+inversion.joint.problemWeight2           = 0.d0
+inversion.joint.columnWeightMultiplier1  = 4.d+3
+inversion.joint.columnWeightMultiplier2  = 1.d0
+inversion.joint.nIterSingle1             = 0
+inversion.joint.nIterSingle2             = 0
 
 ******* Damping-gradient constraints **************
 
