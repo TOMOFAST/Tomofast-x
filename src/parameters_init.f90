@@ -55,6 +55,7 @@ module init_parameters
 
   private :: print_arg_int
   private :: print_arg_dbl
+  private :: read_filename
 
   ! For overloading the 'print_arg' function.
   interface print_arg
@@ -89,6 +90,17 @@ subroutine print_arg_str(myrank, name, value)
 
   if (myrank == 0) print *, trim(name)//" =", trim(value)
 end subroutine print_arg_str
+
+!==========================================================================
+! Read the filename from file.
+!==========================================================================
+subroutine read_filename(file_id, val)
+  integer, intent(in) :: file_id
+  character(len=256), intent(out) :: val
+
+  read(file_id, '(a)') val
+  val = adjustl(val)
+end subroutine read_filename
 
 !==========================================================================
 ! Get problem type (ECT / Gravity).
@@ -290,6 +302,16 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! Define here the DEFAULT parameter values:
   !-----------------------------------------------
 
+  ! DATA parameters.
+  gpar%ndata = 0
+  mpar%ndata = 0
+  gpar%data_grid_file = "NILL"
+  mpar%data_grid_file = "NILL"
+  gpar%data_file = "NILL"
+  mpar%data_file = "NILL"
+  gpar%calc_data_directly = 0
+  mpar%calc_data_directly = 0
+
   ! PRIOR MODEL parameters.
   gpar%prior_model_type = 1 ! 1-set value, 2-read from file.
   mpar%prior_model_type = 1
@@ -427,6 +449,37 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
     enddo
 
     select case(trim(parname))
+
+      ! DATA parameters -------------------------------------
+
+      case("forward.gravmag.data.grav.nData")
+        read(10, 2) gpar%ndata
+        call print_arg(myrank, parname, gpar%ndata)
+
+      case("forward.gravmag.data.mag.nData")
+        read(10, 2) mpar%ndata
+        call print_arg(myrank, parname, mpar%ndata)
+
+      case("forward.gravmag.data.grav.dataGridFile")
+        call read_filename(10, gpar%data_grid_file)
+        call print_arg(myrank, parname, gpar%data_grid_file)
+
+      case("forward.gravmag.data.mag.dataGridFile")
+        call read_filename(10, mpar%data_grid_file)
+        call print_arg(myrank, parname, mpar%data_grid_file)
+
+      case("forward.gravmag.data.grav.dataValuesFile")
+        call read_filename(10, gpar%data_file)
+        call print_arg(myrank, parname, gpar%data_file)
+
+      case("forward.gravmag.data.mag.dataValuesFile")
+        call read_filename(10, mpar%data_file)
+        call print_arg(myrank, parname, mpar%data_file)
+
+      case("forward.gravmag.data.calcDataWithoutSensit")
+        read(10, 2) gpar%calc_data_directly
+        call print_arg(myrank, parname, gpar%calc_data_directly)
+        mpar%calc_data_directly = gpar%calc_data_directly
 
       ! PRIOR MODEL -----------------------------------------
 

@@ -30,18 +30,22 @@ type of norms: 1=L2, 2=max             = 1
 max num. of lin. solv. iters           = 1000
 output freq linsolver (iters)          = 20
 tolerance of linear solver             = 1.d-12
-******* GRAVITY / MAGNETISM parameters *************
+
+******* GRID parameters ***************************
+
 grid size (nx, ny, nz)                 = 1 1 192
 grav model and grid file               =data/gravmag/kim/kim_grid.txt
 mag  model and grid file               =data/gravmag/kim/kim_grid.txt
-******* GRAV / MAG DATA parameters ****************
-grav number of data                    = 3
-mag number of data                     = 3
-grav data grid file                    =data/gravmag/kim/data.txt
-mag  data grid file                    =data/gravmag/kim/data.txt
-grav data values file                  =data/gravmag/kim/data.txt
-mag  data values file                  =data/gravmag/kim/data.txt
-calc. data without sensit (debug)      = 0
+
+******* DATA parameters ***************************
+
+forward.gravmag.data.grav.nData            = 3
+forward.gravmag.data.mag.nData             = 3
+forward.gravmag.data.grav.dataGridFile     = data/gravmag/kim/data.txt
+forward.gravmag.data.mag.dataGridFile      = data/gravmag/kim/data.txt
+forward.gravmag.data.grav.dataValuesFile   = data/gravmag/kim/data.txt
+forward.gravmag.data.mag.dataValuesFile    = data/gravmag/kim/data.txt
+forward.gravmag.data.calcDataWithoutSensit = 0
 
 ******* PRIOR MODEL *******************************
 
