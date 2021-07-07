@@ -308,6 +308,24 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
   ! Define here the DEFAULT parameter values:
   !---------------------------------------------------------------------------------
 
+  ! MAGNETIC FIELD constants.
+  mpar%mi = 75.d0
+  mpar%md = 25.d0
+  mpar%fi = 75.d0
+  mpar%fd = 25.d0
+  mpar%intensity = 50000.d0
+  mpar%theta = 0.d0
+
+  ! DEPTH WEIGHTING parameters.
+  ! 1-power, 2-sens, 3-isens
+  gpar%depth_weighting_type = 3
+  ! TODO: update beta-power to a number from tests. Also to update the default value in ParametersDefault.md file
+  ! Power weight function: W(Z) = 1 / (Z + Z0)**(beta / 2)
+  gpar%beta = 1.4d0
+  gpar%Z0 = 0.d0
+  mpar%beta = 1.4d0
+  mpar%Z0 = 0.d0
+
   ! MATRIX COMPRESSION parameters.
   gpar%distance_threshold = 1.d+10 ! Source to the cell distance (m).
   gpar%compression_rate = 1.d0 ! 1.0 = full matrix
@@ -363,16 +381,6 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
   ipar%rho_ADMM(1) = 1.d-7
   ipar%rho_ADMM(2) = 1.d+5
 
-  ! DEPTH WEIGHTING parameters.
-  ! 1-power, 2-sens, 3-isens
-  gpar%depth_weighting_type = 3
-  ! TODO: update beta-power to a number from tests. Also to update the default value in ParametersDefault.md file
-  ! Power weight function: W(Z) = 1 / (Z + Z0)**(beta / 2)
-  gpar%beta = 1.4d0
-  gpar%Z0 = 0.d0
-  mpar%beta = 1.4d0
-  mpar%Z0 = 0.d0
-
   !---------------------------------------------------------------------------------
   ! Reading parameter values from Parfile.
   !---------------------------------------------------------------------------------
@@ -390,6 +398,32 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
     enddo
 
     select case(trim(parname))
+
+      ! MAGNETIC FIELD constants ---------------------------
+
+      case("forward.magneticField.inclination")
+          read(10, 1) mpar%mi
+          call print_arg(myrank, parname, mpar%mi)
+
+      case("forward.magneticField.declination")
+          read(10, 1) mpar%md
+          call print_arg(myrank, parname, mpar%md)
+
+      case("forward.magneticField.ambient.inclination")
+          read(10, 1) mpar%fi
+          call print_arg(myrank, parname, mpar%fi)
+
+      case("forward.magneticField.ambient.declination")
+          read(10, 1) mpar%fd
+          call print_arg(myrank, parname, mpar%fd)
+
+      case("forward.magneticField.ambient.intensity_nT")
+          read(10, 1) mpar%intensity
+          call print_arg(myrank, parname, mpar%intensity)
+
+      case("forward.magneticField.XaxisDeclination")
+          read(10, 1) mpar%theta
+          call print_arg(myrank, parname, mpar%theta)
 
       ! DEPTH WEIGHTING parameters -------------------------
 

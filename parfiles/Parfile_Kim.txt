@@ -55,13 +55,15 @@ set prior model grav (if no smoothing) = 0.d0
 set prior model mag (if no smoothing)  = 10.d-9
 grav prior model file                  =NILL
 mag prior model file                   =NILL
-******* MAGNETIC constants ************************
-mag field inclination                  = 75.d0
-mag field declination                  = 25.d0
-ambient field inclination              = 75.d0
-ambient field declination              = 25.d0
-ambient field intensity (nT)           = 50000.d0
-X-axis declination                     = 0.d0
+
+******* MAGNETIC FIELD constants ******************
+
+forward.magneticField.inclination          = 75.d0
+forward.magneticField.declination          = 25.d0
+forward.magneticField.ambient.inclination  = 75.d0
+forward.magneticField.ambient.declination  = 25.d0
+forward.magneticField.ambient.intensity_nT = 50000.d0
+forward.magneticField.XaxisDeclination     = 0.d0
 
 ******* DEPTH WEIGHTING parameters ****************
 
