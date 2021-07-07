@@ -47,26 +47,6 @@ forward.gravmag.data.grav.dataValuesFile   = data/gravmag/kim/data.txt
 forward.gravmag.data.mag.dataValuesFile    = data/gravmag/kim/data.txt
 forward.gravmag.data.calcDataWithoutSensit = 0
 
-******* PRIOR MODEL *******************************
-
-# 1-set value, 2-read from file.
-forward.gravmag.priorModel.type           = 1
-# Number of prior models, for the model type = 2.
-forward.gravmag.priorModel.nModels        = 1
-forward.gravmag.priorModel.grav.value     = 0.d0
-forward.gravmag.priorModel.mag.value      = 1.d-9
-forward.gravmag.priorModel.grav.file      = NILL
-forward.gravmag.priorModel.mag.file       = NILL
-
-******* STARTING MODEL ****************************
-
-# 1-set value, 2-read from file.
-forward.gravmag.startingModel.type        = 1
-forward.gravmag.startingModel.grav.value  = 0.d0
-forward.gravmag.startingModel.mag.value   = 1.d-9
-forward.gravmag.startingModel.grav.file   = NILL
-forward.gravmag.startingModel.mag.file    = NILL
-
 ******* MAGNETIC FIELD constants ******************
 
 forward.magneticField.inclination          = 75.d0
@@ -92,6 +72,26 @@ forward.gravmag.depthWeighting.powerWeight.mag.Z0    = 0.d0
 forward.gravmag.matrixCompression.distanceThreshold = 1.d+10
 # 1.0 = full matrix
 forward.gravmag.matrixCompression.compressionRate   = 1.d0
+
+******* PRIOR MODEL *******************************
+
+# 1-set value, 2-read from file.
+inversion.priorModel.type           = 1
+# Number of prior models, for the model type = 2.
+inversion.priorModel.nModels        = 1
+inversion.priorModel.grav.value     = 0.d0
+inversion.priorModel.mag.value      = 1.d-9
+inversion.priorModel.grav.file      = NILL
+inversion.priorModel.mag.file       = NILL
+
+******* STARTING MODEL ****************************
+
+# 1-set value, 2-read from file.
+inversion.startingModel.type        = 1
+inversion.startingModel.grav.value  = 0.d0
+inversion.startingModel.mag.value   = 1.d-9
+inversion.startingModel.grav.file   = NILL
+inversion.startingModel.mag.file    = NILL
 
 ******* INVERSION parameters **********************
 

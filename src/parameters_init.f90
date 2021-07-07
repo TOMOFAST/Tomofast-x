@@ -312,24 +312,6 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   gpar%calc_data_directly = 0
   mpar%calc_data_directly = 0
 
-  ! PRIOR MODEL parameters.
-  gpar%prior_model_type = 1 ! 1-set value, 2-read from file.
-  mpar%prior_model_type = 1
-  gpar%number_prior_models = 1 ! Number of prior models, for the model type = 2
-  mpar%number_prior_models = 1
-  gpar%prior_model_val = 0.d0
-  mpar%prior_model_val = 1.d-9
-  gpar%model_files(2) = "NILL"
-  mpar%model_files(2) = "NILL"
-
-  ! STARTING MODEL parameters.
-  gpar%start_model_type = 1 ! 1-set value, 2-read from file.
-  mpar%start_model_type = 1
-  gpar%start_model_val = 0.d0
-  mpar%start_model_val = 1.d-9
-  gpar%model_files(3) = "NILL"
-  mpar%model_files(3) = "NILL"
-
   ! MAGNETIC FIELD constants.
   mpar%mi = 75.d0
   mpar%md = 25.d0
@@ -351,6 +333,24 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   gpar%compression_rate = 1.d0     ! 1.0 = full matrix
   mpar%distance_threshold = gpar%distance_threshold
   mpar%compression_rate = gpar%compression_rate
+
+  ! PRIOR MODEL parameters.
+  gpar%prior_model_type = 1 ! 1-set value, 2-read from file.
+  mpar%prior_model_type = 1
+  gpar%number_prior_models = 1 ! Number of prior models, for the model type = 2
+  mpar%number_prior_models = 1
+  gpar%prior_model_val = 0.d0
+  mpar%prior_model_val = 1.d-9
+  gpar%model_files(2) = "NILL"
+  mpar%model_files(2) = "NILL"
+
+  ! STARTING MODEL parameters.
+  gpar%start_model_type = 1 ! 1-set value, 2-read from file.
+  mpar%start_model_type = 1
+  gpar%start_model_val = 0.d0
+  mpar%start_model_val = 1.d-9
+  gpar%model_files(3) = "NILL"
+  mpar%model_files(3) = "NILL"
 
   ! INVERSION parameters.
   ipar%ninversions = 10
@@ -481,57 +481,6 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         call print_arg(myrank, parname, gpar%calc_data_directly)
         mpar%calc_data_directly = gpar%calc_data_directly
 
-      ! PRIOR MODEL -----------------------------------------
-
-      case("forward.gravmag.priorModel.type")
-        read(10, 2) gpar%prior_model_type
-        call print_arg(myrank, parname, gpar%prior_model_type)
-        mpar%prior_model_type = gpar%prior_model_type
-
-      case("forward.gravmag.priorModel.nModels")
-        read(10, 2) gpar%number_prior_models
-        call print_arg(myrank, parname, gpar%number_prior_models)
-        mpar%number_prior_models = gpar%number_prior_models
-
-      case("forward.gravmag.priorModel.grav.value")
-        read(10, 1) gpar%prior_model_val
-        call print_arg(myrank, parname, gpar%prior_model_val)
-
-      case("forward.gravmag.priorModel.mag.value")
-        read(10, 1) mpar%prior_model_val
-        call print_arg(myrank, parname, mpar%prior_model_val)
-
-      case("forward.gravmag.priorModel.grav.file")
-        call read_filename(10, gpar%model_files(2))
-        call print_arg(myrank, parname, gpar%model_files(2))
-
-      case("forward.gravmag.priorModel.mag.file")
-        call read_filename(10, mpar%model_files(2))
-        call print_arg(myrank, parname, mpar%model_files(2))
-
-      ! STARTING MODEL -------------------------------------
-
-      case("forward.gravmag.startingModel.type")
-        read(10, 2) gpar%start_model_type
-        call print_arg(myrank, parname, gpar%start_model_type)
-        mpar%start_model_type = gpar%start_model_type
-
-      case("forward.gravmag.startingModel.grav.value")
-        read(10, 1) gpar%start_model_val
-        call print_arg(myrank, parname, gpar%start_model_val)
-
-      case("forward.gravmag.startingModel.mag.value")
-        read(10, 1) mpar%start_model_val
-        call print_arg(myrank, parname, mpar%start_model_val)
-
-      case("forward.gravmag.startingModel.grav.file")
-        call read_filename(10, gpar%model_files(3))
-        call print_arg(myrank, parname, gpar%model_files(3))
-
-      case("forward.gravmag.startingModel.mag.file")
-        call read_filename(10, mpar%model_files(3))
-        call print_arg(myrank, parname, mpar%model_files(3))
-
       ! MAGNETIC FIELD constants ---------------------------
 
       case("forward.magneticField.inclination")
@@ -592,6 +541,57 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         read(10, 1) gpar%compression_rate
         call print_arg(myrank, parname, gpar%compression_rate)
         mpar%compression_rate = gpar%compression_rate
+
+      ! PRIOR MODEL -----------------------------------------
+
+      case("inversion.priorModel.type")
+        read(10, 2) gpar%prior_model_type
+        call print_arg(myrank, parname, gpar%prior_model_type)
+        mpar%prior_model_type = gpar%prior_model_type
+
+      case("inversion.priorModel.nModels")
+        read(10, 2) gpar%number_prior_models
+        call print_arg(myrank, parname, gpar%number_prior_models)
+        mpar%number_prior_models = gpar%number_prior_models
+
+      case("inversion.priorModel.grav.value")
+        read(10, 1) gpar%prior_model_val
+        call print_arg(myrank, parname, gpar%prior_model_val)
+
+      case("inversion.priorModel.mag.value")
+        read(10, 1) mpar%prior_model_val
+        call print_arg(myrank, parname, mpar%prior_model_val)
+
+      case("inversion.priorModel.grav.file")
+        call read_filename(10, gpar%model_files(2))
+        call print_arg(myrank, parname, gpar%model_files(2))
+
+      case("inversion.priorModel.mag.file")
+        call read_filename(10, mpar%model_files(2))
+        call print_arg(myrank, parname, mpar%model_files(2))
+
+      ! STARTING MODEL -------------------------------------
+
+      case("inversion.startingModel.type")
+        read(10, 2) gpar%start_model_type
+        call print_arg(myrank, parname, gpar%start_model_type)
+        mpar%start_model_type = gpar%start_model_type
+
+      case("inversion.startingModel.grav.value")
+        read(10, 1) gpar%start_model_val
+        call print_arg(myrank, parname, gpar%start_model_val)
+
+      case("inversion.startingModel.mag.value")
+        read(10, 1) mpar%start_model_val
+        call print_arg(myrank, parname, mpar%start_model_val)
+
+      case("inversion.startingModel.grav.file")
+        call read_filename(10, gpar%model_files(3))
+        call print_arg(myrank, parname, gpar%model_files(3))
+
+      case("inversion.startingModel.mag.file")
+        call read_filename(10, mpar%model_files(3))
+        call print_arg(myrank, parname, mpar%model_files(3))
 
       ! INVERSION parameters -------------------------------
 
