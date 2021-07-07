@@ -290,6 +290,14 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! Define here the DEFAULT parameter values:
   !-----------------------------------------------
 
+  ! STARTING MODEL parameters.
+  gpar%start_model_type = 1 ! 1-set value, 2-read from file.
+  mpar%start_model_type = gpar%start_model_type
+  gpar%start_model_val = 0.d0
+  mpar%start_model_val = 1.d-9
+  gpar%model_files(3) = "NILL"
+  mpar%model_files(3) = "NILL"
+
   ! MAGNETIC FIELD constants.
   mpar%mi = 75.d0
   mpar%md = 25.d0
@@ -299,20 +307,16 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   mpar%theta = 0.d0
 
   ! DEPTH WEIGHTING parameters.
-  ! 1-power, 2-sens, 3-isens
-  gpar%depth_weighting_type = 3
-  ! TODO: update beta-power to a number from tests. Also to update the default value in ParametersDefault.md file
+  gpar%depth_weighting_type = 3 ! 1-power, 2-sens, 3-isens
   ! Power weight function: W(Z) = 1 / (Z + Z0)**(beta / 2)
-  gpar%beta = 1.4d0
+  gpar%beta = 1.4d0   ! TODO: update beta-power to a number from tests. Also to update the default value in ParametersDefault.md file
   gpar%Z0 = 0.d0
-  mpar%beta = 1.4d0
+  mpar%beta = 1.4d0   ! TODO: update beta-power to a number from tests. Also to update the default value in ParametersDefault.md file
   mpar%Z0 = 0.d0
 
   ! MATRIX COMPRESSION parameters.
   gpar%distance_threshold = 1.d+10 ! Source to the cell distance (m).
-  gpar%compression_rate = 1.d0 ! 1.0 = full matrix
-
-  ! The same for grav & mag problems.
+  gpar%compression_rate = 1.d0     ! 1.0 = full matrix
   mpar%distance_threshold = gpar%distance_threshold
   mpar%compression_rate = gpar%compression_rate
 
@@ -414,31 +418,54 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
 
     select case(trim(parname))
 
+      ! STARTING MODEL -------------------------------------
+
+      case("forward.gravmag.startingModel.type")
+        read(10, 2) gpar%start_model_type
+        call print_arg(myrank, parname, gpar%start_model_type)
+        mpar%start_model_type = gpar%start_model_type
+
+      case("forward.gravmag.startingModel.grav.value")
+        read(10, 1) gpar%start_model_val
+        call print_arg(myrank, parname, gpar%start_model_val)
+
+      case("forward.gravmag.startingModel.mag.value")
+        read(10, 1) mpar%start_model_val
+        call print_arg(myrank, parname, mpar%start_model_val)
+
+      case("forward.gravmag.startingModel.grav.file")
+        read(10, 3) gpar%model_files(3)
+        call print_arg(myrank, parname, gpar%model_files(3))
+
+      case("forward.gravmag.startingModel.mag.file")
+        read(10, 3) mpar%model_files(3)
+        call print_arg(myrank, parname, mpar%model_files(3))
+
       ! MAGNETIC FIELD constants ---------------------------
 
       case("forward.magneticField.inclination")
-          read(10, 1) mpar%mi
-          call print_arg(myrank, parname, mpar%mi)
+        read(10, 1) mpar%mi
+        call print_arg(myrank, parname, mpar%mi)
 
       case("forward.magneticField.declination")
-          read(10, 1) mpar%md
-          call print_arg(myrank, parname, mpar%md)
+        read(10, 1) mpar%md
+        call print_arg(myrank, parname, mpar%md)
 
       case("forward.magneticField.ambient.inclination")
-          read(10, 1) mpar%fi
-          call print_arg(myrank, parname, mpar%fi)
+        read(10, 1) mpar%fi
+        call print_arg(myrank, parname, mpar%fi)
 
       case("forward.magneticField.ambient.declination")
-          read(10, 1) mpar%fd
-          call print_arg(myrank, parname, mpar%fd)
+        read(10, 1) mpar%fd
+        call print_arg(myrank, parname, mpar%fd)
 
       case("forward.magneticField.ambient.intensity_nT")
-          read(10, 1) mpar%intensity
-          call print_arg(myrank, parname, mpar%intensity)
+        read(10, 1) mpar%intensity
+        call print_arg(myrank, parname, mpar%intensity)
 
       case("forward.magneticField.XaxisDeclination")
-          read(10, 1) mpar%theta
-          call print_arg(myrank, parname, mpar%theta)
+        read(10, 1) mpar%theta
+        call print_arg(myrank, parname, mpar%theta)
 
       ! DEPTH WEIGHTING parameters -------------------------
 
