@@ -502,11 +502,11 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         call print_arg(myrank, parname, mpar%prior_model_val)
 
       case("forward.gravmag.priorModel.grav.file")
-        read(10, 3) gpar%model_files(2)
+        call read_filename(10, gpar%model_files(2))
         call print_arg(myrank, parname, gpar%model_files(2))
 
       case("forward.gravmag.priorModel.mag.file")
-        read(10, 3) mpar%model_files(2)
+        call read_filename(10, mpar%model_files(2))
         call print_arg(myrank, parname, mpar%model_files(2))
 
       ! STARTING MODEL -------------------------------------
@@ -525,11 +525,11 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         call print_arg(myrank, parname, mpar%start_model_val)
 
       case("forward.gravmag.startingModel.grav.file")
-        read(10, 3) gpar%model_files(3)
+        call read_filename(10, gpar%model_files(3))
         call print_arg(myrank, parname, gpar%model_files(3))
 
       case("forward.gravmag.startingModel.mag.file")
-        read(10, 3) mpar%model_files(3)
+        call read_filename(10, mpar%model_files(3))
         call print_arg(myrank, parname, mpar%model_files(3))
 
       ! MAGNETIC FIELD constants ---------------------------
@@ -698,11 +698,11 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         call print_arg(myrank, parname, ipar%nclusters)
 
       case("inversion.clustering.mixtureFile")
-        read(10, 3) ipar%mixture_file
+        call read_filename(10, ipar%mixture_file)
         call print_arg(myrank, parname, ipar%mixture_file)
 
       case("inversion.clustering.cellWeightsFile")
-        read(10, 3) ipar%cell_weights_file
+        call read_filename(10, ipar%cell_weights_file)
         call print_arg(myrank, parname, ipar%cell_weights_file)
 
       case("inversion.clustering.optimizationType")
@@ -724,11 +724,11 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         call print_arg(myrank, parname, ipar%nlithos)
 
       case("inversion.admm.localBoundsFile1")
-        read(10, 3) ipar%bounds_ADMM_file(1)
+        call read_filename(10, ipar%bounds_ADMM_file(1))
         call print_arg(myrank, parname, ipar%bounds_ADMM_file(1))
 
       case("inversion.admm.localBoundsFile2")
-        read(10, 3) ipar%bounds_ADMM_file(2)
+        call read_filename(10, ipar%bounds_ADMM_file(2))
         call print_arg(myrank, parname, ipar%bounds_ADMM_file(2))
 
       case("inversion.admm.weightProblem1")
