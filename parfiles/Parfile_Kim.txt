@@ -16,14 +16,17 @@ location R3                            = 0.07
 height sensor                          = 0.2
 space between guards                   = 0.00e0
 space between electrodes(deg)          = 0.00e0
-******* MODEL ************************************
-num bubbles (0=no bubbles)             = 4
-location of the bubbles                =data/ECT/bubble_4vert.dat
-absolute permittivity                  = 1.
-permittivity air                       = 1.
-permittivity isol tube                 = 3.5
-permittivity oil                       = 2.
-******* SOLVER parameters ************************
+
+******* ECT MODEL parameters **********************
+
+forward.ect.model.nBubbles                  = 4
+forward.ect.model.bubblesLocationFile       = data/ECT/bubble_4vert.dat
+forward.ect.model.absolutePermittivity      = 1.
+forward.ect.model.permittivityAir           = 1.
+forward.ect.model.permittivityIsolatedTube  = 3.5
+forward.ect.model.permittivityOil           = 2.
+
+******* ECT SOLVER parameters *********************
 
 # 0=NO, YES>0
 forward.ect.solver.precond               = 1
