@@ -24,6 +24,7 @@ permittivity air                       = 1.
 permittivity isol tube                 = 3.5
 permittivity oil                       = 2.
 ******* SOLVER parameters ************************
+
 PCG precond (0=NO, YES>0)              = 1
 relaxation omega1 PCG precon           = 0.8d0
 type of norms: 1=L2, 2=max             = 1
@@ -40,13 +41,13 @@ modelGrid.mag.file                         = data/gravmag/kim/kim_grid.txt
 
 ******* DATA parameters ***************************
 
-forward.gravmag.data.grav.nData            = 3
-forward.gravmag.data.mag.nData             = 3
-forward.gravmag.data.grav.dataGridFile     = data/gravmag/kim/data.txt
-forward.gravmag.data.mag.dataGridFile      = data/gravmag/kim/data.txt
-forward.gravmag.data.grav.dataValuesFile   = data/gravmag/kim/data.txt
-forward.gravmag.data.mag.dataValuesFile    = data/gravmag/kim/data.txt
-forward.gravmag.data.calcDataWithoutSensit = 0
+forward.data.grav.nData            = 3
+forward.data.mag.nData             = 3
+forward.data.grav.dataGridFile     = data/gravmag/kim/data.txt
+forward.data.mag.dataGridFile      = data/gravmag/kim/data.txt
+forward.data.grav.dataValuesFile   = data/gravmag/kim/data.txt
+forward.data.mag.dataValuesFile    = data/gravmag/kim/data.txt
+forward.data.calcDataWithoutSensit = 0
 
 ******* MAGNETIC FIELD constants ******************
 
@@ -60,19 +61,19 @@ forward.magneticField.XaxisDeclination     = 0.d0
 ******* DEPTH WEIGHTING parameters ****************
 
 # 1-power, 2-sens, 3-isens.
-forward.gravmag.depthWeighting.type                  = 3
+forward.depthWeighting.type                          = 3
 # Power function: W(Z) = 1 / (Z + Z0)**(beta / 2)
-forward.gravmag.depthWeighting.powerWeight.grav.beta = 1.5d0
-forward.gravmag.depthWeighting.powerWeight.grav.Z0   = 0.d0
-forward.gravmag.depthWeighting.powerWeight.mag.beta  = 1.4d0
-forward.gravmag.depthWeighting.powerWeight.mag.Z0    = 0.d0
+forward.depthWeighting.powerWeight.grav.beta         = 1.5d0
+forward.depthWeighting.powerWeight.grav.Z0           = 0.d0
+forward.depthWeighting.powerWeight.mag.beta          = 1.4d0
+forward.depthWeighting.powerWeight.mag.Z0            = 0.d0
 
 ******* MATRIX COMPRESSION parameters *************
 
 # Source to the cell distance (m).
-forward.gravmag.matrixCompression.distanceThreshold = 1.d+10
+forward.matrixCompression.distanceThreshold = 1.d+10
 # 1.0 = full matrix
-forward.gravmag.matrixCompression.compressionRate   = 1.d0
+forward.matrixCompression.compressionRate   = 1.d0
 
 ******* PRIOR MODEL *******************************
 

@@ -479,31 +479,31 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
 
       ! DATA parameters -------------------------------------
 
-      case("forward.gravmag.data.grav.nData")
+      case("forward.data.grav.nData")
         read(10, 2) gpar%ndata
         call print_arg(myrank, parname, gpar%ndata)
 
-      case("forward.gravmag.data.mag.nData")
+      case("forward.data.mag.nData")
         read(10, 2) mpar%ndata
         call print_arg(myrank, parname, mpar%ndata)
 
-      case("forward.gravmag.data.grav.dataGridFile")
+      case("forward.data.grav.dataGridFile")
         call read_filename(10, gpar%data_grid_file)
         call print_arg(myrank, parname, gpar%data_grid_file)
 
-      case("forward.gravmag.data.mag.dataGridFile")
+      case("forward.data.mag.dataGridFile")
         call read_filename(10, mpar%data_grid_file)
         call print_arg(myrank, parname, mpar%data_grid_file)
 
-      case("forward.gravmag.data.grav.dataValuesFile")
+      case("forward.data.grav.dataValuesFile")
         call read_filename(10, gpar%data_file)
         call print_arg(myrank, parname, gpar%data_file)
 
-      case("forward.gravmag.data.mag.dataValuesFile")
+      case("forward.data.mag.dataValuesFile")
         call read_filename(10, mpar%data_file)
         call print_arg(myrank, parname, mpar%data_file)
 
-      case("forward.gravmag.data.calcDataWithoutSensit")
+      case("forward.data.calcDataWithoutSensit")
         read(10, 2) gpar%calc_data_directly
         call print_arg(myrank, parname, gpar%calc_data_directly)
         mpar%calc_data_directly = gpar%calc_data_directly
@@ -536,35 +536,35 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
 
       ! DEPTH WEIGHTING parameters -------------------------
 
-      case("forward.gravmag.depthWeighting.type")
+      case("forward.depthWeighting.type")
         read(10, 2) gpar%depth_weighting_type
         call print_arg(myrank, parname, gpar%depth_weighting_type)
         mpar%depth_weighting_type = gpar%depth_weighting_type
 
-      case("forward.gravmag.depthWeighting.powerWeight.grav.beta")
+      case("forward.depthWeighting.powerWeight.grav.beta")
         read(10, 1) gpar%beta
         call print_arg(myrank, parname, gpar%beta)
 
-      case("forward.gravmag.depthWeighting.powerWeight.grav.Z0")
+      case("forward.depthWeighting.powerWeight.grav.Z0")
         read(10, 1) gpar%Z0
         call print_arg(myrank, parname, gpar%Z0)
 
-      case("forward.gravmag.depthWeighting.powerWeight.mag.beta")
+      case("forward.depthWeighting.powerWeight.mag.beta")
         read(10, 1) mpar%beta
         call print_arg(myrank, parname, mpar%beta)
 
-      case("forward.gravmag.depthWeighting.powerWeight.mag.Z0")
+      case("forward.depthWeighting.powerWeight.mag.Z0")
         read(10, 1) mpar%Z0
         call print_arg(myrank, parname, mpar%Z0)
 
       ! MATRIX COMPRESSION parameters ----------------------
 
-      case("forward.gravmag.matrixCompression.distanceThreshold")
+      case("forward.matrixCompression.distanceThreshold")
         read(10, 1) gpar%distance_threshold
         call print_arg(myrank, parname, gpar%distance_threshold)
         mpar%distance_threshold = gpar%distance_threshold
 
-      case("forward.gravmag.matrixCompression.compressionRate")
+      case("forward.matrixCompression.compressionRate")
         read(10, 1) gpar%compression_rate
         call print_arg(myrank, parname, gpar%compression_rate)
         mpar%compression_rate = gpar%compression_rate
