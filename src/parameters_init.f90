@@ -302,6 +302,19 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! Define here the DEFAULT parameter values:
   !-----------------------------------------------
 
+  ! ECT GEOMETRY parameters.
+  epar%nel = 36
+  epar%nrings = 3
+  epar%dims%kguards = 0
+  epar%ifixed_elecgeo = 0 ! NO=0, YES=1
+  epar%irefine = 0        ! NO=0, YES=1
+  epar%sens%radiusin = 0.045d0
+  epar%sens%radiusout = 0.06d0
+  epar%sens%radiusoutout = 0.07d0
+  epar%sens%heicyl = 0.2d0
+  epar%sens%space_elec_guards = 0.d0
+  epar%sens%space_electrodes = 0.d0
+
   ! ECT MODEL parameters.
   epar%num_bubbles = 4
   epar%filename_bubbles = "data/ECT/bubble_4vert.dat"
@@ -481,6 +494,53 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
     enddo
 
     select case(trim(parname))
+
+      ! ECT GEOMETRY parameters -----------------------------
+
+      case("forward.ect.geometry.nElectrodes")
+        read(10, 2) epar%nel
+        call print_arg(myrank, parname, epar%nel)
+
+      case("forward.ect.geometry.nRings")
+        read(10, 2) epar%nrings
+        call print_arg(myrank, parname, epar%nrings)
+
+      case("forward.ect.geometry.kguards")
+        read(10, 2) epar%dims%kguards
+        if (epar%dims%kguards == 0) epar%dims%kguards = epar%dims%nz / 4
+        call print_arg(myrank, parname, epar%dims%kguards)
+
+      case("forward.ect.geometry.fixedElectrodes")
+        read(10, 2) epar%ifixed_elecgeo
+        call print_arg(myrank, parname, epar%ifixed_elecgeo)
+
+      case("forward.ect.geometry.meshRefinement")
+        read(10, 2) epar%irefine
+        call print_arg(myrank, parname, epar%irefine)
+
+      case("forward.ect.geometry.locationR1")
+        read(10, 1) epar%sens%radiusin
+        call print_arg(myrank, parname, epar%sens%radiusin)
+
+      case("forward.ect.geometry.locationR2")
+        read(10, 1) epar%sens%radiusout
+        call print_arg(myrank, parname, epar%sens%radiusout)
+
+      case("forward.ect.geometry.locationR3")
+        read(10, 1) epar%sens%radiusoutout
+        call print_arg(myrank, parname, epar%sens%radiusoutout)
+
+      case("forward.ect.geometry.sensorHeight")
+        read(10, 1) epar%sens%heicyl
+        call print_arg(myrank, parname, epar%sens%heicyl)
+
+      case("forward.ect.geometry.spaceBetweenGuards")
+        read(10, 1) epar%sens%space_elec_guards
+        call print_arg(myrank, parname, epar%sens%space_elec_guards)
+
+      case("forward.ect.geometry.spaceBetweenElectrodes")
+        read(10, 1) epar%sens%space_electrodes
+        call print_arg(myrank, parname, epar%sens%space_electrodes)
 
       ! ECT MODEL parameters --------------------------------
 
