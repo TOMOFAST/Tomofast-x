@@ -302,6 +302,14 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! Define here the DEFAULT parameter values:
   !-----------------------------------------------
 
+  ! GLOBAL parameters.
+  path_output = "output/test/"
+
+  ! ECT GRID parameters.
+  epar%dims%nr = 36
+  epar%dims%ntheta = 36
+  epar%dims%nz = 36
+
   ! ECT GEOMETRY parameters.
   epar%nel = 36
   epar%nrings = 3
@@ -466,6 +474,7 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
   character(len=256) :: parfile_name
   character(len=128) :: parname
   character(len=256) :: line
+  character(len=256) :: parfile_description
   integer :: symbol_index, i
   integer :: ios
 
@@ -494,6 +503,29 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
     enddo
 
     select case(trim(parname))
+
+      ! GLOBAL parameters -----------------------------------
+      case("global.outputFolderPath")
+        call read_filename(10, path_output)
+        call print_arg(myrank, parname, path_output)
+
+      case("global.description")
+        read(10, 3) parfile_description
+        call print_arg(myrank, parname, parfile_description)
+
+      ! ECT GRID parameters ---------------------------------
+
+      case("forward.ect.grid.nr")
+        read(10, 2) epar%dims%nr
+        call print_arg(myrank, parname, epar%dims%nr)
+
+      case("forward.ect.grid.ntheta")
+        read(10, 2) epar%dims%ntheta
+        call print_arg(myrank, parname, epar%dims%ntheta)
+
+      case("forward.ect.grid.nz")
+        read(10, 2) epar%dims%nz
+        call print_arg(myrank, parname, epar%dims%nz)
 
       ! ECT GEOMETRY parameters -----------------------------
 

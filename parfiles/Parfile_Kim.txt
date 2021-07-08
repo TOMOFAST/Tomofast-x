@@ -1,9 +1,13 @@
-******* GLOBAL ***********************************
-path to the output folder              =output/kim/
-******* DIMENSIONS *******************************
-nr (number of grid points)             = 36
-ntheta                                 = 0
-nz                                     = 0
+******* GLOBAL ************************************
+
+global.outputFolderPath    = output/kim/
+global.description         = Test run Kim
+
+******* ECT GRID **********************************
+
+forward.ect.grid.nr        = 36
+forward.ect.grid.ntheta    = 36
+forward.ect.grid.nz        = 36
 
 ******* ECT GEOMETRY ******************************
 
