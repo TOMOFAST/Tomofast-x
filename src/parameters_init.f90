@@ -302,6 +302,20 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! Define here the DEFAULT parameter values:
   !-----------------------------------------------
 
+  ! ECT SOLVER parameters.
+  epar%linear_solver = LINSOLV_PCG ! Not exposed to Parfile.
+  epar%iprecond = 1 ! 0=NO, YES>0
+  epar%omega1 = 0.8d0
+  epar%itypenorm = 1 ! 1=L2, 2=max
+  epar%itmax = 1000
+  epar%output_frequency = 20
+  epar%tol = 1.d-12
+
+  ! MULTIGRID parameters.
+  ! Removed multigrid, keep this not to change a lot of code.
+  epar%ilevel_coarse = 1
+  epar%coarse_solver = LINSOLV_PCG
+
   ! MODEL GRID parameters.
   gpar%nx = 0
   gpar%ny = 0
@@ -461,12 +475,30 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
     select case(trim(parname))
 
       ! ECT SOLVER parameters -------------------------------
+
       case("forward.ect.solver.precond")
+        read(10, 2) epar%iprecond
+        call print_arg(myrank, parname, epar%iprecond)
+
       case("forward.ect.solver.precond.relaxOmega")
+        read(10, 1) epar%omega1
+        call print_arg(myrank, parname, epar%omega1)
+
       case("forward.ect.solver.normType")
+        read(10, 2) epar%itypenorm
+        call print_arg(myrank, parname, epar%itypenorm)
+
       case("forward.ect.solver.nMaxIterations")
+        read(10, 2) epar%itmax
+        call print_arg(myrank, parname, epar%itmax)
+
       case("forward.ect.solver.outputFrequencyIter")
+        read(10, 2) epar%output_frequency
+        call print_arg(myrank, parname, epar%output_frequency)
+
       case("forward.ect.solver.tolerance")
+        read(10, 1) epar%tol
+        call print_arg(myrank, parname, epar%tol)
 
       ! MODEL GRID parameters -------------------------------
 
