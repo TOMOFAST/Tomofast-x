@@ -25,29 +25,31 @@ permittivity isol tube                 = 3.5
 permittivity oil                       = 2.
 ******* SOLVER parameters ************************
 
-PCG precond (0=NO, YES>0)              = 1
-relaxation omega1 PCG precon           = 0.8d0
-type of norms: 1=L2, 2=max             = 1
-max num. of lin. solv. iters           = 1000
-output freq linsolver (iters)          = 20
-tolerance of linear solver             = 1.d-12
+# 0=NO, YES>0
+forward.ect.solver.precond               = 1
+forward.ect.solver.precond.relaxOmega    = 0.8d0
+# 1=L2, 2=max
+forward.ect.solver.normType              = 1
+forward.ect.solver.nMaxIterations        = 1000
+forward.ect.solver.outputFrequencyIter   = 20
+forward.ect.solver.tolerance             = 1.d-12
 
 ******* MODEL GRID parameters *********************
 
 # nx ny nz
-modelGrid.size                             = 1 1 192
-modelGrid.grav.file                        = data/gravmag/kim/kim_grid.txt
-modelGrid.mag.file                         = data/gravmag/kim/kim_grid.txt
+modelGrid.size                           = 1 1 192
+modelGrid.grav.file                      = data/gravmag/kim/kim_grid.txt
+modelGrid.magn.file                      = data/gravmag/kim/kim_grid.txt
 
 ******* DATA parameters ***************************
 
-forward.data.grav.nData            = 3
-forward.data.mag.nData             = 3
-forward.data.grav.dataGridFile     = data/gravmag/kim/data.txt
-forward.data.mag.dataGridFile      = data/gravmag/kim/data.txt
-forward.data.grav.dataValuesFile   = data/gravmag/kim/data.txt
-forward.data.mag.dataValuesFile    = data/gravmag/kim/data.txt
-forward.data.calcDataWithoutSensit = 0
+forward.data.grav.nData                  = 3
+forward.data.magn.nData                  = 3
+forward.data.grav.dataGridFile           = data/gravmag/kim/data.txt
+forward.data.magn.dataGridFile           = data/gravmag/kim/data.txt
+forward.data.grav.dataValuesFile         = data/gravmag/kim/data.txt
+forward.data.magn.dataValuesFile         = data/gravmag/kim/data.txt
+forward.data.calcDataWithoutSensit       = 0
 
 ******* MAGNETIC FIELD constants ******************
 
@@ -65,8 +67,8 @@ forward.depthWeighting.type                          = 3
 # Power function: W(Z) = 1 / (Z + Z0)**(beta / 2)
 forward.depthWeighting.powerWeight.grav.beta         = 1.5d0
 forward.depthWeighting.powerWeight.grav.Z0           = 0.d0
-forward.depthWeighting.powerWeight.mag.beta          = 1.4d0
-forward.depthWeighting.powerWeight.mag.Z0            = 0.d0
+forward.depthWeighting.powerWeight.magn.beta         = 1.4d0
+forward.depthWeighting.powerWeight.magn.Z0           = 0.d0
 
 ******* MATRIX COMPRESSION parameters *************
 
@@ -82,18 +84,18 @@ inversion.priorModel.type                = 1
 # Number of models for model type 2.
 inversion.priorModel.nModels             = 1
 inversion.priorModel.grav.value          = 0.d0
-inversion.priorModel.mag.value           = 1.d-9
+inversion.priorModel.magn.value          = 1.d-9
 inversion.priorModel.grav.file           = NILL
-inversion.priorModel.mag.file            = NILL
+inversion.priorModel.magn.file           = NILL
 
 ******* STARTING MODEL ****************************
 
 # 1-set value, 2-read from file.
 inversion.startingModel.type             = 1
 inversion.startingModel.grav.value       = 0.d0
-inversion.startingModel.mag.value        = 1.d-9
+inversion.startingModel.magn.value       = 1.d-9
 inversion.startingModel.grav.file        = NILL
-inversion.startingModel.mag.file         = NILL
+inversion.startingModel.magn.file        = NILL
 
 ******* INVERSION parameters **********************
 
@@ -107,25 +109,25 @@ inversion.softThresholdL1                = 0.
 
 ******* MODEL DAMPING (m - m_prior) ***************
 
-inversion.modelDamping.weightProblem1    = 1.d-13
-inversion.modelDamping.weightProblem2    = 1.d-11
+inversion.modelDamping.grav.weight       = 1.d-13
+inversion.modelDamping.magn.weight       = 1.d-11
 inversion.modelDamping.normPower         = 2.d0
 
 ******* JOINT INVERSION parameters ****************
 
-inversion.joint.problemWeight1           = 1.d0
-inversion.joint.problemWeight2           = 0.d0
-inversion.joint.columnWeightMultiplier1  = 4.d+3
-inversion.joint.columnWeightMultiplier2  = 1.d0
-inversion.joint.nIterSingle1             = 0
-inversion.joint.nIterSingle2             = 0
+inversion.joint.grav.problemWeight           = 1.d0
+inversion.joint.magn.problemWeight           = 0.d0
+inversion.joint.grav.columnWeightMultiplier  = 4.d+3
+inversion.joint.magn.columnWeightMultiplier  = 1.d0
+inversion.joint.grav.nIterSingle             = 0
+inversion.joint.magn.nIterSingle             = 0
 
 ******* Damping-gradient constraints **************
 
 # 1-global, 2-local.
 inversion.dampingGradient.weightType     = 1
-inversion.dampingGradient.weightProblem1 = 0.d0
-inversion.dampingGradient.weightProblem2 = 0.d0
+inversion.dampingGradient.grav.weight    = 0.d0
+inversion.dampingGradient.magn.weight    = 0.d0
 
 ******* Cross-gradient constraints ****************
 
@@ -136,8 +138,8 @@ inversion.crossGradient.derivativeType       = 1
 
 ******* Clustering constraints ********************
 
-inversion.clustering.weightProblem1   = 0.d0
-inversion.clustering.weightProblem2   = 0.d0
+inversion.clustering.grav.weight      = 0.d0
+inversion.clustering.magn.weight      = 0.d0
 inversion.clustering.nClusters        = 4
 inversion.clustering.mixtureFile      = NILL
 inversion.clustering.cellWeightsFile  = NILL
@@ -150,7 +152,7 @@ inversion.clustering.constraintsType = 2
 
 inversion.admm.enableADMM              = 0
 inversion.admm.nLithologies            = 5
-inversion.admm.localBoundsFile1        = NILL
-inversion.admm.localBoundsFile2        = NILL
-inversion.admm.weightProblem1          = 1.d-7
-inversion.admm.weightProblem2          = 1.d+5
+inversion.admm.grav.boundsFile         = NILL
+inversion.admm.magn.boundsFile         = NILL
+inversion.admm.grav.weight             = 1.d-7
+inversion.admm.magn.weight             = 1.d+5
