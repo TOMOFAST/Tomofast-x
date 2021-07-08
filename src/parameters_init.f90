@@ -471,16 +471,13 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
   type(t_parameters_mag), intent(inout) :: mpar
   type(t_parameters_inversion), intent(inout) :: ipar
 
-  integer :: itmp
-
-  ! This is junk in order to ignore the variable name at the beginning of the line.
-  ! This ignores exactly 40 characters.
   character(len=1) :: ch
   character(len=40) :: junk
   character(len=256) :: parfile_name
   character(len=128) :: parname
   character(len=256) :: line
   character(len=256) :: parfile_description
+  integer :: itmp
   integer :: symbol_index, i
   integer :: ios
 
