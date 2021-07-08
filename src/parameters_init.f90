@@ -460,6 +460,14 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
 
     select case(trim(parname))
 
+      ! ECT SOLVER parameters -------------------------------
+      case("forward.ect.solver.precond")
+      case("forward.ect.solver.precond.relaxOmega")
+      case("forward.ect.solver.normType")
+      case("forward.ect.solver.nMaxIterations")
+      case("forward.ect.solver.outputFrequencyIter")
+      case("forward.ect.solver.tolerance")
+
       ! MODEL GRID parameters -------------------------------
 
       case("modelGrid.size")
@@ -473,7 +481,7 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         call read_filename(10, gpar%model_files(1))
         call print_arg(myrank, parname, gpar%model_files(1))
 
-      case("modelGrid.mag.file")
+      case("modelGrid.magn.file")
         call read_filename(10, mpar%model_files(1))
         call print_arg(myrank, parname, mpar%model_files(1))
 
@@ -483,7 +491,7 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         read(10, 2) gpar%ndata
         call print_arg(myrank, parname, gpar%ndata)
 
-      case("forward.data.mag.nData")
+      case("forward.data.magn.nData")
         read(10, 2) mpar%ndata
         call print_arg(myrank, parname, mpar%ndata)
 
@@ -491,7 +499,7 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         call read_filename(10, gpar%data_grid_file)
         call print_arg(myrank, parname, gpar%data_grid_file)
 
-      case("forward.data.mag.dataGridFile")
+      case("forward.data.magn.dataGridFile")
         call read_filename(10, mpar%data_grid_file)
         call print_arg(myrank, parname, mpar%data_grid_file)
 
@@ -499,7 +507,7 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         call read_filename(10, gpar%data_file)
         call print_arg(myrank, parname, gpar%data_file)
 
-      case("forward.data.mag.dataValuesFile")
+      case("forward.data.magn.dataValuesFile")
         call read_filename(10, mpar%data_file)
         call print_arg(myrank, parname, mpar%data_file)
 
@@ -549,11 +557,11 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         read(10, 1) gpar%Z0
         call print_arg(myrank, parname, gpar%Z0)
 
-      case("forward.depthWeighting.powerWeight.mag.beta")
+      case("forward.depthWeighting.powerWeight.magn.beta")
         read(10, 1) mpar%beta
         call print_arg(myrank, parname, mpar%beta)
 
-      case("forward.depthWeighting.powerWeight.mag.Z0")
+      case("forward.depthWeighting.powerWeight.magn.Z0")
         read(10, 1) mpar%Z0
         call print_arg(myrank, parname, mpar%Z0)
 
@@ -585,7 +593,7 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         read(10, 1) gpar%prior_model_val
         call print_arg(myrank, parname, gpar%prior_model_val)
 
-      case("inversion.priorModel.mag.value")
+      case("inversion.priorModel.magn.value")
         read(10, 1) mpar%prior_model_val
         call print_arg(myrank, parname, mpar%prior_model_val)
 
@@ -593,7 +601,7 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         call read_filename(10, gpar%model_files(2))
         call print_arg(myrank, parname, gpar%model_files(2))
 
-      case("inversion.priorModel.mag.file")
+      case("inversion.priorModel.magn.file")
         call read_filename(10, mpar%model_files(2))
         call print_arg(myrank, parname, mpar%model_files(2))
 
@@ -608,7 +616,7 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         read(10, 1) gpar%start_model_val
         call print_arg(myrank, parname, gpar%start_model_val)
 
-      case("inversion.startingModel.mag.value")
+      case("inversion.startingModel.magn.value")
         read(10, 1) mpar%start_model_val
         call print_arg(myrank, parname, mpar%start_model_val)
 
@@ -616,7 +624,7 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         call read_filename(10, gpar%model_files(3))
         call print_arg(myrank, parname, gpar%model_files(3))
 
-      case("inversion.startingModel.mag.file")
+      case("inversion.startingModel.magn.file")
         call read_filename(10, mpar%model_files(3))
         call print_arg(myrank, parname, mpar%model_files(3))
 
@@ -644,11 +652,11 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
 
       ! MODEL DAMPING (m - m_prior) ------------------------
 
-      case("inversion.modelDamping.weightProblem1")
+      case("inversion.modelDamping.grav.weight")
         read(10, 1) ipar%alpha(1)
         call print_arg(myrank, parname, ipar%alpha(1))
 
-      case("inversion.modelDamping.weightProblem2")
+      case("inversion.modelDamping.magn.weight")
         read(10, 1) ipar%alpha(2)
         call print_arg(myrank, parname, ipar%alpha(2))
 
@@ -658,27 +666,27 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
 
       ! JOINT INVERSION parameters -------------------------------
 
-      case("inversion.joint.problemWeight1")
+      case("inversion.joint.grav.problemWeight")
         read(10, 1) ipar%problem_weight(1)
         call print_arg(myrank, parname, ipar%problem_weight(1))
 
-      case("inversion.joint.problemWeight2")
+      case("inversion.joint.magn.problemWeight")
         read(10, 1) ipar%problem_weight(2)
         call print_arg(myrank, parname, ipar%problem_weight(2))
 
-      case("inversion.joint.columnWeightMultiplier1")
+      case("inversion.joint.grav.columnWeightMultiplier")
         read(10, 1) ipar%column_weight_multiplier(1)
         call print_arg(myrank, parname, ipar%column_weight_multiplier(1))
 
-      case("inversion.joint.columnWeightMultiplier2")
+      case("inversion.joint.magn.columnWeightMultiplier")
         read(10, 1) ipar%column_weight_multiplier(2)
         call print_arg(myrank, parname, ipar%column_weight_multiplier(2))
 
-      case("inversion.joint.nIterSingle1")
+      case("inversion.joint.grav.nIterSingle")
         read(10, 2) ipar%niter_single(1)
         call print_arg(myrank, parname, ipar%niter_single(1))
 
-      case("inversion.joint.nIterSingle2")
+      case("inversion.joint.magn.nIterSingle")
         read(10, 2) ipar%niter_single(2)
         call print_arg(myrank, parname, ipar%niter_single(2))
 
@@ -688,11 +696,11 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         read(10, 2) ipar%damp_grad_weight_type
         call print_arg(myrank, parname, ipar%damp_grad_weight_type)
 
-      case("inversion.dampingGradient.weightProblem1")
+      case("inversion.dampingGradient.grav.weight")
         read(10, 1) ipar%beta(1)
         call print_arg(myrank, parname, ipar%beta(1))
 
-      case("inversion.dampingGradient.weightProblem2")
+      case("inversion.dampingGradient.magn.weight")
         read(10, 1) ipar%beta(2)
         call print_arg(myrank, parname, ipar%beta(2))
 
@@ -712,11 +720,11 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
 
       ! CLUSTERING constraints ---------------------------------------
 
-      case("inversion.clustering.weightProblem1")
+      case("inversion.clustering.grav.weight")
         read(10, 1) ipar%clustering_weight_glob(1)
         call print_arg(myrank, parname, ipar%clustering_weight_glob(1))
 
-      case("inversion.clustering.weightProblem2")
+      case("inversion.clustering.magn.weight")
         read(10, 1) ipar%clustering_weight_glob(2)
         call print_arg(myrank, parname, ipar%clustering_weight_glob(2))
 
@@ -750,19 +758,19 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
         read(10, 2) ipar%nlithos
         call print_arg(myrank, parname, ipar%nlithos)
 
-      case("inversion.admm.localBoundsFile1")
+      case("inversion.admm.grav.boundsFile")
         call read_filename(10, ipar%bounds_ADMM_file(1))
         call print_arg(myrank, parname, ipar%bounds_ADMM_file(1))
 
-      case("inversion.admm.localBoundsFile2")
+      case("inversion.admm.magn.boundsFile")
         call read_filename(10, ipar%bounds_ADMM_file(2))
         call print_arg(myrank, parname, ipar%bounds_ADMM_file(2))
 
-      case("inversion.admm.weightProblem1")
+      case("inversion.admm.grav.weight")
         read(10, 1) ipar%rho_ADMM(1)
         call print_arg(myrank, parname, ipar%rho_ADMM(1))
 
-      case("inversion.admm.weightProblem2")
+      case("inversion.admm.magn.weight")
         read(10, 1) ipar%rho_ADMM(2)
         call print_arg(myrank, parname, ipar%rho_ADMM(2))
 
