@@ -302,6 +302,14 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! Define here the DEFAULT parameter values:
   !-----------------------------------------------
 
+  ! ECT MODEL parameters.
+  epar%num_bubbles = 4
+  epar%filename_bubbles = "data/ECT/bubble_4vert.dat"
+  epar%permit0 = 1.d0
+  epar%permit_air = 1.d0
+  epar%permit_isolated_tube = 3.5d0
+  epar%permit_oil = 2.d0
+
   ! ECT SOLVER parameters.
   epar%linear_solver = LINSOLV_PCG ! Not exposed to Parfile.
   epar%iprecond = 1 ! 0=NO, YES>0
@@ -473,6 +481,32 @@ subroutine read_parfile2(epar, gpar, mpar, ipar, myrank)
     enddo
 
     select case(trim(parname))
+
+      ! ECT MODEL parameters --------------------------------
+
+      case("forward.ect.model.nBubbles")
+        read(10, 2) epar%num_bubbles
+        call print_arg(myrank, parname, epar%num_bubbles)
+
+      case("forward.ect.model.bubblesLocationFile")
+        call read_filename(10, epar%filename_bubbles)
+        call print_arg(myrank, parname, epar%filename_bubbles)
+
+      case("forward.ect.model.absolutePermittivity")
+        read(10, 1) epar%permit0
+        call print_arg(myrank, parname, epar%permit0)
+
+      case("forward.ect.model.permittivityAir")
+        read(10, 1) epar%permit_air
+        call print_arg(myrank, parname, epar%permit_air)
+
+      case("forward.ect.model.permittivityIsolatedTube")
+        read(10, 1) epar%permit_isolated_tube
+        call print_arg(myrank, parname, epar%permit_isolated_tube)
+
+      case("forward.ect.model.permittivityOil")
+        read(10, 1) epar%permit_oil
+        call print_arg(myrank, parname, epar%permit_oil)
 
       ! ECT SOLVER parameters -------------------------------
 
