@@ -419,7 +419,7 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ipar%gamma = 0. ! soft threshold ("L1-norm", no=0.)
 
   ! MODEL DAMPING (m - m_prior).
-  ipar%alpha(1) = 1.d-9
+  ipar%alpha(1) = 1.d-11
   ipar%alpha(2) = 1.d-11
   ipar%norm_power = 2.d0
 
@@ -820,6 +820,10 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
       case("inversion.modelDamping.magn.weight")
         read(10, 1) ipar%alpha(2)
         call print_arg(myrank, parname, ipar%alpha(2))
+
+      case("inversion.modelDamping.ect.weight")
+        read(10, 1) ipar%alpha(1)
+        call print_arg(myrank, parname, ipar%alpha(1))
 
       case("inversion.modelDamping.normPower")
         read(10, 1) ipar%norm_power
