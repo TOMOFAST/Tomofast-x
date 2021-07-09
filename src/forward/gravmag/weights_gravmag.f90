@@ -76,6 +76,8 @@ subroutine weights_calculate(par, iarr, xdata, ydata, myrank, nbproc)
   real(kind=CUSTOM_REAL) :: Si
   real(kind=CUSTOM_REAL), allocatable :: sensit_column(:)
 
+  if (myrank == 0) print *, 'Calculating the depth weight...'
+
   !--------------------------------------------------------------------------------
   ! Calculate the damping weight as the normalized depth weight.
   !--------------------------------------------------------------------------------
@@ -150,6 +152,9 @@ subroutine weights_calculate(par, iarr, xdata, ydata, myrank, nbproc)
   ! | S | dm
   ! | W |
   !iarr%column_weight = 1._CUSTOM_REAL
+
+
+  if (myrank == 0) print *, 'Finished calculating the depth weight.'
 
 end subroutine weights_calculate
 
