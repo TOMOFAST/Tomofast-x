@@ -1,0 +1,201 @@
+***********************************************************************************
+* This file contains all Tomofast-x input parameters with their default values,
+* and some descriptions. The parameters can be placed in any order in the Parfile.
+* Only relevant parameters need to be specified in the Parfile.
+* See 'parfiles' folder for some specific Parfile examples.
+***********************************************************************************
+
+===================================================================================
+GLOBAL
+===================================================================================
+global.outputFolderPath     = output/kim/
+global.description          = Your parfile description
+
+===================================================================================
+MODEL GRID parameters
+===================================================================================
+# nx ny nz
+modelGrid.size                      = 1 1 192
+modelGrid.grav.file                 = data/gravmag/kim/kim_grid.txt
+modelGrid.magn.file                 = data/gravmag/kim/kim_grid.txt
+
+===================================================================================
+DATA parameters
+===================================================================================
+forward.data.grav.nData             = 3
+forward.data.magn.nData             = 3
+forward.data.grav.dataGridFile      = data/gravmag/kim/data.txt
+forward.data.magn.dataGridFile      = data/gravmag/kim/data.txt
+forward.data.grav.dataValuesFile    = data/gravmag/kim/data.txt
+forward.data.magn.dataValuesFile    = data/gravmag/kim/data.txt
+forward.data.calcDataWithoutSensit  = 0
+
+===================================================================================
+MAGNETIC FIELD constants
+===================================================================================
+forward.magneticField.inclination          = 75.d0
+forward.magneticField.declination          = 25.d0
+forward.magneticField.ambient.inclination  = 75.d0
+forward.magneticField.ambient.declination  = 25.d0
+forward.magneticField.ambient.intensity_nT = 50000.d0
+forward.magneticField.XaxisDeclination     = 0.d0
+
+===================================================================================
+DEPTH WEIGHTING
+===================================================================================
+# 1-power, 2-sens, 3-isens.
+forward.depthWeighting.type                          = 3
+# Power function: W(Z) = 1 / (Z + Z0)**(beta / 2)
+forward.depthWeighting.powerWeight.grav.beta         = 1.5d0
+forward.depthWeighting.powerWeight.grav.Z0           = 0.d0
+forward.depthWeighting.powerWeight.magn.beta         = 1.4d0
+forward.depthWeighting.powerWeight.magn.Z0           = 0.d0
+
+===================================================================================
+MATRIX COMPRESSION
+===================================================================================
+# Source to the cell distance (m).
+forward.matrixCompression.distanceThreshold = 1.d+10
+# 1.0 = full matrix
+forward.matrixCompression.compressionRate   = 1.d0
+
+===================================================================================
+PRIOR MODEL
+===================================================================================
+# 1-set value, 2-read from file.
+inversion.priorModel.type                = 1
+# Number of models for model type 2.
+inversion.priorModel.nModels             = 1
+inversion.priorModel.grav.value          = 0.d0
+inversion.priorModel.magn.value          = 1.d-9
+inversion.priorModel.grav.file           = NILL
+inversion.priorModel.magn.file           = NILL
+
+===================================================================================
+STARTING MODEL
+===================================================================================
+# 1-set value, 2-read from file.
+inversion.startingModel.type             = 1
+inversion.startingModel.grav.value       = 0.d0
+inversion.startingModel.magn.value       = 1.d-9
+inversion.startingModel.grav.file        = NILL
+inversion.startingModel.magn.file        = NILL
+
+===================================================================================
+INVERSION parameters
+===================================================================================
+inversion.nMajorIterations               = 10
+inversion.nMinorIterations               = 100
+inversion.minResidual                    = 1.d-13
+# LSQR=1
+inversion.solver                         = 1
+# Soft threshold ("L1-norm", no=0.)
+inversion.softThresholdL1                = 0.
+
+===================================================================================
+MODEL DAMPING (m - m_prior)
+===================================================================================
+inversion.modelDamping.grav.weight       = 1.d-13
+inversion.modelDamping.magn.weight       = 1.d-11
+inversion.modelDamping.normPower         = 2.d0
+
+===================================================================================
+JOINT INVERSION parameters
+===================================================================================
+inversion.joint.grav.problemWeight           = 1.d0
+inversion.joint.magn.problemWeight           = 0.d0
+inversion.joint.grav.columnWeightMultiplier  = 4.d+3
+inversion.joint.magn.columnWeightMultiplier  = 1.d0
+inversion.joint.grav.nIterSingle             = 0
+inversion.joint.magn.nIterSingle             = 0
+
+===================================================================================
+DAMPING-GRADIENT constraints
+===================================================================================
+# 1-global, 2-local.
+inversion.dampingGradient.weightType     = 1
+inversion.dampingGradient.grav.weight    = 0.d0
+inversion.dampingGradient.magn.weight    = 0.d0
+
+===================================================================================
+CROSS-GRADIENT constraints
+===================================================================================
+inversion.crossGradient.weight               = 0.d0
+inversion.crossGradient.nIterMethodOfWeight  = 0
+# 1-forward, 2-central, 3-mixed.
+inversion.crossGradient.derivativeType       = 1
+
+===================================================================================
+CLUSTERING constraints
+===================================================================================
+inversion.clustering.grav.weight      = 0.d0
+inversion.clustering.magn.weight      = 0.d0
+inversion.clustering.nClusters        = 4
+inversion.clustering.mixtureFile      = NILL
+inversion.clustering.cellWeightsFile  = NILL
+# 1-normal, 2-log.
+inversion.clustering.optimizationType = 2
+# 1-global, 2-local.
+inversion.clustering.constraintsType = 2
+
+===================================================================================
+ADMM constraints
+===================================================================================
+inversion.admm.enableADMM              = 0
+inversion.admm.nLithologies            = 5
+inversion.admm.grav.boundsFile         = NILL
+inversion.admm.magn.boundsFile         = NILL
+inversion.admm.grav.weight             = 1.d-7
+inversion.admm.magn.weight             = 1.d+5
+
+***********************************************************************************
+* ELECTRICAL CAPACITANCE TOMOGRAPHY (ECT) forward problem parameters:
+***********************************************************************************
+
+===================================================================================
+ECT GRID
+===================================================================================
+forward.ect.grid.nr        = 36
+forward.ect.grid.ntheta    = 36
+forward.ect.grid.nz        = 36
+
+===================================================================================
+ECT GEOMETRY
+===================================================================================
+forward.ect.geometry.nElectrodes            = 36
+forward.ect.geometry.nRings                 = 3
+forward.ect.geometry.kguards                = 0
+# NO=0, YES=1
+forward.ect.geometry.fixedElectrodes        = 0
+# NO=0, YES=1
+forward.ect.geometry.meshRefinement         = 0
+forward.ect.geometry.locationR1             = 0.045
+forward.ect.geometry.locationR2             = 0.06
+forward.ect.geometry.locationR3             = 0.07
+forward.ect.geometry.sensorHeight           = 0.2
+forward.ect.geometry.spaceBetweenGuards     = 0.d0
+forward.ect.geometry.spaceBetweenElectrodes = 0.d0
+
+===================================================================================
+ECT MODEL parameters
+===================================================================================
+forward.ect.model.nBubbles                  = 4
+forward.ect.model.bubblesLocationFile       = data/ECT/bubble_4vert.dat
+forward.ect.model.absolutePermittivity      = 1.
+forward.ect.model.permittivityAir           = 1.
+forward.ect.model.permittivityIsolatedTube  = 3.5
+forward.ect.model.permittivityOil           = 2.
+
+===================================================================================
+ECT SOLVER parameters
+===================================================================================
+# 0=NO, YES>0
+forward.ect.solver.precond               = 1
+forward.ect.solver.precond.relaxOmega    = 0.8d0
+# 1=L2, 2=max
+forward.ect.solver.normType              = 1
+forward.ect.solver.nMaxIterations        = 1000
+forward.ect.solver.outputFrequencyIter   = 20
+forward.ect.solver.tolerance             = 1.d-12
+
+===================================================================================
