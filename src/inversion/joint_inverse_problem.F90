@@ -231,7 +231,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     allocate(this%d_RHS(3 * par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   if (.not. allocated(this%column_norm)) &
-    allocate(this%column_norm(2 * par%nelements), source=0._CUSTOM_REAL, stat=ierr)
+    allocate(this%column_norm(2 * par%nelements), source=1._CUSTOM_REAL, stat=ierr)
 
   if (par%admm_type > 0) then
     if (.not. allocated(this%x0_ADMM)) &
@@ -274,7 +274,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
   type(t_damping) :: damping
   type(t_damping_gradient) :: damping_gradient
   type(t_parameters_lsqr) :: par_lsqr
-  integer :: i, j, k, param_shift(2)
+  integer :: i, j, k, param_shift(2), nl
   ! Adjusted problem weights for joint inversion.
   real(kind=CUSTOM_REAL) :: problem_weight_adjusted(2), cost
   logical :: solve_gravity_only
@@ -288,6 +288,8 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full1(:)
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full2(:)
   type(t_parallel_tools) :: pt
+
+  logical :: SOLVE_PROBLEM(2)
 
   ! The number of times this subroutine has been called.
   ! This is effectively the major loop iteration number.
@@ -313,6 +315,10 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
     problem_weight_adjusted = par%problem_weight
   endif
 
+  do i = 1, 2
+    SOLVE_PROBLEM(i) = (par%problem_weight(i) > 0.d0)
+  enddo
+
   param_shift(1) = 0
   param_shift(2) = par%nelements
 
@@ -320,6 +326,15 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
 
   ! Loop over joint problems.
   do i = 1, 2
+
+    ! Skip the problem with zero problem weight (single inversion).
+    if (.not. SOLVE_PROBLEM(i)) then
+      nl = par%ndata(i)
+      if (this%add_damping) nl = nl + par%nelements_total
+      if (this%add_damping_gradient) nl = nl + 3 * par%nelements_total
+      call this%matrix%add_empty_rows(nl, myrank)
+      cycle
+    endif
 
     if (myrank == 0 .and. i > 1) print *, '-------------------------------------------------------'
 
@@ -513,10 +528,11 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
     call rescale_model(delta_model, this%column_norm, 2 * par%nelements)
   endif
 
-  call rescale_model(delta_model(1:par%nelements), arr(1)%column_weight, par%nelements)
-  call rescale_model(delta_model(par%nelements + 1:), arr(2)%column_weight, par%nelements)
-  
+  if (SOLVE_PROBLEM(1)) call rescale_model(delta_model(1:par%nelements), arr(1)%column_weight, par%nelements)
+  if (SOLVE_PROBLEM(2)) call rescale_model(delta_model(par%nelements + 1:), arr(2)%column_weight, par%nelements)
+
   !--------------------------------------------------------------------------------
+  ! Writing grav/mag prior and posterior variance.
   ! TODO: Move to a new function.
   !--------------------------------------------------------------------------------
   if (ncalls == 1 .or. ncalls == par%ninversions) then
@@ -524,20 +540,22 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
     this%matrix%lsqr_var = sqrt(this%matrix%lsqr_var)
 
     ! Rescale with depth weight.
-    call rescale_model(this%matrix%lsqr_var(1:par%nelements), arr(1)%column_weight, par%nelements)
-    call rescale_model(this%matrix%lsqr_var(par%nelements + 1:), arr(2)%column_weight, par%nelements)
-    
+    if (SOLVE_PROBLEM(1)) call rescale_model(this%matrix%lsqr_var(1:par%nelements), arr(1)%column_weight, par%nelements)
+    if (SOLVE_PROBLEM(2)) call rescale_model(this%matrix%lsqr_var(par%nelements + 1:), arr(2)%column_weight, par%nelements)
+
     if (myrank == 0) then
       ! Allocate array for the whole vector.
-      allocate(lsqr_var_full1(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-      allocate(lsqr_var_full2(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+      if (SOLVE_PROBLEM(1)) allocate(lsqr_var_full1(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+      if (SOLVE_PROBLEM(2)) allocate(lsqr_var_full2(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
       if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_solve!", myrank, ierr)
     endif
-    
+
     ! Gather full (parallel) vector on the master.
-    call pt%get_full_array(this%matrix%lsqr_var(1:par%nelements), par%nelements, lsqr_var_full1, .false., myrank, nbproc)
-    call pt%get_full_array(this%matrix%lsqr_var(par%nelements + 1:), par%nelements, lsqr_var_full2, .false., myrank, nbproc)
-    
+    if (SOLVE_PROBLEM(1)) &
+      call pt%get_full_array(this%matrix%lsqr_var(1:par%nelements), par%nelements, lsqr_var_full1, .false., myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) &
+      call pt%get_full_array(this%matrix%lsqr_var(par%nelements + 1:), par%nelements, lsqr_var_full2, .false., myrank, nbproc)
+
     if (myrank == 0) then
     ! Writing variance by master CPU.
 
@@ -546,23 +564,33 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
       else
         filename = "/lsqr_std_posterior"
       endif
-    
-      ! Writing grav/mag variance to file.
-      open(27, file=trim(trim(path_output)//trim(filename)//"_grav.txt"), access='stream', form='formatted', &
-           status='unknown', action='write')
-      open(28, file=trim(trim(path_output)//trim(filename)//"_mag.txt"), access='stream', form='formatted', &
-           status='unknown', action='write')
 
-      do i = 1, par%nelements_total
-        write (27, *) lsqr_var_full1(i) ! grav
-        write (28, *) lsqr_var_full2(i) ! mag
-      enddo
+      if (SOLVE_PROBLEM(1)) then
+      ! Writing grav variance to file.
+        open(27, file=trim(trim(path_output)//trim(filename)//"_grav.txt"), access='stream', form='formatted', &
+             status='unknown', action='write')
 
-      close(27)
-      close(28)
-      
-      deallocate(lsqr_var_full1)
-      deallocate(lsqr_var_full2)
+        do i = 1, par%nelements_total
+          write (27, *) lsqr_var_full1(i)
+        enddo
+
+        close(27)
+        deallocate(lsqr_var_full1)
+      endif
+
+      if (SOLVE_PROBLEM(2)) then
+      ! Writing mag variance to file.
+        open(28, file=trim(trim(path_output)//trim(filename)//"_mag.txt"), access='stream', form='formatted', &
+             status='unknown', action='write')
+
+        do i = 1, par%nelements_total
+          write (28, *) lsqr_var_full2(i)
+        enddo
+
+        close(28)
+        deallocate(lsqr_var_full2)
+      endif
+
     endif
   endif
 

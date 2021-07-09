@@ -10,7 +10,7 @@ MODEL GRID parameters
 # nx ny nz
 modelGrid.size                      = 2 128 32
 modelGrid.grav.file                 = data/gravmag/mansf_slice/true_model_grav.txt
-modelGrid.magn.file                 = data/gravmag/mansf_slice/true_model_grav.txt
+#modelGrid.magn.file                 = data/gravmag/mansf_slice/true_model_grav.txt
 
 ===================================================================================
 DATA parameters
@@ -49,7 +49,7 @@ inversion.minResidual               = 1.d-13
 ===================================================================================
 MODEL DAMPING (m - m_prior)
 ===================================================================================
-inversion.modelDamping.grav.weight  = 2.d-8
+inversion.modelDamping.grav.weight  = 2.d-11
 
 ===================================================================================
 JOINT INVERSION parameters
