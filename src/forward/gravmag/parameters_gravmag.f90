@@ -114,7 +114,7 @@ function parameters_base_get_nnz_compressed(this) result(nnz)
   nnz = int(this%compression_rate * this%nelements * this%ndata) + 1
 
   ! Sanity check.
-  if (nnz <= 1) then
+  if (this%ndata > 0 .and. nnz <= 1) then
     print *, "Bad nnz value in get_nnz_compressed!"
     stop
   endif

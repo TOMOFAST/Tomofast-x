@@ -1,7 +1,7 @@
 ===================================================================================
 GLOBAL
 ===================================================================================
-global.outputFolderPath     = output/kim/
+global.outputFolderPath     = output/mansf_slice/
 global.description          = Gravity inversion with ADMM constraints (Mansfield area)
 
 ===================================================================================
@@ -10,17 +10,13 @@ MODEL GRID parameters
 # nx ny nz
 modelGrid.size                      = 2 128 32
 modelGrid.grav.file                 = data/gravmag/mansf_slice/true_model_grav.txt
-#modelGrid.magn.file                 = data/gravmag/mansf_slice/true_model_grav.txt
 
 ===================================================================================
 DATA parameters
 ===================================================================================
 forward.data.grav.nData             = 256
-forward.data.magn.nData             = 256
 forward.data.grav.dataGridFile      = data/gravmag/mansf_slice/data_grid.txt
-forward.data.magn.dataGridFile      = data/gravmag/mansf_slice/data_grid.txt
 forward.data.grav.dataValuesFile    = output/mansf_slice/grav_calc_read_data.txt
-forward.data.magn.dataValuesFile    = output/mansf_slice/grav_calc_read_data.txt
 
 ===================================================================================
 DEPTH WEIGHTING

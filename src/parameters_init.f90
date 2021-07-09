@@ -311,46 +311,6 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! GLOBAL parameters.
   path_output = "output/test/"
 
-  ! ECT GRID parameters.
-  epar%dims%nr = 36
-  epar%dims%ntheta = 36
-  epar%dims%nz = 36
-
-  ! ECT GEOMETRY parameters.
-  epar%nel = 36
-  epar%nrings = 3
-  epar%dims%kguards = 0
-  epar%ifixed_elecgeo = 0 ! NO=0, YES=1
-  epar%irefine = 0        ! NO=0, YES=1
-  epar%sens%radiusin = 0.045d0
-  epar%sens%radiusout = 0.06d0
-  epar%sens%radiusoutout = 0.07d0
-  epar%sens%heicyl = 0.2d0
-  epar%sens%space_elec_guards = 0.d0
-  epar%sens%space_electrodes = 0.d0
-
-  ! ECT MODEL parameters.
-  epar%num_bubbles = 4
-  epar%filename_bubbles = "data/ECT/bubble_4vert.dat"
-  epar%permit0 = 1.d0
-  epar%permit_air = 1.d0
-  epar%permit_isolated_tube = 3.5d0
-  epar%permit_oil = 2.d0
-
-  ! ECT SOLVER parameters.
-  epar%linear_solver = LINSOLV_PCG ! Not exposed to Parfile.
-  epar%iprecond = 1 ! 0=NO, YES>0
-  epar%omega1 = 0.8d0
-  epar%itypenorm = 1 ! 1=L2, 2=max
-  epar%itmax = 1000
-  epar%output_frequency = 20
-  epar%tol = 1.d-12
-
-  ! MULTIGRID parameters.
-  ! Removed multigrid, keep this not to change a lot of code.
-  epar%ilevel_coarse = 1
-  epar%coarse_solver = LINSOLV_PCG
-
   ! MODEL GRID parameters.
   gpar%nx = 0
   gpar%ny = 0
@@ -458,6 +418,49 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ipar%rho_ADMM(1) = 1.d-7
   ipar%rho_ADMM(2) = 1.d+5
 
+  !***********************************************
+  ! ECT parameters:
+  !***********************************************
+  ! ECT GRID parameters.
+  epar%dims%nr = 36
+  epar%dims%ntheta = 36
+  epar%dims%nz = 36
+
+  ! ECT GEOMETRY parameters.
+  epar%nel = 36
+  epar%nrings = 3
+  epar%dims%kguards = 0
+  epar%ifixed_elecgeo = 0 ! NO=0, YES=1
+  epar%irefine = 0        ! NO=0, YES=1
+  epar%sens%radiusin = 0.045d0
+  epar%sens%radiusout = 0.06d0
+  epar%sens%radiusoutout = 0.07d0
+  epar%sens%heicyl = 0.2d0
+  epar%sens%space_elec_guards = 0.d0
+  epar%sens%space_electrodes = 0.d0
+
+  ! ECT MODEL parameters.
+  epar%num_bubbles = 4
+  epar%filename_bubbles = "data/ECT/bubble_4vert.dat"
+  epar%permit0 = 1.d0
+  epar%permit_air = 1.d0
+  epar%permit_isolated_tube = 3.5d0
+  epar%permit_oil = 2.d0
+
+  ! ECT SOLVER parameters.
+  epar%linear_solver = LINSOLV_PCG ! Not exposed to Parfile.
+  epar%iprecond = 1 ! 0=NO, YES>0
+  epar%omega1 = 0.8d0
+  epar%itypenorm = 1 ! 1=L2, 2=max
+  epar%itmax = 1000
+  epar%output_frequency = 20
+  epar%tol = 1.d-12
+
+  ! MULTIGRID parameters.
+  ! Removed multigrid, keep this not to change a lot of code.
+  epar%ilevel_coarse = 1
+  epar%coarse_solver = LINSOLV_PCG
+
 end subroutine set_default_parameters
 
 !===================================================================================
@@ -481,13 +484,15 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
   integer :: symbol_index, i
   integer :: ios
 
-  ! The name of the Parfile can be passed in via the command line,
-  ! if no argument is given, the default value is used.
-  call get_command_argument(2,parfile_name)
-  if (len_trim(parfile_name) == 0) parfile_name = "parfiles/Parfile_MASTER.txt"
+  ! The name of the Parfile should be passed in via the command line.
+  call get_command_argument(2, parfile_name)
+  if (len_trim(parfile_name) == 0) then
+    call exit_MPI("No Parfile supplied!", myrank, 0)
+    stop
+  endif
 
-  open(unit=10,file=parfile_name,status='old',iostat=itmp,action='read')
-  if (itmp /= 0) call exit_MPI("Parfile """ // trim(parfile_name) // """ cannot be opened!",myrank,15)
+  open(unit=10, file=parfile_name, status='old', iostat=itmp, action='read')
+  if (itmp /= 0) call exit_MPI("Parfile """ // trim(parfile_name) // """ cannot be opened!", myrank, 0)
 
   !---------------------------------------------------------------------------------
   ! Reading parameter values from Parfile.
