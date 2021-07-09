@@ -147,9 +147,11 @@ subroutine inversion_solve(this, par, arr, myrank, nbproc)
   type(t_damping) :: damping
   type(t_sparse_matrix) :: matrix_dummy
 
+  real(kind=CUSTOM_REAL), parameter :: problem_weight = 1.d0
+
   logical, parameter :: USE_LEGACY_SENSIT_MATRIX = .true.
 
-  call sensit%initialize(par%ndata(1), par%nelements, par%problem_weight(1))
+  call sensit%initialize(par%ndata(1), par%nelements, problem_weight)
 
   ! Add compressed sparse sensitivity matrix in CSR format.
   call sensit%add(this%matrix, this%b_RHS, 0, arr%sensitivity, matrix_dummy, &
@@ -158,7 +160,7 @@ subroutine inversion_solve(this, par, arr, myrank, nbproc)
   if (myrank == 0) print *, 'nel = ', this%matrix%get_number_elements()
 
   ! Add damping.
-  call damping%initialize(par%nelements, par%alpha(1), par%problem_weight(1), par%norm_power)
+  call damping%initialize(par%nelements, par%alpha(1), problem_weight, par%norm_power)
   call damping%add(this%matrix, this%b_RHS, arr%column_weight, arr%damping_weight, &
                    arr%model, arr%model_prior, 0, myrank, nbproc)
 
