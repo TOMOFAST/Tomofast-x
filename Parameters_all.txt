@@ -8,26 +8,26 @@
 ===================================================================================
 GLOBAL
 ===================================================================================
-global.outputFolderPath     = output/kim/
+global.outputFolderPath     = output/test/
 global.description          = Your parfile description
 
 ===================================================================================
 MODEL GRID parameters
 ===================================================================================
 # nx ny nz
-modelGrid.size                      = 1 1 192
-modelGrid.grav.file                 = data/gravmag/kim/kim_grid.txt
-modelGrid.magn.file                 = data/gravmag/kim/kim_grid.txt
+modelGrid.size                      = 0 0 0
+modelGrid.grav.file                 = None
+modelGrid.magn.file                 = None
 
 ===================================================================================
 DATA parameters
 ===================================================================================
-forward.data.grav.nData             = 3
-forward.data.magn.nData             = 3
-forward.data.grav.dataGridFile      = data/gravmag/kim/data.txt
-forward.data.magn.dataGridFile      = data/gravmag/kim/data.txt
-forward.data.grav.dataValuesFile    = data/gravmag/kim/data.txt
-forward.data.magn.dataValuesFile    = data/gravmag/kim/data.txt
+forward.data.grav.nData             = 0
+forward.data.magn.nData             = 0
+forward.data.grav.dataGridFile      = None
+forward.data.magn.dataGridFile      = None
+forward.data.grav.dataValuesFile    = None
+forward.data.magn.dataValuesFile    = None
 forward.data.calcDataWithoutSensit  = 0
 
 ===================================================================================
@@ -68,8 +68,8 @@ inversion.priorModel.type                = 1
 inversion.priorModel.nModels             = 1
 inversion.priorModel.grav.value          = 0.d0
 inversion.priorModel.magn.value          = 1.d-9
-inversion.priorModel.grav.file           = NILL
-inversion.priorModel.magn.file           = NILL
+inversion.priorModel.grav.file           = None
+inversion.priorModel.magn.file           = None
 
 ===================================================================================
 STARTING MODEL
@@ -78,8 +78,8 @@ STARTING MODEL
 inversion.startingModel.type             = 1
 inversion.startingModel.grav.value       = 0.d0
 inversion.startingModel.magn.value       = 1.d-9
-inversion.startingModel.grav.file        = NILL
-inversion.startingModel.magn.file        = NILL
+inversion.startingModel.grav.file        = None
+inversion.startingModel.magn.file        = None
 
 ===================================================================================
 INVERSION parameters
@@ -132,20 +132,20 @@ CLUSTERING constraints
 inversion.clustering.grav.weight      = 0.d0
 inversion.clustering.magn.weight      = 0.d0
 inversion.clustering.nClusters        = 4
-inversion.clustering.mixtureFile      = NILL
-inversion.clustering.cellWeightsFile  = NILL
+inversion.clustering.mixtureFile      = None
+inversion.clustering.cellWeightsFile  = None
 # 1-normal, 2-log.
 inversion.clustering.optimizationType = 2
 # 1-global, 2-local.
-inversion.clustering.constraintsType = 2
+inversion.clustering.constraintsType  = 2
 
 ===================================================================================
 ADMM constraints
 ===================================================================================
 inversion.admm.enableADMM              = 0
 inversion.admm.nLithologies            = 5
-inversion.admm.grav.boundsFile         = NILL
-inversion.admm.magn.boundsFile         = NILL
+inversion.admm.grav.boundsFile         = None
+inversion.admm.magn.boundsFile         = None
 inversion.admm.grav.weight             = 1.d-7
 inversion.admm.magn.weight             = 1.d+5
 ===================================================================================
