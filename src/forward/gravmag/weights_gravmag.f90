@@ -72,9 +72,7 @@ subroutine weights_calculate(par, iarr, xdata, ydata, myrank, nbproc)
   real(kind=CUSTOM_REAL), intent(in) :: xdata(:), ydata(:)
   integer, intent(in) :: myrank, nbproc
   type(t_inversion_arrays), intent(inout) :: iarr
-  integer :: i, ierr
-  real(kind=CUSTOM_REAL) :: Si
-  real(kind=CUSTOM_REAL), allocatable :: sensit_column(:)
+  integer :: i
 
   if (myrank == 0) print *, 'Calculating the depth weight...'
 
@@ -101,26 +99,16 @@ subroutine weights_calculate(par, iarr, xdata, ydata, myrank, nbproc)
 
   else if (par%depth_weighting_type == 3) then
 
-    allocate(sensit_column(iarr%ndata), source=0._CUSTOM_REAL, stat=ierr)
-
     ! Method III: scale model by the integrated sensitivities, see
     ! [1] (!!) Yaoguo Li, Douglas W. Oldenburg., Joint inversion of surface and three-component borehole magnetic data, 2000.
     ! [2] Portniaguine and Zhdanov (2002).
     ! For discussion on different weightings see also:
     !   [1] M. Pilkington, Geophysics, vol. 74, no. 1, 2009.
     !   [2] F. Cella and M. Fedi, Geophys. Prospecting, 2012, 60, 313-336.
-    do i = 1, par%nelements
-      call iarr%matrix_sensit%get_column(i, sensit_column)
 
-      ! Integrated sensitivity matrix (diagonal).
-      Si = norm2(sensit_column)
-
-      iarr%damping_weight(i) = sqrt(Si)
-
-      ! print *, i,  iarr%damping_weight(i)
-    enddo
-
-    deallocate(sensit_column)
+    ! Integrated sensitivity matrix (diagonal).
+    call iarr%matrix_sensit%get_integrated_sensit(iarr%damping_weight)
+    iarr%damping_weight = sqrt(iarr%damping_weight)
 
   else
     call exit_MPI("Unknown depth weighting type!", myrank, 0)
