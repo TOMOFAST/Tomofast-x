@@ -105,7 +105,7 @@ subroutine calculate_sensitivity(par, grid, data, sensit_matrix, distance_thresh
   select type(par)
   class is (t_parameters_mag)
 
-    if (myrank == 0) print *, 'Calculating MAGNETISM sensitivity kernel...'
+    if (myrank == 0) print *, 'Calculating MAGNETIC sensitivity kernel...'
 
     ! Precompute common parameters.
     call mag_field%initialize(par%mi, par%md, par%fi, par%fd, par%theta, par%intensity)
@@ -212,7 +212,7 @@ subroutine calc_data_directly(par, model, data, myrank)
   select type(par)
   class is (t_parameters_mag)
 
-    if (myrank == 0) print *, 'Computing MAGNETISM data directly...'
+    if (myrank == 0) print *, 'Computing MAGNETIC data directly...'
 
     ! Precompute common parameters.
     call mag_field%initialize(par%mi, par%md, par%fi, par%fd, par%theta, par%intensity)
