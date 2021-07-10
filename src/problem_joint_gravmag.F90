@@ -185,7 +185,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   ! Distribute the model and grid among CPUs.
   if (SOLVE_PROBLEM(1)) call iarr(1)%model%distribute(myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call iarr(2)%model%distribute(myrank, nbproc)
-  
+
   ! (I2) SETTING ADMM BOUNDS --------------------------------------------------------------
 
   if (ipar%admm_type > 0) then
@@ -393,8 +393,10 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
       ! Store final models from the single (non-joint) inversions.
       do i = 1, 2
-        if (ipar%single_problem_complete(i, it) .and. .not. ipar%single_problem_complete(i, it - 1)) then
-          iarr(i)%model%val_final0 = iarr(i)%model%val
+        if (SOLVE_PROBLEM(i)) then
+          if (ipar%single_problem_complete(i, it) .and. .not. ipar%single_problem_complete(i, it - 1)) then
+            iarr(i)%model%val_final0 = iarr(i)%model%val
+          endif
         endif
       enddo
 
@@ -464,21 +466,21 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   !******************************
 
 #ifndef SUPPRESS_OUTPUT
-    if (WRITE_DAMPING_WEIGHT) then
-      ! Write the damping weight.
-      if (SOLVE_PROBLEM(1)) iarr(1)%model%val = iarr(1)%damping_weight
-      if (SOLVE_PROBLEM(2)) iarr(2)%model%val = iarr(2)%damping_weight
+  if (WRITE_DAMPING_WEIGHT) then
+    ! Write the damping weight.
+    if (SOLVE_PROBLEM(1)) iarr(1)%model%val = iarr(1)%damping_weight
+    if (SOLVE_PROBLEM(2)) iarr(2)%model%val = iarr(2)%damping_weight
 
-      if (SOLVE_PROBLEM(1)) call iarr(1)%model%write('damping_weight_grav_', .true., myrank, nbproc)
-      if (SOLVE_PROBLEM(2)) call iarr(2)%model%write('damping_weight_mag_', .true., myrank, nbproc)
-    endif
+    if (SOLVE_PROBLEM(1)) call iarr(1)%model%write('damping_weight_grav_', .true., myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call iarr(2)%model%write('damping_weight_mag_', .true., myrank, nbproc)
+  endif
 #endif
 
 #ifndef SUPPRESS_OUTPUT
-    if (WRITE_SENSITIVITY) then
-      ! Write a root mean square sensitivity (integrated sensitivity).
-      call write_sensitivity_matrix(ipar%nelements, iarr, SOLVE_PROBLEM, myrank, nbproc)
-    endif
+  if (WRITE_SENSITIVITY) then
+    ! Write a root mean square sensitivity (integrated sensitivity).
+    call write_sensitivity_matrix(ipar%nelements, iarr, SOLVE_PROBLEM, myrank, nbproc)
+  endif
 #endif
 
 end subroutine solve_problem_joint_gravmag
@@ -529,6 +531,8 @@ subroutine calculate_model_costs(ipar, iarr, cost_model, solve_problem, myrank, 
   real(kind=CUSTOM_REAL), intent(out) :: cost_model(2)
 
   integer :: i
+
+  cost_model = 0.d0
 
   do i = 1, 2
     if (solve_problem(i)) then
