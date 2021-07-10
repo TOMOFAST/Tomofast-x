@@ -97,9 +97,10 @@ module sparse_matrix
     procedure, public, pass :: get_value => sparse_matrix_get_value
     procedure, public, pass :: get_line => sparse_matrix_get_line
     procedure, public, pass :: get_column => sparse_matrix_get_column
+    procedure, public, pass :: get_integrated_sensit => sparse_matrix_get_integrated_sensit
 
     procedure, public, pass :: allocate_variance_array => sparse_matrix_allocate_variance_array
-    
+
     procedure, private, pass :: validate => sparse_matrix_validate
 
     procedure, private, pass :: allocate_arrays => sparse_matrix_allocate_arrays
@@ -399,6 +400,31 @@ pure subroutine sparse_matrix_get_column(this, column, b)
   enddo
 
 end subroutine sparse_matrix_get_column
+
+!============================================================================
+! Calculates the integrated sensitivity (norm of columns).
+! The output dimension = the number of columns.
+!============================================================================
+pure subroutine sparse_matrix_get_integrated_sensit(this, b)
+  class(t_sparse_matrix), intent(in) :: this
+  real(kind=CUSTOM_REAL), intent(out) :: b(:)
+  integer :: i, j, k
+
+  b = 0._CUSTOM_REAL
+
+  do i = 1, this%nl
+!IBM* ASSERT (NODEPS,ITERCNT(1000))
+!DIR$ IVDEP
+    do k = this%ijl(i), this%ijl(i + 1) - 1
+      ! Column number.
+      j = this%ija(k)
+      ! The sum of squared column elements.
+      b(j) = b(j) + this%sa(k) * this%sa(k)
+    enddo
+  enddo
+  b = sqrt(b)
+
+end subroutine sparse_matrix_get_integrated_sensit
 
 !================================================================================
 ! Computes the (i,j)-element of the product between

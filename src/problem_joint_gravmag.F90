@@ -480,7 +480,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 #ifndef SUPPRESS_OUTPUT
   if (WRITE_SENSITIVITY) then
     ! Write a root mean square sensitivity (integrated sensitivity).
-    call write_sensitivity_matrix(ipar%nelements, iarr, SOLVE_PROBLEM, myrank, nbproc)
+    call write_sensitivity_matrix(iarr, SOLVE_PROBLEM, myrank, nbproc)
   endif
 #endif
 
@@ -489,30 +489,16 @@ end subroutine solve_problem_joint_gravmag
 !========================================================================================
 ! Write a root mean square sensitivity (integrated sensitivity) to a file.
 !========================================================================================
-subroutine write_sensitivity_matrix(nelements, iarr, solve_problem, myrank, nbproc)
-  integer, intent(in) :: nelements
+subroutine write_sensitivity_matrix(iarr, solve_problem, myrank, nbproc)
   type(t_inversion_arrays), intent(inout) :: iarr(2)
   logical, intent(in) :: solve_problem(2)
   integer, intent(in) :: myrank, nbproc
 
-  integer :: i, j, ierr
-  real(kind=CUSTOM_REAL), allocatable :: sensit_column(:)
+  integer :: i
 
   ! Loop over problems.
-  do j = 1, 2
-    if (solve_problem(j)) then
-      allocate(sensit_column(iarr(j)%ndata), source=0._CUSTOM_REAL, stat=ierr)
-
-      do i = 1, nelements
-        ! Extract a column from the sensitivity matrix stored in sparse (CSR) format.
-        call iarr(j)%matrix_sensit%get_column(i, sensit_column)
-
-        ! Average contribution of all data to the i-th model cell.
-        iarr(j)%model%val(i) = norm2(sensit_column)
-      enddo
-
-      deallocate(sensit_column)
-    endif
+  do i = 1, 2
+    if (solve_problem(i)) call iarr(i)%matrix_sensit%get_integrated_sensit(iarr(i)%model%val)
   enddo
 
    ! Write sensitivity to files.
