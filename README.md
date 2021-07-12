@@ -1,96 +1,92 @@
 # Tomofast-x  v.1.1
 
-Geophysical 3D potential field joint and constrained inversion code.
+Geophysical 3D potential field joint and constrained parallel inversion code.  
 Vitaliy Ogarko, Jeremie Giraud, Roland Martin.
 
-TOMOFAST-x is inversion platform to run single domain or joint inversion (gravity and magnetic data). It can use local weighting of gradient regularization function, global and local petrophysical constraints (Gaussian mixture model and multiple disjoint bound constraints).
-TOMOFAST-x is can run in parallel on laptop and supercomputers. It is licensed under the do-what-the-fuck-license-TODO: Creative Commons, the kind that allows commercial use but forces users to acknowledge usage of Tomofast-x and to cite the relevant work. 
+Tomofast-x is 3D parallel inversion platform to run single domain or joint inversion (gravity and magnetic data).
+It can use local weighting of gradient regularization function, global and local petrophysical constraints (Gaussian mixture model and multiple disjoint bound constraints).
+Tomofast-x can run in parallel on laptop and supercomputers, using distributed memory systems.
 
 The source code is a companion to the publication detailing Tomofast-x geophysical aspects and examples of utilisation and realistic dataset:
-J. Giraud, V. Ogarko, R. Martin, M. Lindsay, M. Jessell, 2020: Structural, petrophysical and geological constraints in potential field inversion using the Tomofast-x open-source code, Geoscientific Model Development Discussions [to be submitted soon...]. 
-
-Companion datasets to previous publications using Tomofast-x are provided in: 
-<Zenodo Link on Smart Gradient Paper - done, only to copy and paste> 
-<Zenodo Link on Mansfield example - done, only to copy and paste>  
-<Zenodo Link on Mansfield example - > 
-
-## Getting Started
-
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. 
-The source code can be downloaded from a repository at: https://github.com/TOMOFAST/
-Details about the utilisation of Tomofast-x are provided in the User Manual. 
-
-### Prerequisites
-
-To be able to compile the code you need to have installed gcc v.4.9 or more recent. 
-The example contained in the archive requires less than 1 Gb of memory to install, store and run. 
+J. Giraud, V. Ogarko, R. Martin, M. Lindsay, M. Jessell, 2021: 
+Structural, petrophysical and geological constraints in potential field inversion using the Tomofast-x open-source code, 
+Geoscientific Model Development Discussions, https://doi.org/10.5194/gmd-2021-14
 
 
-### Compiling
+If you are using the code please cite the following papers:
 
-The makefile is contained in the root folder and should be used to compile Tomofast-x. Compiling the code is a necessary step to be able to run inversions. 
+- V. Ogarko, J. Giraud, R. Martin, and M. Jessell (2021), 
+"Disjoint interval bound constraints using the alternating direction method of multipliers for geologically constrained inversion: Application to gravity data," GEOPHYSICS 86: G1-G11.
+https://doi.org/10.1190/geo2019-0633.1
 
-
-## Running the test
-
-The data contained in the archive comprises all the necessary information and files to run successfully. 
-The following is true if all the parameters are kept unchanged. 
-Input data is contained in folder : /.../TODO
-Output data is stored in folder: /.../TODO
-The parameter file (called "parfile") which contains all the paramters of the inversion, is stored in folder: /.../TODO
-Inversion can be run in the folder the archive was extracted in by executing the following command: [...]
-
-Detailed information to run Tomofast-x can be found in the User Manual. 
+- J. Giraud, V. Ogarko, R. Martin, M. Lindsay, M. Jessell (2021), 
+"Structural, petrophysical and geological constraints in potential field inversion using the Tomofast-x open-source code",
+Geoscientific Model Development Discussions, https://doi.org/10.5194/gmd-2021-14
 
 
-## To run in parallel on local computer (example)
-mpirun -np 4 ./tomofast3D -j ./parfiles/Parfile_MASTER.txt
+### Compiling and running
+
+To compile the code you need: gcc v.4.9 or more recent, and the MPI library (such as OpenMPI).
+
+The makefile is contained in the root folder and should be used to compile Tomofast-x. Compiling the code is a necessary step to be able to run inversions.  
+To compile the code run the make comand in the code directory as:  
+```shell
+make
+```shell
+
+To run the code with your parameter file:
+```shell
+./tomofast3D -j <Parfile path>
+```shell
+
+For the parallel run on you machine execute:
+```shell
+mpirun -np <number CPUs> -j <Parfile path>
+```shell
+
+To run unit tests (serial and parallel):
+```shell
+./runtests.sh
+mpirun -np 3 ./runtests.sh
+```shell
+
+### Running the examples
+
+Input data is contained in folder ``data``.  
+The input parameter file (Parfile) which contains all the paramters of the inversion, is stored in folder: ``parfiles``.  
+Output data is stored in folder ``output``. A detailed path is specified in the Parfile parameter ``global.outputFolderPath``.
 
 
-### And coding style tests [remove?]
+To run the test example:
+```shell
+./tomofast3D -j ./parfiles/Parfile_mansf_slice.txt
+```shell
 
-Explain what these tests test and why
+### Publications using the code
 
-```
-Give an example. TODO OR TO REMOVE SECTION?
-```
+- J. Giraud, V. Ogarko, R. Martin, M. Lindsay, M. Jessell (2021), 
+"Structural, petrophysical and geological constraints in potential field inversion using the Tomofast-x open-source code",
+Geoscientific Model Development Discussions, https://doi.org/10.5194/gmd-2021-14
 
-## Deployment
-
-Add additional notes about how to deploy this on a live system
-
-
-## Built With
-
-* [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
-
-## Contributing
-
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
+- V. Ogarko, J. Giraud, R. Martin, and M. Jessell (2021), 
+"Disjoint interval bound constraints using the alternating direction method of multipliers for geologically constrained inversion: Application to gravity data," GEOPHYSICS 86: G1-G11.
+https://doi.org/10.1190/geo2019-0633.1
 
 
-## Versioning [REMOVE?]
 
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
+### Authors and contacts 
 
-
-## Authors and contacts 
-
-Vitaliy Ogarko, Jeremie Giraud, Roland Martin. 
-TODO: do we add a personal page or leave it like that? do we give email adresses? 
-
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project 
-[?REMOVE THE ABOVE LINE?]
+Vitaliy Ogarko, Jeremie Giraud, Roland Martin.  
+For questions, contact Vitaliy Ogarko via vogarko@gmail.com
 
 
-## License
+### License
 
-This project is licensed under the do-what-the-fuck-license - see the [LICENSE.md](LICENSE.md) file for details
-[TODO: LICENSE.md FILE]
+Tomofast-x code is licensed under the Creative Commons license, 
+the kind that allows commercial use but forces users to acknowledge usage of Tomofast-x and to cite the relevant work.
 
-## Acknowledgments
+
+### Acknowledgments
 
 The authors acknowledge Mark Jessell, Mark Lindsay, and Dimitri Komatitsch.
 
