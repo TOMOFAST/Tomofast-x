@@ -32,23 +32,23 @@ The makefile is contained in the root folder and should be used to compile Tomof
 To compile the code run the make comand in the code directory as:  
 ```shell
 make
-```shell
+```
 
 To run the code with your parameter file:
 ```shell
 ./tomofast3D -j <Parfile path>
-```shell
+```
 
 For the parallel run on you machine execute:
 ```shell
 mpirun -np <number CPUs> -j <Parfile path>
-```shell
+```
 
 To run unit tests (serial and parallel):
 ```shell
 ./runtests.sh
 mpirun -np 3 ./runtests.sh
-```shell
+```
 
 ### Running the examples
 
@@ -60,7 +60,7 @@ Output data is stored in folder ``output``. A detailed path is specified in the 
 To run the test example:
 ```shell
 ./tomofast3D -j ./parfiles/Parfile_mansf_slice.txt
-```shell
+```
 
 ### Publications using the code
 
