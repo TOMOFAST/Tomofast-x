@@ -29,7 +29,7 @@ Geoscientific Model Development Discussions, https://doi.org/10.5194/gmd-2021-14
 To compile the code you need: gcc v.4.9 or more recent, and the MPI library (such as OpenMPI).
 
 The makefile is contained in the root folder and should be used to compile Tomofast-x. Compiling the code is a necessary step to be able to run inversions.  
-To compile the code run the make comand in the code directory as:  
+To compile the code run the make command in the code directory as:  
 ```shell
 make
 ```
