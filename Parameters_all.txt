@@ -3,6 +3,8 @@
 * and some descriptions. The parameters can be placed in any order in the Parfile.
 * Only relevant parameters need to be specified in the Parfile.
 * See 'parfiles' folder for some specific Parfile examples.
+*
+* For summary on the Tomofast-x features see https://doi.org/10.5194/gmd-2021-14 
 ***********************************************************************************
 
 ===================================================================================
@@ -111,7 +113,20 @@ inversion.joint.grav.nIterSingle             = 0
 inversion.joint.magn.nIterSingle             = 0
 
 ===================================================================================
+DISJOINT INTERVAL BOUND constraints (ADMM)
+https://doi.org/10.1190/geo2019-0633.1
+===================================================================================
+inversion.admm.enableADMM              = 0
+inversion.admm.nLithologies            = 5
+inversion.admm.grav.boundsFile         = None
+inversion.admm.magn.boundsFile         = None
+inversion.admm.grav.weight             = 1.d-7
+inversion.admm.magn.weight             = 1.d+5
+===================================================================================
+
+===================================================================================
 DAMPING-GRADIENT constraints
+https://doi.org/10.5194/se-10-193-2019
 ===================================================================================
 # 1-global, 2-local.
 inversion.dampingGradient.weightType     = 1
@@ -120,6 +135,7 @@ inversion.dampingGradient.magn.weight    = 0.d0
 
 ===================================================================================
 CROSS-GRADIENT constraints
+https://doi.org/10.1093/gji/ggaa414
 ===================================================================================
 inversion.crossGradient.weight               = 0.d0
 inversion.crossGradient.nIterMethodOfWeight  = 0
@@ -128,6 +144,7 @@ inversion.crossGradient.derivativeType       = 1
 
 ===================================================================================
 CLUSTERING constraints
+https://doi.org/10.1093/gji/ggz152
 ===================================================================================
 inversion.clustering.grav.weight      = 0.d0
 inversion.clustering.magn.weight      = 0.d0
@@ -139,22 +156,12 @@ inversion.clustering.optimizationType = 2
 # 1-global, 2-local.
 inversion.clustering.constraintsType  = 2
 
-===================================================================================
-ADMM constraints
-===================================================================================
-inversion.admm.enableADMM              = 0
-inversion.admm.nLithologies            = 5
-inversion.admm.grav.boundsFile         = None
-inversion.admm.magn.boundsFile         = None
-inversion.admm.grav.weight             = 1.d-7
-inversion.admm.magn.weight             = 1.d+5
-===================================================================================
-
 ***********************************************************************************
 * ELECTRICAL CAPACITANCE TOMOGRAPHY (ECT) forward problem parameters.
 *
 * Note: Model and data grid parameters above are not used in ECT, as it has
 * its own grids defined from the Geometry specified below.
+https://doi.org/10.1016/j.measurement.2018.05.099
 ***********************************************************************************
 
 ===================================================================================
