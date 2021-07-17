@@ -39,7 +39,7 @@ To run the code with your parameter file:
 ./tomofast3D -j <Parfile path>
 ```
 
-For the parallel run on you machine execute:
+For the parallel run on your machine execute:
 ```shell
 mpirun -np <number CPUs> -j <Parfile path>
 ```
