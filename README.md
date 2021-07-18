@@ -69,10 +69,22 @@ To run the test example:
 Geoscientific Model Development Discussions, https://doi.org/10.5194/gmd-2021-14
 
 - V. Ogarko, J. Giraud, R. Martin, and M. Jessell (2021), 
-"Disjoint interval bound constraints using the alternating direction method of multipliers for geologically constrained inversion: Application to gravity data," GEOPHYSICS 86: G1-G11.
-https://doi.org/10.1190/geo2019-0633.1
+"Disjoint interval bound constraints using the alternating direction method of multipliers for geologically constrained inversion: Application to gravity data," GEOPHYSICS 86: G1-G11, https://doi.org/10.1190/geo2019-0633.1
 
+- J. Giraud, M. Lindsay, M. Jessell, and V. Ogarko (2020), "Towards plausible lithological classification from geophysical inversion: honouring geological principles in subsurface imaging", 
+Solid Earth, 11: 419–436, https://doi.org/10.5194/se-11-419-2020
 
+- J. Giraud, M. Lindsay, V. Ogarko, M. Jessell, R. Martin, and E. Pakyuz-Charrier (2019), "Integration of geoscientific uncertainty into geophysical inversion by means of local gradient regularization", 
+Solid Earth, 10: 193–210, https://doi.org/10.5194/se-10-193-2019
+
+- R. Martin, J. Giraud, V. Ogarko, S. Chevrot, S. Beller, P. Gégout, M. Jessell (2021), "Three-dimensional gravity anomaly data inversion in the Pyrenees using compressional seismic velocity model as structural similarity constraints",
+Geophysical Journal International 225(2): 1063–1085, https://doi.org/10.1093/gji/ggaa414
+
+- J. Giraud, V. Ogarko, M. Lindsay, E. Pakyuz-Charrier, M. Jessell, R. Martin (2019), "Sensitivity of constrained joint inversions to geological and petrophysical input data uncertainties with posterior geological analysis", 
+Geophysical Journal International, 218(1): 666–688, https://doi.org/10.1093/gji/ggz152
+
+- R. Martin, V. Ogarko, D. Komatitsch, M. Jessell (2018), "Parallel three-dimensional electrical capacitance data imaging using a nonlinear inversion algorithm and Lp norm-based model regularization", 
+Measurement, 128: 428-445, https://doi.org/10.1016/j.measurement.2018.05.099
 
 ### Authors and contacts 
 
