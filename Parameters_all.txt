@@ -17,6 +17,8 @@ global.description          = Your parfile description
 MODEL GRID parameters
 ===================================================================================
 # nx ny nz
+# Note, that the (nx ny nz) grid dimensions are only required for gradient-based constraints,
+# and one can use the (1 1 N) format for other cases.
 modelGrid.size                      = 0 0 0
 modelGrid.grav.file                 = None
 modelGrid.magn.file                 = None
