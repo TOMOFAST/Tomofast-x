@@ -1,52 +1,28 @@
 
 !========================================================================
 !
-!                    T O M O F A S T X  Version 1.0
-!                  ----------------------------------
+!                          T o m o f a s t - x
+!                        -----------------------
 !
-!              Main authors: Vitaliy Ogarko, Roland Martin,
-!                   Jeremie Giraud, Dimitri Komatitsch.
-! CNRS, France, and University of Western Australia.
-! (c) CNRS, France, and University of Western Australia. January 2018
+!           Authors: Vitaliy Ogarko, Jeremie Giraud, Roland Martin.
 !
-!
-! If you use this code for your own research, please cite some (or all) of
-! these articles:
-!
-!  @article{MaMoKoPeJeBoLi2013,
-!  author = {Martin, Roland and Monteiller, Vadim and Komatitsch, Dimitri
-!  and Perrouty, Stephane and Jessell, Mark and Bonvalot, Sylvain and Lindsay, Mark},
-!  title = {Gravity inversion using wavelet-based compression on parallel hybrid
-!  {CPU/GPU} systems: application to southwest {G}hana},
-!  volume = {195},
-!  number = {3},
-!  pages = {1594-1619},
-!  year = {2013},
-!  doi = {10.1093/gji/ggt334},
-!  journal = {Geophysical Journal International}}
-!
-!
-! This software is a computer program whose purpose is to perform
-! capacitance, gravity, magnetic, or joint gravity and magnetic tomography.
-!
-! This program is free software; you can redistribute it and/or modify
-! it under the terms of the GNU General Public License as published by
-! the Free Software Foundation; either version 2 of the License, or
-! (at your option) any later version.
-!
-! This program is distributed in the hope that it will be useful,
-! but WITHOUT ANY WARRANTY; without even the implied warranty of
-! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-! GNU General Public License for more details.
-!
-! You should have received a copy of the GNU General Public License along
-! with this program; if not, write to the Free Software Foundation, Inc.,
-! 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+!               (c) 2021 The University of Western Australia.
 !
 ! The full text of the license is available in file "LICENSE".
 !
+! If you use this code for your own research, please cite these articles:
+!
+! [1] V. Ogarko, J. Giraud, R. Martin, and M. Jessell (2021),
+!     "Disjoint interval bound constraints using the alternating direction method of multipliers
+!     for geologically constrained inversion: Application to gravity data,"
+!     GEOPHYSICS 86: G1-G11. https://doi.org/10.1190/geo2019-0633.1
+!
+! [2] J. Giraud, V. Ogarko, R. Martin, M. Lindsay, M. Jessell (2021),
+!     "Structural, petrophysical and geological constraints in potential field inversion 
+!     using the Tomofast-x open-source code", Geoscientific Model Development Discussions, 
+!     https://doi.org/10.5194/gmd-2021-14
+!
 !========================================================================
-
 
 program program_tomofast3D
 

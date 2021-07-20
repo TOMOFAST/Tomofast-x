@@ -1,32 +1,15 @@
+#
 #========================================================================
 #
-#                    T O M O F A S T X  Version 1.0
-#                  ----------------------------------
+#                          T o m o f a s t - x
+#                        -----------------------
 #
-#              Main authors: Vitaliy Ogarko, Roland Martin,
-#                   Jeremie Giraud, Dimitri Komatitsch.
-# CNRS, France, and University of Western Australia.
-# (c) CNRS, France, and University of Western Australia. January 2018
+#           Authors: Vitaliy Ogarko, Jeremie Giraud, Roland Martin.
 #
-# This software is a computer program whose purpose is to perform
-# capacitance, gravity, magnetic, or joint gravity and magnetic tomography.
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#               (c) 2021 The University of Western Australia.
 #
 # The full text of the license is available in file "LICENSE".
-# 
+#
 #========================================================================
 
 ################################################################################
