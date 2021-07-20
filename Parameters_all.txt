@@ -4,7 +4,8 @@
 * Only relevant parameters need to be specified in the Parfile.
 * See 'parfiles' folder for some specific Parfile examples.
 *
-* For summary on the Tomofast-x features see https://doi.org/10.5194/gmd-2021-14 
+* For detailed description on every parameter section, see the User Manual located 
+* in the folder "docs/".
 ***********************************************************************************
 
 ===================================================================================
