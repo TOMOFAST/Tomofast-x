@@ -52,15 +52,19 @@ mpirun -np 3 ./runtests.sh
 
 ### Running the examples
 
-Input data is contained in folder ``data``.  
-The input parameter file (Parfile) which contains all the paramters of the inversion, is stored in folder: ``parfiles``.  
-Output data is stored in folder ``output``. A detailed path is specified in the Parfile parameter ``global.outputFolderPath``.
+The input data is contained in the folder ``data``.  
+The input parameter file (Parfile) which contains all the paramters of the inversion, is stored in the folder: ``parfiles``.  
+The output data is stored in the folder ``output``. The full output folder path is specified in the Parfile parameter ``global.outputFolderPath``.
 
 
 To run the test example:
 ```shell
 ./tomofast3D -j ./parfiles/Parfile_mansf_slice.txt
 ```
+
+If the code runs successfully you will see in the end of the screen log the messages "*Writing the full model...*", and "*THE END*".
+To visualize the final model, open in Paraview the file ``Paraview/grav_final_model3D_full.vtk`` (or ``Paraview/mag_final_model3D_full.vtk``), located in the output folder.
+For details on other output files, see the User Manual in the ``docs`` folder. 
 
 ### Publications using the code
 
@@ -94,7 +98,7 @@ For questions, contact Vitaliy Ogarko via vogarko@gmail.com
 
 ### License
 
-Tomofast-x code is licensed under the Creative Commons license, 
+Tomofast-x code is licensed under the MIT license, 
 the kind that allows commercial use but forces users to acknowledge usage of Tomofast-x and to cite the relevant work.
 
 
