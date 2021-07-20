@@ -241,7 +241,7 @@ $(SRC_LIST_ECT) \
 $(SRC_LIST_GRAVMAG) \
 $(SRC_LIST_MAIN) \
 $(SRC_LIST_TESTS) \
-program_tomofast3D.F90
+program_tomofastx.F90
 
 # Create object file lists from all source files list.
 # First replace .F90 extension.
