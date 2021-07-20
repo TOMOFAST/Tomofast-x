@@ -69,6 +69,9 @@ CC = mpicc
 # obj directory
 OBJDIR = obj
 
+# Executable name.
+EXEC = tomofastx
+
 # Intel ifort with full checking options to debug (slow but very useful to check everything)
 # option "-assume buffered_io" is important especially on
 # parallel file systems like SFS 3. / Lustre 1.8. If omitted
@@ -110,7 +113,7 @@ endif
 # To print a variable run: make print-VARIABLE
 print-%  : ; @echo $* = $($*)
 
-default: | $(OBJDIR) tomofast3D
+default: | $(OBJDIR) ${EXEC}
 
 all: clean default
 
@@ -263,12 +266,12 @@ $(OBJDIR)/%.o: %.c
 
 
 # Target to build the actual executable.
-tomofast3D: $(OBJ_LIST)
-	 $(FC) $(FFLAGS) -o tomofast3D $(OBJ_LIST) $(LIBS_FULL)
+${EXEC}: $(OBJ_LIST)
+	 $(FC) $(FFLAGS) -o ${EXEC} $(OBJ_LIST) $(LIBS_FULL)
 
 
 clean:
-	rm -rf *.o *.mod tomofast3D $(OBJDIR)
+	rm -rf *.o *.mod ${EXEC} $(OBJDIR)
 
 # targets to clean up all object directories
 purge: clean

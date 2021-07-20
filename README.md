@@ -36,7 +36,7 @@ make
 
 To run the code with your parameter file:
 ```shell
-./tomofast3D -j <Parfile path>
+./tomofastx -j <Parfile path>
 ```
 
 For the parallel run on your machine execute:
@@ -59,7 +59,7 @@ The output data is stored in the folder ``output``. The full output folder path 
 
 To run the test example:
 ```shell
-./tomofast3D -j ./parfiles/Parfile_mansf_slice.txt
+./tomofastx -j ./parfiles/Parfile_mansf_slice.txt
 ```
 
 If the code runs successfully you will see in the end of the screen log the messages "*Writing the full model...*", and "*THE END*".
