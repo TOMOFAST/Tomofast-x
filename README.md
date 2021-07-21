@@ -5,9 +5,9 @@ Authors: Vitaliy Ogarko, Jeremie Giraud, Roland Martin.
 
 Tomofast-x is 3D parallel inversion platform to run single domain or joint inversion (gravity and magnetic data).
 It can use local weighting of gradient regularization function, global and local petrophysical constraints (Gaussian mixture model and multiple disjoint bound constraints).
-Tomofast-x can run in parallel on laptop and supercomputers, using distributed memory systems.
+Tomofast-x can run in parallel on laptops and supercomputers, using distributed memory systems.
 
-The source code is a companion to the publication detailing Tomofast-x geophysical aspects and examples of utilisation and realistic dataset:
+The source code is a companion to the publication detailing Tomofast-x geophysical calculations and examples of utilisation and realistic dataset:
 J. Giraud, V. Ogarko, R. Martin, M. Lindsay, M. Jessell, 2021: 
 Structural, petrophysical and geological constraints in potential field inversion using the Tomofast-x open-source code, 
 Geoscientific Model Development Discussions, https://doi.org/10.5194/gmd-2021-14
@@ -39,7 +39,7 @@ To run the code with your parameter file:
 ./tomofastx -j <Parfile path>
 ```
 
-For the parallel run on your machine execute:
+To run the code in parallel execute:
 ```shell
 mpirun -np <number CPUs> -j <Parfile path>
 ```
@@ -99,7 +99,7 @@ For questions, contact Vitaliy Ogarko via vogarko@gmail.com
 ### License
 
 Tomofast-x code is licensed under the MIT license, 
-the kind that allows commercial use but forces users to acknowledge usage of Tomofast-x and to cite the relevant work.
+which allows commercial use but forces users to acknowledge usage of Tomofast-x and to cite the relevant work.
 
 
 ### Acknowledgments
