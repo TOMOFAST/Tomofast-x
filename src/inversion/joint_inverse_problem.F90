@@ -40,6 +40,7 @@ module joint_inverse_problem
   use clustering
   use damping_gradient
   use parallel_tools
+  use wavelet_transform
 
   implicit none
 
@@ -244,10 +245,11 @@ end subroutine joint_inversion_reset
 !=====================================================================================
 ! Joint inversion of two field.
 !=====================================================================================
-subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
+subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression_type, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
   type(t_inversion_arrays), intent(in) :: arr(2)
+  integer, intent(in) :: matrix_compression_type
   integer, intent(in) :: myrank, nbproc
 
   real(kind=CUSTOM_REAL), intent(out) :: delta_model(:)
@@ -512,6 +514,12 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
 
   if (SOLVE_PROBLEM(1)) call rescale_model(delta_model(1:par%nelements), arr(1)%column_weight, par%nelements)
   if (SOLVE_PROBLEM(2)) call rescale_model(delta_model(par%nelements + 1:), arr(2)%column_weight, par%nelements)
+
+  if (matrix_compression_type == 2) then
+    ! Applying Inverse Wavelet Transform.
+    if (SOLVE_PROBLEM(1)) call iHaar3D(delta_model(1:par%nelements), par%nx, par%ny, par%nz)
+    if (SOLVE_PROBLEM(2)) call iHaar3D(delta_model(par%nelements + 1:), par%nx, par%ny, par%nz)
+  endif
 
   !--------------------------------------------------------------------------------
   ! Writing grav/mag prior and posterior variance.

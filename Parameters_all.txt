@@ -59,10 +59,14 @@ forward.depthWeighting.powerWeight.magn.Z0           = 0.d0
 ===================================================================================
 MATRIX COMPRESSION
 ===================================================================================
+# 0-none, 1-distance cut-off, 2-wavelet compression.
+forward.matrixCompression.type                       = 0
+# The minimum compressed sensitivity absolute value.
+forward.matrixCompression.waveletThreshold           = 0.1
 # Source to the cell distance (m).
-forward.matrixCompression.distanceThreshold = 1.d+10
+forward.matrixCompression.distanceThreshold          = 1.d+10
 # 1.0 = full matrix
-forward.matrixCompression.compressionRate   = 1.d0
+forward.matrixCompression.compressionRate            = 1.d0
 
 ===================================================================================
 PRIOR MODEL

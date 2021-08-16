@@ -340,7 +340,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       if (it > 1) call joint_inversion%reset()
 
       ! Solve joint inverse problem.
-      call joint_inversion%solve(ipar, iarr, this%delta_model, myrank, nbproc)
+      call joint_inversion%solve(ipar, iarr, this%delta_model, gpar%compression_type, myrank, nbproc)
 
       ! Update the local models.
       if (SOLVE_PROBLEM(1)) call iarr(1)%model%update(this%delta_model(1:this%nelements))

@@ -330,8 +330,13 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   mpar%Z0 = 0.d0
 
   ! MATRIX COMPRESSION parameters.
+  gpar%compression_type = 0
+  gpar%wavelet_threshold = 0.1
   gpar%distance_threshold = 1.d+10 ! Source to the cell distance (m).
   gpar%compression_rate = 1.d0     ! 1.0 = full matrix
+
+  mpar%compression_type = gpar%compression_type
+  mpar%wavelet_threshold = gpar%wavelet_threshold
   mpar%distance_threshold = gpar%distance_threshold
   mpar%compression_rate = gpar%compression_rate
 
@@ -713,6 +718,16 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
         call print_arg(myrank, parname, mpar%Z0)
 
       ! MATRIX COMPRESSION parameters ----------------------
+
+      case("forward.matrixCompression.type")
+        read(10, 2) gpar%compression_type
+        call print_arg(myrank, parname, gpar%compression_type)
+        mpar%compression_type = gpar%compression_type
+
+      case("forward.matrixCompression.waveletThreshold")
+        read(10, 1) gpar%wavelet_threshold
+        call print_arg(myrank, parname, gpar%wavelet_threshold)
+        mpar%wavelet_threshold = gpar%wavelet_threshold
 
       case("forward.matrixCompression.distanceThreshold")
         read(10, 1) gpar%distance_threshold

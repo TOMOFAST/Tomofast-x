@@ -15,7 +15,7 @@
 !========================================================================================
 ! A class to calculate sensitivity values for gravity or magnetic field.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !========================================================================================
 module sensitivity_gravmag
 
@@ -30,6 +30,7 @@ module sensitivity_gravmag
   use data_gravmag
   use sparse_matrix
   use vector
+  use wavelet_transform
 
   implicit none
 
@@ -45,6 +46,7 @@ module sensitivity_gravmag
     procedure, public, nopass :: calc_data_directly
 
     procedure, public, nopass :: compress_matrix_line
+    procedure, public, nopass :: compress_matrix_line_wavelet
 
   end type t_sensitivity_gravmag
 
@@ -53,11 +55,10 @@ contains
 !=============================================================================================
 ! Calculates the sensitivity kernel (matrix).
 !=============================================================================================
-subroutine calculate_sensitivity(par, grid, data, sensit_matrix, distance_threshold, myrank)
+subroutine calculate_sensitivity(par, grid, data, sensit_matrix, myrank)
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid
   type(t_data), intent(in) :: data
-  real(kind=CUSTOM_REAL), intent(in) :: distance_threshold
   integer, intent(in) :: myrank
 
   ! Sensitivity matrix.
@@ -97,7 +98,7 @@ subroutine calculate_sensitivity(par, grid, data, sensit_matrix, distance_thresh
     do i = 1, par%ndata
       call mag_field%magprism(par%nelements, i, grid, data%X, data%Y, data%Z, sensit_line)
 
-      call compress_matrix_line(par%nelements, sensit_line, data, i, grid, distance_threshold, comp_rate)
+      call compress_matrix_line(par%nelements, sensit_line, data, i, grid, par%distance_threshold, comp_rate)
 
       if (comp_rate < comp_rate_min) comp_rate_min = comp_rate
       if (comp_rate > comp_rate_max) comp_rate_max = comp_rate
@@ -129,7 +130,13 @@ subroutine calculate_sensitivity(par, grid, data, sensit_matrix, distance_thresh
         call graviprism_full(par, grid, data%X(i), data%Y(i), data%Z(i), &
                              sensit_line, sensit_line2, sensit_line3, myrank)
 
-        call compress_matrix_line(par%nelements, sensit_line3, data, i, grid, distance_threshold, comp_rate)
+        if (par%compression_type == 1) then
+        ! Distance cut-off compression.
+            call compress_matrix_line(par%nelements, sensit_line3, data, i, grid, par%distance_threshold, comp_rate)
+        else if (par%compression_type == 2) then
+        ! Wavelet compression.
+            call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line3, par%wavelet_threshold, comp_rate)
+        endif
 
         if (comp_rate < comp_rate_min) comp_rate_min = comp_rate
         if (comp_rate > comp_rate_max) comp_rate_max = comp_rate
@@ -150,12 +157,6 @@ subroutine calculate_sensitivity(par, grid, data, sensit_matrix, distance_thresh
 
       if (myrank == 0) print *, 'Error: Not supported case!'
       stop
-
-!      ! Loop on all the data lines.
-!      do i = 1, par%ndata / 3
-!        call graviprism_full(par, grid, data%X(3 * i), data%Y(3 * i), data%Z(3 * i), &
-!                             sensit(:, 3 * i - 2), sensit(:, 3 * i - 1), sensit(:, 3 * i), myrank)
-!      enddo
     endif
 
   end select
@@ -217,7 +218,7 @@ subroutine calc_data_directly(par, model, data, myrank)
 end subroutine calc_data_directly
 
 !==========================================================================================================
-! Compresses matrix line.
+! Compresses matrix line - distance based cutoff.
 !==========================================================================================================
 subroutine compress_matrix_line(nelements, line, data, idata, grid, distance_threshold, comp_rate)
   integer, intent(in) :: nelements, idata
@@ -257,5 +258,33 @@ subroutine compress_matrix_line(nelements, line, data, idata, grid, distance_thr
   comp_rate = dble(nelements - num_zeros) / dble(nelements)
 
 end subroutine compress_matrix_line
+
+!==========================================================================================================
+! Compresses matrix line - wavelet compression
+!==========================================================================================================
+subroutine compress_matrix_line_wavelet(nx, ny, nz, line, threshold, comp_rate)
+  integer, intent(in) :: nx, ny, nz
+  real(kind=CUSTOM_REAL), intent(in) :: threshold
+
+  real(kind=CUSTOM_REAL), intent(inout) :: line(:)
+  real(kind=CUSTOM_REAL), intent(out) :: comp_rate
+
+  integer :: nelements, i, num_zeros
+
+  nelements = nx * ny * nz
+  num_zeros = 0
+
+  call Haar3D(line, nx, ny, nz)
+
+  do i = 1, nelements
+    if (abs(line(i)) < threshold) then
+      line(i) = 0.d0
+      num_zeros = num_zeros + 1
+    endif
+  enddo
+
+  comp_rate = dble(nelements - num_zeros) / dble(nelements)
+
+end subroutine compress_matrix_line_wavelet
 
 end module sensitivity_gravmag

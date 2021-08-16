@@ -137,7 +137,8 @@ costs.f90 \
 vector.f90 \
 string.f90 \
 noise.f90 \
-paraview.f90
+paraview.f90 \
+wavelet_transform.F90
 
 # Source files for inversion.
 SRC_LIST_INVERSION = \
