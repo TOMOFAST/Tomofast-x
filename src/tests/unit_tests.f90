@@ -27,6 +27,7 @@ module unit_tests
   use tests_parallel_tools
   use tests_method_of_weights
   use tests_sparse_matrix
+  use tests_wavelet_compression
 
   implicit none
 
@@ -56,6 +57,8 @@ subroutine test_all(myrank, nbproc)
 
     call test(test_method_of_weights_1, "Test of method of weights by Van Loan.", myrank, nbproc)
     call test(test_method_of_weights_2, "Test of method of weights by Per-Ake Wedin.", myrank, nbproc)
+
+    call test(test_wavelet_calculate_data, "Test of data calculation in the wavelet domain", myrank, nbproc)
   endif
 
   ! Parallel tests:

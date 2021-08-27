@@ -212,6 +212,7 @@ tests_lsqr.f90 \
 tests_parallel_tools.f90 \
 tests_method_of_weights.f90 \
 tests_sparse_matrix.f90 \
+tests_wavelet_compression.f90 \
 unit_tests.f90
 
 # Note: inversion files precede the forward problem files,
