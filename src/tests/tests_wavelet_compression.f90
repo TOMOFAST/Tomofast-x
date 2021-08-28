@@ -29,8 +29,13 @@ module tests_wavelet_compression
 
   private
 
-  ! Testing data calculation in the compressed domain.
+  ! Testing data calculation in the wavelet domain.
   public :: test_wavelet_calculate_data
+
+  ! Testing the application of wavelet transform to diagonal matrix.
+  public :: test_wavelet_diagonal_matrix
+
+  ! Returns the matrix-vector product.
   private :: matvecmul
 
 contains
@@ -53,7 +58,7 @@ subroutine matvecmul(A, x, b)
 end subroutine matvecmul
 
 !=============================================================================================
-! Perform test the data calculation in the compressed variables.
+! Perform test the data calculation in the wavelet domain.
 !=============================================================================================
 subroutine test_wavelet_calculate_data(myrank)
   integer, intent(in) :: myrank
@@ -63,7 +68,7 @@ subroutine test_wavelet_calculate_data(myrank)
   real(kind=CUSTOM_REAL), allocatable :: b(:)
   real(kind=CUSTOM_REAL), allocatable :: b2(:)
   integer :: nrows, ncolumns
-  integer :: i, j, counter
+  integer :: i, j
   integer :: nx, ny, nz
   real(kind=CUSTOM_REAL) :: threshold, comp_rate
   type(t_sensitivity_gravmag) :: sens
@@ -121,5 +126,53 @@ subroutine test_wavelet_calculate_data(myrank)
   deallocate(b2)
 
 end subroutine test_wavelet_calculate_data
+
+!=============================================================================================
+! Testing the application of wavelet transform to diagonal matrix.
+!=============================================================================================
+subroutine test_wavelet_diagonal_matrix(myrank)
+  integer, intent(in) :: myrank
+
+  real(kind=CUSTOM_REAL), allocatable :: A(:, :)
+  integer :: nrows, ncolumns
+  integer :: i, j
+  integer :: nx, ny, nz, nnz
+  real(kind=CUSTOM_REAL) :: threshold, comp_rate
+  type(t_sensitivity_gravmag) :: sens
+
+  nx = 10
+  ny = 10
+  nz = 10
+
+  ! Set matrix size.
+  ncolumns = nx * ny * nz
+
+  ! A square matrix.
+  nrows = ncolumns
+
+  allocate(A(ncolumns, nrows))
+
+  ! Define the diagonal matrix.
+  A = 0.d0
+  do i = 1, ncolumns
+    A(i, i) = 1.d0
+  enddo
+
+  ! Wavelet transform the matrix rows, transforming matrix to the wavelet domain: A --> A_w
+  threshold = 0.d0
+  do j = 1, nrows
+    call sens%compress_matrix_line_wavelet(nx, ny, nz, A(:, j), threshold, comp_rate)
+  enddo
+
+  ! The number of non-zero elements in the matrix.
+  nnz = count(A /= 0.d0)
+
+  print *, 'nnz =', nnz
+
+  ! The test result was taken from execution of this test.
+  call assert_equal_int(nnz, 46656, "nnz /= 46656 in test_wavelet_diagonal_matrix.")
+
+  deallocate(A)
+end subroutine test_wavelet_diagonal_matrix
 
 end module tests_wavelet_compression

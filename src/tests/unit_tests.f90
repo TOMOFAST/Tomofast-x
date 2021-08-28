@@ -59,6 +59,7 @@ subroutine test_all(myrank, nbproc)
     call test(test_method_of_weights_2, "Test of method of weights by Per-Ake Wedin.", myrank, nbproc)
 
     call test(test_wavelet_calculate_data, "Test of data calculation in the wavelet domain", myrank, nbproc)
+    call test(test_wavelet_diagonal_matrix, "Test of the wavelet transform of a diagonal matrix.", myrank, nbproc)
   endif
 
   ! Parallel tests:
