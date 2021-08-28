@@ -82,6 +82,10 @@ subroutine calculate_precon_residual(auxarrays, A, iprecond, omega1, nr, ntheta,
     enddo
 
     ! Preconditioning (z = M^{-1}r).
+    if (.NOT. allocated(auxarrays%tmp)) then
+      print *, "Error! Array auxarrays%tmp is not allocated in calculate_precon_residual!"
+      stop
+    endif
     do itt = 1, 1
       ! Exchange halo values with neighbouring z-slices
       if (nbproc > 1) call mpisendrecv(auxarrays%z, nr, ntheta, nz, myrank, nbproc, ierr)
