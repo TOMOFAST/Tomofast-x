@@ -224,10 +224,9 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
   ! Note, the results were obtained by running the test using single CPU.
   ! So we are testing if in parallel case a big matrix has the same number of elements.
   if (derivative_type == 1) then
-    ! TODO: Why we have zero elements? Need to construct initial models without zero cross-gradients.
-    call assert_equal_int(matrix_nel_glob, 431528, "matrix_nel_glob /= 431528 in test_cross_gradient_calculate.")
+    call assert_equal_int(matrix_nel_glob, 461592, "matrix_nel_glob /= 461592 in test_cross_gradient_calculate.")
   else
-    call assert_equal_int(matrix_nel_glob, 447680, "matrix_nel_glob /= 447680 in test_cross_gradient_calculate.")
+    call assert_equal_int(matrix_nel_glob, 457904, "matrix_nel_glob /= 457904 in test_cross_gradient_calculate.")
   endif
 
   deallocate(b_RHS)

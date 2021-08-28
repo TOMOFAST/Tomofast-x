@@ -70,7 +70,7 @@ subroutine test_all(myrank, nbproc)
   call test(test_get_full_array_in_place, "Test of getting the full array in place (parallel tools).", myrank, nbproc)
 
   call test(test_add_damping_identity_matrix, "Test of adding damping identity matrix (inversion).", myrank, nbproc)
-  !call test(test_cross_gradient_calculate_all, "Tests of calculating cross gradient matrix (joint inversion).", myrank, nbproc)
+  call test(test_cross_gradient_calculate_all, "Tests of calculating cross gradient matrix (joint inversion).", myrank, nbproc)
 
   call test(test_lsqr_determined, "Test of the LSQR solver for a determined system.", myrank, nbproc)
   call test(test_lsqr_overdetermined_1, "Test 1 of the LSQR solver for an overdetermined system.", myrank, nbproc)
