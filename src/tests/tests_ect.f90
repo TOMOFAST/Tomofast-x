@@ -867,6 +867,7 @@ subroutine test_analytical_comparison(bc_type, size, ilevel_coarse, itmax, sens)
   allocate(pcg_auxarrays%r(0:nr_read+1,0:ntheta_read+1,0:nzlocal_read+1))
   allocate(pcg_auxarrays%inv_diagA(1:nr_read,1:ntheta_read,1:nzlocal_read))
   allocate(pcg_auxarrays%z(0:nr_read+1,0:ntheta_read+1,0:nzlocal_read+1))
+  allocate(pcg_auxarrays%tmp(0:nr_read+1,0:ntheta_read+1,0:nzlocal_read+1))
 
   allocate(asol(0:nr_read+1,0:ntheta_read+1,0:nz_read+1))
   !----------------------------------------------------------------------------------
@@ -996,15 +997,17 @@ subroutine test_analytical_comparison(bc_type, size, ilevel_coarse, itmax, sens)
   ntheta  = ntheta_at_level(ilevel_fine)
   nz      = nz_at_level(ilevel_fine)
 
-  write (name, '("phi3d_half_nz",i3.3,"_numerical.vtk")') nz
-  call visualisation_paraview(name, myrank, nr, ntheta, nz, &
-        x2(ilevel_fine)%p, xgrid(ilevel_fine)%p, ygrid(ilevel_fine)%p, zgrid(ilevel_fine)%p, &
-        0, imax, ntheta/2+1, ntheta+1, 0, kmax, 1, ntheta/4, 1, 'POINT_DATA')
-
-  write (name, '("phi3d_half_nz",i3.3,"_analytical.vtk")') nz
-  call visualisation_paraview(name, myrank, nr, ntheta, nz, &
-        asol, xgrid(ilevel_fine)%p, ygrid(ilevel_fine)%p, zgrid(ilevel_fine)%p, &
-        0, imax, ntheta/2+1, ntheta+1, 0, kmax, 1, ntheta/4, 1, 'POINT_DATA')
+!  path_output = "output_tests/"
+!
+!  write (name, '("phi3d_half_nz",i3.3,"_numerical.vtk")') nz
+!  call visualisation_paraview(name, myrank, nr, ntheta, nz, &
+!        x2(ilevel_fine)%p, xgrid(ilevel_fine)%p, ygrid(ilevel_fine)%p, zgrid(ilevel_fine)%p, &
+!        0, imax, ntheta/2+1, ntheta+1, 0, kmax, 1, ntheta/4, 1, 'POINT_DATA')
+!
+!  write (name, '("phi3d_half_nz",i3.3,"_analytical.vtk")') nz
+!  call visualisation_paraview(name, myrank, nr, ntheta, nz, &
+!        asol, xgrid(ilevel_fine)%p, ygrid(ilevel_fine)%p, zgrid(ilevel_fine)%p, &
+!        0, imax, ntheta/2+1, ntheta+1, 0, kmax, 1, ntheta/4, 1, 'POINT_DATA')
 
   ! Calculate the error.
   do k=0,kmax
@@ -1022,15 +1025,18 @@ subroutine test_analytical_comparison(bc_type, size, ilevel_coarse, itmax, sens)
         ! The relative error.
         if (asol(i,j,k) /= 0._CUSTOM_REAL) then
           asol(i,j,k) = abs((asol(i,j,k) - x2(ilevel_fine)%p(i,j,k)) / asol(i,j,k))
+
+          ! Assert the error is small.
+          call assert_true(asol(i,j,k) < 5.d-2, "Large error in test_analytical_comparison.")
         endif
       enddo
     enddo
   enddo
 
-  write (name, '("phi3d_half_nz",i3.3,"_error.vtk")') nz
-  call visualisation_paraview(name, myrank, nr, ntheta, nz, &
-        asol, xgrid(ilevel_fine)%p, ygrid(ilevel_fine)%p, zgrid(ilevel_fine)%p, &
-        0, imax, ntheta/2+1, ntheta+1, 0, kmax, 1, ntheta/4, 1, 'POINT_DATA')
+!  write (name, '("phi3d_half_nz",i3.3,"_error.vtk")') nz
+!  call visualisation_paraview(name, myrank, nr, ntheta, nz, &
+!        asol, xgrid(ilevel_fine)%p, ygrid(ilevel_fine)%p, zgrid(ilevel_fine)%p, &
+!        0, imax, ntheta/2+1, ntheta+1, 0, kmax, 1, ntheta/4, 1, 'POINT_DATA')
 
   !----------------------------------------------------------------------------------
   ! Deallocate all the arrays
