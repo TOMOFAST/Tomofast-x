@@ -48,6 +48,8 @@ module sensitivity_gravmag
     procedure, public, nopass :: compress_matrix_line
     procedure, public, nopass :: compress_matrix_line_wavelet
 
+    procedure, private, nopass :: apply_column_weight
+
   end type t_sensitivity_gravmag
 
 contains
@@ -55,10 +57,11 @@ contains
 !=============================================================================================
 ! Calculates the sensitivity kernel (matrix).
 !=============================================================================================
-subroutine calculate_sensitivity(par, grid, data, sensit_matrix, myrank)
+subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, myrank)
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid
   type(t_data), intent(in) :: data
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   integer, intent(in) :: myrank
 
   ! Sensitivity matrix.
@@ -84,6 +87,7 @@ subroutine calculate_sensitivity(par, grid, data, sensit_matrix, myrank)
 
   comp_rate_max = 0.d0
   comp_rate_min = 1.d0
+  comp_rate = 0.d0
 
   select type(par)
   class is (t_parameters_mag)
@@ -100,10 +104,12 @@ subroutine calculate_sensitivity(par, grid, data, sensit_matrix, myrank)
 
       call compress_matrix_line(par%nelements, sensit_line, data, i, grid, par%distance_threshold, comp_rate)
 
-      if (comp_rate < comp_rate_min) comp_rate_min = comp_rate
-      if (comp_rate > comp_rate_max) comp_rate_max = comp_rate
+      if (par%compression_type > 0) then
+        if (comp_rate < comp_rate_min) comp_rate_min = comp_rate
+        if (comp_rate > comp_rate_max) comp_rate_max = comp_rate
 
-      if (i == 1 .and. myrank == 0) print *, 'Compression rate (for the 1st matrix line) =', comp_rate
+        if (i == 1 .and. myrank == 0) print *, 'Compression rate (for the 1st matrix line) =', comp_rate
+      endif
 
       call sensit_matrix%new_row(myrank)
 
@@ -130,18 +136,22 @@ subroutine calculate_sensitivity(par, grid, data, sensit_matrix, myrank)
         call graviprism_full(par, grid, data%X(i), data%Y(i), data%Z(i), &
                              sensit_line, sensit_line2, sensit_line3, myrank)
 
+        call apply_column_weight(par%nelements, sensit_line3, column_weight)
+
         if (par%compression_type == 1) then
         ! Distance cut-off compression.
-            call compress_matrix_line(par%nelements, sensit_line3, data, i, grid, par%distance_threshold, comp_rate)
+          call compress_matrix_line(par%nelements, sensit_line3, data, i, grid, par%distance_threshold, comp_rate)
         else if (par%compression_type == 2) then
         ! Wavelet compression.
-            call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line3, par%wavelet_threshold, comp_rate)
+          call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line3, par%wavelet_threshold, comp_rate)
         endif
 
-        if (comp_rate < comp_rate_min) comp_rate_min = comp_rate
-        if (comp_rate > comp_rate_max) comp_rate_max = comp_rate
+        if (par%compression_type > 0) then
+          if (comp_rate < comp_rate_min) comp_rate_min = comp_rate
+          if (comp_rate > comp_rate_max) comp_rate_max = comp_rate
 
-        if (i == 1 .and. myrank == 0) print *, 'Compression rate (for the 1st matrix line) =', comp_rate
+          if (i == 1 .and. myrank == 0) print *, 'Compression rate (for the 1st matrix line) =', comp_rate
+        endif
 
         call sensit_matrix%new_row(myrank)
 
@@ -161,7 +171,9 @@ subroutine calculate_sensitivity(par, grid, data, sensit_matrix, myrank)
 
   end select
 
-  if (myrank == 0) print *, 'Compression rate (min/max) = ', comp_rate_min, comp_rate_max
+  if (par%compression_type > 0) then
+    if (myrank == 0) print *, 'Compression rate (min/max) = ', comp_rate_min, comp_rate_max
+  endif
 
   deallocate(sensit_line)
   deallocate(sensit_line2)
@@ -286,5 +298,22 @@ subroutine compress_matrix_line_wavelet(nx, ny, nz, line, threshold, comp_rate)
   comp_rate = dble(nelements - num_zeros) / dble(nelements)
 
 end subroutine compress_matrix_line_wavelet
+
+!==========================================================================================================
+! Applying the column weight to sensitivity line.
+!==========================================================================================================
+subroutine apply_column_weight(nelements, sensit_line, column_weight)
+  integer, intent(in) :: nelements
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
+
+  real(kind=CUSTOM_REAL), intent(inout) :: sensit_line(:)
+
+  integer :: i
+
+  do i = 1, nelements
+    sensit_line(i) = sensit_line(i) * column_weight(i)
+  enddo
+
+end subroutine apply_column_weight
 
 end module sensitivity_gravmag

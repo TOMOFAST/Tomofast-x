@@ -78,13 +78,13 @@ end subroutine sensitivity_matrix_initialize
 ! to support the ECT inversion.
 !==============================================================================================
 subroutine sensitivity_matrix_add(this, matrix, b_RHS, param_shift, sensitivity, sensit_sparse, &
-                                  column_weight, residuals, USE_LEGACY_SENSIT_MATRIX, myrank)
+                                  column_weight, residuals, USE_LEGACY_SENSIT_MATRIX, SCALE_COLUMNS, myrank)
   class(t_sensitivity_matrix), intent(inout) :: this
   real(kind=CUSTOM_REAL), intent(in) :: sensitivity(:, :)
   type(t_sparse_matrix), intent(in) :: sensit_sparse
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   real(kind=CUSTOM_REAL), intent(in) :: residuals(:)
-  logical, intent(in) :: USE_LEGACY_SENSIT_MATRIX
+  logical, intent(in) :: USE_LEGACY_SENSIT_MATRIX, SCALE_COLUMNS
   integer, intent(in) :: param_shift
   integer, intent(in) :: myrank
 
@@ -122,8 +122,10 @@ subroutine sensitivity_matrix_add(this, matrix, b_RHS, param_shift, sensitivity,
 
     line = this%problem_weight * line
 
-    ! Sensitivity matrix columns scaling.
-    call this%scale(line, column_weight)
+    if (SCALE_COLUMNS) then
+      ! Sensitivity matrix columns scaling.
+      call this%scale(line, column_weight)
+    endif
 
     do p = 1, this%nelements
       call matrix%add(line(p), param_shift + p, myrank)

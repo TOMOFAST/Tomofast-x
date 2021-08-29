@@ -27,7 +27,7 @@
 !===============================================================================================
 ! A class for solving joint gravity & magnetism problem.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2017.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================================
 module problem_joint_gravmag
 
@@ -200,6 +200,15 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   endif
 
   !-----------------------------------------------------------------------------------------
+  ! Calculates weights.
+  if (SOLVE_PROBLEM(1)) call weights%calculate(gpar, iarr(1), data(1)%X, data(1)%Y, myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call weights%calculate(mpar, iarr(2), data(2)%X, data(2)%Y, myrank, nbproc)
+
+  ! Precondition the column weights (e.g. to control the effect of the cross-grad term).
+  if (SOLVE_PROBLEM(1)) iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight
+  if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
+
+  !-----------------------------------------------------------------------------------------
   ! Solve forward problems for gravity and magnetism.
   if (SOLVE_PROBLEM(1)) call solve_forward_problem(gpar, iarr(1), data(1), myrank)
   if (SOLVE_PROBLEM(2)) call solve_forward_problem(mpar, iarr(2), data(2), myrank)
@@ -223,15 +232,6 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call data(1)%write('grav_observed_', 1, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%write('mag_observed_', 1, myrank)
 #endif
-
-  !-----------------------------------------------------------------------------------------
-  ! Calculates weights.
-  if (SOLVE_PROBLEM(1)) call weights%calculate(gpar, iarr(1), data(1)%X, data(1)%Y, myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call weights%calculate(mpar, iarr(2), data(2)%X, data(2)%Y, myrank, nbproc)
-
-  ! Precondition the column weights to control the effect of the cross-grad term.
-  if (SOLVE_PROBLEM(1)) iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight
-  if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
 
   !-----------------------------------------------------------------------------------------
   number_prior_models = gpar%number_prior_models
@@ -262,10 +262,10 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     if (m > 1) call joint_inversion%reset()
     
     ! SETTING PRIOR MODEL FOR INVERSION  -----------------------------------------------------
-    if (SOLVE_PROBLEM(1)) &
-      call read_model(iarr(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) &
-      call read_model(iarr(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, myrank, nbproc)
+    do i = 1, 2
+      if (SOLVE_PROBLEM(i)) &
+        call read_model(iarr(i), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank, nbproc)
+    enddo
 
     ! Set the prior model.
     if (SOLVE_PROBLEM(1)) iarr(1)%model_prior = iarr(1)%model%val
@@ -279,8 +279,10 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the prior model.
-    if (SOLVE_PROBLEM(1)) call iarr(1)%model%calculate_data(ipar%ndata(1), iarr(1)%matrix_sensit, data(1)%val_calc, myrank)
-    if (SOLVE_PROBLEM(2)) call iarr(2)%model%calculate_data(ipar%ndata(2), iarr(2)%matrix_sensit, data(2)%val_calc, myrank)
+    do i = 1, 2
+      if (SOLVE_PROBLEM(i)) &
+        call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, iarr(i)%column_weight, data(i)%val_calc, myrank)
+    enddo
 
 #ifndef SUPPRESS_OUTPUT
     ! Write data calculated from the prior model.
@@ -300,8 +302,10 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the starting model.
-    if (SOLVE_PROBLEM(1)) call iarr(1)%model%calculate_data(ipar%ndata(1), iarr(1)%matrix_sensit, data(1)%val_calc, myrank)
-    if (SOLVE_PROBLEM(2)) call iarr(2)%model%calculate_data(ipar%ndata(2), iarr(2)%matrix_sensit, data(2)%val_calc, myrank)
+    do i = 1, 2
+      if (SOLVE_PROBLEM(i)) &
+        call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, iarr(i)%column_weight, data(i)%val_calc, myrank)
+    enddo
 
 #ifndef SUPPRESS_OUTPUT
     ! Write data calculated from the starting model.
@@ -347,14 +351,16 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       if (SOLVE_PROBLEM(2)) call iarr(2)%model%update(this%delta_model(this%nelements + 1:))
 
       ! Update the full models (needed e.g. for cross-gradient right-hand-side).
-      if (SOLVE_PROBLEM(1)) &
-        call pt%get_full_array(iarr(1)%model%val, ipar%nelements, iarr(1)%model%val_full, .true., myrank, nbproc)
-      if (SOLVE_PROBLEM(2)) &
-        call pt%get_full_array(iarr(2)%model%val, ipar%nelements, iarr(2)%model%val_full, .true., myrank, nbproc)
+      do i = 1, 2
+        if (SOLVE_PROBLEM(i)) &
+          call pt%get_full_array(iarr(i)%model%val, ipar%nelements, iarr(i)%model%val_full, .true., myrank, nbproc)
+      enddo
 
       ! Calculate data based on the new model from inversion.
-      if (SOLVE_PROBLEM(1)) call iarr(1)%model%calculate_data(ipar%ndata(1), iarr(1)%matrix_sensit, data(1)%val_calc, myrank)
-      if (SOLVE_PROBLEM(2)) call iarr(2)%model%calculate_data(ipar%ndata(2), iarr(2)%matrix_sensit, data(2)%val_calc, myrank)
+      do i = 1, 2
+        if (SOLVE_PROBLEM(i)) &
+          call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, iarr(i)%column_weight, data(i)%val_calc, myrank)
+      enddo
 
 #ifndef SUPPRESS_OUTPUT
       ! Write costs (for the previous iteration).

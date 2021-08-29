@@ -67,16 +67,29 @@ end subroutine model_update
 ! Calculate the (linear) data using original (not scaled)
 ! sensitivity kernel (S) and model (m) as d = S * m.
 !======================================================================================================
-subroutine model_calculate_data(this, ndata, matrix_sensit, data, myrank)
+subroutine model_calculate_data(this, ndata, matrix_sensit, column_weight, data, myrank)
   class(t_model), intent(in) :: this
   integer, intent(in) :: ndata, myrank
   type(t_sparse_matrix), intent(in) :: matrix_sensit
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
 
   real(kind=CUSTOM_REAL), intent(out) :: data(:)
 
-  integer :: ierr
+  real(kind=CUSTOM_REAL), allocatable :: model_scaled(:)
+  integer :: i, ierr
 
-  call matrix_sensit%mult_vector(this%val, data)
+  allocate(model_scaled(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_calculate_data!", myrank, ierr)
+
+  ! Rescale the model to calculate data, as we store the depth-weighted sensitivity kernel.
+  do i = 1, this%nelements
+    model_scaled(i) = this%val(i) / column_weight(i)
+  enddo
+
+  ! Calculate data: d = S * m
+  call matrix_sensit%mult_vector(model_scaled, data)
+
+  deallocate(model_scaled)
 
   ! NOTE: Not sure this is correct way of calling the function (manual says MPI_IN_PLACE should be used on the root only).
   !       But this works somehow.

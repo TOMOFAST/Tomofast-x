@@ -327,7 +327,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
     call sensit%initialize(par%ndata(i), par%nelements, problem_weight_adjusted(i))
 
     call sensit%add(this%matrix, this%b_RHS, param_shift(i), matrix_dummy, arr(i)%matrix_sensit, &
-                    arr(i)%column_weight, arr(i)%residuals, .false., myrank)
+                    arr(i)%column_weight, arr(i)%residuals, .false., .false., myrank)
 
     if (myrank == 0) print *, 'misfit term cost = ', sensit%get_cost()
     if (myrank == 0) print *, 'nel = ', this%matrix%get_number_elements()

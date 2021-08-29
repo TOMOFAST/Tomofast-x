@@ -15,7 +15,7 @@
 !===============================================================================================
 ! A class to calculate weights for sensitivity matrix and damping.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================================
 module weights_gravmag
 
@@ -80,6 +80,10 @@ subroutine weights_calculate(par, iarr, xdata, ydata, myrank, nbproc)
                                        iarr%nelements, iarr%ndata, myrank)
 
   else if (par%depth_weighting_type == 3) then
+
+    ! Temporary disable this case as wavelet compression requires to weight the sensitivity line before compression.
+    if (myrank == 0) print *, 'Error: Not supported (due to wavelet compression)!'
+    stop
 
     ! Method III: scale model by the integrated sensitivities, see
     ! [1] (!!) Yaoguo Li, Douglas W. Oldenburg., Joint inversion of surface and three-component borehole magnetic data, 2000.

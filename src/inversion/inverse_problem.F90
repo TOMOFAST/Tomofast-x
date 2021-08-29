@@ -18,7 +18,7 @@
 ! Calculates the model update (change).
 ! Uses an object of type t_parameters_inversion to obtain the input parameters and data arrays.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================================
 module inverse_problem
 
@@ -137,7 +137,7 @@ subroutine inversion_solve(this, par, arr, myrank, nbproc)
 
   ! Add compressed sparse sensitivity matrix in CSR format.
   call sensit%add(this%matrix, this%b_RHS, 0, arr%sensitivity, matrix_dummy, &
-                  arr%column_weight, arr%residuals, USE_LEGACY_SENSIT_MATRIX, myrank)
+                  arr%column_weight, arr%residuals, USE_LEGACY_SENSIT_MATRIX, .true., myrank)
 
   if (myrank == 0) print *, 'nel = ', this%matrix%get_number_elements()
 

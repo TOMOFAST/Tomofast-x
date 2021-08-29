@@ -47,10 +47,10 @@ subroutine solve_forward_problem(par, iarr, data, myrank)
   endif
 
   ! Calculate sensitivity kernel (analytically).
-  call sens%calculate_sensitivity(par, iarr%model%grid, data, iarr%matrix_sensit, myrank)
+  call sens%calculate_sensitivity(par, iarr%model%grid, data, iarr%column_weight, iarr%matrix_sensit, myrank)
 
   ! Calculate the data using sensitivity (S) and prior model (m) as d = S * m.
-  call iarr%model%calculate_data(par%ndata, iarr%matrix_sensit, data%val_calc, myrank)
+  call iarr%model%calculate_data(par%ndata, iarr%matrix_sensit, iarr%column_weight, data%val_calc, myrank)
 
 end subroutine solve_forward_problem
 
