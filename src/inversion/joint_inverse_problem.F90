@@ -512,14 +512,14 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
     call rescale_model(delta_model, this%column_norm, 2 * par%nelements)
   endif
 
-  if (SOLVE_PROBLEM(1)) call rescale_model(delta_model(1:par%nelements), arr(1)%column_weight, par%nelements)
-  if (SOLVE_PROBLEM(2)) call rescale_model(delta_model(par%nelements + 1:), arr(2)%column_weight, par%nelements)
-
   if (matrix_compression_type == 2) then
-    ! Applying Inverse Wavelet Transform.
+    ! Applying the Inverse Wavelet Transform.
     if (SOLVE_PROBLEM(1)) call iHaar3D(delta_model(1:par%nelements), par%nx, par%ny, par%nz)
     if (SOLVE_PROBLEM(2)) call iHaar3D(delta_model(par%nelements + 1:), par%nx, par%ny, par%nz)
   endif
+
+  if (SOLVE_PROBLEM(1)) call rescale_model(delta_model(1:par%nelements), arr(1)%column_weight, par%nelements)
+  if (SOLVE_PROBLEM(2)) call rescale_model(delta_model(par%nelements + 1:), arr(2)%column_weight, par%nelements)
 
   !--------------------------------------------------------------------------------
   ! Writing grav/mag prior and posterior variance.

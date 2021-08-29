@@ -69,7 +69,7 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
 
   type(t_magnetic_field) :: mag_field
   integer :: i, p, ierr
-  real(kind=CUSTOM_REAL) :: comp_rate, comp_rate_max, comp_rate_min
+  real(kind=CUSTOM_REAL) :: comp_rate
 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line(:)
@@ -84,10 +84,6 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
 
   allocate(sensit_line3(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_sensitivity!", myrank, ierr)
-
-  comp_rate_max = 0.d0
-  comp_rate_min = 1.d0
-  comp_rate = 0.d0
 
   select type(par)
   class is (t_parameters_mag)
@@ -105,13 +101,6 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
       call apply_column_weight(par%nelements, sensit_line, column_weight)
 
       call compress_matrix_line(par%nelements, sensit_line, data, i, grid, par%distance_threshold, comp_rate)
-
-      if (par%compression_type > 0) then
-        if (comp_rate < comp_rate_min) comp_rate_min = comp_rate
-        if (comp_rate > comp_rate_max) comp_rate_max = comp_rate
-
-        if (i == 1 .and. myrank == 0) print *, 'Compression rate (for the 1st matrix line) =', comp_rate
-      endif
 
       call sensit_matrix%new_row(myrank)
 
@@ -148,13 +137,6 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
           call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line3, par%wavelet_threshold, comp_rate)
         endif
 
-        if (par%compression_type > 0) then
-          if (comp_rate < comp_rate_min) comp_rate_min = comp_rate
-          if (comp_rate > comp_rate_max) comp_rate_max = comp_rate
-
-          if (i == 1 .and. myrank == 0) print *, 'Compression rate (for the 1st matrix line) =', comp_rate
-        endif
-
         call sensit_matrix%new_row(myrank)
 
         do p = 1, par%nelements
@@ -173,9 +155,9 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
 
   end select
 
-  if (par%compression_type > 0) then
-    if (myrank == 0) print *, 'Compression rate (min/max) = ', comp_rate_min, comp_rate_max
-  endif
+  ! Calculate the matrix compression rate.
+  comp_rate = dble(sensit_matrix%get_number_elements()) / dble(par%nelements) / dble(par%ndata)
+  if (myrank == 0) print *, 'Compression rate = ', comp_rate
 
   deallocate(sensit_line)
   deallocate(sensit_line2)

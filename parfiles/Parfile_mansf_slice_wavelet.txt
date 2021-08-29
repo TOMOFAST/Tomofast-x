@@ -1,0 +1,77 @@
+===================================================================================
+GLOBAL
+===================================================================================
+global.outputFolderPath     = output/mansf_slice/
+global.description          = Gravity inversion with ADMM constraints (Mansfield area)
+
+===================================================================================
+MODEL GRID parameters
+===================================================================================
+# nx ny nz
+modelGrid.size                      = 2 128 32
+modelGrid.grav.file                 = data/gravmag/mansf_slice/true_model_grav.txt
+
+===================================================================================
+DATA parameters
+===================================================================================
+forward.data.grav.nData             = 256
+forward.data.grav.dataGridFile      = data/gravmag/mansf_slice/data_grid.txt
+forward.data.grav.dataValuesFile    = output/mansf_slice/grav_calc_read_data.txt
+
+===================================================================================
+DEPTH WEIGHTING
+===================================================================================
+forward.depthWeighting.type                          = 1
+forward.depthWeighting.powerWeight.grav.beta         = 2.0d0
+forward.depthWeighting.powerWeight.grav.Z0           = 0.d0
+
+===================================================================================
+MATRIX COMPRESSION
+===================================================================================
+# 0-none, 1-distance cut-off, 2-wavelet compression.
+forward.matrixCompression.type                       = 2
+# The minimum compressed sensitivity absolute value.
+forward.matrixCompression.waveletThreshold           = 1.d-7
+# 1.0 = full matrix
+forward.matrixCompression.compressionRate            = 0.1d0
+
+===================================================================================
+PRIOR MODEL
+===================================================================================
+inversion.priorModel.type           = 1
+inversion.priorModel.grav.value     = 10.d0
+
+===================================================================================
+STARTING MODEL
+===================================================================================
+inversion.startingModel.type        = 1
+inversion.startingModel.grav.value  = 0.d0
+
+===================================================================================
+INVERSION parameters
+===================================================================================
+inversion.nMajorIterations          = 2
+inversion.nMinorIterations          = 100
+inversion.minResidual               = 1.d-13
+
+===================================================================================
+MODEL DAMPING (m - m_prior)
+===================================================================================
+inversion.modelDamping.grav.weight  = 0.d-11
+
+===================================================================================
+JOINT INVERSION parameters
+===================================================================================
+inversion.joint.grav.problemWeight  = 1.d0
+inversion.joint.magn.problemWeight  = 0.d0
+
+===================================================================================
+ADMM constraints
+===================================================================================
+inversion.admm.enableADMM           = 0
+inversion.admm.nLithologies         = 5
+inversion.admm.grav.boundsFile      = data/gravmag/mansf_slice/grav_bound_constraints_2.txt
+inversion.admm.grav.weight          = 11.d-8
+
+===================================================================================
+

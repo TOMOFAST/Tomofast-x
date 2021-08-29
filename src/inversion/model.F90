@@ -15,7 +15,7 @@
 !================================================================================================
 ! A class that extends t_model_IO to work with parallel models (split between CPUs) for inversion.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !================================================================================================
 module model
 
@@ -29,6 +29,7 @@ module model
   use model_base
   use model_IO
   use sparse_matrix
+  use wavelet_transform
 
   implicit none
 
@@ -67,9 +68,9 @@ end subroutine model_update
 ! Calculate the (linear) data using original (not scaled)
 ! sensitivity kernel (S) and model (m) as d = S * m.
 !======================================================================================================
-subroutine model_calculate_data(this, ndata, matrix_sensit, column_weight, data, myrank)
+subroutine model_calculate_data(this, ndata, matrix_sensit, column_weight, data, compression_type, myrank)
   class(t_model), intent(in) :: this
-  integer, intent(in) :: ndata, myrank
+  integer, intent(in) :: ndata, compression_type, myrank
   type(t_sparse_matrix), intent(in) :: matrix_sensit
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
 
@@ -85,6 +86,11 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, column_weight, data,
   do i = 1, this%nelements
     model_scaled(i) = this%val(i) / column_weight(i)
   enddo
+
+  if (compression_type == 2) then
+    ! Apply wavelet transform to calculate data using sensitivity kernel compressed with wavelets.
+    call Haar3D(model_scaled, this%grid%nx, this%grid%ny, this%grid%nz)
+  endif
 
   ! Calculate data: d = S * m
   call matrix_sensit%mult_vector(model_scaled, data)
