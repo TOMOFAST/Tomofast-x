@@ -21,8 +21,7 @@ forward.data.grav.dataValuesFile    = output/mansf_slice/grav_calc_read_data.txt
 ===================================================================================
 DEPTH WEIGHTING
 ===================================================================================
-forward.depthWeighting.type         = 1
-
+forward.depthWeighting.type                          = 1
 forward.depthWeighting.powerWeight.grav.beta         = 2.0d0
 forward.depthWeighting.powerWeight.grav.Z0           = 0.d0
 

@@ -262,10 +262,10 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     if (m > 1) call joint_inversion%reset()
     
     ! SETTING PRIOR MODEL FOR INVERSION  -----------------------------------------------------
-    do i = 1, 2
-      if (SOLVE_PROBLEM(i)) &
-        call read_model(iarr(i), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank, nbproc)
-    enddo
+    if (SOLVE_PROBLEM(1)) &
+      call read_model(iarr(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) &
+      call read_model(iarr(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, myrank, nbproc)
 
     ! Set the prior model.
     if (SOLVE_PROBLEM(1)) iarr(1)%model_prior = iarr(1)%model%val

@@ -102,6 +102,8 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
     do i = 1, par%ndata
       call mag_field%magprism(par%nelements, i, grid, data%X, data%Y, data%Z, sensit_line)
 
+      call apply_column_weight(par%nelements, sensit_line, column_weight)
+
       call compress_matrix_line(par%nelements, sensit_line, data, i, grid, par%distance_threshold, comp_rate)
 
       if (par%compression_type > 0) then
