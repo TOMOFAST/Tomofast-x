@@ -67,6 +67,7 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
   par%nelements = par%nelements_total / nbproc
   par%alpha = 1._CUSTOM_REAL
   par%problem_weight = 1._CUSTOM_REAL
+  par%compression_type = 0
 
   if (mod(par%nelements_total, nbproc) /= 0) then
     if (myrank == 0) print *, "WARNING: nelements_total mod nbproc /= 0, skipping the test."
@@ -96,7 +97,8 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
   call isensit%initialize(par%ndata(1) + par%nelements_total, &
                           par%ndata(1) * par%nelements + par%nelements, myrank)
 
-  call damping%initialize(par%nelements, par%alpha(1), par%problem_weight(1), par%norm_power)
+  call damping%initialize(par%nelements, par%alpha(1), par%problem_weight(1), par%norm_power, &
+                          par%compression_type, par%nx, par%ny, par%nz, par%wavelet_threshold)
 
   ! Create an identity matrix.
   call damping%add(isensit, b_RHS, arr%column_weight, arr%damping_weight, &

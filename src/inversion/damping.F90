@@ -25,6 +25,7 @@ module damping
   use parallel_tools
   use model
   use grid
+  use wavelet_transform
 
   implicit none
 
@@ -44,6 +45,11 @@ module damping
     ! Cost of the model objective function phi_m.
     real(kind=CUSTOM_REAL) :: cost
 
+    ! Wavelet compression parameters.
+    integer :: compression_type
+    integer :: nx, ny, nz
+    real(kind=CUSTOM_REAL) :: threshold
+
   contains
     private
 
@@ -61,15 +67,22 @@ contains
 !===========================================================================================
 ! Initialization.
 !===========================================================================================
-subroutine damping_initialize(this, nelements, alpha, problem_weight, norm_power)
+subroutine damping_initialize(this, nelements, alpha, problem_weight, norm_power, &
+                              compression_type, nx, ny, nz, threshold)
   class(t_damping), intent(inout) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: alpha, problem_weight, norm_power
+  real(kind=CUSTOM_REAL), intent(in) :: alpha, problem_weight, norm_power, threshold
   integer, intent(in) :: nelements
+  integer, intent(in) :: compression_type, nx, ny, nz
 
   this%nelements = nelements
   this%alpha = alpha
   this%problem_weight = problem_weight
   this%norm_power = norm_power
+  this%compression_type = compression_type
+  this%nx = nx
+  this%ny = ny
+  this%nz = nz
+  this%threshold = threshold
 end subroutine damping_initialize
 
 !===========================================================================================
@@ -95,10 +108,17 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, damping_weight, &
   type(t_sparse_matrix), intent(inout) :: matrix
   real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(:)
 
-  integer :: i, nsmaller, nelements_total
+  integer :: i, nsmaller, nelements_total, p
   integer :: row_beg, row_end
+  integer :: ierr
   real(kind=CUSTOM_REAL) :: value
   type(t_parallel_tools) :: pt
+  real(kind=CUSTOM_REAL), allocatable :: compressed_row(:)
+
+  if (this%compression_type == 2) then
+    allocate(compressed_row(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+    if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in damping_add!", myrank, ierr)
+  endif
 
   ! The number of elements on CPUs with rank smaller than myrank.
   nsmaller = pt%get_nsmaller(this%nelements, myrank, nbproc)
@@ -124,8 +144,30 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, damping_weight, &
     ! Apply model covariance (diagonal), which is equivalent of having local alpha.
     value = value * model%cov(i)
 
-    call matrix%add(value, param_shift + i, myrank)
+    if (this%compression_type == 0) then
+    ! No wavelet compression.
+      call matrix%add(value, param_shift + i, myrank)
+
+    else if (this%compression_type == 2) then
+    ! Wavelet compression.
+      ! Forming the matrix row.
+      compressed_row = 0.d0
+      compressed_row(i) = value
+
+      ! Wavelet compression of the matrix row.
+      call Haar3D(compressed_row, this%nx, this%ny, this%nz)
+
+      ! Adding the compressed damping row to the matrix.
+      do p = 1, this%nelements
+        value = compressed_row(p)
+        !if (abs(value) >= this%threshold) then
+          call matrix%add(compressed_row(p), param_shift + p, myrank)
+        !endif
+      enddo
+    endif
   enddo
+
+  if (allocated(compressed_row)) deallocate(compressed_row)
 
   ! Add empty lines.
   call matrix%add_empty_rows(nelements_total - this%nelements - nsmaller, myrank)

@@ -33,7 +33,7 @@ forward.matrixCompression.type                       = 2
 # The minimum compressed sensitivity absolute value.
 forward.matrixCompression.waveletThreshold           = 1.d-7
 # 1.0 = full matrix
-forward.matrixCompression.compressionRate            = 0.1d0
+forward.matrixCompression.compressionRate            = 1.0d0
 
 ===================================================================================
 PRIOR MODEL
@@ -57,7 +57,7 @@ inversion.minResidual               = 1.d-13
 ===================================================================================
 MODEL DAMPING (m - m_prior)
 ===================================================================================
-inversion.modelDamping.grav.weight  = 0.d-11
+inversion.modelDamping.grav.weight  = 1.d-10
 
 ===================================================================================
 JOINT INVERSION parameters

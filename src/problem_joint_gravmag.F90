@@ -122,7 +122,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   real(kind=CUSTOM_REAL) :: compres(2)
   real(kind=CUSTOM_REAL) :: cost_data(2)
   real(kind=CUSTOM_REAL) :: cost_model(2)
-  integer :: it, i, m, number_prior_models, compression_type, ierr
+  integer :: it, i, m, number_prior_models, ierr
   character(len=256) :: path_output_parfile
   character(len=256) :: grav_prior_model_filename, mag_prior_model_filename
 
@@ -134,8 +134,6 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     SOLVE_PROBLEM(i) = (ipar%problem_weight(i) > 0.d0)
     if (myrank == 0) print *, "SOLVE_PROBLEM("//trim(str(i))//") = ", SOLVE_PROBLEM(i)
   enddo
-
-  compression_type = gpar%compression_type
 
   ! Initialize joint inversion object.
   ! Read the clustering parameters from file inside.
@@ -283,7 +281,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     ! Calculate data from the prior model.
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, &
-        iarr(i)%column_weight, data(i)%val_calc, compression_type, myrank)
+        iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank)
     enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -306,7 +304,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     ! Calculate data from the starting model.
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, &
-        iarr(i)%column_weight, data(i)%val_calc, compression_type, myrank)
+        iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank)
     enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -346,7 +344,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       if (it > 1) call joint_inversion%reset()
 
       ! Solve joint inverse problem.
-      call joint_inversion%solve(ipar, iarr, this%delta_model, gpar%compression_type, myrank, nbproc)
+      call joint_inversion%solve(ipar, iarr, this%delta_model, ipar%compression_type, myrank, nbproc)
 
       ! Update the local models.
       if (SOLVE_PROBLEM(1)) call iarr(1)%model%update(this%delta_model(1:this%nelements))
@@ -361,7 +359,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       ! Calculate data based on the new model from inversion.
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, &
-          iarr(i)%column_weight, data(i)%val_calc, compression_type, myrank)
+          iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank)
       enddo
 
 #ifndef SUPPRESS_OUTPUT

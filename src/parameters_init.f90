@@ -260,6 +260,9 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
 
     ipar%nelements_total = ipar%nx * ipar%ny * ipar%nz
 
+    ipar%compression_type = gpar%compression_type
+    ipar%wavelet_threshold = gpar%wavelet_threshold
+
     ! Define model splitting for parallelization.
     nelements = pt%calculate_nelements_at_cpu(ipar%nelements_total, myrank, nbproc)
 
@@ -331,7 +334,7 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
 
   ! MATRIX COMPRESSION parameters.
   gpar%compression_type = 0
-  gpar%wavelet_threshold = 0.1
+  gpar%wavelet_threshold = 1.d-7
   gpar%distance_threshold = 1.d+10 ! Source to the cell distance (m).
   gpar%compression_rate = 1.d0     ! 1.0 = full matrix
 

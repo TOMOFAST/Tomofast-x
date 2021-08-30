@@ -60,6 +60,10 @@ module parameters_inversion
     ! LSQR threshold to have kinda L1 norm. Use gamma=0 for no thresholding.
     real(kind=CUSTOM_REAL) :: gamma
 
+    ! Wavelet compression parameters.
+    integer :: compression_type
+    real(kind=CUSTOM_REAL) :: wavelet_threshold
+
     ! ------ Joint inversion parameters ------------------------------------
 
     ! Weights of individual problems (grav, mag) in joint inversion.

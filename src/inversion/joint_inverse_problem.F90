@@ -335,7 +335,8 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
     if (this%add_damping) then
       if (myrank == 0) print *, 'adding damping with alpha =', par%alpha(i)
 
-      call damping%initialize(par%nelements, par%alpha(i), problem_weight_adjusted(i), par%norm_power)
+      call damping%initialize(par%nelements, par%alpha(i), problem_weight_adjusted(i), par%norm_power, &
+                              par%compression_type, par%nx, par%ny, par%nz, par%wavelet_threshold)
 
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, arr(i)%damping_weight, &
                        arr(i)%model, arr(i)%model_prior, param_shift(i), myrank, nbproc)
@@ -421,7 +422,8 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
       !this%weight_ADMM = 1.d0
       this%weight_ADMM = arr(i)%damping_weight
 
-      call damping%initialize(par%nelements, par%rho_ADMM(i), problem_weight_adjusted(i), par%norm_power)
+      call damping%initialize(par%nelements, par%rho_ADMM(i), problem_weight_adjusted(i), par%norm_power, &
+                              par%compression_type, par%nx, par%ny, par%nz, par%wavelet_threshold)
 
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, this%weight_ADMM, &
                        arr(i)%model, this%x0_ADMM, param_shift(i), myrank, nbproc)
