@@ -39,6 +39,10 @@ module tests_wavelet_compression
   public :: test_wavelet_norm_preserving
   private :: test_wavelet_norm_preserving_kind
 
+  ! Testing the inverse wavelet transform.
+  public :: test_wavelet_inverse
+  private :: test_wavelet_inverse_kind
+
   ! Returns the matrix-vector product.
   private :: matvecmul
 
@@ -174,7 +178,7 @@ subroutine test_wavelet_diagonal_matrix(myrank)
   print *, 'nnz =', nnz
 
   ! The test result was taken from execution of this test.
-  call assert_equal_int(nnz, 46656, "nnz /= 46656 in test_wavelet_diagonal_matrix.")
+  call assert_equal_int(nnz, 46656, "nnz /= 46656 in test_wavelet_diagonal_matrix!")
 
   deallocate(A)
 end subroutine test_wavelet_diagonal_matrix
@@ -212,6 +216,7 @@ subroutine test_wavelet_norm_preserving_kind(myrank, waveletType)
   N = nx * ny * nz
 
   allocate(x(N))
+
   ! Forming the image to compress.
   do i = 1, N
     x(i) = dble(i)
@@ -234,5 +239,90 @@ subroutine test_wavelet_norm_preserving_kind(myrank, waveletType)
   deallocate(x)
 
 end subroutine test_wavelet_norm_preserving_kind
+
+!=============================================================================================
+! Testing the inverse wavelet transform.
+!=============================================================================================
+subroutine test_wavelet_inverse(myrank)
+  integer, intent(in) :: myrank
+
+  ! Haar wavelet.
+  call test_wavelet_inverse_kind(myrank, 1)
+
+  ! Daubechies D4 wavelet.
+  call test_wavelet_inverse_kind(myrank, 2)
+
+end subroutine test_wavelet_inverse
+
+!=============================================================================================
+! Testing the inverse wavelet transform.
+!=============================================================================================
+subroutine test_wavelet_inverse_kind(myrank, waveletType)
+  integer, intent(in) :: myrank
+  integer, intent(in) :: waveletType
+
+  real(kind=CUSTOM_REAL), allocatable :: A(:, :)
+  integer :: nrows, ncolumns
+  integer :: i, j
+  integer :: nx, ny, nz, nnz
+
+  nx = 10
+  ny = 11
+  nz = 12
+
+  ! Set matrix size.
+  ncolumns = nx * ny * nz
+
+  ! A square matrix.
+  nrows = ncolumns
+
+  allocate(A(ncolumns, nrows))
+
+  ! Define the identity matrix.
+  A = 0.d0
+  do i = 1, ncolumns
+    A(i, i) = 1.d0
+  enddo
+
+  print *, 'nnz (orig) = ', count(A > 1.d-15)
+
+  ! Wavelet transform the matrix rows.
+  do j = 1, nrows
+    if (waveletType == 1) then
+      call Haar3D(A(:, j), nx, ny, nz)
+    else
+      call DaubD43D(A(:, j), nx, ny, nz)
+    endif
+  enddo
+
+  print *, 'nnz (wavelet) = ', count(A > 1.d-15)
+
+  ! Applying the inverse wavelet transform.
+  do j = 1, nrows
+    if (waveletType == 1) then
+      call iHaar3D(A(:, j), nx, ny, nz)
+    else
+      call iDaubD43D(A(:, j), nx, ny, nz)
+    endif
+  enddo
+
+  nnz = count(A > 1.d-15)
+  print *, 'nnz (inverse) = ', nnz
+
+  call assert_equal_int(nnz, ncolumns, "Wrong nnz in test_wavelet_inverse_kind!")
+
+  ! Testing that the inverse wavelet transform leads to original identity matrix.
+  do i = 1, ncolumns
+    do j = 1, nrows
+      if (i == j) then
+        call assert_comparable_real(A(i, j), 1.d0, tol, "Wrong result in test_wavelet_inverse_kind!")
+      else
+        call assert_true(abs(A(i, j)) < 1.d-15, "Wrong result in test_wavelet_inverse_kind!")
+      endif
+    enddo
+  enddo
+
+  deallocate(A)
+end subroutine test_wavelet_inverse_kind
 
 end module tests_wavelet_compression

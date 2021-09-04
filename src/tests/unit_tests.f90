@@ -61,6 +61,7 @@ subroutine test_all(myrank, nbproc)
     call test(test_wavelet_calculate_data, "Test of data calculation in the wavelet domain", myrank, nbproc)
     call test(test_wavelet_diagonal_matrix, "Test of the wavelet transform of a diagonal matrix.", myrank, nbproc)
     call test(test_wavelet_norm_preserving, "Test of norm preservation of the wavelet transform.", myrank, nbproc)
+    call test(test_wavelet_inverse, "Test of the inverse wavelet transform.", myrank, nbproc)
   endif
 
   ! Parallel tests:
