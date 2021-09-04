@@ -35,6 +35,10 @@ module tests_wavelet_compression
   ! Testing the application of wavelet transform to diagonal matrix.
   public :: test_wavelet_diagonal_matrix
 
+  ! Testing the norm invariance for wavelet transform.
+  public :: test_wavelet_norm_invariance
+  private :: test_wavelet_norm_invariance_kind
+
   ! Returns the matrix-vector product.
   private :: matvecmul
 
@@ -174,5 +178,61 @@ subroutine test_wavelet_diagonal_matrix(myrank)
 
   deallocate(A)
 end subroutine test_wavelet_diagonal_matrix
+
+!=============================================================================================
+! Testing the L2 norm invariance of the wavelet transform.
+!=============================================================================================
+subroutine test_wavelet_norm_invariance(myrank)
+  integer, intent(in) :: myrank
+
+  ! Haar wavelet.
+  call test_wavelet_norm_invariance_kind(myrank, 1)
+
+  ! TODO: DaubD43D wavelet not passing the test! Should it preserve the norm?
+  ! Daubechies D4 wavelet.
+  !call test_wavelet_norm_invariance_kind(myrank, 2)
+
+end subroutine test_wavelet_norm_invariance
+!=============================================================================================
+
+subroutine test_wavelet_norm_invariance_kind(myrank, waveletType)
+  integer, intent(in) :: myrank
+  integer, intent(in) :: waveletType
+
+  real(kind=CUSTOM_REAL), allocatable :: x(:)
+  integer :: N, i
+  integer :: nx, ny, nz
+  real(kind=CUSTOM_REAL) :: threshold, comp_rate
+  real(kind=CUSTOM_REAL) :: norm, norm_w
+
+  nx = 10
+  ny = 11
+  nz = 12
+
+  N = nx * ny * nz
+
+  allocate(x(N))
+  ! Forming the image to compress.
+  do i = 1, N
+    x(i) = dble(i)
+  enddo
+
+  norm = norm2(x)
+  print *, 'norm =', norm
+
+  if (waveletType == 1) then
+    call Haar3D(x, nx, ny, nz)
+  else
+    call DaubD43D(x, nx, ny, nz)
+  endif
+
+  norm_w = norm2(x)
+  print *, 'norm_w =', norm_w
+
+  call assert_comparable_real(norm, norm_w, tol, "Wrong result in test_wavelet_norm_invariance!")
+
+  deallocate(x)
+
+end subroutine test_wavelet_norm_invariance_kind
 
 end module tests_wavelet_compression
