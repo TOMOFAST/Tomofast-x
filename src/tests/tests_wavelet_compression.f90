@@ -23,7 +23,6 @@ module tests_wavelet_compression
   use ftnunit
 
   use wavelet_transform
-  use sensitivity_gravmag
 
   implicit none
 
@@ -78,8 +77,6 @@ subroutine test_wavelet_calculate_data(myrank)
   integer :: nrows, ncolumns
   integer :: i, j
   integer :: nx, ny, nz
-  real(kind=CUSTOM_REAL) :: threshold, comp_rate
-  type(t_sensitivity_gravmag) :: sens
 
   nx = 3
   ny = 4
@@ -112,9 +109,8 @@ subroutine test_wavelet_calculate_data(myrank)
   print *, "b (normal) = ", b
 
   ! Wavelet transform the matrix rows, transforming matrix to the wavelet domain: A --> A_w
-  threshold = 0.d0
   do j = 1, nrows
-    call sens%compress_matrix_line_wavelet(nx, ny, nz, A(:, j), threshold, comp_rate)
+    call Haar3D(A(:, j), nx, ny, nz)
   enddo
 
   ! Calculate A * x in the wavelet domain: b2 = A_w * x_w.
@@ -145,8 +141,6 @@ subroutine test_wavelet_diagonal_matrix(myrank)
   integer :: nrows, ncolumns
   integer :: i, j
   integer :: nx, ny, nz, nnz
-  real(kind=CUSTOM_REAL) :: threshold, comp_rate
-  type(t_sensitivity_gravmag) :: sens
 
   nx = 10
   ny = 10
@@ -167,9 +161,8 @@ subroutine test_wavelet_diagonal_matrix(myrank)
   enddo
 
   ! Wavelet transform the matrix rows, transforming matrix to the wavelet domain: A --> A_w
-  threshold = 0.d0
   do j = 1, nrows
-    call sens%compress_matrix_line_wavelet(nx, ny, nz, A(:, j), threshold, comp_rate)
+    call Haar3D(A(:, j), nx, ny, nz)
   enddo
 
   ! The number of non-zero elements in the matrix.
