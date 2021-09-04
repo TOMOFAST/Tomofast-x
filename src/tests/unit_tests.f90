@@ -15,7 +15,7 @@
 !===========================================================================================
 ! A module that runs all unit tests.
 !
-! Author: Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Author: Vitaliy Ogarko, UWA, CET, Australia.
 !===========================================================================================
 
 module unit_tests
