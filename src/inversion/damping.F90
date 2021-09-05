@@ -88,18 +88,18 @@ end subroutine damping_initialize
 !===========================================================================================
 ! 1) Adds damping (below the sensitivity kernel) which is identity matrix times alpha:
 !     S_new = (  S )
-!             ( wD ),
-!    where D is damping matrix, w is damping parameter,
+!             ( aI ),
+!    where I is identity matrix, a=alpha is damping parameter,
 !    applying the same scaling as applied to the sensitivity matrix.
 ! 2) Adds the corresponding contribution to the right hand side 'b_RHS'.
 !
 ! Tested in unit_tests.f90 in test_damping_identity_matrix().
 !===========================================================================================
-subroutine damping_add(this, matrix, b_RHS, column_weight, damping_weight, &
+subroutine damping_add(this, matrix, b_RHS, column_weight, local_weight, &
                        model, model_ref, param_shift, myrank, nbproc)
   class(t_damping), intent(inout) :: this
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
-  real(kind=CUSTOM_REAL), intent(in) :: damping_weight(:)
+  real(kind=CUSTOM_REAL), intent(in) :: local_weight(:)
   type(t_model), intent(in) :: model
   real(kind=CUSTOM_REAL), intent(in) :: model_ref(:)
   integer, intent(in) :: param_shift
@@ -108,17 +108,30 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, damping_weight, &
   type(t_sparse_matrix), intent(inout) :: matrix
   real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(:)
 
-  integer :: i, nsmaller, nelements_total, p
+  integer :: i, nsmaller, nelements_total
   integer :: row_beg, row_end
   integer :: ierr
   real(kind=CUSTOM_REAL) :: value
   type(t_parallel_tools) :: pt
-  real(kind=CUSTOM_REAL), allocatable :: compressed_row(:)
+
+  !---------------------------------------------------------------------
+  ! Calculating the model difference: (m - m_ref), which is used in the right-hand side, and in the Lp norm multiplier.
+  real(kind=CUSTOM_REAL), allocatable :: model_diff(:)
+
+  allocate(model_diff(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+
+  model_diff = model%val - model_ref
+
+  ! Apply the depth-weighting.
+  do i = 1, this%nelements
+    model_diff(i) = model_diff(i) / column_weight(i)
+  enddo
 
   if (this%compression_type == 2) then
-    allocate(compressed_row(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-    if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in damping_add!", myrank, ierr)
+    ! Map the model difference to the wavelet domain.
+    call Haar3D(model_diff, this%nx, this%ny, this%nz)
   endif
+  !---------------------------------------------------------------------
 
   ! The number of elements on CPUs with rank smaller than myrank.
   nsmaller = pt%get_nsmaller(this%nelements, myrank, nbproc)
@@ -136,38 +149,17 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, damping_weight, &
   do i = 1, this%nelements
     call matrix%new_row(myrank)
 
-    ! Map only the model perturbation variable.
-    value = this%alpha * this%problem_weight * damping_weight(i) * &
-            column_weight(i) * &
-            this%get_norm_multiplier(model%val(i), model_ref(i))
+    value = this%alpha * this%problem_weight
 
-    ! Apply model covariance (diagonal), which is equivalent of having local alpha.
-    value = value * model%cov(i)
+    ! Apply the Lp norm.
+    value = value * this%get_norm_multiplier(model_diff(i))
 
-    if (this%compression_type == 0) then
-    ! No wavelet compression.
-      call matrix%add(value, param_shift + i, myrank)
+    ! Apply local weight, which is equivalent to having local alpha.
+    value = value * local_weight(i)
 
-    else if (this%compression_type == 2) then
-    ! Wavelet compression.
-      ! Forming the matrix row.
-      compressed_row = 0.d0
-      compressed_row(i) = value
+    call matrix%add(value, param_shift + i, myrank)
 
-      ! Wavelet compression of the matrix row.
-      call Haar3D(compressed_row, this%nx, this%ny, this%nz)
-
-      ! Adding the compressed damping row to the matrix.
-      do p = 1, this%nelements
-        value = compressed_row(p)
-        !if (abs(value) >= this%threshold) then
-          call matrix%add(compressed_row(p), param_shift + p, myrank)
-        !endif
-      enddo
-    endif
   enddo
-
-  if (allocated(compressed_row)) deallocate(compressed_row)
 
   ! Add empty lines.
   call matrix%add_empty_rows(nelements_total - this%nelements - nsmaller, myrank)
@@ -179,8 +171,11 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, damping_weight, &
   if (row_end - row_beg + 1 /= nelements_total) &
     call exit_MPI("Sanity check failed in damping_add!", myrank, 0)
 
+  !---------------------------------------------------------------------
   ! Add the damping contribution to the right hand side.
-  call this%add_RHS(b_RHS(row_beg:row_end), model, model_ref, damping_weight, myrank, nbproc)
+  call this%add_RHS(b_RHS(row_beg:row_end), model_diff, column_weight, local_weight, myrank, nbproc)
+
+  deallocate(model_diff)
 
   ! Calculate the damping cost.
   this%cost = sum(b_RHS(row_beg:row_end)**2)
@@ -191,24 +186,26 @@ end subroutine damping_add
 ! Adds damping contribution in the right hand side.
 ! model_ref - reference model.
 !=============================================================================================
-subroutine damping_add_RHS(this, b_RHS, model, model_ref, damping_weight, myrank, nbproc)
+subroutine damping_add_RHS(this, b_RHS, model_diff, column_weight, local_weight, myrank, nbproc)
   class(t_damping), intent(in) :: this
-  type(t_model), intent(in) :: model
-  real(kind=CUSTOM_REAL), intent(in) :: model_ref(:)
-  real(kind=CUSTOM_REAL), intent(in) :: damping_weight(:)
+  real(kind=CUSTOM_REAL), intent(in) :: model_diff(:)
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
+  real(kind=CUSTOM_REAL), intent(in) :: local_weight(:)
   integer, intent(in) :: myrank, nbproc
 
   real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(:)
+
   type(t_parallel_tools) :: pt
   integer :: i
 
   do i = 1, this%nelements
-    b_RHS(i) = - this%alpha * this%problem_weight * damping_weight(i) * &
-               (model%val(i) - model_ref(i)) * &
-               this%get_norm_multiplier(model%val(i), model_ref(i))
+    b_RHS(i) = - this%alpha * this%problem_weight * model_diff(i)
 
-    ! Apply model covariance (diagonal), which is equivalent of having local alpha.
-    b_RHS(i) = b_RHS(i) * model%cov(i)
+    ! Apply the Lp norm.
+    b_RHS(i) = b_RHS(i) * this%get_norm_multiplier(model_diff(i))
+
+    ! Apply local weight, which is equivalent to having local alpha.
+    b_RHS(i) = b_RHS(i) * local_weight(i)
   enddo
 
   ! Gather full right hand side.
@@ -230,13 +227,13 @@ end function damping_get_cost
 !===========================================================================================
 ! Returns a multiplier (for one pixel) to change L2 norm to Lp, in the LSQR method.
 !===========================================================================================
-pure function damping_get_norm_multiplier(this, model, model_ref) result(res)
+pure function damping_get_norm_multiplier(this, model_diff) result(res)
   class(t_damping), intent(in) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: model, model_ref
+  real(kind=CUSTOM_REAL), intent(in) :: model_diff
   real(kind=CUSTOM_REAL) :: res
 
-  if (model /= model_ref) then
-    res = (abs(model - model_ref))**(this%norm_power / 2.d0 - 1.d0)
+  if (model_diff /= 0.d0) then
+    res = (abs(model_diff))**(this%norm_power / 2.d0 - 1.d0)
   else
     res = 1._CUSTOM_REAL
   endif

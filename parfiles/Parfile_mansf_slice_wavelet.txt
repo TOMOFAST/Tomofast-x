@@ -50,14 +50,15 @@ inversion.startingModel.grav.value  = 0.d0
 ===================================================================================
 INVERSION parameters
 ===================================================================================
-inversion.nMajorIterations          = 2
+inversion.nMajorIterations          = 4
 inversion.nMinorIterations          = 100
 inversion.minResidual               = 1.d-13
 
 ===================================================================================
 MODEL DAMPING (m - m_prior)
 ===================================================================================
-inversion.modelDamping.grav.weight  = 1.d-10
+inversion.modelDamping.grav.weight  = 1.d-6
+inversion.modelDamping.normPower    = 2.0d0
 
 ===================================================================================
 JOINT INVERSION parameters

@@ -221,7 +221,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
       allocate(this%x0_ADMM(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
     if (.not. allocated(this%weight_ADMM)) &
-      allocate(this%weight_ADMM(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
+      allocate(this%weight_ADMM(par%nelements), source=1._CUSTOM_REAL, stat=ierr)
   endif
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize!", myrank, ierr)
@@ -338,7 +338,8 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
       call damping%initialize(par%nelements, par%alpha(i), problem_weight_adjusted(i), par%norm_power, &
                               par%compression_type, par%nx, par%ny, par%nz, par%wavelet_threshold)
 
-      call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, arr(i)%damping_weight, &
+      ! Note: we use model covariance now for the local damping weight, which is equivalent of having local alpha.
+      call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, arr(i)%model%cov, &
                        arr(i)%model, arr(i)%model_prior, param_shift(i), myrank, nbproc)
 
       if (myrank == 0) print *, 'damping term cost = ', damping%get_cost()
@@ -419,8 +420,8 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
     if (solve_gravity_only .or. solve_mag_only) then
     ! Add ADMM constraints only in separate (single) inversions.
 
-      !this%weight_ADMM = 1.d0
-      this%weight_ADMM = arr(i)%damping_weight
+      this%weight_ADMM = 1.d0
+      !this%weight_ADMM = arr(i)%damping_weight
 
       call damping%initialize(par%nelements, par%rho_ADMM(i), problem_weight_adjusted(i), par%norm_power, &
                               par%compression_type, par%nx, par%ny, par%nz, par%wavelet_threshold)
