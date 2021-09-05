@@ -50,14 +50,14 @@ inversion.startingModel.grav.value  = 0.d0
 ===================================================================================
 INVERSION parameters
 ===================================================================================
-inversion.nMajorIterations          = 4
+inversion.nMajorIterations          = 50
 inversion.nMinorIterations          = 100
 inversion.minResidual               = 1.d-13
 
 ===================================================================================
 MODEL DAMPING (m - m_prior)
 ===================================================================================
-inversion.modelDamping.grav.weight  = 1.d-6
+inversion.modelDamping.grav.weight  = 2.d-11
 inversion.modelDamping.normPower    = 2.0d0
 
 ===================================================================================
@@ -69,10 +69,10 @@ inversion.joint.magn.problemWeight  = 0.d0
 ===================================================================================
 ADMM constraints
 ===================================================================================
-inversion.admm.enableADMM           = 0
+inversion.admm.enableADMM           = 1
 inversion.admm.nLithologies         = 5
 inversion.admm.grav.boundsFile      = data/gravmag/mansf_slice/grav_bound_constraints_2.txt
-inversion.admm.grav.weight          = 11.d-8
+inversion.admm.grav.weight          = 44.d-5
 
 ===================================================================================
 
