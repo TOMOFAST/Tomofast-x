@@ -31,6 +31,7 @@ module sensitivity_gravmag
   use sparse_matrix
   use vector
   use wavelet_transform
+  use parallel_tools
 
   implicit none
 
@@ -57,12 +58,12 @@ contains
 !=============================================================================================
 ! Calculates the sensitivity kernel (matrix).
 !=============================================================================================
-subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, myrank)
+subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid
   type(t_data), intent(in) :: data
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
-  integer, intent(in) :: myrank
+  integer, intent(in) :: myrank, nbproc
 
   ! Sensitivity matrix.
   type(t_sparse_matrix), intent(inout) :: sensit_matrix
@@ -70,11 +71,14 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
   type(t_magnetic_field) :: mag_field
   integer :: i, p, ierr
   real(kind=CUSTOM_REAL) :: comp_rate
+  integer :: nsmaller, nelements_total
+  type(t_parallel_tools) :: pt
 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_line2(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_line3(:)
+  real(kind=CUSTOM_REAL), allocatable :: sensit_line_full(:)
 
   allocate(sensit_line(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_sensitivity!", myrank, ierr)
@@ -84,6 +88,19 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
 
   allocate(sensit_line3(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_sensitivity!", myrank, ierr)
+
+  if (par%compression_type == 2) then
+    if (nbproc > 1) then
+      ! Number of parameters on ranks smaller than current one.
+      nsmaller = pt%get_nsmaller(par%nelements, myrank, nbproc)
+
+      ! Total number of elements.
+      nelements_total = par%nx * par%ny * par%nz
+
+      allocate(sensit_line_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+      if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_sensitivity!", myrank, ierr)
+    endif
+  endif
 
   select type(par)
   class is (t_parameters_mag)
@@ -132,9 +149,21 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
         if (par%compression_type == 1) then
         ! Distance cut-off compression.
           call compress_matrix_line(par%nelements, sensit_line3, data, i, grid, par%distance_threshold, comp_rate)
+
         else if (par%compression_type == 2) then
         ! Wavelet compression.
-          call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line3, par%wavelet_threshold, comp_rate)
+
+          if (nbproc > 1) then
+          ! Parallel wavelet copression.
+            call pt%get_full_array(sensit_line3, par%nelements, sensit_line_full, .true., myrank, nbproc)
+            call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line_full, par%wavelet_threshold, comp_rate)
+
+            ! Extract the local sensitivity part.
+            sensit_line3 = sensit_line_full(nsmaller + 1 : nsmaller + par%nelements)
+          else
+          ! Serial.
+            call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line3, par%wavelet_threshold, comp_rate)
+          endif
         endif
 
         call sensit_matrix%new_row(myrank)
@@ -147,7 +176,7 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
 
       call sensit_matrix%finalize(par%nelements, myrank)
 
-    else if (par%ncomponents == 3) then
+    else
 
       if (myrank == 0) print *, 'Error: Not supported case!'
       stop
@@ -162,6 +191,7 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
   deallocate(sensit_line)
   deallocate(sensit_line2)
   deallocate(sensit_line3)
+  if (allocated(sensit_line_full)) deallocate(sensit_line_full)
 
   if (myrank == 0) print *, 'Finished calculating the sensitivity kernel.'
 

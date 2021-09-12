@@ -210,8 +210,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
   !-----------------------------------------------------------------------------------------
   ! Solve forward problems for gravity and magnetism.
-  if (SOLVE_PROBLEM(1)) call solve_forward_problem(gpar, iarr(1), data(1), myrank)
-  if (SOLVE_PROBLEM(2)) call solve_forward_problem(mpar, iarr(2), data(2), myrank)
+  if (SOLVE_PROBLEM(1)) call solve_forward_problem(gpar, iarr(1), data(1), myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call solve_forward_problem(mpar, iarr(2), data(2), myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
   ! Write data calculated from the model read.
@@ -281,7 +281,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     ! Calculate data from the prior model.
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, &
-        iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank)
+        iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank, nbproc)
     enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -304,7 +304,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     ! Calculate data from the starting model.
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, &
-        iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank)
+        iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank, nbproc)
     enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -359,7 +359,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       ! Calculate data based on the new model from inversion.
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, &
-          iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank)
+          iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank, nbproc)
       enddo
 
 #ifndef SUPPRESS_OUTPUT

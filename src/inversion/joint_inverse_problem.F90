@@ -73,7 +73,7 @@ module joint_inverse_problem
     integer :: nelements_total
 
     ! Flags to switch off the use of some terms (for debugging).
-    logical :: add_damping
+    logical :: add_damping(2)
     logical :: add_damping_gradient
     logical, public :: add_cross_grad
     logical, public :: add_clustering
@@ -121,13 +121,21 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   type(t_parameters_inversion), intent(in) :: par
   integer, intent(in) :: nnz_sensit, myrank
   integer :: ierr
-  integer :: nl, nnz
+  integer :: i, nl, nnz
 
-  this%add_damping = .true.
-  this%add_damping_gradient = .true.
+  do i = 1, 2
+    if (par%alpha(i) == 0.d0 .or. par%problem_weight(i) == 0.d0) then
+      this%add_damping(i) = .false.
+    else
+      this%add_damping(i) = .true.
+    endif
+  enddo
 
+  ! TODO: Make add_damping_gradient(i) as above done with add_damping(i)
   if (par%beta(1) == 0.d0 .and. par%beta(2) == 0.d0) then
     this%add_damping_gradient = .false.
+  else
+    this%add_damping_gradient = .true.
   endif
 
   if (par%cross_grad_weight == 0.d0) then
@@ -145,7 +153,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   this%nelements_total = par%nelements_total
 
   if (myrank == 0) then
-    print *, 'add_cross_grad, add_clustering =', this%add_cross_grad, this%add_clustering
+    print *, 'add_damping1 =', this%add_damping(1)
+    print *, 'add_damping2 =', this%add_damping(2)
     print *, 'add_cross_grad, add_clustering =', this%add_cross_grad, this%add_clustering
     print *, 'myrank, ndata1, nelements1 =', myrank, par%ndata(1), par%nelements
     print *, 'myrank, ndata2, nelements2 =', myrank, par%ndata(2), par%nelements
@@ -164,10 +173,12 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   nl = par%ndata(1) + par%ndata(2)
   nnz = nnz_sensit
 
-  if (this%add_damping) then
-    nl = nl + 2 * par%nelements_total
-    nnz = nnz + 2 * par%nelements
-  endif
+  do i = 1, 2
+    if (this%add_damping(i)) then
+      nl = nl + par%nelements_total
+      nnz = nnz + par%nelements
+    endif
+  enddo
 
   if (this%add_damping_gradient) then
     nl = nl + 3 * 2 * par%nelements_total
@@ -266,11 +277,13 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
   integer :: der_type
   real(kind=CUSTOM_REAL) :: matrix_dummy(1, 1)
   character(len=32) :: filename
+  integer :: nsmaller
   
   ! TODO: Move out with writing the variance.
   integer :: ierr
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full1(:)
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full2(:)
+  real(kind=CUSTOM_REAL), allocatable :: delta_model_full(:)
   type(t_parallel_tools) :: pt
 
   logical :: SOLVE_PROBLEM(2)
@@ -314,7 +327,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
     ! Skip the problem with zero problem weight (single inversion).
     if (.not. SOLVE_PROBLEM(i)) then
       nl = par%ndata(i)
-      if (this%add_damping) nl = nl + par%nelements_total
+      if (this%add_damping(i)) nl = nl + par%nelements_total
       if (this%add_damping_gradient) nl = nl + 3 * par%nelements_total
       call this%matrix%add_empty_rows(nl, myrank)
       cycle
@@ -332,7 +345,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
     if (myrank == 0) print *, 'misfit term cost = ', sensit%get_cost()
     if (myrank == 0) print *, 'nel = ', this%matrix%get_number_elements()
 
-    if (this%add_damping) then
+    if (this%add_damping(i)) then
       if (myrank == 0) print *, 'adding damping with alpha =', par%alpha(i)
 
       call damping%initialize(par%nelements, par%alpha(i), problem_weight_adjusted(i), par%norm_power, &
@@ -468,7 +481,9 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
 
   ! ***** Clustering *****
 
-  call this%add_clustering_constraints(par, arr, ncalls, myrank, nbproc)
+  if (this%add_clustering) then
+    call this%add_clustering_constraints(par, arr, ncalls, myrank, nbproc)
+  endif
 
   !-------------------------------------------------------------------------------------
   call this%matrix%finalize(2 * par%nelements, myrank)
@@ -516,9 +531,33 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
   endif
 
   if (matrix_compression_type == 2) then
-    ! Applying the Inverse Wavelet Transform.
-    if (SOLVE_PROBLEM(1)) call iHaar3D(delta_model(1:par%nelements), par%nx, par%ny, par%nz)
-    if (SOLVE_PROBLEM(2)) call iHaar3D(delta_model(par%nelements + 1:), par%nx, par%ny, par%nz)
+  ! Applying the Inverse Wavelet Transform.
+    if (nbproc > 1) then
+    ! Parallel version.
+      allocate(delta_model_full(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+      nsmaller = pt%get_nsmaller(par%nelements, myrank, nbproc)
+
+      if (SOLVE_PROBLEM(1)) then
+        call pt%get_full_array(delta_model(1:par%nelements), par%nelements, delta_model_full, .true., myrank, nbproc)
+        call iHaar3D(delta_model_full, par%nx, par%ny, par%nz)
+
+        ! Extract the local model update.
+        delta_model(1:par%nelements) = delta_model_full(nsmaller + 1 : nsmaller + par%nelements)
+      endif
+
+      if (SOLVE_PROBLEM(2)) then
+        call pt%get_full_array(delta_model(par%nelements + 1:), par%nelements, delta_model_full, .true., myrank, nbproc)
+        call iHaar3D(delta_model_full, par%nx, par%ny, par%nz)
+
+        ! Extract the local model update.
+        delta_model(par%nelements + 1:) = delta_model_full(nsmaller + 1 : nsmaller + par%nelements)
+      endif
+
+    else
+    ! Serial version.
+      if (SOLVE_PROBLEM(1)) call iHaar3D(delta_model(1:par%nelements), par%nx, par%ny, par%nz)
+      if (SOLVE_PROBLEM(2)) call iHaar3D(delta_model(par%nelements + 1:), par%nx, par%ny, par%nz)
+    endif
   endif
 
   if (SOLVE_PROBLEM(1)) call rescale_model(delta_model(1:par%nelements), arr(1)%column_weight, par%nelements)
@@ -648,19 +687,17 @@ subroutine joint_inversion_add_clustering_constraints(this, par, arr, ncalls, my
 
   integer :: i
 
-  if (this%add_clustering) then
-    if (par%single_problem_complete(1, ncalls) .and. par%single_problem_complete(2, ncalls)) then
-      do i = 1, 2
-        call this%clustering%add(arr(1)%model, arr(2)%model, arr(1)%column_weight, arr(2)%column_weight, &
-                                 this%matrix, this%b_RHS, i, myrank, nbproc)
+  if (par%single_problem_complete(1, ncalls) .and. par%single_problem_complete(2, ncalls)) then
+    do i = 1, 2
+      call this%clustering%add(arr(1)%model, arr(2)%model, arr(1)%column_weight, arr(2)%column_weight, &
+                               this%matrix, this%b_RHS, i, myrank, nbproc)
 
-        if (myrank == 0) print *, 'clustering term', i, 'cost = ', this%clustering%get_cost(i)
-        if (myrank == 0) print *, 'nel (with clustering) = ', this%matrix%get_number_elements()
-      enddo
-    else
-    ! Finding the initial solution without adding the clustering term, for a few iterations.
-      call this%matrix%add_empty_rows(2 * this%nelements_total, myrank)
-    endif
+      if (myrank == 0) print *, 'clustering term', i, 'cost = ', this%clustering%get_cost(i)
+      if (myrank == 0) print *, 'nel (with clustering) = ', this%matrix%get_number_elements()
+    enddo
+  else
+  ! Finding the initial solution without adding the clustering term, for a few iterations.
+    call this%matrix%add_empty_rows(2 * this%nelements_total, myrank)
   endif
 
 end subroutine joint_inversion_add_clustering_constraints
