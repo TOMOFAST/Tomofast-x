@@ -131,7 +131,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   if (myrank == 0) print *, "Solving problem joint grav/mag."
 
   do i = 1, 2
-    SOLVE_PROBLEM(i) = (ipar%problem_weight(i) > 0.d0)
+    SOLVE_PROBLEM(i) = (ipar%problem_weight(i) /= 0.d0)
     if (myrank == 0) print *, "SOLVE_PROBLEM("//trim(str(i))//") = ", SOLVE_PROBLEM(i)
   enddo
 

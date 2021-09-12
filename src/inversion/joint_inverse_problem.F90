@@ -171,7 +171,13 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   endif
 
   ! Calculate number of matrix rows and (approx.) non-zero elements.
-  nl = par%ndata(1) + par%ndata(2)
+  nl = 0
+  do i = 1, 2
+    if (par%problem_weight(i) /= 0.d0) then
+      nl = nl + par%ndata(i)
+    endif
+  enddo
+
   nnz = nnz_sensit
 
   do i = 1, 2
@@ -316,7 +322,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
   endif
 
   do i = 1, 2
-    SOLVE_PROBLEM(i) = (par%problem_weight(i) > 0.d0)
+    SOLVE_PROBLEM(i) = (par%problem_weight(i) /= 0.d0)
   enddo
 
   param_shift(1) = 0
@@ -329,10 +335,6 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
 
     ! Skip the problem with zero problem weight (single inversion).
     if (.not. SOLVE_PROBLEM(i)) then
-      nl = par%ndata(i)
-      if (this%add_damping(i)) nl = nl + par%nelements_total
-      if (this%add_damping_gradient(i)) nl = nl + 3 * par%nelements_total
-      call this%matrix%add_empty_rows(nl, myrank)
       cycle
     endif
 
