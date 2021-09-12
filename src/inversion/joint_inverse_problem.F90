@@ -18,7 +18,7 @@
 ! Calculates the model update (change).
 ! Uses an object of type t_parameters_inversion to obtain the input parameters and data arrays.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2017.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================================
 module joint_inverse_problem
 
@@ -74,7 +74,7 @@ module joint_inverse_problem
 
     ! Flags to switch off the use of some terms (for debugging).
     logical :: add_damping(2)
-    logical :: add_damping_gradient
+    logical :: add_damping_gradient(2)
     logical, public :: add_cross_grad
     logical, public :: add_clustering
 
@@ -131,12 +131,13 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     endif
   enddo
 
-  ! TODO: Make add_damping_gradient(i) as above done with add_damping(i)
-  if (par%beta(1) == 0.d0 .and. par%beta(2) == 0.d0) then
-    this%add_damping_gradient = .false.
-  else
-    this%add_damping_gradient = .true.
-  endif
+  do i = 1, 2
+    if (par%beta(i) == 0.d0 .or. par%problem_weight(i) == 0.d0) then
+      this%add_damping_gradient(i) = .false.
+    else
+      this%add_damping_gradient(i) = .true.
+    endif
+  enddo
 
   if (par%cross_grad_weight == 0.d0) then
     this%add_cross_grad = .false.
@@ -180,10 +181,12 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     endif
   enddo
 
-  if (this%add_damping_gradient) then
-    nl = nl + 3 * 2 * par%nelements_total
-    nnz = nnz + 3 * 2 * 2 * par%nelements
-  endif
+  do i = 1, 2
+    if (this%add_damping_gradient(i)) then
+      nl = nl + 3 * par%nelements_total
+      nnz = nnz + 3 * 2 * par%nelements
+    endif
+  enddo
 
   if (this%add_cross_grad) then
     if (par%derivative_type /= 4) then
@@ -328,7 +331,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
     if (.not. SOLVE_PROBLEM(i)) then
       nl = par%ndata(i)
       if (this%add_damping(i)) nl = nl + par%nelements_total
-      if (this%add_damping_gradient) nl = nl + 3 * par%nelements_total
+      if (this%add_damping_gradient(i)) nl = nl + 3 * par%nelements_total
       call this%matrix%add_empty_rows(nl, myrank)
       cycle
     endif
@@ -359,7 +362,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
       if (myrank == 0) print *, 'nel (with damping) = ', this%matrix%get_number_elements()
     endif
 
-    if (this%add_damping_gradient) then
+    if (this%add_damping_gradient(i)) then
       if (myrank == 0) print *, 'adding damping_gradient with beta =', par%beta(i), ' weight type =', par%damp_grad_weight_type
 
       call damping_gradient%initialize(par%beta(i), problem_weight_adjusted(i), par%nx, par%ny, par%nz, par%nelements, myrank)
