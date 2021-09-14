@@ -15,7 +15,7 @@
 !========================================================================================
 ! Parameters needed for forward problems that are common for gravity and magnetism.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !========================================================================================
 module parameters_gravmag
 

@@ -16,7 +16,6 @@ module gravity_field
 
   use global_typedefs, only: CUSTOM_REAL, SIZE_REAL, PI
   use mpi_tools, only: exit_MPI
-  use parameters_grav
   use grid
 
   implicit none
@@ -36,8 +35,8 @@ contains
 ! IMPORTANT: We purposely do all the calculations for "integral_computed" in double precision below,
 ! for accuracy reasons, and then convert the result back to single precision at the endif needed.
 !==========================================================================================
-subroutine graviprism_full(par, grid, Xdata, Ydata, Zdata, LineX, LineY, LineZ, myrank)
-  class(t_parameters_grav), intent(in) :: par
+subroutine graviprism_full(nelements, ncomponents, grid, Xdata, Ydata, Zdata, LineX, LineY, LineZ, myrank)
+  integer, intent(in) :: nelements, ncomponents
   type(t_grid), intent(in) :: grid
   real(kind=CUSTOM_REAL), intent(in) :: Xdata, Ydata, Zdata
   integer, intent(in) :: myrank
@@ -71,7 +70,7 @@ subroutine graviprism_full(par, grid, Xdata, Ydata, Zdata, LineX, LineY, LineZ, 
   sigmad = 1.d0
   lamb_over_sigmad = G_grav / sigmad
 
-  do i = 1, par%nelements
+  do i = 1, nelements
 
     XX(1) = Xdatad - dble(grid%X1(i))
     XX(2) = Xdatad - dble(grid%X2(i))
@@ -134,14 +133,14 @@ subroutine graviprism_full(par, grid, Xdata, Ydata, Zdata, LineX, LineY, LineZ, 
     if (CUSTOM_REAL == SIZE_REAL) then
       LineZ(i) = sngl(gz*lamb_over_sigmad)
 
-      if (par%ncomponents == 3) then
+      if (ncomponents == 3) then
         LineX(i) = sngl(gx*lamb_over_sigmad)
         LineY(i) = sngl(gy*lamb_over_sigmad)
       endif
     else
       LineZ(i) = gz*lamb_over_sigmad
 
-      if (par%ncomponents == 3) then
+      if (ncomponents == 3) then
         LineX(i) = gx*lamb_over_sigmad
         LineY(i) = gy*lamb_over_sigmad
       endif

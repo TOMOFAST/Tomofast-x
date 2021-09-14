@@ -73,6 +73,7 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
   real(kind=CUSTOM_REAL) :: comp_rate
   integer :: nsmaller, nelements_total
   type(t_parallel_tools) :: pt
+  integer :: problem_type
 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line(:)
@@ -103,86 +104,63 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
   endif
 
   select type(par)
-  class is (t_parameters_mag)
-
-    if (myrank == 0) print *, 'Calculating MAGNETIC sensitivity kernel...'
-
-    ! Precompute common parameters.
-    call mag_field%initialize(par%mi, par%md, par%fi, par%fd, par%theta, par%intensity)
-
-    ! Calculate sensitivity and adding to sparse matrix.
-    ! Loop on all the data lines.
-    do i = 1, par%ndata
-      call mag_field%magprism(par%nelements, i, grid, data%X, data%Y, data%Z, sensit_line)
-
-      call apply_column_weight(par%nelements, sensit_line, column_weight)
-
-      call compress_matrix_line(par%nelements, sensit_line, data, i, grid, par%distance_threshold, comp_rate)
-
-      call sensit_matrix%new_row(myrank)
-
-      do p = 1, par%nelements
-        call sensit_matrix%add(sensit_line(p), p, myrank)
-      enddo
-    enddo
-
-    call sensit_matrix%finalize(par%nelements, myrank)
-
-  !----------- Gravity -------------------------------------------------------------------------
   class is (t_parameters_grav)
-
     if (myrank == 0) print *, 'Calculating GRAVITY sensitivity kernel...'
+    problem_type = 1
 
-    ! Sanity check.
-    if (mod(par%ndata, par%ncomponents) /= 0) &
-      call exit_MPI("Number of data does not match the number of components!", myrank, 0)
+  class is (t_parameters_mag)
+    if (myrank == 0) print *, 'Calculating MAGNETIC sensitivity kernel...'
+    problem_type = 2
 
-    if (par%ncomponents == 1) then
+    ! Precompute common magnetic parameters.
+    call mag_field%initialize(par%mi, par%md, par%fi, par%fd, par%theta, par%intensity)
+  end select
 
-      ! Loop on all the data lines.
-      do i = 1, par%ndata
-        call graviprism_full(par, grid, data%X(i), data%Y(i), data%Z(i), &
-                             sensit_line, sensit_line2, sensit_line3, myrank)
-
-        call apply_column_weight(par%nelements, sensit_line3, column_weight)
-
-        if (par%compression_type == 1) then
-        ! Distance cut-off compression.
-          call compress_matrix_line(par%nelements, sensit_line3, data, i, grid, par%distance_threshold, comp_rate)
-
-        else if (par%compression_type == 2) then
-        ! Wavelet compression.
-
-          if (nbproc > 1) then
-          ! Parallel wavelet copression.
-            call pt%get_full_array(sensit_line3, par%nelements, sensit_line_full, .true., myrank, nbproc)
-            call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line_full, par%wavelet_threshold, comp_rate)
-
-            ! Extract the local sensitivity part.
-            sensit_line3 = sensit_line_full(nsmaller + 1 : nsmaller + par%nelements)
-          else
-          ! Serial.
-            call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line3, par%wavelet_threshold, comp_rate)
-          endif
-        endif
-
-        call sensit_matrix%new_row(myrank)
-
-        do p = 1, par%nelements
-          ! Adding the Z-component only.
-          call sensit_matrix%add(sensit_line3(p), p, myrank)
-        enddo
-      enddo
-
-      call sensit_matrix%finalize(par%nelements, myrank)
-
-    else
-
-      if (myrank == 0) print *, 'Error: Not supported case!'
-      stop
+  !--------------------------------------------------------------------------------------------
+  ! Calculating sensitivity and adding to the sparse matrix.
+  ! Loop on all the data lines.
+  do i = 1, par%ndata
+    if (problem_type == 1) then
+    ! Gravity problem.
+      call graviprism_full(par%nelements, par%ncomponents, grid, data%X(i), data%Y(i), data%Z(i), &
+                           sensit_line3, sensit_line2, sensit_line, myrank)
+    else if (problem_type == 2) then
+    ! Magnetic problem.
+      call mag_field%magprism(par%nelements, i, grid, data%X, data%Y, data%Z, sensit_line)
     endif
 
-  end select
+    ! Applying the depth weight.
+    call apply_column_weight(par%nelements, sensit_line, column_weight)
+
+    if (par%compression_type == 1) then
+    ! Distance cut-off compression.
+      call compress_matrix_line(par%nelements, sensit_line, data, i, grid, par%distance_threshold, comp_rate)
+
+    else if (par%compression_type == 2) then
+    ! Wavelet compression.
+
+      if (nbproc > 1) then
+      ! Parallel wavelet copression.
+        call pt%get_full_array(sensit_line, par%nelements, sensit_line_full, .true., myrank, nbproc)
+        call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line_full, par%wavelet_threshold, comp_rate)
+
+        ! Extract the local sensitivity part.
+        sensit_line = sensit_line_full(nsmaller + 1 : nsmaller + par%nelements)
+      else
+      ! Serial.
+        call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line, par%wavelet_threshold, comp_rate)
+      endif
+    endif
+
+    call sensit_matrix%new_row(myrank)
+
+    do p = 1, par%nelements
+      ! Adding the Z-component only.
+      call sensit_matrix%add(sensit_line(p), p, myrank)
+    enddo
+  enddo
+
+  call sensit_matrix%finalize(par%nelements, myrank)
 
   ! Calculate the matrix compression rate.
   comp_rate = dble(sensit_matrix%get_number_elements()) / dble(par%nelements) / dble(par%ndata)
