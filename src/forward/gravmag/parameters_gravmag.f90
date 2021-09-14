@@ -59,11 +59,6 @@ module parameters_gravmag
     ! Set starting model to this value.
     real(kind=CUSTOM_REAL) :: start_model_val
 
-    ! Flag to calculate data from prior model directly
-    ! without storing sensitivity matrix.
-    ! Then program stops after writing data to a file.
-    integer :: calc_data_directly
-
     ! Type of the depth weighting (1-power law, 2-sensitivity column below the data, 3-integrated sensitivity).
     integer :: depth_weighting_type
     ! Power constant for depth weighting (type=1).
@@ -126,8 +121,6 @@ subroutine parameters_base_broadcast(this, myrank)
 
   call MPI_Bcast(this%start_model_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%start_model_val, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-  call MPI_Bcast(this%calc_data_directly, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
   call MPI_Bcast(this%depth_weighting_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%Z0, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)

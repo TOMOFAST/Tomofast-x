@@ -44,7 +44,6 @@ module sensitivity_gravmag
     private
 
     procedure, public, nopass :: calculate_sensitivity
-    procedure, public, nopass :: calc_data_directly
 
     procedure, public, nopass :: compress_matrix_line
     procedure, public, nopass :: compress_matrix_line_wavelet
@@ -193,52 +192,6 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
   if (myrank == 0) print *, 'Finished calculating the sensitivity kernel.'
 
 end subroutine calculate_sensitivity
-
-!======================================================================================
-! Calculates data directly from prior model without storing the sensitivity matrix.
-! This way we can calculate data for big models/data sets using much less memory.
-!======================================================================================
-subroutine calc_data_directly(par, model, data, myrank)
-  class(t_parameters_base), intent(in) :: par
-  type(t_model), intent(in) :: model
-  type(t_data), intent(inout) :: data
-  integer, intent(in) :: myrank
-
-  type(t_magnetic_field) :: mag_field
-  integer :: i, ierr
-  real(kind=CUSTOM_REAL), allocatable :: line(:)
-
-  if (myrank == 0) print *, 'Error: Not supported case!'
-  stop
-
-  ! Allocate memory for one sensitivity matrix row.
-  allocate(line(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in write_data_directly!", myrank, ierr)
-
-  select type(par)
-  class is (t_parameters_mag)
-
-    if (myrank == 0) print *, 'Computing MAGNETIC data directly...'
-
-    ! Precompute common parameters.
-    call mag_field%initialize(par%mi, par%md, par%fi, par%fd, par%theta, par%intensity)
-
-    do i = 1, par%ndata
-
-      ! Calculate one sensitivity matrix line.
-      call mag_field%magprism(par%nelements, 1, model%grid, data%X(i:i), data%Y(i:i), data%Z(i:i), line)
-
-      ! Calculate one data using sensitivity line and prior model (m) as d = line * m.
-      !call model%calculate_data(1, line, data%val_calc(i:i), myrank)
-
-    enddo
-
-  class is (t_parameters_grav)
-    ! TODO.
-
-  end select
-
-end subroutine calc_data_directly
 
 !==========================================================================================================
 ! Compresses matrix line - distance based cutoff.

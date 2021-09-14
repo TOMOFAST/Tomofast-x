@@ -193,11 +193,9 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
   if (myrank == 0) print *, "(III) SENSITIVITY MATRIX ALLOCATION."
 
-  if (gpar%calc_data_directly /= 1) then
-    ! Memory allocation for inversion arrays (except model objects).
-    if (SOLVE_PROBLEM(1)) call iarr(1)%allocate(.false., gpar%get_nnz_compressed(), myrank)
-    if (SOLVE_PROBLEM(2)) call iarr(2)%allocate(.false., mpar%get_nnz_compressed(), myrank)
-  endif
+  ! Memory allocation for inversion arrays (except model objects).
+  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate(.false., gpar%get_nnz_compressed(), myrank)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate(.false., mpar%get_nnz_compressed(), myrank)
 
   !-----------------------------------------------------------------------------------------
   ! Calculates weights.
@@ -218,10 +216,6 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_read_', 2, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_read_', 2, myrank)
 #endif
-
-  if (gpar%calc_data_directly == 1) then
-    return
-  endif
 
   ! Reading the data. Read here to allow the use of the above calculated data from the (original) model read.
   if (SOLVE_PROBLEM(1)) call data(1)%read(gpar%data_file, myrank)

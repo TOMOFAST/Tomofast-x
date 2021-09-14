@@ -39,13 +39,6 @@ subroutine solve_forward_problem(par, iarr, data, myrank, nbproc)
 
   type(t_sensitivity_gravmag) :: sens
 
-  if (par%calc_data_directly == 1) then
-    ! Calculate data directly without computing sensitivity matrix.
-    call sens%calc_data_directly(par, iarr%model, data, myrank)
-
-    return
-  endif
-
   ! Calculate sensitivity kernel (analytically).
   call sens%calculate_sensitivity(par, iarr%model%grid, data, iarr%column_weight, iarr%matrix_sensit, myrank, nbproc)
 

@@ -313,8 +313,6 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   mpar%data_grid_file = "NILL"
   gpar%data_file = "NILL"
   mpar%data_file = "NILL"
-  gpar%calc_data_directly = 0
-  mpar%calc_data_directly = 0
 
   ! MAGNETIC FIELD constants.
   mpar%mi = 75.d0
@@ -665,11 +663,6 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
       case("forward.data.magn.dataValuesFile")
         call read_filename(10, mpar%data_file)
         call print_arg(myrank, parname, mpar%data_file)
-
-      case("forward.data.calcDataWithoutSensit")
-        read(10, 2) gpar%calc_data_directly
-        call print_arg(myrank, parname, gpar%calc_data_directly)
-        mpar%calc_data_directly = gpar%calc_data_directly
 
       ! MAGNETIC FIELD constants ---------------------------
 

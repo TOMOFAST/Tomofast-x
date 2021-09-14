@@ -33,7 +33,7 @@ forward.matrixCompression.type                       = 2
 # The minimum compressed sensitivity absolute value.
 forward.matrixCompression.waveletThreshold           = 1.d-7
 # 1.0 = full matrix
-forward.matrixCompression.compressionRate            = 0.16d0
+forward.matrixCompression.compressionRate            = 0.21d0
 
 ===================================================================================
 PRIOR MODEL
