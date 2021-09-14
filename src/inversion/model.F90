@@ -30,7 +30,6 @@ module model
   use model_IO
   use sparse_matrix
   use wavelet_transform
-  use parallel_tools
 
   implicit none
 

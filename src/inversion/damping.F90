@@ -15,7 +15,7 @@
 !===========================================================================================
 ! A class to add (inversion) damping contribution to the matrix and right hand side.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !===========================================================================================
 module damping
 
@@ -117,6 +117,7 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, local_weight, &
   !---------------------------------------------------------------------
   ! Calculating the model difference: (m - m_ref), which is used in the right-hand side, and in the Lp norm multiplier.
   real(kind=CUSTOM_REAL), allocatable :: model_diff(:)
+  real(kind=CUSTOM_REAL), allocatable :: model_diff_full(:)
 
   allocate(model_diff(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
@@ -127,17 +128,40 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, local_weight, &
     model_diff(i) = model_diff(i) / column_weight(i)
   enddo
 
-  if (this%compression_type == 2) then
-    ! Map the model difference to the wavelet domain.
-    call Haar3D(model_diff, this%nx, this%ny, this%nz)
-  endif
-  !---------------------------------------------------------------------
+  ! The total number of elements.
+  nelements_total = pt%get_total_number_elements(this%nelements, myrank, nbproc)
 
   ! The number of elements on CPUs with rank smaller than myrank.
   nsmaller = pt%get_nsmaller(this%nelements, myrank, nbproc)
 
-  ! The total number of elements.
-  nelements_total = pt%get_total_number_elements(this%nelements, myrank, nbproc)
+  if (this%compression_type == 2) then
+  ! Transform the model difference to the wavelet domain.
+
+    if (nbproc > 1) then
+    ! Parallel version.
+
+      ! Allocate memory for the full model.
+      allocate(model_diff_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+      if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in damping_add!", myrank, ierr)
+
+      ! Gather the full model from all processors.
+      call pt%get_full_array(model_diff, this%nelements, model_diff_full, .true., myrank, nbproc)
+
+      ! Transform to wavelet domain.
+      call Haar3D(model_diff_full, this%nx, this%ny, this%nz)
+
+      ! Extract the local model part.
+      model_diff = model_diff_full(nsmaller + 1 : nsmaller + this%nelements)
+
+      deallocate(model_diff_full)
+
+    else
+    ! Serial version.
+      ! Transform to wavelet domain.
+      call Haar3D(model_diff, this%nx, this%ny, this%nz)
+    endif
+  endif
+  !---------------------------------------------------------------------
 
   ! First matrix row (in the big matrix) of the damping matrix that will be added.
   row_beg = matrix%get_current_row_number() + 1
