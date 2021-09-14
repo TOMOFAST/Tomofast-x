@@ -16,7 +16,7 @@
 ! A class to work with sparse matrices that are
 ! stored using Compressed Sparse Row (CSR) format.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !========================================================================================
 module sparse_matrix
 
@@ -234,12 +234,12 @@ subroutine sparse_matrix_add(this, value, column, myrank)
   real(kind=CUSTOM_REAL), intent(in) :: value
   integer, intent(in) :: column, myrank
 
+  ! Do not add zero values to a sparse matrix.
+  if (value == 0._CUSTOM_REAL) return
+
   ! Sanity check.
   if (this%nel >= this%nnz) &
     call exit_MPI("Error in total number of elements in sparse_matrix_add!", myrank, this%nnz)
-
-  ! Do not add zero values to a sparse matrix.
-  if (value == 0._CUSTOM_REAL) return
 
   this%nel = this%nel + 1
   this%sa(this%nel) = value

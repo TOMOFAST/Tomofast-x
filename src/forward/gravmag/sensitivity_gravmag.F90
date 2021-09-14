@@ -70,10 +70,11 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
 
   type(t_magnetic_field) :: mag_field
   integer :: i, p, ierr
-  real(kind=CUSTOM_REAL) :: comp_rate
+  real(kind=CUSTOM_REAL) :: comp_rate, comp_rate_min, comp_rate_max
   integer :: nsmaller, nelements_total
   type(t_parallel_tools) :: pt
   integer :: problem_type
+  integer :: nnz_line
 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line(:)
@@ -150,6 +151,12 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
       ! Serial.
         call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line, par%wavelet_threshold, comp_rate)
       endif
+
+      ! Check if we have enough space in the matrix for new elemements, or we need to adjust the compression rate.
+      nnz_line = count(sensit_line /= 0.d0)
+      if (sensit_matrix%get_number_elements() + nnz_line > sensit_matrix%get_nnz()) then
+        call exit_MPI("The matrix size is too small, adjust the compression rate!", myrank, ierr)
+      endif
     endif
 
     call sensit_matrix%new_row(myrank)
@@ -164,7 +171,15 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
 
   ! Calculate the matrix compression rate.
   comp_rate = dble(sensit_matrix%get_number_elements()) / dble(par%nelements) / dble(par%ndata)
-  if (myrank == 0) print *, 'Compression rate = ', comp_rate
+  if (nbproc > 1) then
+    call mpi_allreduce(comp_rate, comp_rate_min, 1, CUSTOM_MPI_TYPE, MPI_MIN, MPI_COMM_WORLD, ierr)
+    call mpi_allreduce(comp_rate, comp_rate_max, 1, CUSTOM_MPI_TYPE, MPI_MAX, MPI_COMM_WORLD, ierr)
+
+    if (myrank == 0) print *, 'Compression rate min = ', comp_rate_min
+    if (myrank == 0) print *, 'Compression rate max = ', comp_rate_max
+  else
+    if (myrank == 0) print *, 'Compression rate = ', comp_rate
+  endif
 
   deallocate(sensit_line)
   deallocate(sensit_line2)
