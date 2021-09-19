@@ -62,7 +62,8 @@ module inversion_arrays
     private
 
     procedure, public, pass :: initialize => inversion_arrays_initialize
-    procedure, public, pass :: allocate => inversion_arrays_allocate
+    procedure, public, pass :: allocate_aux => inversion_arrays_allocate_aux
+    procedure, public, pass :: allocate_sensit => inversion_arrays_allocate_sensit
     procedure, public, pass :: init_model => inversion_arrays_init_model
 
   end type t_inversion_arrays
@@ -85,23 +86,19 @@ subroutine inversion_arrays_initialize(this, nelements, ndata, nx, ny, nz)
 end subroutine inversion_arrays_initialize
 
 !============================================================================================
-! Allocates the inversion arrays.
+! Allocates the auxiliarily inversion arrays.
 ! NOTE: model objects are allocated separately in init_models().
-! USE_LEGACY_SENSIT_MATRIX flag to support old sensitivity matrix allocation (non-sparse) for the ECT problem.
 !============================================================================================
-subroutine inversion_arrays_allocate(this, USE_LEGACY_SENSIT_MATRIX, nnz, myrank)
+subroutine inversion_arrays_allocate_aux(this, myrank)
   class(t_inversion_arrays), intent(inout) :: this
-  integer, intent(in) :: nnz
-  logical, intent(in) :: USE_LEGACY_SENSIT_MATRIX
   integer, intent(in) :: myrank
 
-  integer :: nl
   integer :: ierr
 
-  if (myrank == 0) print *, "Allocating inversion arrays..."
+  if (myrank == 0) print *, "Allocating auxiliarily inversion arrays..."
 
   if (this%ndata <= 0 .or. this%nelements <= 0) &
-    call exit_MPI("Wrong dimensions in inversion_arrays_initialize!", myrank, 0)
+    call exit_MPI("Wrong dimensions in inversion_arrays_allocate_aux!", myrank, 0)
 
   ierr = 0
 
@@ -117,14 +114,39 @@ subroutine inversion_arrays_allocate(this, USE_LEGACY_SENSIT_MATRIX, nnz, myrank
   if (.not. allocated(this%model_prior)) allocate(this%model_prior(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
   if (myrank == 0) print *, "model_prior done."
 
-  if (.not. allocated(this%sensitivity) .and. USE_LEGACY_SENSIT_MATRIX) &
-    allocate(this%sensitivity(this%nelements, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (myrank == 0) print *, "sensitivity done."
+end subroutine inversion_arrays_allocate_aux
+
+!==================================================================================
+! Allocates memory for the sensitivity kernel.
+! USE_LEGACY_SENSIT_MATRIX flag to support old sensitivity matrix allocation (non-sparse) for the ECT problem.
+!==================================================================================
+subroutine inversion_arrays_allocate_sensit(this, USE_LEGACY_SENSIT_MATRIX, nnz, myrank)
+  class(t_inversion_arrays), intent(inout) :: this
+  integer, intent(in) :: nnz
+  logical, intent(in) :: USE_LEGACY_SENSIT_MATRIX
+  integer, intent(in) :: myrank
+
+  integer :: nl
+  integer :: ierr
+
+  if (myrank == 0) print *, "Allocating sensitivity kernel..."
+
+  if (this%ndata <= 0 .or. this%nelements <= 0) &
+    call exit_MPI("Wrong dimensions in inversion_arrays_allocate_sensit!", myrank, 0)
+
+  ierr = 0
+
+  if (USE_LEGACY_SENSIT_MATRIX) then
+
+    if (.not. allocated(this%sensitivity)) &
+      allocate(this%sensitivity(this%nelements, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
+
+    if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in inversion_arrays_allocate_sensit!", myrank, ierr)
+
+    if (myrank == 0) print *, "sensitivity done."
 
 
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in inversion_arrays_initialize!", myrank, ierr)
-
-  if (.not. USE_LEGACY_SENSIT_MATRIX) then
+  else
     nl = this%ndata
 
     ! Allocating the sparse matrix.
@@ -132,9 +154,9 @@ subroutine inversion_arrays_allocate(this, USE_LEGACY_SENSIT_MATRIX, nnz, myrank
     if (myrank == 0) print *, "sensitivity (sparse) done."
   endif
 
-  if (myrank == 0) print *, "Inversion arrays allocated!"
+  if (myrank == 0) print *, "Sensitivity kernel allocated!"
 
-end subroutine inversion_arrays_allocate
+end subroutine inversion_arrays_allocate_sensit
 
 !==================================================================================
 ! Allocates memory for the model (and its grid).

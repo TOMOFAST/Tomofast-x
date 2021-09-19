@@ -43,11 +43,13 @@ module sensitivity_gravmag
   contains
     private
 
-    procedure, public, nopass :: calculate_sensitivity
+    procedure, public, nopass :: calculate_sensitivity_kernel
+    procedure, public, nopass :: predict_sensit_kernel_size
 
     procedure, public, nopass :: compress_matrix_line
     procedure, public, nopass :: compress_matrix_line_wavelet
 
+    procedure, private, nopass :: calculate_sensitivity
     procedure, private, nopass :: apply_column_weight
 
   end type t_sensitivity_gravmag
@@ -55,14 +57,60 @@ module sensitivity_gravmag
 contains
 
 !=============================================================================================
-! Calculates the sensitivity kernel (matrix).
+! Calculates the sensitivity kernel and ads it to a sparse matrix.
 !=============================================================================================
-subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, myrank, nbproc)
+subroutine calculate_sensitivity_kernel(par, grid, data, column_weight, sensit_matrix, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid
   type(t_data), intent(in) :: data
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   integer, intent(in) :: myrank, nbproc
+
+  ! Sensitivity matrix.
+  type(t_sparse_matrix), intent(inout) :: sensit_matrix
+
+  integer :: nnz
+  logical :: STORE_KERNEL
+
+  STORE_KERNEL = .true.
+
+  call calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, STORE_KERNEL, nnz, myrank, nbproc)
+end subroutine calculate_sensitivity_kernel
+
+!=============================================================================================
+! Calculates the compressed sensitivity kernel size.
+!=============================================================================================
+function predict_sensit_kernel_size(par, grid, data, column_weight, myrank, nbproc) result (nnz)
+  class(t_parameters_base), intent(in) :: par
+  type(t_grid), intent(in) :: grid
+  type(t_data), intent(in) :: data
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
+  integer, intent(in) :: myrank, nbproc
+  integer :: nnz
+
+  type(t_sparse_matrix) :: dummy_matrix
+  logical :: STORE_KERNEL
+
+  STORE_KERNEL = .false.
+
+  call calculate_sensitivity(par, grid, data, column_weight, dummy_matrix, STORE_KERNEL, nnz, myrank, nbproc)
+end function predict_sensit_kernel_size
+
+!=============================================================================================
+! Calculates the sensitivity kernel / or predicts its size without storing the kernel,
+! depending on the flag STORE_KERNEL.
+!=============================================================================================
+subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, &
+                                 STORE_KERNEL, nnz_local, myrank, nbproc)
+  class(t_parameters_base), intent(in) :: par
+  type(t_grid), intent(in) :: grid
+  type(t_data), intent(in) :: data
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
+  logical, intent(in) :: STORE_KERNEL
+  integer, intent(in) :: myrank, nbproc
+
+  ! The number of non-zero elements in the compressed sensitivity kernel on curent CPU.
+  integer, intent(out) :: nnz_local
 
   ! Sensitivity matrix.
   type(t_sparse_matrix), intent(inout) :: sensit_matrix
@@ -117,7 +165,9 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
   end select
 
   !--------------------------------------------------------------------------------------------
-  ! Calculating sensitivity and adding to the sparse matrix.
+  ! Calculating sensitivity and adding to the sparse matrix / or calculating nnz for current CPU.
+  nnz_local = 0
+
   ! Loop on all the data lines.
   do i = 1, par%ndata
     if (problem_type == 1) then
@@ -151,37 +201,50 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
         call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line, par%wavelet_threshold, comp_rate)
       endif
 
-      ! Check if we have enough space in the matrix for new elemements, or we need to adjust the compression rate.
-      nnz_line = count(sensit_line /= 0.d0)
-      if (sensit_matrix%get_number_elements() + nnz_line > sensit_matrix%get_nnz()) then
-        call exit_MPI("The matrix size is too small, adjust the compression rate!", myrank, ierr)
+      if (STORE_KERNEL) then
+        ! Check if we have enough space in the matrix for new elemements, or we need to adjust the compression rate.
+        nnz_line = count(sensit_line /= 0.d0)
+        if (sensit_matrix%get_number_elements() + nnz_line > sensit_matrix%get_nnz()) then
+          call exit_MPI("The matrix size is too small, adjust the compression rate!", myrank, ierr)
+        endif
       endif
     endif
 
-    call sensit_matrix%new_row(myrank)
+    if (STORE_KERNEL) then
+    ! Adding the sensitivity kernel the a sparse matrix.
+      call sensit_matrix%new_row(myrank)
 
-    do p = 1, par%nelements
-      ! Adding the Z-component only.
-      call sensit_matrix%add(sensit_line(p), p, myrank)
-    enddo
+      do p = 1, par%nelements
+        ! Adding the Z-component only.
+        call sensit_matrix%add(sensit_line(p), p, myrank)
+      enddo
+
+    else
+    ! Predicting the sensitivity kernel size.
+      nnz_local = nnz_local + count(sensit_line /= 0.d0)
+
+    endif
   enddo
 
-  call sensit_matrix%finalize(par%nelements, myrank)
+  if (STORE_KERNEL) then
+    call sensit_matrix%finalize(par%nelements, myrank)
 
-  ! Calculate the matrix compression rate.
-  comp_rate = dble(sensit_matrix%get_number_elements()) / dble(par%nelements) / dble(par%ndata)
-  if (nbproc > 1) then
-    call mpi_allreduce(comp_rate, comp_rate_min, 1, CUSTOM_MPI_TYPE, MPI_MIN, MPI_COMM_WORLD, ierr)
-    call mpi_allreduce(comp_rate, comp_rate_max, 1, CUSTOM_MPI_TYPE, MPI_MAX, MPI_COMM_WORLD, ierr)
-
-    call mpi_allreduce(sensit_matrix%get_number_elements(), nnz_total, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-    comp_rate_tot = dble(nnz_total) / dble(nelements_total) / dble(par%ndata)
-
-    if (myrank == 0) print *, 'Compression rate min = ', comp_rate_min
-    if (myrank == 0) print *, 'Compression rate max = ', comp_rate_max
-    if (myrank == 0) print *, 'Compression rate tot = ', comp_rate_tot
   else
-    if (myrank == 0) print *, 'Compression rate = ', comp_rate
+    ! Calculate the kernel compression rate.
+    comp_rate = dble(nnz_local) / dble(par%nelements) / dble(par%ndata)
+    if (nbproc > 1) then
+      call mpi_allreduce(comp_rate, comp_rate_min, 1, CUSTOM_MPI_TYPE, MPI_MIN, MPI_COMM_WORLD, ierr)
+      call mpi_allreduce(comp_rate, comp_rate_max, 1, CUSTOM_MPI_TYPE, MPI_MAX, MPI_COMM_WORLD, ierr)
+
+      call mpi_allreduce(nnz_local, nnz_total, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+      comp_rate_tot = dble(nnz_total) / dble(nelements_total) / dble(par%ndata)
+
+      if (myrank == 0) print *, 'Compression rate min = ', comp_rate_min
+      if (myrank == 0) print *, 'Compression rate max = ', comp_rate_max
+      if (myrank == 0) print *, 'Compression rate tot = ', comp_rate_tot
+    else
+      if (myrank == 0) print *, 'Compression rate = ', comp_rate
+    endif
   endif
 
   deallocate(sensit_line)

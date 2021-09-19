@@ -127,6 +127,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   character(len=256) :: grav_prior_model_filename, mag_prior_model_filename
 
   logical :: SOLVE_PROBLEM(2)
+  integer :: nnz(2)
 
   if (myrank == 0) print *, "Solving problem joint grav/mag."
 
@@ -134,10 +135,6 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     SOLVE_PROBLEM(i) = (ipar%problem_weight(i) /= 0.d0)
     if (myrank == 0) print *, "SOLVE_PROBLEM("//trim(str(i))//") = ", SOLVE_PROBLEM(i)
   enddo
-
-  ! Initialize joint inversion object.
-  ! Read the clustering parameters from file inside.
-  call joint_inversion%initialize(ipar, gpar%get_nnz_compressed() + mpar%get_nnz_compressed(), myrank)
 
   ! (I) MODEL ALLOCATION.  ---------------------------------------------------------------
 
@@ -193,9 +190,9 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
   if (myrank == 0) print *, "(III) SENSITIVITY MATRIX ALLOCATION."
 
-  ! Memory allocation for inversion arrays (except model objects).
-  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate(.false., gpar%get_nnz_compressed(), myrank)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate(.false., mpar%get_nnz_compressed(), myrank)
+  ! Memory allocation for auxiliarily inversion arrays.
+  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_aux(myrank)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_aux(myrank)
 
   !-----------------------------------------------------------------------------------------
   ! Calculates weights.
@@ -205,6 +202,27 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   ! Precondition the column weights (e.g. to control the effect of the cross-grad term).
   if (SOLVE_PROBLEM(1)) iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight
   if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
+
+  !-----------------------------------------------------------------------------------------
+  ! Calculate nnz for the sensitivity kernel.
+  nnz = 0
+  if (ipar%compression_type == 2) then
+  ! Wavelet compression. Calculate the number of nonzero elements in the compressed kernel (on every rank).
+    if (SOLVE_PROBLEM(1)) &
+      nnz(1) = calculate_sensit_kernel_size(gpar, iarr(1), data(1), myrank, nbproc)
+
+    if (SOLVE_PROBLEM(2)) &
+      nnz(2) = calculate_sensit_kernel_size(mpar, iarr(2), data(2), myrank, nbproc)
+
+    print *, "Predicted nnz =", myrank, nnz(1), nnz(2)
+  else
+    nnz(1) = ipar%nelements * ipar%ndata(1)
+    nnz(2) = ipar%nelements * ipar%ndata(2)
+  endif
+
+  ! Allocate the sensitivity kernel.
+  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_sensit(.false., nnz(1), myrank)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_sensit(.false., nnz(2), myrank)
 
   !-----------------------------------------------------------------------------------------
   ! Solve forward problems for gravity and magnetism.
@@ -230,6 +248,10 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   !-----------------------------------------------------------------------------------------
   number_prior_models = gpar%number_prior_models
   path_output_parfile = path_output
+
+  ! Initialize joint inversion object.
+  ! Read the clustering parameters from file inside.
+  call joint_inversion%initialize(ipar, nnz(1) + nnz(2), myrank)
 
   !******************************************************************************************
   ! Loop over different prior models.

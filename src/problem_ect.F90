@@ -71,7 +71,8 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
 
   ! Memory allocation.
   call iarr%initialize(ipar%nelements, ipar%ndata(1), ipar%nx, ipar%ny, ipar%nz)
-  call iarr%allocate(.true., 0, myrank)
+  call iarr%allocate_aux(myrank)
+  call iarr%allocate_sensit(.true., 0, myrank)
 
   ! Allocate memory for model (with grid) objects.
   call iarr%init_model(myrank, nbproc)
