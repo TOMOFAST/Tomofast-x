@@ -213,8 +213,6 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
     if (SOLVE_PROBLEM(2)) &
       nnz(2) = calculate_sensit_kernel_size(mpar, iarr(2), data(2), myrank, nbproc)
-
-    print *, "Predicted nnz =", myrank, nnz(1), nnz(2)
   else
     nnz(1) = ipar%nelements * ipar%ndata(1)
     nnz(2) = ipar%nelements * ipar%ndata(2)
