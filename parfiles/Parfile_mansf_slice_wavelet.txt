@@ -28,12 +28,10 @@ forward.depthWeighting.powerWeight.grav.Z0           = 0.d0
 ===================================================================================
 MATRIX COMPRESSION
 ===================================================================================
-# 0-none, 1-distance cut-off, 2-wavelet compression.
+# 0-none, 2-wavelet compression.
 forward.matrixCompression.type                       = 2
 # The minimum compressed sensitivity absolute value.
 forward.matrixCompression.waveletThreshold           = 1.d-7
-# 1.0 = full matrix
-forward.matrixCompression.compressionRate            = 0.21d0
 
 ===================================================================================
 PRIOR MODEL

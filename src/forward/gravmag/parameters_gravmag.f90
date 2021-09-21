@@ -68,37 +68,17 @@ module parameters_gravmag
 
     ! ------ Matrix compression ---------------------------------------------
     ! Parameters for reduction of the memory requirements (to store the sensitivity matrix).
-    ! Need to choose the compression rate accordingly to the distance_threshold.
-    ! 0 -none, 1 -distance cut-off, 2 - wavelet
+    ! 0 -none, 2 - wavelet
     integer :: compression_type
     real(kind=CUSTOM_REAL) :: wavelet_threshold
-    real(kind=CUSTOM_REAL) :: distance_threshold
-    real(kind=CUSTOM_REAL) :: compression_rate
 
   contains
     private
 
     procedure, public, pass :: broadcast => parameters_base_broadcast
-    procedure, public, pass :: get_nnz_compressed => parameters_base_get_nnz_compressed
   end type t_parameters_base
 
 contains
-
-!==============================================================================
-! Returns the number of nonzero elements in the compressed sensitivity matrix.
-!==============================================================================
-function parameters_base_get_nnz_compressed(this) result(nnz)
-  class(t_parameters_base), intent(in) :: this
-  integer :: nnz
-
-  nnz = int(this%compression_rate * this%nelements * this%ndata) + 1
-
-  ! Sanity check.
-  if (this%ndata > 0 .and. nnz <= 1) then
-    print *, "Bad nnz value in get_nnz_compressed!"
-    stop
-  endif
-end function
 
 !=========================================================================
 ! MPI broadcast parameters that are read from a Parfile.
@@ -128,8 +108,6 @@ subroutine parameters_base_broadcast(this, myrank)
 
   call MPI_Bcast(this%compression_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%wavelet_threshold, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%distance_threshold, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%compression_rate, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("MPI_Bcast error in parameters_base_broadcast!", myrank, ierr)
 

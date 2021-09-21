@@ -169,6 +169,9 @@ subroutine parameters_inversion_broadcast(this, myrank)
   call MPI_Bcast(this%damp_grad_weight_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%beta, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
+  call MPI_Bcast(this%compression_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%wavelet_threshold, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
   ! Joint inversion parameters.
   call MPI_Bcast(this%problem_weight, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%column_weight_multiplier, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)

@@ -12,6 +12,11 @@
 !
 !========================================================================
 
+!========================================================================================
+! Read the input code parameters from the Parfile, and initialize the code parameters.
+!
+! Vitaliy Ogarko, UWA, CET, Australia.
+!========================================================================================
 module init_parameters
 
   use global_typedefs
@@ -333,13 +338,8 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! MATRIX COMPRESSION parameters.
   gpar%compression_type = 0
   gpar%wavelet_threshold = 1.d-7
-  gpar%distance_threshold = 1.d+10 ! Source to the cell distance (m).
-  gpar%compression_rate = 1.d0     ! 1.0 = full matrix
-
   mpar%compression_type = gpar%compression_type
   mpar%wavelet_threshold = gpar%wavelet_threshold
-  mpar%distance_threshold = gpar%distance_threshold
-  mpar%compression_rate = gpar%compression_rate
 
   ! PRIOR MODEL parameters.
   gpar%prior_model_type = 1 ! 1-set value, 2-read from file.
@@ -724,16 +724,6 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
         read(10, 1) gpar%wavelet_threshold
         call print_arg(myrank, parname, gpar%wavelet_threshold)
         mpar%wavelet_threshold = gpar%wavelet_threshold
-
-      case("forward.matrixCompression.distanceThreshold")
-        read(10, 1) gpar%distance_threshold
-        call print_arg(myrank, parname, gpar%distance_threshold)
-        mpar%distance_threshold = gpar%distance_threshold
-
-      case("forward.matrixCompression.compressionRate")
-        read(10, 1) gpar%compression_rate
-        call print_arg(myrank, parname, gpar%compression_rate)
-        mpar%compression_rate = gpar%compression_rate
 
       ! PRIOR MODEL -----------------------------------------
 

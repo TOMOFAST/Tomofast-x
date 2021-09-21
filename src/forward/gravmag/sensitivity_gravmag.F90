@@ -45,8 +45,6 @@ module sensitivity_gravmag
 
     procedure, public, nopass :: calculate_sensitivity_kernel
     procedure, public, nopass :: predict_sensit_kernel_size
-
-    procedure, public, nopass :: compress_matrix_line
     procedure, public, nopass :: compress_matrix_line_wavelet
 
     procedure, private, nopass :: calculate_sensitivity
@@ -182,13 +180,8 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
     ! Applying the depth weight.
     call apply_column_weight(par%nelements, sensit_line, column_weight)
 
-    if (par%compression_type == 1) then
-    ! Distance cut-off compression.
-      call compress_matrix_line(par%nelements, sensit_line, data, i, grid, par%distance_threshold, comp_rate)
-
-    else if (par%compression_type == 2) then
+    if (par%compression_type > 0) then
     ! Wavelet compression.
-
       if (nbproc > 1) then
       ! Parallel wavelet copression.
         call pt%get_full_array(sensit_line, par%nelements, sensit_line_full, .true., myrank, nbproc)
@@ -200,18 +193,17 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
       ! Serial.
         call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line, par%wavelet_threshold, comp_rate)
       endif
-
-      if (STORE_KERNEL) then
-        ! Check if we have enough space in the matrix for new elemements, or we need to adjust the compression rate.
-        nnz_line = count(sensit_line /= 0.d0)
-        if (sensit_matrix%get_number_elements() + nnz_line > sensit_matrix%get_nnz()) then
-          call exit_MPI("The matrix size is too small, adjust the compression rate!", myrank, ierr)
-        endif
-      endif
     endif
 
     if (STORE_KERNEL) then
     ! Adding the sensitivity kernel the a sparse matrix.
+
+      ! Sanity check: check if we have enough space in the matrix for new elemements.
+      nnz_line = count(sensit_line /= 0.d0)
+      if (sensit_matrix%get_number_elements() + nnz_line > sensit_matrix%get_nnz()) then
+        call exit_MPI("The matrix size is too small, exiting!", myrank, ierr)
+      endif
+
       call sensit_matrix%new_row(myrank)
 
       do p = 1, par%nelements
@@ -241,9 +233,9 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
 
       if (myrank == 0) print *, 'Compression rate min = ', comp_rate_min
       if (myrank == 0) print *, 'Compression rate max = ', comp_rate_max
-      if (myrank == 0) print *, 'Compression rate tot = ', comp_rate_tot
+      if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate_tot
     else
-      if (myrank == 0) print *, 'Compression rate = ', comp_rate
+      if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
     endif
   endif
 
@@ -255,48 +247,6 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
   if (myrank == 0) print *, 'Finished calculating the sensitivity kernel.'
 
 end subroutine calculate_sensitivity
-
-!==========================================================================================================
-! Compresses matrix line - distance based cutoff.
-!==========================================================================================================
-subroutine compress_matrix_line(nelements, line, data, idata, grid, distance_threshold, comp_rate)
-  integer, intent(in) :: nelements, idata
-  type(t_data), intent(in) :: data
-  type(t_grid), intent(in) :: grid
-  real(kind=CUSTOM_REAL), intent(in) :: distance_threshold
-
-  real(kind=CUSTOM_REAL), intent(inout) :: line(:)
-  real(kind=CUSTOM_REAL), intent(out) :: comp_rate
-
-  integer :: i, num_zeros
-  type(t_vector) :: dist_vec
-  real(kind=CUSTOM_REAL) :: dist
-
-  num_zeros = 0
-
-  do i = 1, nelements
-    ! Sphere based cutoff.
-!    dist_vec = t_vector(data%X(idata) - grid%get_X_cell_center(i), &
-!                        data%Y(idata) - grid%get_Y_cell_center(i), &
-!                        data%Z(idata) - grid%get_Z_cell_center(i))
-
-    ! Cylinder based cutoff.
-    dist_vec = t_vector(data%X(idata) - grid%get_X_cell_center(i), &
-                        data%Y(idata) - grid%get_Y_cell_center(i), &
-                        0.d0)
-
-    ! The distance between the source and cell center.
-    dist = dist_vec%get_norm()
-
-    if (dist > distance_threshold) then
-      line(i) = 0.d0
-      num_zeros = num_zeros + 1
-    endif
-  enddo
-
-  comp_rate = dble(nelements - num_zeros) / dble(nelements)
-
-end subroutine compress_matrix_line
 
 !==========================================================================================================
 ! Compresses matrix line - wavelet compression
