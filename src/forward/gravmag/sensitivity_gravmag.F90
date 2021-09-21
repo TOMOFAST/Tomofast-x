@@ -228,7 +228,7 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
       call mpi_allreduce(comp_rate, comp_rate_min, 1, CUSTOM_MPI_TYPE, MPI_MIN, MPI_COMM_WORLD, ierr)
       call mpi_allreduce(comp_rate, comp_rate_max, 1, CUSTOM_MPI_TYPE, MPI_MAX, MPI_COMM_WORLD, ierr)
 
-      call mpi_allreduce(nnz_local, nnz_total, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+      call mpi_allreduce(nnz_local, nnz_total, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
       comp_rate_tot = dble(nnz_total) / dble(nelements_total) / dble(par%ndata)
 
       if (myrank == 0) print *, 'Compression rate min = ', comp_rate_min
