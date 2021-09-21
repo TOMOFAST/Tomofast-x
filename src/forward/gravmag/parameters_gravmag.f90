@@ -68,7 +68,7 @@ module parameters_gravmag
 
     ! ------ Matrix compression ---------------------------------------------
     ! Parameters for reduction of the memory requirements (to store the sensitivity matrix).
-    ! 0 -none, 2 - wavelet
+    ! 0 -none, 1 - wavelet
     integer :: compression_type
     real(kind=CUSTOM_REAL) :: wavelet_threshold
 

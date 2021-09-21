@@ -98,7 +98,7 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
                           par%ndata(1) * par%nelements + par%nelements, myrank)
 
   call damping%initialize(par%nelements, par%alpha(1), par%problem_weight(1), par%norm_power, &
-                          par%compression_type, par%nx, par%ny, par%nz, par%wavelet_threshold)
+                          par%compression_type, par%nx, par%ny, par%nz)
 
   ! Create an identity matrix.
   call damping%add(isensit, b_RHS, arr%column_weight, arr%damping_weight, &

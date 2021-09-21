@@ -143,7 +143,7 @@ subroutine inversion_solve(this, par, arr, myrank, nbproc)
 
   ! Add damping.
   call damping%initialize(par%nelements, par%alpha(1), problem_weight, par%norm_power, &
-                          par%compression_type, par%nx, par%ny, par%nz, par%wavelet_threshold)
+                          par%compression_type, par%nx, par%ny, par%nz)
   call damping%add(this%matrix, this%b_RHS, arr%column_weight, arr%damping_weight, &
                    arr%model, arr%model_prior, 0, myrank, nbproc)
 

@@ -90,7 +90,7 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, column_weight, data,
     model_scaled(i) = this%val(i) / column_weight(i)
   enddo
 
-  if (compression_type == 2) then
+  if (compression_type > 0) then
   ! Apply wavelet transform to the model to calculate data using compressed sensitivity kernel.
 
     if (nbproc > 1) then

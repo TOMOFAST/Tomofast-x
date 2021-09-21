@@ -136,7 +136,7 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
   allocate(sensit_line3(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_sensitivity!", myrank, ierr)
 
-  if (par%compression_type == 2) then
+  if (par%compression_type > 0) then
     if (nbproc > 1) then
       ! Number of parameters on ranks smaller than current one.
       nsmaller = pt%get_nsmaller(par%nelements, myrank, nbproc)

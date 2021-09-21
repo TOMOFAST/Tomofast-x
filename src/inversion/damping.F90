@@ -48,7 +48,6 @@ module damping
     ! Wavelet compression parameters.
     integer :: compression_type
     integer :: nx, ny, nz
-    real(kind=CUSTOM_REAL) :: threshold
 
   contains
     private
@@ -68,9 +67,9 @@ contains
 ! Initialization.
 !===========================================================================================
 subroutine damping_initialize(this, nelements, alpha, problem_weight, norm_power, &
-                              compression_type, nx, ny, nz, threshold)
+                              compression_type, nx, ny, nz)
   class(t_damping), intent(inout) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: alpha, problem_weight, norm_power, threshold
+  real(kind=CUSTOM_REAL), intent(in) :: alpha, problem_weight, norm_power
   integer, intent(in) :: nelements
   integer, intent(in) :: compression_type, nx, ny, nz
 
@@ -82,7 +81,6 @@ subroutine damping_initialize(this, nelements, alpha, problem_weight, norm_power
   this%nx = nx
   this%ny = ny
   this%nz = nz
-  this%threshold = threshold
 end subroutine damping_initialize
 
 !===========================================================================================
@@ -134,7 +132,7 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, local_weight, &
   ! The number of elements on CPUs with rank smaller than myrank.
   nsmaller = pt%get_nsmaller(this%nelements, myrank, nbproc)
 
-  if (this%compression_type == 2) then
+  if (this%compression_type > 0) then
   ! Transform the model difference to the wavelet domain.
 
     if (nbproc > 1) then

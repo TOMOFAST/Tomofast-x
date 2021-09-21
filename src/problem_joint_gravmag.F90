@@ -206,7 +206,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   !-----------------------------------------------------------------------------------------
   ! Calculate nnz for the sensitivity kernel.
   nnz = 0
-  if (ipar%compression_type == 2) then
+  if (ipar%compression_type > 0) then
   ! Wavelet compression. Calculate the number of nonzero elements in the compressed kernel (on every rank).
     if (SOLVE_PROBLEM(1)) &
       nnz(1) = calculate_sensit_kernel_size(gpar, iarr(1), data(1), myrank, nbproc)
@@ -358,7 +358,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       if (it > 1) call joint_inversion%reset()
 
       ! Solve joint inverse problem.
-      call joint_inversion%solve(ipar, iarr, this%delta_model, ipar%compression_type, myrank, nbproc)
+      call joint_inversion%solve(ipar, iarr, this%delta_model, myrank, nbproc)
 
       ! Update the local models.
       if (SOLVE_PROBLEM(1)) call iarr(1)%model%update(this%delta_model(1:this%nelements))

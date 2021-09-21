@@ -58,7 +58,7 @@ forward.depthWeighting.powerWeight.magn.Z0           = 0.d0
 ===================================================================================
 MATRIX COMPRESSION
 ===================================================================================
-# 0-none, 2-wavelet compression.
+# 0-none, 1-wavelet compression.
 forward.matrixCompression.type                       = 0
 # The minimum compressed sensitivity absolute value.
 forward.matrixCompression.waveletThreshold           = 1.d-7

@@ -265,11 +265,10 @@ end subroutine joint_inversion_reset
 !=====================================================================================
 ! Joint inversion of two field.
 !=====================================================================================
-subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression_type, myrank, nbproc)
+subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
   type(t_inversion_arrays), intent(in) :: arr(2)
-  integer, intent(in) :: matrix_compression_type
   integer, intent(in) :: myrank, nbproc
 
   real(kind=CUSTOM_REAL), intent(out) :: delta_model(:)
@@ -354,7 +353,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
       if (myrank == 0) print *, 'adding damping with alpha =', par%alpha(i)
 
       call damping%initialize(par%nelements, par%alpha(i), problem_weight_adjusted(i), par%norm_power, &
-                              par%compression_type, par%nx, par%ny, par%nz, par%wavelet_threshold)
+                              par%compression_type, par%nx, par%ny, par%nz)
 
       ! Note: we use model covariance now for the local damping weight, which is equivalent of having local alpha.
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, arr(i)%model%cov, &
@@ -442,7 +441,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
       !this%weight_ADMM = arr(i)%damping_weight
 
       call damping%initialize(par%nelements, par%rho_ADMM(i), problem_weight_adjusted(i), par%norm_power, &
-                              par%compression_type, par%nx, par%ny, par%nz, par%wavelet_threshold)
+                              par%compression_type, par%nx, par%ny, par%nz)
 
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, this%weight_ADMM, &
                        arr(i)%model, this%x0_ADMM, param_shift(i), myrank, nbproc)
@@ -535,7 +534,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
     call rescale_model(delta_model, this%column_norm, 2 * par%nelements)
   endif
 
-  if (matrix_compression_type == 2) then
+  if (par%compression_type > 0) then
   ! Applying the Inverse Wavelet Transform.
     if (nbproc > 1) then
     ! Parallel version.
