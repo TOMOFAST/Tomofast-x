@@ -67,8 +67,7 @@ end subroutine matvecmul
 !=============================================================================================
 ! Perform test the data calculation in the wavelet domain.
 !=============================================================================================
-subroutine test_wavelet_calculate_data(myrank)
-  integer, intent(in) :: myrank
+subroutine test_wavelet_calculate_data()
 
   real(kind=CUSTOM_REAL), allocatable :: A(:, :)
   real(kind=CUSTOM_REAL), allocatable :: x(:)
@@ -134,8 +133,7 @@ end subroutine test_wavelet_calculate_data
 !=============================================================================================
 ! Testing the application of wavelet transform to diagonal matrix.
 !=============================================================================================
-subroutine test_wavelet_diagonal_matrix(myrank)
-  integer, intent(in) :: myrank
+subroutine test_wavelet_diagonal_matrix()
 
   real(kind=CUSTOM_REAL), allocatable :: A(:, :)
   integer :: nrows, ncolumns
@@ -179,27 +177,24 @@ end subroutine test_wavelet_diagonal_matrix
 !=============================================================================================
 ! Testing that the wavelet transform is L2 norm preserving.
 !=============================================================================================
-subroutine test_wavelet_norm_preserving(myrank)
-  integer, intent(in) :: myrank
+subroutine test_wavelet_norm_preserving()
 
   ! Haar wavelet.
-  call test_wavelet_norm_preserving_kind(myrank, 1)
+  call test_wavelet_norm_preserving_kind(1)
 
   ! TODO: DaubD43D wavelet not passing the test! Should it preserve the norm?
   ! Daubechies D4 wavelet.
-  !call test_wavelet_norm_preserving_kind(myrank, 2)
+  !call test_wavelet_norm_preserving_kind(2)
 
 end subroutine test_wavelet_norm_preserving
 !=============================================================================================
 
-subroutine test_wavelet_norm_preserving_kind(myrank, waveletType)
-  integer, intent(in) :: myrank
+subroutine test_wavelet_norm_preserving_kind(waveletType)
   integer, intent(in) :: waveletType
 
   real(kind=CUSTOM_REAL), allocatable :: x(:)
   integer :: N, i
   integer :: nx, ny, nz
-  real(kind=CUSTOM_REAL) :: threshold, comp_rate
   real(kind=CUSTOM_REAL) :: norm, norm_w
 
   nx = 10
@@ -236,22 +231,20 @@ end subroutine test_wavelet_norm_preserving_kind
 !=============================================================================================
 ! Testing the inverse wavelet transform.
 !=============================================================================================
-subroutine test_wavelet_inverse(myrank)
-  integer, intent(in) :: myrank
+subroutine test_wavelet_inverse()
 
   ! Haar wavelet.
-  call test_wavelet_inverse_kind(myrank, 1)
+  call test_wavelet_inverse_kind(1)
 
   ! Daubechies D4 wavelet.
-  call test_wavelet_inverse_kind(myrank, 2)
+  call test_wavelet_inverse_kind(2)
 
 end subroutine test_wavelet_inverse
 
 !=============================================================================================
 ! Testing the inverse wavelet transform.
 !=============================================================================================
-subroutine test_wavelet_inverse_kind(myrank, waveletType)
-  integer, intent(in) :: myrank
+subroutine test_wavelet_inverse_kind(waveletType)
   integer, intent(in) :: waveletType
 
   real(kind=CUSTOM_REAL), allocatable :: A(:, :)

@@ -779,7 +779,7 @@ subroutine test_analytical_comparison(bc_type, size, ilevel_coarse, itmax, sens)
   integer :: nr, ntheta, nz, nzlocal
   integer :: i, j, k, imax, kmax
   integer :: ierr
-  character(len=40) :: name
+  !character(len=40) :: name
 
   ! For the multigrid method start from level=1.
   integer, parameter :: ilevel_fine = 1

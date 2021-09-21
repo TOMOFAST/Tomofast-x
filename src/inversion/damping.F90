@@ -197,7 +197,7 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, local_weight, &
 
   !---------------------------------------------------------------------
   ! Add the damping contribution to the right hand side.
-  call this%add_RHS(b_RHS(row_beg:row_end), model_diff, column_weight, local_weight, myrank, nbproc)
+  call this%add_RHS(b_RHS(row_beg:row_end), model_diff, local_weight, myrank, nbproc)
 
   deallocate(model_diff)
 
@@ -208,12 +208,11 @@ end subroutine damping_add
 
 !=============================================================================================
 ! Adds damping contribution in the right hand side.
-! model_ref - reference model.
+! model_diff - depth weighted (m - m_prior).
 !=============================================================================================
-subroutine damping_add_RHS(this, b_RHS, model_diff, column_weight, local_weight, myrank, nbproc)
+subroutine damping_add_RHS(this, b_RHS, model_diff, local_weight, myrank, nbproc)
   class(t_damping), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: model_diff(:)
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   real(kind=CUSTOM_REAL), intent(in) :: local_weight(:)
   integer, intent(in) :: myrank, nbproc
 

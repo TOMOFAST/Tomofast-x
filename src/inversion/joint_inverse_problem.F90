@@ -278,7 +278,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, matrix_compression
   type(t_damping) :: damping
   type(t_damping_gradient) :: damping_gradient
   type(t_parameters_lsqr) :: par_lsqr
-  integer :: i, j, k, param_shift(2), nl
+  integer :: i, j, k, param_shift(2)
   ! Adjusted problem weights for joint inversion.
   real(kind=CUSTOM_REAL) :: problem_weight_adjusted(2), cost
   logical :: solve_gravity_only

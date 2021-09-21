@@ -54,7 +54,7 @@ subroutine weights_calculate(par, iarr, xdata, ydata, myrank, nbproc)
   real(kind=CUSTOM_REAL), intent(in) :: xdata(:), ydata(:)
   integer, intent(in) :: myrank, nbproc
   type(t_inversion_arrays), intent(inout) :: iarr
-  integer :: i, ierr
+  integer :: i
 
   if (par%depth_weighting_type /= 1) then
     print *, "Currently only the depth weight type = 1 is supported!"
