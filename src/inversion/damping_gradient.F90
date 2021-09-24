@@ -123,7 +123,8 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
   type(t_parallel_tools) :: pt
 
   type(t_gradient) :: grad
-  type(t_vector) :: gradient_fwd, gradient_bwd
+  type(t_vector) :: gradient_fwd
+  !type(t_vector) :: gradient_bwd
 
   ! Number of parameters on ranks smaller than current one.
   nsmaller = pt%get_nsmaller(this%nelements, myrank, nbproc)
@@ -143,11 +144,10 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
 
 
     gradient_fwd = grad%get_grad(model%val_full, model%grid_full, i, j, k, FWD_TYPE)
-    gradient_bwd = grad%get_grad(model%val_full, model%grid_full, i, j, k, BWD_TYPE)
+    !gradient_bwd = grad%get_grad(model%val_full, model%grid_full, i, j, k, BWD_TYPE)
 
     ! NOTE: Use only gradient in one direction per time.
 
-    ! Derivatives for FWD_TYPE, on the right boundary use BWD_TYPE.
     if (direction == 1) then
       delta = model%grid_full%get_hx()
 
@@ -156,9 +156,10 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
         ind(2) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
         gradient_val = gradient_fwd%x
       else
-        ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
-        ind(2) = model%grid_full%get_ind(i - 1, j, k) ! f(i - 1, j, k)
-        gradient_val = gradient_bwd%x
+        !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
+        !ind(2) = model%grid_full%get_ind(i - 1, j, k) ! f(i - 1, j, k)
+        !gradient_val = gradient_bwd%x
+        cycle
       endif
 
     else if (direction == 2) then
@@ -169,9 +170,10 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
         ind(2) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
         gradient_val = gradient_fwd%y
       else
-        ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
-        ind(2) = model%grid_full%get_ind(i, j - 1, k) ! f(i, j - 1, k)
-        gradient_val = gradient_bwd%y
+        !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
+        !ind(2) = model%grid_full%get_ind(i, j - 1, k) ! f(i, j - 1, k)
+        !gradient_val = gradient_bwd%y
+        cycle
       endif
 
     else if (direction == 3) then
@@ -182,9 +184,10 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
         ind(2) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
         gradient_val = gradient_fwd%z
       else
-        ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
-        ind(2) = model%grid_full%get_ind(i, j, k - 1) ! f(i, j, k - 1)
-        gradient_val = gradient_bwd%z
+        !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
+        !ind(2) = model%grid_full%get_ind(i, j, k - 1) ! f(i, j, k - 1)
+        !gradient_val = gradient_bwd%z
+        cycle
       endif
 
     else
