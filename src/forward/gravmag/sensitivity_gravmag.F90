@@ -119,7 +119,8 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
   integer :: nsmaller, nelements_total
   type(t_parallel_tools) :: pt
   integer :: problem_type
-  integer :: nnz_line, nnz_total
+  integer :: nnz_line
+  real(kind=CUSTOM_REAL) :: nnz_total_dbl
 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line(:)
@@ -218,6 +219,11 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
     endif
   enddo
 
+  ! Sanity check.
+  if (nnz_local < 0) then
+    call exit_MPI("Integer overflow in nnz_local! Increase the wavelet threshold or the number of CPUs.", myrank, nnz_local)
+  endif
+
   if (STORE_KERNEL) then
     call sensit_matrix%finalize(par%nelements, myrank)
 
@@ -228,8 +234,8 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
       call mpi_allreduce(comp_rate, comp_rate_min, 1, CUSTOM_MPI_TYPE, MPI_MIN, MPI_COMM_WORLD, ierr)
       call mpi_allreduce(comp_rate, comp_rate_max, 1, CUSTOM_MPI_TYPE, MPI_MAX, MPI_COMM_WORLD, ierr)
 
-      call mpi_allreduce(nnz_local, nnz_total, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
-      comp_rate_tot = dble(nnz_total) / dble(nelements_total) / dble(par%ndata)
+      call mpi_allreduce(dble(nnz_local), nnz_total_dbl, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+      comp_rate_tot = nnz_total_dbl / dble(nelements_total) / dble(par%ndata)
 
       if (myrank == 0) print *, 'Compression rate min = ', comp_rate_min
       if (myrank == 0) print *, 'Compression rate max = ', comp_rate_max
