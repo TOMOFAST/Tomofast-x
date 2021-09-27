@@ -21,7 +21,7 @@ forward.data.grav.dataValuesFile    = output/mansf_slice/grav_calc_read_data.txt
 ===================================================================================
 DEPTH WEIGHTING
 ===================================================================================
-forward.depthWeighting.type                          = 1
+forward.depthWeighting.type                          = 3
 forward.depthWeighting.powerWeight.grav.beta         = 2.0d0
 forward.depthWeighting.powerWeight.grav.Z0           = 0.d0
 
@@ -48,7 +48,7 @@ inversion.startingModel.grav.value  = 0.d0
 ===================================================================================
 INVERSION parameters
 ===================================================================================
-inversion.nMajorIterations          = 50
+inversion.nMajorIterations          = 20
 inversion.nMinorIterations          = 100
 inversion.minResidual               = 1.d-13
 

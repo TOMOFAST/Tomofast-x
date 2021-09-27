@@ -192,8 +192,8 @@ parameters_mag.f90 \
 data_gravmag.f90 \
 gravity_field.f90 \
 magnetic_field.f90 \
-sensitivity_gravmag.F90 \
 weights_gravmag.f90 \
+sensitivity_gravmag.F90 \
 forward_problem_gravmag.F90
 
 # Main routines.

@@ -40,7 +40,8 @@ module weights_gravmag
 
     procedure, private, nopass :: calculate_depth_weight
     procedure, private, nopass :: calculate_depth_weight_sensit
-    procedure, private, nopass :: normalize_depth_weight
+
+    procedure, public, nopass :: normalize_depth_weight
 
   end type t_weights
 
@@ -56,25 +57,30 @@ subroutine weights_calculate(par, iarr, xdata, ydata, myrank, nbproc)
   type(t_inversion_arrays), intent(inout) :: iarr
   integer :: i
 
-  if (par%depth_weighting_type /= 1) then
-    print *, "Currently only the depth weight type = 1 is supported!"
-    stop
+  integer :: weighting_type
+
+  if (par%compression_type > 0) then
+  ! Use the power-function depth weighting with wavelet compression, to estimate first the nnz.
+  ! The actual depth weight in this case will be computed in calculate_sensitivity().
+    weighting_type = 1
+  else
+    weighting_type = par%depth_weighting_type
   endif
 
-  if (myrank == 0) print *, 'Calculating the depth weight...'
+  if (myrank == 0) print *, 'Calculating the depth weight type = ', weighting_type
 
   !--------------------------------------------------------------------------------
   ! Calculate the damping weight as the normalized depth weight.
   !--------------------------------------------------------------------------------
 
-  if (par%depth_weighting_type == 1) then
+  if (weighting_type == 1) then
 
     ! Method I: use empirical function 1/(z+z0)**(beta/2).
     do i = 1, par%nelements
       iarr%damping_weight(i) = calculate_depth_weight(iarr%model%grid, par%beta, par%Z0, i, myrank)
     enddo
 
-  else if (par%depth_weighting_type == 2) then
+  else if (weighting_type == 2) then
 
     if (myrank == 0) print *, 'Error: Not supported case!'
     stop
@@ -84,11 +90,7 @@ subroutine weights_calculate(par, iarr, xdata, ydata, myrank, nbproc)
     call calculate_depth_weight_sensit(iarr%model%grid, xdata, ydata, iarr%sensitivity, iarr%damping_weight, &
                                        iarr%nelements, iarr%ndata, myrank)
 
-  else if (par%depth_weighting_type == 3) then
-
-    ! Temporary disable this case as wavelet compression requires to weight the sensitivity line before compression.
-    if (myrank == 0) print *, 'Error: Not supported (due to wavelet compression)!'
-    stop
+  else if (weighting_type == 3) then
 
     ! Method III: scale model by the integrated sensitivities, see
     ! [1] (!!) Yaoguo Li, Douglas W. Oldenburg., Joint inversion of surface and three-component borehole magnetic data, 2000.
@@ -115,23 +117,15 @@ subroutine weights_calculate(par, iarr, xdata, ydata, myrank, nbproc)
   ! This condition essentially leads to the system:
   !
   ! | S W^{-1} | d(Wm)
-  ! |    I     |
+  ! |  alpha I |
   !
   do i = 1, par%nelements
     if (iarr%damping_weight(i) /= 0.d0) then
       iarr%column_weight(i) = 1.d0 / iarr%damping_weight(i)
     else
-      !iarr%column_weight(i) = 1.d0
       call exit_MPI("Zero damping weight! Exiting.", myrank, 0)
     endif
   enddo
-
-  ! This condition essentially leads to the system:
-  !
-  ! | S | dm
-  ! | W |
-  !iarr%column_weight = 1._CUSTOM_REAL
-
 
   if (myrank == 0) print *, 'Finished calculating the depth weight.'
 

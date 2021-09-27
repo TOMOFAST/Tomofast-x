@@ -32,6 +32,7 @@ module sensitivity_gravmag
   use vector
   use wavelet_transform
   use parallel_tools
+  use weights_gravmag
 
   implicit none
 
@@ -61,11 +62,11 @@ subroutine calculate_sensitivity_kernel(par, grid, data, column_weight, sensit_m
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid
   type(t_data), intent(in) :: data
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   integer, intent(in) :: myrank, nbproc
 
   ! Sensitivity matrix.
   type(t_sparse_matrix), intent(inout) :: sensit_matrix
+  real(kind=CUSTOM_REAL), intent(inout) :: column_weight(:)
 
   integer :: nnz
   logical :: STORE_KERNEL
@@ -73,18 +74,20 @@ subroutine calculate_sensitivity_kernel(par, grid, data, column_weight, sensit_m
   STORE_KERNEL = .true.
 
   call calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, STORE_KERNEL, nnz, myrank, nbproc)
+
 end subroutine calculate_sensitivity_kernel
 
-!=============================================================================================
-! Calculates the compressed sensitivity kernel size.
-!=============================================================================================
+!==================================================================================================
+! Calculates the compressed sensitivity kernel size, and sensitivity based depth weight if needed.
+!==================================================================================================
 function predict_sensit_kernel_size(par, grid, data, column_weight, myrank, nbproc) result (nnz)
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid
   type(t_data), intent(in) :: data
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   integer, intent(in) :: myrank, nbproc
   integer :: nnz
+
+  real(kind=CUSTOM_REAL), intent(inout) :: column_weight(:)
 
   type(t_sparse_matrix) :: dummy_matrix
   logical :: STORE_KERNEL
@@ -92,6 +95,7 @@ function predict_sensit_kernel_size(par, grid, data, column_weight, myrank, nbpr
   STORE_KERNEL = .false.
 
   call calculate_sensitivity(par, grid, data, column_weight, dummy_matrix, STORE_KERNEL, nnz, myrank, nbproc)
+
 end function predict_sensit_kernel_size
 
 !=============================================================================================
@@ -103,24 +107,28 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid
   type(t_data), intent(in) :: data
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   logical, intent(in) :: STORE_KERNEL
   integer, intent(in) :: myrank, nbproc
 
   ! The number of non-zero elements in the compressed sensitivity kernel on curent CPU.
   integer, intent(out) :: nnz_local
+  real(kind=CUSTOM_REAL), intent(inout) :: column_weight(:)
 
   ! Sensitivity matrix.
   type(t_sparse_matrix), intent(inout) :: sensit_matrix
 
   type(t_magnetic_field) :: mag_field
   integer :: i, p, ierr
-  real(kind=CUSTOM_REAL) :: comp_rate, comp_rate_min, comp_rate_max, comp_rate_tot
+  real(kind=CUSTOM_REAL) :: comp_rate
   integer :: nsmaller, nelements_total
   type(t_parallel_tools) :: pt
   integer :: problem_type
   integer :: nnz_line
   real(kind=CUSTOM_REAL) :: nnz_total_dbl
+
+  ! Column weight based on sensitivity.
+  real(kind=CUSTOM_REAL), allocatable :: depth_weight_sensit(:)
+  type(t_weights) :: weights
 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line(:)
@@ -150,6 +158,11 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
     endif
   endif
 
+  if (par%compression_type > 0 .and. par%depth_weighting_type == 3) then
+    allocate(depth_weight_sensit(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
+    if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_sensitivity!", myrank, ierr)
+  endif
+
   select type(par)
   class is (t_parameters_grav)
     if (myrank == 0) print *, 'Calculating GRAVITY sensitivity kernel...'
@@ -176,6 +189,12 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
     else if (problem_type == 2) then
     ! Magnetic problem.
       call mag_field%magprism(par%nelements, i, grid, data%X, data%Y, data%Z, sensit_line)
+    endif
+
+    if (par%depth_weighting_type == 3 .and. .not. STORE_KERNEL) then
+      do p = 1, par%nelements
+        depth_weight_sensit(p) = depth_weight_sensit(p) + sensit_line(p) * sensit_line(p)
+      enddo
     endif
 
     ! Applying the depth weight.
@@ -211,13 +230,12 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
         ! Adding the Z-component only.
         call sensit_matrix%add(sensit_line(p), p, myrank)
       enddo
-
-    else
-    ! Predicting the sensitivity kernel size.
-      nnz_local = nnz_local + count(sensit_line /= 0.d0)
-
     endif
-  enddo
+
+    ! The sensitivity kernel size.
+    nnz_local = nnz_local + count(sensit_line /= 0.d0)
+
+  enddo ! data loop
 
   ! Sanity check.
   if (nnz_local < 0) then
@@ -228,27 +246,41 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
     call sensit_matrix%finalize(par%nelements, myrank)
 
   else
-    ! Calculate the kernel compression rate.
-    comp_rate = dble(nnz_local) / dble(par%nelements) / dble(par%ndata)
-    if (nbproc > 1) then
-      call mpi_allreduce(comp_rate, comp_rate_min, 1, CUSTOM_MPI_TYPE, MPI_MIN, MPI_COMM_WORLD, ierr)
-      call mpi_allreduce(comp_rate, comp_rate_max, 1, CUSTOM_MPI_TYPE, MPI_MAX, MPI_COMM_WORLD, ierr)
+    if (par%depth_weighting_type == 3) then
+    ! Calculating the sensitivity based depth weight. For references, see weights_calculate().
+    ! Note: we compute it at the same time we estimate the kernel size, as we need to know it before the wavelet compression.
+    ! So, with wavelet compression active we cannot calculate it after storing the sensitivity kernel.
 
-      call mpi_allreduce(dble(nnz_local), nnz_total_dbl, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-      comp_rate_tot = nnz_total_dbl / dble(nelements_total) / dble(par%ndata)
+      depth_weight_sensit = sqrt(sqrt(depth_weight_sensit))
 
-      if (myrank == 0) print *, 'Compression rate min = ', comp_rate_min
-      if (myrank == 0) print *, 'Compression rate max = ', comp_rate_max
-      if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate_tot
-    else
-      if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
+      ! Normalize the depth weight.
+      call weights%normalize_depth_weight(depth_weight_sensit, myrank, nbproc)
+
+      do i = 1, par%nelements
+        column_weight(i) = 1.d0 / depth_weight_sensit(i)
+      enddo
     endif
+  endif
+
+  ! Calculate the kernel compression rate.
+  if (nbproc > 1) then
+    call mpi_allreduce(dble(nnz_local), nnz_total_dbl, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    comp_rate = nnz_total_dbl / dble(nelements_total) / dble(par%ndata)
+  else
+    comp_rate = dble(nnz_local) / dble(par%nelements) / dble(par%ndata)
+  endif
+
+  if (STORE_KERNEL) then
+    if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
+  else
+    if (myrank == 0) print *, 'COMPRESSION RATE (estim) = ', comp_rate
   endif
 
   deallocate(sensit_line)
   deallocate(sensit_line2)
   deallocate(sensit_line3)
   if (allocated(sensit_line_full)) deallocate(sensit_line_full)
+  if (allocated(depth_weight_sensit)) deallocate(depth_weight_sensit)
 
   if (myrank == 0) print *, 'Finished calculating the sensitivity kernel.'
 
