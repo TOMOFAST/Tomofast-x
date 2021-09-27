@@ -196,8 +196,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
   !-----------------------------------------------------------------------------------------
   ! Calculates weights.
-  if (SOLVE_PROBLEM(1)) call weights%calculate(gpar, iarr(1), data(1)%X, data(1)%Y, myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call weights%calculate(mpar, iarr(2), data(2)%X, data(2)%Y, myrank, nbproc)
+  if (SOLVE_PROBLEM(1)) call weights%calculate(gpar, iarr(1), myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call weights%calculate(mpar, iarr(2), myrank, nbproc)
 
   ! Precondition the column weights.
   if (SOLVE_PROBLEM(1)) iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight

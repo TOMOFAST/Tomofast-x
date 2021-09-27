@@ -37,11 +37,9 @@ module weights_gravmag
     private
 
     procedure, public, nopass :: calculate => weights_calculate
+    procedure, public, nopass :: normalize_depth_weight
 
     procedure, private, nopass :: calculate_depth_weight
-    procedure, private, nopass :: calculate_depth_weight_sensit
-
-    procedure, public, nopass :: normalize_depth_weight
 
   end type t_weights
 
@@ -50,62 +48,30 @@ contains
 !===================================================================================
 ! Calculates the weights for inversion.
 !===================================================================================
-subroutine weights_calculate(par, iarr, xdata, ydata, myrank, nbproc)
+subroutine weights_calculate(par, iarr, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
-  real(kind=CUSTOM_REAL), intent(in) :: xdata(:), ydata(:)
   integer, intent(in) :: myrank, nbproc
   type(t_inversion_arrays), intent(inout) :: iarr
   integer :: i
 
-  integer :: weighting_type
-
-  if (par%compression_type > 0) then
-  ! Use the power-function depth weighting with wavelet compression, to estimate first the nnz.
+  ! NOTE:
+  ! We use the power-function depth weighting with wavelet compression to first estimate the nnz.
   ! The actual depth weight in this case will be computed in calculate_sensitivity().
-    weighting_type = 1
-  else
-    weighting_type = par%depth_weighting_type
+
+  if (par%compression_type == 0 .and. par%depth_weighting_type == 3) then
+    call exit_MPI("For the sensitivity-based depth weighting activate the wavelet compression!", myrank, 0)
   endif
 
-  if (myrank == 0) print *, 'Calculating the depth weight type = ', weighting_type
+  if (myrank == 0) print *, 'Calculating the depth weight.'
 
   !--------------------------------------------------------------------------------
-  ! Calculate the damping weight as the normalized depth weight.
+  ! Calculate the normalized depth weight.
   !--------------------------------------------------------------------------------
 
-  if (weighting_type == 1) then
-
-    ! Method I: use empirical function 1/(z+z0)**(beta/2).
-    do i = 1, par%nelements
-      iarr%damping_weight(i) = calculate_depth_weight(iarr%model%grid, par%beta, par%Z0, i, myrank)
-    enddo
-
-  else if (weighting_type == 2) then
-
-    if (myrank == 0) print *, 'Error: Not supported case!'
-    stop
-
-    ! Method II: use only sensitivity values directly below the data (i.e., z-column).
-    ! Calculate damping weight using sensitivity kernel.
-    call calculate_depth_weight_sensit(iarr%model%grid, xdata, ydata, iarr%sensitivity, iarr%damping_weight, &
-                                       iarr%nelements, iarr%ndata, myrank)
-
-  else if (weighting_type == 3) then
-
-    ! Method III: scale model by the integrated sensitivities, see
-    ! [1] (!!) Yaoguo Li, Douglas W. Oldenburg., Joint inversion of surface and three-component borehole magnetic data, 2000.
-    ! [2] Portniaguine and Zhdanov (2002).
-    ! For discussion on different weightings see also:
-    !   [1] M. Pilkington, Geophysics, vol. 74, no. 1, 2009.
-    !   [2] F. Cella and M. Fedi, Geophys. Prospecting, 2012, 60, 313-336.
-
-    ! Integrated sensitivity matrix (diagonal).
-    call iarr%matrix_sensit%get_integrated_sensit(iarr%damping_weight)
-    iarr%damping_weight = sqrt(iarr%damping_weight)
-
-  else
-    call exit_MPI("Unknown depth weighting type!", myrank, 0)
-  endif
+  ! Use empirical function 1/(z+z0)**(beta/2).
+  do i = 1, par%nelements
+    iarr%damping_weight(i) = calculate_depth_weight(iarr%model%grid, par%beta, par%Z0, i, myrank)
+  enddo
 
   ! Normalize the depth weight.
   call normalize_depth_weight(iarr%damping_weight, myrank, nbproc)
@@ -155,46 +121,6 @@ function calculate_depth_weight(grid, beta, Z0, i, myrank) result(weight)
   endif
 
 end function calculate_depth_weight
-
-!========================================================================================
-! Calculates the damping weight using sensitivity kernel below the data location.
-!========================================================================================
-subroutine calculate_depth_weight_sensit(grid, xdata, ydata, sensit, damping_weight, &
-                                         nelements, ndata, myrank)
-  type(t_grid), intent(in) :: grid
-  real(kind=CUSTOM_REAL), intent(in) :: xdata(:), ydata(:)
-  real(kind=CUSTOM_REAL), intent(in) :: sensit(:, :)
-  integer, intent(in) :: nelements, ndata, myrank
-  real(kind=CUSTOM_REAL), intent(out) :: damping_weight(:)
-
-  integer :: p, i, idata
-
-  ! Loop over local elements.
-  do p = 1, nelements
-
-    ! Search for data corresponding to the element:
-    !   the data (X, Y) position is inside a grid-cell (X, Y) position.
-    idata = 0
-    do i = 1, ndata
-      if (xdata(i) >= grid%X1(p) .and. xdata(i) <= grid%X2(p) .and. &
-          ydata(i) >= grid%Y1(p) .and. ydata(i) <= grid%Y2(p)) then
-        idata = i
-        exit
-      endif
-    enddo
-
-    if (idata == 0) then
-      call exit_MPI("Error: Not found data corresponding to the pixel!", myrank, 0)
-    endif
-
-    if (sensit(p, idata) >= 0) then
-      damping_weight(p) = sqrt(sensit(p, idata))
-    else
-      call exit_MPI("Error: Negative sensitivity, cannot calculate damping weight!", myrank, 0)
-    endif
-  enddo
-
-end subroutine calculate_depth_weight_sensit
 
 !===================================================================================
 ! Normalizes the depth weight.

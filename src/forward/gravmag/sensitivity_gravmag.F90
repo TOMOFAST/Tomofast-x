@@ -247,9 +247,15 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
 
   else
     if (par%depth_weighting_type == 3) then
-    ! Calculating the sensitivity based depth weight. For references, see weights_calculate().
-    ! Note: we compute it at the same time we estimate the kernel size, as we need to know it before the wavelet compression.
-    ! So, with wavelet compression active we cannot calculate it after storing the sensitivity kernel.
+      ! [1] (!!) Yaoguo Li, Douglas W. Oldenburg., Joint inversion of surface and three-component borehole magnetic data, 2000.
+      ! [2] Portniaguine and Zhdanov (2002).
+      ! For discussion on different weightings see also:
+      !   [1] M. Pilkington, Geophysics, vol. 74, no. 1, 2009.
+      !   [2] F. Cella and M. Fedi, Geophys. Prospecting, 2012, 60, 313-336.
+      !
+      ! Calculating the sensitivity based depth weight.
+      ! Note: we compute it at the same time we estimate the kernel size, as we need to know it before the wavelet compression.
+      ! So, with wavelet compression active we cannot calculate it after storing the sensitivity kernel.
 
       depth_weight_sensit = sqrt(sqrt(depth_weight_sensit))
 
