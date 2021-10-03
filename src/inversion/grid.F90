@@ -61,6 +61,8 @@ module grid
     procedure, public, pass :: get_Y_cell_center => grid_get_Y_cell_center
     procedure, public, pass :: get_Z_cell_center => grid_get_Z_cell_center
 
+    procedure, public, pass :: get_cell_volume => grid_get_cell_volume
+
   end type t_grid
 
 contains
@@ -246,5 +248,19 @@ pure function grid_get_Z_cell_center(this, cell_index) result(res)
   res = 0.5d0 * (this%Z1(cell_index) + this%Z2(cell_index))
 
 end function grid_get_Z_cell_center
+
+!===================================================================================
+! Returns the cell volume.
+!===================================================================================
+pure function grid_get_cell_volume(this, cell_index) result(res)
+  class(t_grid), intent(in) :: this
+  integer, intent(in) :: cell_index
+  real(kind=CUSTOM_REAL) :: res
+
+  res = abs((this%X2(cell_index) - this%X1(cell_index)) * &
+            (this%Y2(cell_index) - this%Y1(cell_index)) * &
+            (this%Z2(cell_index) - this%Z1(cell_index)))
+
+end function grid_get_cell_volume
 
 end module grid

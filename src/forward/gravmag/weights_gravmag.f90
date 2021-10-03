@@ -25,6 +25,7 @@ module weights_gravmag
   use inversion_arrays
   use grid
   use mpi_tools, only: exit_MPI
+  use data_gravmag
 
   implicit none
 
@@ -48,11 +49,20 @@ contains
 !===================================================================================
 ! Calculates the weights for inversion.
 !===================================================================================
-subroutine weights_calculate(par, iarr, myrank, nbproc)
+subroutine weights_calculate(par, iarr, data, problem_type, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
+  integer, intent(in) :: problem_type
   integer, intent(in) :: myrank, nbproc
+  type(t_data), intent(in) :: data
   type(t_inversion_arrays), intent(inout) :: iarr
-  integer :: i
+
+  integer :: i, j
+  integer :: ii, jj, kk, ind
+  real(kind=CUSTOM_REAL) :: distX_sq(2), distY_sq(2), distZ_sq(2)
+  real(kind=CUSTOM_REAL) :: dhx, dhy, dhz, dfactor
+  real(kind=CUSTOM_REAL) :: Rij(8), R0, power
+  real(kind=CUSTOM_REAL) :: dVj
+  real(kind=CUSTOM_REAL) :: integral, wr
 
   ! NOTE:
   ! We use the power-function depth weighting with wavelet compression to first estimate the nnz.
@@ -67,11 +77,80 @@ subroutine weights_calculate(par, iarr, myrank, nbproc)
   !--------------------------------------------------------------------------------
   ! Calculate the normalized depth weight.
   !--------------------------------------------------------------------------------
+  if (par%depth_weighting_type /= 2) then
+  ! Depth weighting.
 
-  ! Use empirical function 1/(z+z0)**(beta/2).
-  do i = 1, par%nelements
-    iarr%damping_weight(i) = calculate_depth_weight(iarr%model%grid, par%beta, par%Z0, i, myrank)
-  enddo
+    ! Use empirical function 1/(z+z0)**(beta/2).
+    do i = 1, par%nelements
+      iarr%damping_weight(i) = calculate_depth_weight(iarr%model%grid, par%beta, par%Z0, i, myrank)
+    enddo
+
+  else
+  ! Distance weighting.
+  ! The implementation is based on the Eq.(10) in https://www.eoas.ubc.ca/ubcgif/iag/sftwrdocs/grav3d/grav3d-manual.pdf
+
+    if (problem_type == 1) then
+    ! Gravity.
+      power = 2.d0
+    else if (problem_type == 2) then
+    ! Magnetism.
+      power = 3.d0
+    else
+      call exit_MPI("Unknown problem type in weights_calculate!", myrank, problem_type)
+    endif
+
+    ! A small constant for integral validity.
+    R0 = 0.1d0 ! 0.1 meter
+
+    ! A factor to move the cell corner points inside a cell.
+    dfactor = 0.25d0
+
+    do i = 1, par%nelements
+      ! Cell colume.
+      dVj = iarr%model%grid%get_cell_volume(i)
+
+      ! Shifts to make the integral points to lie inside the cell volume.
+      dhx = dfactor * abs(iarr%model%grid%X2(i) - iarr%model%grid%X1(i))
+      dhy = dfactor * abs(iarr%model%grid%Y2(i) - iarr%model%grid%Y1(i))
+      dhz = dfactor * abs(iarr%model%grid%Z2(i) - iarr%model%grid%Z1(i))
+
+      wr = 0.d0
+
+      do j = 1, par%ndata
+
+        ! The squared 1D distances along each cell dimension.
+        distX_sq(1) = (iarr%model%grid%X1(i) + dhx - data%X(j))**2.d0
+        distY_sq(1) = (iarr%model%grid%Y1(i) + dhy - data%Y(j))**2.d0
+        distZ_sq(1) = (iarr%model%grid%Z1(i) + dhz - data%Z(j))**2.d0
+
+        distX_sq(2) = (iarr%model%grid%X2(i) - dhx - data%X(j))**2.d0
+        distY_sq(2) = (iarr%model%grid%Y2(i) - dhy - data%Y(j))**2.d0
+        distZ_sq(2) = (iarr%model%grid%Z2(i) - dhz - data%Z(j))**2.d0
+
+        ! Calculate the distance from 8 points inside a cell to the data location.
+        ind = 0
+        do ii = 1, 2
+          do jj = 1, 2
+            do kk = 1, 2
+              ind = ind + 1
+              Rij(ind) = sqrt(distX_sq(ii) + distY_sq(jj) + distZ_sq(kk))
+            enddo
+          enddo
+        enddo
+
+        integral = 0.d0
+        do ind = 1, 8
+          integral = integral + 1.d0 / (Rij(ind) + R0)**power
+        enddo
+        integral = integral * dVj / 8.d0
+
+        wr = wr + integral**2.d0
+
+      enddo ! data loop
+
+      iarr%damping_weight(i) = (1.d0 / sqrt(dVj)) * wr**(1.d0 / 4.d0)
+    enddo ! cells loop
+  endif
 
   ! Normalize the depth weight.
   call normalize_depth_weight(iarr%damping_weight, myrank, nbproc)
