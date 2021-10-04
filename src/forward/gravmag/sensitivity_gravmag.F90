@@ -235,6 +235,11 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
     ! The sensitivity kernel size.
     nnz_local = nnz_local + count(sensit_line /= 0.d0)
 
+    ! Printing the progress.
+    if (mod(i, int(0.1d0 * par%ndata)) == 0) then
+      if (myrank == 0) print *, 'Percents completed: ', (i / int(0.1d0 * par%ndata)) * 10 ! Approximate percents.
+    endif
+
   enddo ! data loop
 
   ! Sanity check.
