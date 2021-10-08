@@ -283,6 +283,17 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
     print *, 'myrank=', myrank, ' nbproc=', nbproc, ' nelements_total=', ipar%nelements_total, &
              'nelements=', ipar%nelements, 'ndata=', ipar%ndata
 
+  if (ipar%compression_type > 0) then
+  ! Currently non-supported constraints with wavelet compression.
+  ! The support is scheduled for next code versions.
+    if (ipar%beta(1) /= 0.d0 .or. ipar%beta(2) /= 0.d0 .or. &
+        ipar%clustering_weight_glob(1) /= 0.d0 .or. ipar%clustering_weight_glob(2) /= 0.d0 .or. &
+        ipar%cross_grad_weight /= 0.d0) then
+
+      call exit_MPI("Wavelet compression currently is supported with model damping and ADMM constraints only!", myrank, 0)
+    endif
+  endif
+
 end subroutine initialize_parameters
 
 !===================================================================================
