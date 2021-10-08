@@ -13,7 +13,7 @@
 !========================================================================
 
 !===============================================================================================
-! A class to calculate weights for sensitivity matrix and damping.
+! A class to calculate weights for the sensitivity matrix.
 !
 ! Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================================
@@ -64,20 +64,12 @@ subroutine weights_calculate(par, iarr, data, problem_type, myrank, nbproc)
   real(kind=CUSTOM_REAL) :: dVj
   real(kind=CUSTOM_REAL) :: integral, wr
 
-  ! NOTE:
-  ! We use the power-function depth weighting with wavelet compression to first estimate the nnz.
-  ! The actual depth weight in this case will be computed in calculate_sensitivity().
-
-  if (par%compression_type == 0 .and. par%depth_weighting_type == 3) then
-    call exit_MPI("For the sensitivity-based depth weighting activate the wavelet compression!", myrank, 0)
-  endif
-
-  if (myrank == 0) print *, 'Calculating the depth weight.'
+  if (myrank == 0) print *, 'Calculating the depth weight, type = ', par%depth_weighting_type
 
   !--------------------------------------------------------------------------------
   ! Calculate the normalized depth weight.
   !--------------------------------------------------------------------------------
-  if (par%depth_weighting_type /= 2) then
+  if (par%depth_weighting_type == 1) then
   ! Depth weighting.
 
     ! Use empirical function 1/(z+z0)**(beta/2).
@@ -85,7 +77,7 @@ subroutine weights_calculate(par, iarr, data, problem_type, myrank, nbproc)
       iarr%damping_weight(i) = calculate_depth_weight(iarr%model%grid, par%beta, par%Z0, i, myrank)
     enddo
 
-  else
+  else if (par%depth_weighting_type == 2) then
   ! Distance weighting.
   ! The implementation is based on the Eq.(10) in https://www.eoas.ubc.ca/ubcgif/iag/sftwrdocs/grav3d/grav3d-manual.pdf
 
@@ -150,6 +142,9 @@ subroutine weights_calculate(par, iarr, data, problem_type, myrank, nbproc)
 
       iarr%damping_weight(i) = (1.d0 / sqrt(dVj)) * wr**(1.d0 / 4.d0)
     enddo ! cells loop
+
+  else
+    call exit_MPI("Not known depth weight type!", myrank, par%depth_weighting_type)
   endif
 
   ! Normalize the depth weight.

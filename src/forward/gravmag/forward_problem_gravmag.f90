@@ -25,7 +25,7 @@ module forward_problem_gravmag
   private
 
   public :: solve_forward_problem
-  public :: calculate_kernel_size_and_weight
+  public :: calculate_kernel_size
 
 contains
 
@@ -34,9 +34,10 @@ contains
 !=========================================================================================
 subroutine solve_forward_problem(par, iarr, data, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
-  type(t_data), intent(inout) :: data
-  type(t_inversion_arrays), intent(inout) :: iarr
   integer, intent(in) :: myrank, nbproc
+
+  type(t_inversion_arrays), intent(inout) :: iarr
+  type(t_data), intent(inout) :: data
 
   type(t_sensitivity_gravmag) :: sens
 
@@ -52,23 +53,18 @@ end subroutine solve_forward_problem
 !=========================================================================================
 ! Calcualtes the size of the sensitivity kernel.
 !=========================================================================================
-subroutine calculate_kernel_size_and_weight(par, iarr, data, nnz, weight_multiplier, myrank, nbproc)
+subroutine calculate_kernel_size(par, iarr, data, nnz, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
-  type(t_data), intent(inout) :: data
-  type(t_inversion_arrays), intent(inout) :: iarr
-  real(kind=CUSTOM_REAL) :: weight_multiplier
+  type(t_data), intent(in) :: data
+  type(t_inversion_arrays), intent(in) :: iarr
   integer, intent(in) :: myrank, nbproc
+
   integer, intent(out) :: nnz
 
   type(t_sensitivity_gravmag) :: sens
 
   nnz = sens%predict_sensit_kernel_size(par, iarr%model%grid, data, iarr%column_weight, myrank, nbproc)
 
-  if (par%depth_weighting_type == 3) then
-    ! Precondition the column weights.
-    iarr%column_weight = weight_multiplier * iarr%column_weight
-  endif
-
-end subroutine calculate_kernel_size_and_weight
+end subroutine calculate_kernel_size
 
 end module forward_problem_gravmag

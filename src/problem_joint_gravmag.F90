@@ -199,7 +199,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call weights%calculate(gpar, iarr(1), data(1), 1, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call weights%calculate(mpar, iarr(2), data(2), 2, myrank, nbproc)
 
-  ! Precondition the column weights.
+  ! Precondition the column weights (to balance the columns in joint inversion).
   if (SOLVE_PROBLEM(1)) iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight
   if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
 
@@ -208,12 +208,11 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   nnz = 0
   if (ipar%compression_type > 0) then
   ! Wavelet compression. Calculate the number of nonzero elements in the compressed kernel (on every rank).
-  ! Also calculate the sensitivity-based depth-weight.
     if (SOLVE_PROBLEM(1)) &
-      call calculate_kernel_size_and_weight(gpar, iarr(1), data(1), nnz(1), ipar%column_weight_multiplier(1), myrank, nbproc)
+      call calculate_kernel_size(gpar, iarr(1), data(1), nnz(1), myrank, nbproc)
 
     if (SOLVE_PROBLEM(2)) &
-      call calculate_kernel_size_and_weight(mpar, iarr(2), data(2), nnz(2), ipar%column_weight_multiplier(2), myrank, nbproc)
+      call calculate_kernel_size(mpar, iarr(2), data(2), nnz(2), myrank, nbproc)
   else
     nnz(1) = ipar%nelements * ipar%ndata(1)
     nnz(2) = ipar%nelements * ipar%ndata(2)
