@@ -49,9 +49,8 @@ contains
 !===================================================================================
 ! Calculates the weights for inversion.
 !===================================================================================
-subroutine weights_calculate(par, iarr, data, problem_type, myrank, nbproc)
+subroutine weights_calculate(par, iarr, data, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
-  integer, intent(in) :: problem_type
   integer, intent(in) :: myrank, nbproc
   type(t_data), intent(in) :: data
   type(t_inversion_arrays), intent(inout) :: iarr
@@ -60,7 +59,7 @@ subroutine weights_calculate(par, iarr, data, problem_type, myrank, nbproc)
   integer :: ii, jj, kk, ind
   real(kind=CUSTOM_REAL) :: distX_sq(2), distY_sq(2), distZ_sq(2)
   real(kind=CUSTOM_REAL) :: dhx, dhy, dhz, dfactor
-  real(kind=CUSTOM_REAL) :: Rij(8), R0, power
+  real(kind=CUSTOM_REAL) :: Rij(8), R0
   real(kind=CUSTOM_REAL) :: dVj
   real(kind=CUSTOM_REAL) :: integral, wr
 
@@ -74,22 +73,12 @@ subroutine weights_calculate(par, iarr, data, problem_type, myrank, nbproc)
 
     ! Use empirical function 1/(z+z0)**(beta/2).
     do i = 1, par%nelements
-      iarr%damping_weight(i) = calculate_depth_weight(iarr%model%grid, par%beta, par%Z0, i, myrank)
+      iarr%damping_weight(i) = calculate_depth_weight(iarr%model%grid, par%depth_weighting_power, par%Z0, i, myrank)
     enddo
 
   else if (par%depth_weighting_type == 2) then
   ! Distance weighting.
   ! The implementation is based on the Eq.(10) in https://www.eoas.ubc.ca/ubcgif/iag/sftwrdocs/grav3d/grav3d-manual.pdf
-
-    if (problem_type == 1) then
-    ! Gravity.
-      power = 2.d0
-    else if (problem_type == 2) then
-    ! Magnetism.
-      power = 3.d0
-    else
-      call exit_MPI("Unknown problem type in weights_calculate!", myrank, problem_type)
-    endif
 
     ! A small constant for integral validity.
     R0 = 0.1d0 ! 0.1 meter
@@ -132,7 +121,7 @@ subroutine weights_calculate(par, iarr, data, problem_type, myrank, nbproc)
 
         integral = 0.d0
         do ind = 1, 8
-          integral = integral + 1.d0 / (Rij(ind) + R0)**power
+          integral = integral + 1.d0 / (Rij(ind) + R0)**par%depth_weighting_power
         enddo
         integral = integral * dVj / 8.d0
 

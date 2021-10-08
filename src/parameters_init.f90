@@ -340,9 +340,9 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
 
   ! DEPTH WEIGHTING parameters.
   gpar%depth_weighting_type = 2 ! 1-depth weighting, 2-distance weighting
-  gpar%beta = 2.0d0
+  gpar%depth_weighting_power = 2.0d0
   gpar%Z0 = 0.d0
-  mpar%beta = 3.0d0
+  mpar%depth_weighting_power = 3.0d0
   mpar%Z0 = 0.d0
 
   ! MATRIX COMPRESSION parameters.
@@ -707,19 +707,19 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
         call print_arg(myrank, parname, gpar%depth_weighting_type)
         mpar%depth_weighting_type = gpar%depth_weighting_type
 
-      case("forward.depthWeighting.powerWeight.grav.beta")
-        read(10, 1) gpar%beta
-        call print_arg(myrank, parname, gpar%beta)
+      case("forward.depthWeighting.grav.power")
+        read(10, 1) gpar%depth_weighting_power
+        call print_arg(myrank, parname, gpar%depth_weighting_power)
 
-      case("forward.depthWeighting.powerWeight.grav.Z0")
+      case("forward.depthWeighting.grav.Z0")
         read(10, 1) gpar%Z0
         call print_arg(myrank, parname, gpar%Z0)
 
-      case("forward.depthWeighting.powerWeight.magn.beta")
-        read(10, 1) mpar%beta
-        call print_arg(myrank, parname, mpar%beta)
+      case("forward.depthWeighting.magn.power")
+        read(10, 1) mpar%depth_weighting_power
+        call print_arg(myrank, parname, mpar%depth_weighting_power)
 
-      case("forward.depthWeighting.powerWeight.magn.Z0")
+      case("forward.depthWeighting.magn.Z0")
         read(10, 1) mpar%Z0
         call print_arg(myrank, parname, mpar%Z0)
 

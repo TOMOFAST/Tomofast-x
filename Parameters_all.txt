@@ -48,11 +48,11 @@ forward.magneticField.XaxisDeclination     = 0.d0
 DEPTH WEIGHTING
 ===================================================================================
 # 1-depth weight, 2-distance weight.
-forward.depthWeighting.type                          = 2
-forward.depthWeighting.powerWeight.grav.beta         = 2.0d0
-forward.depthWeighting.powerWeight.grav.Z0           = 0.d0
-forward.depthWeighting.powerWeight.magn.beta         = 3.0d0
-forward.depthWeighting.powerWeight.magn.Z0           = 0.d0
+forward.depthWeighting.type                = 2
+forward.depthWeighting.grav.power          = 2.0d0
+forward.depthWeighting.grav.Z0             = 0.d0
+forward.depthWeighting.magn.power          = 3.0d0
+forward.depthWeighting.magn.Z0             = 0.d0
 
 ===================================================================================
 MATRIX COMPRESSION
