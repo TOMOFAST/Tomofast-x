@@ -59,7 +59,7 @@ module parameters_gravmag
     ! Set starting model to this value.
     real(kind=CUSTOM_REAL) :: start_model_val
 
-    ! Type of the depth weighting (1-power law, 2-sensitivity column below the data, 3-integrated sensitivity).
+    ! Type of the depth weighting (1-depth weight, 2-distance weight).
     integer :: depth_weighting_type
     ! Power constant for depth weighting (type=1).
     real(kind=CUSTOM_REAL) :: beta

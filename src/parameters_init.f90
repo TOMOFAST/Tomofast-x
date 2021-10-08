@@ -339,11 +339,10 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   mpar%theta = 0.d0
 
   ! DEPTH WEIGHTING parameters.
-  gpar%depth_weighting_type = 3 ! 1-power, 2-sens, 3-isens
-  ! Power weight function: W(Z) = 1 / (Z + Z0)**(beta / 2)
-  gpar%beta = 1.4d0   ! TODO: update beta-power to a number from tests. Also to update the default value in ParametersDefault.md file
+  gpar%depth_weighting_type = 2 ! 1-depth weighting, 2-distance weighting
+  gpar%beta = 2.0d0
   gpar%Z0 = 0.d0
-  mpar%beta = 1.4d0   ! TODO: update beta-power to a number from tests. Also to update the default value in ParametersDefault.md file
+  mpar%beta = 3.0d0
   mpar%Z0 = 0.d0
 
   ! MATRIX COMPRESSION parameters.

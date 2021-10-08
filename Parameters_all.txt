@@ -47,12 +47,11 @@ forward.magneticField.XaxisDeclination     = 0.d0
 ===================================================================================
 DEPTH WEIGHTING
 ===================================================================================
-# 1-power, 2-sens, 3-isens.
-forward.depthWeighting.type                          = 3
-# Power function: W(Z) = 1 / (Z + Z0)**(beta / 2)
-forward.depthWeighting.powerWeight.grav.beta         = 1.5d0
+# 1-depth weight, 2-distance weight.
+forward.depthWeighting.type                          = 2
+forward.depthWeighting.powerWeight.grav.beta         = 2.0d0
 forward.depthWeighting.powerWeight.grav.Z0           = 0.d0
-forward.depthWeighting.powerWeight.magn.beta         = 1.4d0
+forward.depthWeighting.powerWeight.magn.beta         = 3.0d0
 forward.depthWeighting.powerWeight.magn.Z0           = 0.d0
 
 ===================================================================================
