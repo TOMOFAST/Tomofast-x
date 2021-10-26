@@ -21,14 +21,86 @@ module wavelet_transform
   private
 
   public :: Haar3D
+  public :: Haar3D_old
   public :: iHaar3D
   public :: DaubD43D
   public :: iDaubD43D
 
 contains
 
-! Haar wavelet transform adapted from code by Sebastien Chevrot.
+! Vectorized Haar wavelet transform.
 subroutine Haar3D(s,n1,n2,n3)
+
+  integer, intent(in) :: n1,n2,n3
+  real(kind=CUSTOM_REAL), intent(inout) :: s(n1,n2,n3)
+
+  integer :: i,i1,i2,i3,ic,L,il,ig,ngmin,ngmax
+  integer :: istep,step_incr,step2,nscale,ng
+  integer :: igmax, ilmax
+
+! Loop over the 3 dimensions
+  do ic = 1,3
+
+! Loop over the scales
+    if (ic==1) then
+      nscale = int(log(real(n1,CUSTOM_REAL))/log(2._CUSTOM_REAL))
+      L = n1
+    else if (ic==2) then
+      nscale = int(log(real(n2,CUSTOM_REAL))/log(2._CUSTOM_REAL))
+      L = n2
+    else
+      nscale = int(log(real(n3,CUSTOM_REAL))/log(2._CUSTOM_REAL))
+      L = n3
+    endif
+    do istep = 1,nscale
+      step_incr = 2**istep
+      ngmin = step_incr/2+1
+      ngmax = ngmin+int((L-ngmin)/step_incr)*step_incr
+      ng = (ngmax-ngmin)/step_incr+1
+      step2 = step_incr
+
+      ig = ngmin
+      il = 1
+      igmax = ig + step2 * (ng - 1)
+      ilmax = il + step2 * (ng - 1)
+
+!-------------- Predict
+      if (ic==1) then
+        s(ig:igmax:step2, 1:n2, 1:n3) = s(ig:igmax:step2, 1:n2, 1:n3) - s(il:ilmax:step2, 1:n2, 1:n3)
+      else if (ic==2) then
+        s(1:n1, ig:igmax:step2, 1:n3) = s(1:n1, ig:igmax:step2, 1:n3) - s(1:n1, il:ilmax:step2, 1:n3)
+      else
+        s(1:n1, 1:n2, ig:igmax:step2) = s(1:n1, 1:n2, ig:igmax:step2) - s(1:n1, 1:n2, il:ilmax:step2)
+      endif
+
+!------------- Update
+      if (ic==1) then
+        s(il:ilmax:step2, 1:n2, 1:n3) = s(il:ilmax:step2, 1:n2, 1:n3) + s(ig:igmax:step2, 1:n2, 1:n3) / 2._CUSTOM_REAL
+      else if (ic==2) then
+        s(1:n1, il:ilmax:step2, 1:n3) = s(1:n1, il:ilmax:step2, 1:n3) + s(1:n1, ig:igmax:step2, 1:n3) / 2._CUSTOM_REAL
+      else
+        s(1:n1, 1:n2, il:ilmax:step2) = s(1:n1, 1:n2, il:ilmax:step2) + s(1:n1, 1:n2, ig:igmax:step2) / 2._CUSTOM_REAL
+      endif
+
+!--------------  Normalization
+      if (ic==1) then
+        s(il:ilmax:step2, 1:n2, 1:n3) = s(il:ilmax:step2, 1:n2, 1:n3) * sqrt(2._CUSTOM_REAL)
+        s(ig:igmax:step2, 1:n2, 1:n3) = s(ig:igmax:step2, 1:n2, 1:n3) / sqrt(2._CUSTOM_REAL)
+      else if (ic==2) then
+        s(1:n1, il:ilmax:step2, 1:n3) = s(1:n1, il:ilmax:step2, 1:n3) * sqrt(2._CUSTOM_REAL)
+        s(1:n1, ig:igmax:step2, 1:n3) = s(1:n1, ig:igmax:step2, 1:n3) / sqrt(2._CUSTOM_REAL)
+      else
+        s(1:n1, 1:n2, il:ilmax:step2) = s(1:n1, 1:n2, il:ilmax:step2) * sqrt(2._CUSTOM_REAL)
+        s(1:n1, 1:n2, ig:igmax:step2) = s(1:n1, 1:n2, ig:igmax:step2) / sqrt(2._CUSTOM_REAL)
+      endif
+
+    enddo
+  enddo
+
+end subroutine Haar3D
+
+! Haar wavelet transform adapted from code by Sebastien Chevrot.
+subroutine Haar3D_old(s,n1,n2,n3)
 
   integer, intent(in) :: n1,n2,n3
   real(kind=CUSTOM_REAL), intent(inout) :: s(n1,n2,n3)
@@ -104,7 +176,7 @@ subroutine Haar3D(s,n1,n2,n3)
     enddo
   enddo
 
-end subroutine Haar3D
+end subroutine Haar3D_old
 
 
 ! Inverse Haar transform adapted from code by Sebastien Chevrot
