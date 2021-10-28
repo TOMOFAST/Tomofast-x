@@ -29,14 +29,20 @@ module wavelet_transform
 contains
 
 ! Vectorized Haar wavelet transform.
-subroutine Haar3D(s,n1,n2,n3)
+subroutine Haar3D(s0, n1, n2, n3)
+  use iso_c_binding, only: C_F_POINTER, C_LOC
 
   integer, intent(in) :: n1,n2,n3
-  real(kind=CUSTOM_REAL), intent(inout) :: s(n1,n2,n3)
+!  real(kind=CUSTOM_REAL), intent(inout) :: s(n1,n2,n3)
+  real(kind=CUSTOM_REAL), target, intent(inout) :: s0(n1 * n2 * n3)
 
   integer :: i,i1,i2,i3,ic,L,il,ig,ngmin,ngmax
   integer :: istep,step_incr,step2,nscale,ng
   integer :: igmax, ilmax
+
+  real(kind=CUSTOM_REAL), pointer :: s(:, :, :)
+
+  call C_F_POINTER(C_LOC(s0), s, [n1, n2, n3])
 
 ! Loop over the 3 dimensions
   do ic = 1,3
