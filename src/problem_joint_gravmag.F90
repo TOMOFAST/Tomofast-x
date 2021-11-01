@@ -136,6 +136,9 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     if (myrank == 0) print *, "SOLVE_PROBLEM("//trim(str(i))//") = ", SOLVE_PROBLEM(i)
   enddo
 
+  cost_data = 0._CUSTOM_REAL
+  cost_model = 0._CUSTOM_REAL
+
   ! (I) MODEL ALLOCATION.  ---------------------------------------------------------------
 
   if (myrank == 0) print *, "(I) MODEL ALLOCATION."
