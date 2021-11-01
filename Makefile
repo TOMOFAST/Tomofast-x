@@ -138,12 +138,12 @@ vector.f90 \
 string.f90 \
 noise.f90 \
 paraview.f90 \
+parallel_tools.f90 \
 wavelet_transform.F90
 
 # Source files for inversion.
 SRC_LIST_INVERSION = \
 sparse_matrix.f90 \
-parallel_tools.f90 \
 grid.F90 \
 model_base.F90 \
 model_IO.F90 \

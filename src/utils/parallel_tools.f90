@@ -15,7 +15,7 @@
 !================================================================================================
 ! Static functions (i.e., no object passed) to work with parallel arrays and scalars.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !================================================================================================
 module parallel_tools
 
@@ -54,15 +54,10 @@ function calculate_nelements_at_cpu(nelements_total, myrank, nbproc) result(nele
 
   nelements = nelements_total / nbproc
 
-  if (mod(nelements_total, nbproc) /= 0 .and. myrank == nbproc - 1) then
+  if (myrank == nbproc - 1 .and. mod(nelements_total, nbproc) /= 0) then
     ! Last rank gets the remaining elements.
     nelements = nelements + mod(nelements_total, nbproc)
   endif
-
-  ! Sanity check.
-  if (get_total_number_elements(nelements, myrank, nbproc) /= nelements_total) &
-    call exit_MPI("Error in calculating nelements in calculate_nelements_at_cpu!", myrank, 0)
-
 end function calculate_nelements_at_cpu
 
 !=====================================================================================

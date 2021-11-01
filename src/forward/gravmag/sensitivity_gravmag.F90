@@ -45,7 +45,6 @@ module sensitivity_gravmag
 
     procedure, public, nopass :: calculate_sensitivity_kernel
     procedure, public, nopass :: predict_sensit_kernel_size
-    procedure, public, nopass :: compress_matrix_line_wavelet
 
     procedure, private, nopass :: calculate_sensitivity
     procedure, private, nopass :: apply_column_weight
@@ -191,14 +190,21 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
       if (nbproc > 1) then
       ! Parallel wavelet copression.
         call pt%get_full_array(sensit_line, par%nelements, sensit_line_full, .true., myrank, nbproc)
-        call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line_full, par%wavelet_threshold, comp_rate)
+        call Haar3D(sensit_line_full, par%nx, par%ny, par%nz, myrank, nbproc)
 
         ! Extract the local sensitivity part.
         sensit_line = sensit_line_full(nsmaller + 1 : nsmaller + par%nelements)
       else
       ! Serial.
-        call compress_matrix_line_wavelet(par%nx, par%ny, par%nz, sensit_line, par%wavelet_threshold, comp_rate)
+        call Haar3D(sensit_line, par%nx, par%ny, par%nz, myrank, nbproc)
       endif
+
+      ! Set values below the threshold to zero.
+      do p = 1, par%nelements
+        if (abs(sensit_line(p)) < par%wavelet_threshold) then
+          sensit_line(p) = 0.d0
+        endif
+      enddo
     endif
 
     if (STORE_KERNEL) then
@@ -259,34 +265,6 @@ subroutine calculate_sensitivity(par, grid, data, column_weight, sensit_matrix, 
   if (myrank == 0) print *, 'Finished calculating the sensitivity kernel.'
 
 end subroutine calculate_sensitivity
-
-!==========================================================================================================
-! Compresses matrix line - wavelet compression
-!==========================================================================================================
-subroutine compress_matrix_line_wavelet(nx, ny, nz, line, threshold, comp_rate)
-  integer, intent(in) :: nx, ny, nz
-  real(kind=CUSTOM_REAL), intent(in) :: threshold
-
-  real(kind=CUSTOM_REAL), intent(inout) :: line(:)
-  real(kind=CUSTOM_REAL), intent(out) :: comp_rate
-
-  integer :: nelements, i, num_zeros
-
-  nelements = nx * ny * nz
-  num_zeros = 0
-
-  call Haar3D(line, nx, ny, nz)
-
-  do i = 1, nelements
-    if (abs(line(i)) < threshold) then
-      line(i) = 0.d0
-      num_zeros = num_zeros + 1
-    endif
-  enddo
-
-  comp_rate = dble(nelements - num_zeros) / dble(nelements)
-
-end subroutine compress_matrix_line_wavelet
 
 !==========================================================================================================
 ! Applying the column weight to sensitivity line.
