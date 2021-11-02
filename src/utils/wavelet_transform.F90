@@ -28,8 +28,7 @@ module wavelet_transform
   public :: DaubD43D
   public :: iDaubD43D
 
-  private :: Haar3D_predict_and_update
-  private :: Haar3D_normalize
+  private :: Haar3D_all
 
   private :: calculate_parallel_array_bounds
 
@@ -64,11 +63,11 @@ subroutine calculate_parallel_array_bounds(n, i1, i2, n_loc, myrank, nbproc)
 end subroutine calculate_parallel_array_bounds
 
 !=====================================================================================================
-! Routines needed for Haar wavelet transform parallelisation.
-! By calling them we convert 3D array slices to 1D arrays, needed for parallelisation.
+! Routine needed for Haar wavelet transform parallelisation.
+! By calling it we convert 3D array slices to 1D arrays, needed for parallelisation.
 ! Author: Vitaliy Ogarko.
 !=====================================================================================================
-subroutine Haar3D_predict_and_update(n, a, b, myrank, nbproc)
+subroutine Haar3D_all(n, a, b, myrank, nbproc)
   integer, intent(in) :: n, myrank, nbproc
   real(kind=CUSTOM_REAL), intent(inout) :: a(n)
   real(kind=CUSTOM_REAL), intent(inout) :: b(n)
@@ -85,25 +84,15 @@ subroutine Haar3D_predict_and_update(n, a, b, myrank, nbproc)
   ! Update.
   b(i1:i2) = b(i1:i2) + a(i1:i2) / 2._CUSTOM_REAL
 
-end subroutine Haar3D_predict_and_update
+  ! Normalize.
+  a(i1:i2) = a(i1:i2) / sqrt(2._CUSTOM_REAL)
+  b(i1:i2) = b(i1:i2) * sqrt(2._CUSTOM_REAL)
 
-!-------------------------------------------------------
-subroutine Haar3D_normalize(n, a, c, myrank, nbproc)
-  integer, intent(in) :: n, myrank, nbproc
-  real(kind=CUSTOM_REAL), intent(inout) :: a(n)
-  real(kind=CUSTOM_REAL), intent(in) :: c
-
-  type(t_parallel_tools) :: pt
-  integer :: i1, i2, n_loc
-
-  ! Calculate array bounds to process at this CPU.
-  call calculate_parallel_array_bounds(n, i1, i2, n_loc, myrank, nbproc)
-
-  a(i1:i2) = a(i1:i2) * c
-
-  ! Gather the full array from all processors.
+  ! Update the full array on all CPUs.
   call pt%get_full_array_in_place2(n_loc, a(i1:), a, .true., myrank, nbproc)
-end subroutine Haar3D_normalize
+  call pt%get_full_array_in_place2(n_loc, b(i1:), b, .true., myrank, nbproc)
+
+end subroutine Haar3D_all
 
 !=====================================================================================================
 ! Parallel Haar wavelet transform.
@@ -117,12 +106,6 @@ subroutine Haar3D(s, n1, n2, n3, myrank, nbproc)
   integer :: ic,L,il,ig,ngmin,ngmax
   integer :: istep,step_incr,step2,nscale,ng
   integer :: igmax, ilmax
-
-  integer :: size1, size2, size3
-  real(kind=CUSTOM_REAL) :: c1, c2
-
-  c1 = sqrt(2._CUSTOM_REAL)
-  c2 = 1._CUSTOM_REAL / sqrt(2._CUSTOM_REAL)
 
   ! Loop over the 3 dimensions.
   do ic = 1, 3
@@ -151,29 +134,12 @@ subroutine Haar3D(s, n1, n2, n3, myrank, nbproc)
       igmax = ig + step2 * (ng - 1)
       ilmax = il + step2 * (ng - 1)
 
-      size1 = ng * n2 * n3
-      size2 = n1 * ng * n3
-      size3 = n1 * n2 * ng
-
-      ! Predict & Update.
       if (ic == 1) then
-        call Haar3D_predict_and_update(size1, s(ig:igmax:step2, 1:n2, 1:n3), s(il:ilmax:step2, 1:n2, 1:n3), myrank, nbproc)
+        call Haar3D_all(ng * n2 * n3, s(ig:igmax:step2, 1:n2, 1:n3), s(il:ilmax:step2, 1:n2, 1:n3), myrank, nbproc)
       else if (ic == 2) then
-        call Haar3D_predict_and_update(size2, s(1:n1, ig:igmax:step2, 1:n3), s(1:n1, il:ilmax:step2, 1:n3), myrank, nbproc)
+        call Haar3D_all(n1 * ng * n3, s(1:n1, ig:igmax:step2, 1:n3), s(1:n1, il:ilmax:step2, 1:n3), myrank, nbproc)
       else
-        call Haar3D_predict_and_update(size3, s(1:n1, 1:n2, ig:igmax:step2), s(1:n1, 1:n2, il:ilmax:step2), myrank, nbproc)
-      endif
-
-      ! Normalization.
-      if (ic == 1) then
-        call Haar3D_normalize(size1, s(il:ilmax:step2, 1:n2, 1:n3), c1, myrank, nbproc)
-        call Haar3D_normalize(size1, s(ig:igmax:step2, 1:n2, 1:n3), c2, myrank, nbproc)
-      else if (ic == 2) then
-        call Haar3D_normalize(size2, s(1:n1, il:ilmax:step2, 1:n3), c1, myrank, nbproc)
-        call Haar3D_normalize(size2, s(1:n1, ig:igmax:step2, 1:n3), c2, myrank, nbproc)
-      else
-        call Haar3D_normalize(size3, s(1:n1, 1:n2, il:ilmax:step2), c1, myrank, nbproc)
-        call Haar3D_normalize(size3, s(1:n1, 1:n2, ig:igmax:step2), c2, myrank, nbproc)
+        call Haar3D_all(n1 * n2 * ng, s(1:n1, 1:n2, ig:igmax:step2), s(1:n1, 1:n2, il:ilmax:step2), myrank, nbproc)
       endif
 
     enddo
