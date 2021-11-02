@@ -9,21 +9,19 @@ Tomofast-x can run in parallel on laptops and supercomputers, using distributed 
 Tomofast-x supports the parallel wavelet compression of the sensitivity kernel for significant memory reduction and improved performace.
 
 The source code is a companion to the publication detailing Tomofast-x geophysical calculations and examples of utilisation and realistic dataset:
-J. Giraud, V. Ogarko, R. Martin, M. Lindsay, M. Jessell, 2021: 
-Structural, petrophysical and geological constraints in potential field inversion using the Tomofast-x open-source code, 
-Geoscientific Model Development Discussions, https://doi.org/10.5194/gmd-2021-14
+J. Giraud, V. Ogarko, R. Martin, M. Jessell, and M. Lindsay (2021),
+"Structural, petrophysical, and geological constraints in potential field inversion using the Tomofast-x v1.0 open-source code", 
+Geosci. Model Dev., 14, 6681–6709, https://doi.org/10.5194/gmd-14-6681-2021
 
 
-If you are using the code (or some of its parts) please cite both of the following papers:
+If you are using the code (or some of its parts) please cite the following two papers:
 
 - V. Ogarko, J. Giraud, R. Martin, and M. Jessell (2021), 
-"Disjoint interval bound constraints using the alternating direction method of multipliers for geologically constrained inversion: Application to gravity data," GEOPHYSICS 86: G1-G11.
-https://doi.org/10.1190/geo2019-0633.1
+"Disjoint interval bound constraints using the alternating direction method of multipliers for geologically constrained inversion: Application to gravity data," GEOPHYSICS 86: G1-G11, https://doi.org/10.1190/geo2019-0633.1
 
-- J. Giraud, V. Ogarko, R. Martin, M. Lindsay, M. Jessell (2021), 
-"Structural, petrophysical and geological constraints in potential field inversion using the Tomofast-x open-source code",
-Geoscientific Model Development Discussions, https://doi.org/10.5194/gmd-2021-14
-
+- J. Giraud, V. Ogarko, R. Martin, M. Jessell, and M. Lindsay (2021),
+"Structural, petrophysical, and geological constraints in potential field inversion using the Tomofast-x v1.0 open-source code", 
+Geosci. Model Dev., 14, 6681–6709, https://doi.org/10.5194/gmd-14-6681-2021
 
 ### Compiling and running
 
@@ -69,12 +67,13 @@ For details on other output files, see the User Manual in the ``docs`` folder.
 
 ### Publications using the code
 
-- J. Giraud, V. Ogarko, R. Martin, M. Lindsay, M. Jessell (2021), 
-"Structural, petrophysical and geological constraints in potential field inversion using the Tomofast-x open-source code",
-Geoscientific Model Development Discussions, https://doi.org/10.5194/gmd-2021-14
+- J. Giraud, V. Ogarko, R. Martin, M. Jessell, and M. Lindsay (2021),
+"Structural, petrophysical, and geological constraints in potential field inversion using the Tomofast-x v1.0 open-source code", 
+Geosci. Model Dev., 14, 6681–6709, https://doi.org/10.5194/gmd-14-6681-2021
 
 - V. Ogarko, J. Giraud, R. Martin, and M. Jessell (2021), 
-"Disjoint interval bound constraints using the alternating direction method of multipliers for geologically constrained inversion: Application to gravity data," GEOPHYSICS 86: G1-G11, https://doi.org/10.1190/geo2019-0633.1
+"Disjoint interval bound constraints using the alternating direction method of multipliers for geologically constrained inversion: Application to gravity data", 
+GEOPHYSICS 86: G1-G11, https://doi.org/10.1190/geo2019-0633.1
 
 - J. Giraud, M. Lindsay, M. Jessell, and V. Ogarko (2020), "Towards plausible lithological classification from geophysical inversion: honouring geological principles in subsurface imaging", 
 Solid Earth, 11: 419–436, https://doi.org/10.5194/se-11-419-2020
