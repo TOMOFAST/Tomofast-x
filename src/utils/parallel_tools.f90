@@ -39,6 +39,7 @@ module parallel_tools
     procedure, public, nopass :: get_mpi_partitioning
     procedure, public, nopass :: get_full_array
     procedure, public, nopass :: get_full_array_in_place
+    procedure, public, nopass :: get_full_array_in_place2
 
   end type t_parallel_tools
 
@@ -218,5 +219,45 @@ subroutine get_full_array_in_place(nelements, array, bcast, myrank, nbproc)
   if (ierr /= 0) call exit_MPI("MPI error in get_full_array!", myrank, ierr)
 
 end subroutine get_full_array_in_place
+
+!======================================================================================================
+! Same as get_full_array_in_place() but allows to specify the send buffer on all CPUs except of the root.
+!======================================================================================================
+subroutine get_full_array_in_place2(nelements, array0, array, bcast, myrank, nbproc)
+  integer, intent(in) :: nelements
+  logical, intent(in) :: bcast
+  integer, intent(in) :: myrank, nbproc
+  real(kind=CUSTOM_REAL), intent(in) :: array0(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: array(:)
+
+  ! Displacement for MPI_Gatherv.
+  integer :: displs(nbproc)
+  ! The number of elements on every CPU for MPI_Gatherv.
+  integer :: nelements_at_cpu(nbproc)
+  integer :: nelements_total
+  integer :: ierr
+
+  ! Get partitioning for MPI_Gatherv.
+  call get_mpi_partitioning(nelements, displs, nelements_at_cpu, myrank, nbproc)
+
+  if (myrank == 0) then
+    call MPI_Gatherv(MPI_IN_PLACE, nelements, CUSTOM_MPI_TYPE, &
+                     array, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  else
+    call MPI_Gatherv(array0, nelements, CUSTOM_MPI_TYPE, &
+                     array, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  endif
+
+  if (bcast) then
+  ! Cast the array to all CPUs.
+    nelements_total = sum(nelements_at_cpu)
+
+    call MPI_Bcast(array, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  endif
+
+  if (ierr /= 0) call exit_MPI("MPI error in get_full_array!", myrank, ierr)
+
+end subroutine get_full_array_in_place2
+
 
 end module parallel_tools
