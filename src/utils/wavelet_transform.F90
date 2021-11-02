@@ -39,12 +39,11 @@ contains
 !=====================================================================================================
 ! Subroutine for computing bounds for array slices for parallel wavelets.
 !=====================================================================================================
-subroutine calculate_parallel_array_bounds(n, i1, i2, myrank, nbproc)
+subroutine calculate_parallel_array_bounds(n, i1, i2, n_loc, myrank, nbproc)
   integer, intent(in) :: n, myrank, nbproc
-  integer, intent(out) :: i1, i2
+  integer, intent(out) :: i1, i2, n_loc
 
   type(t_parallel_tools) :: pt
-  integer :: n_loc
 
   ! Sanity check.
   if (nbproc > n) then
@@ -76,15 +75,15 @@ subroutine Haar3D_predict(n, a, b, myrank, nbproc)
   real(kind=CUSTOM_REAL), intent(in) :: b(n)
 
   type(t_parallel_tools) :: pt
-  integer :: i1, i2
+  integer :: i1, i2, n_loc
 
   ! Calculate array bounds to process at this CPU.
-  call calculate_parallel_array_bounds(n, i1, i2, myrank, nbproc)
+  call calculate_parallel_array_bounds(n, i1, i2, n_loc, myrank, nbproc)
 
-  a(i1:i2) = a(i1:i2) - b(i1:i2)
+  a(1:n_loc) = a(i1:i2) - b(i1:i2)
 
   ! Gather the full array from all processors.
-  call pt%get_full_array(a(i1:i2), i2 - i1 + 1, a, .true., myrank, nbproc)
+  call pt%get_full_array_in_place(n_loc, a, .true., myrank, nbproc)
 end subroutine Haar3D_predict
 
 !-------------------------------------------------------
@@ -94,15 +93,15 @@ subroutine Haar3D_update(n, a, b, myrank, nbproc)
   real(kind=CUSTOM_REAL), intent(in) :: b(n)
 
   type(t_parallel_tools) :: pt
-  integer :: i1, i2
+  integer :: i1, i2, n_loc
 
   ! Calculate array bounds to process at this CPU.
-  call calculate_parallel_array_bounds(n, i1, i2, myrank, nbproc)
+  call calculate_parallel_array_bounds(n, i1, i2, n_loc, myrank, nbproc)
 
-  a(i1:i2) = a(i1:i2) + b(i1:i2) / 2._CUSTOM_REAL
+  a(1:n_loc) = a(i1:i2) + b(i1:i2) / 2._CUSTOM_REAL
 
   ! Gather the full array from all processors.
-  call pt%get_full_array(a(i1:i2), i2 - i1 + 1, a, .true., myrank, nbproc)
+  call pt%get_full_array_in_place(n_loc, a, .true., myrank, nbproc)
 end subroutine Haar3D_update
 
 !-------------------------------------------------------
@@ -112,15 +111,15 @@ subroutine Haar3D_normalize(n, a, c, myrank, nbproc)
   real(kind=CUSTOM_REAL), intent(in) :: c
 
   type(t_parallel_tools) :: pt
-  integer :: i1, i2
+  integer :: i1, i2, n_loc
 
   ! Calculate array bounds to process at this CPU.
-  call calculate_parallel_array_bounds(n, i1, i2, myrank, nbproc)
+  call calculate_parallel_array_bounds(n, i1, i2, n_loc, myrank, nbproc)
 
-  a(i1:i2) = a(i1:i2) * c
+  a(1:n_loc) = a(i1:i2) * c
 
   ! Gather the full array from all processors.
-  call pt%get_full_array(a(i1:i2), i2 - i1 + 1, a, .true., myrank, nbproc)
+  call pt%get_full_array_in_place(n_loc, a, .true., myrank, nbproc)
 end subroutine Haar3D_normalize
 
 !=====================================================================================================
