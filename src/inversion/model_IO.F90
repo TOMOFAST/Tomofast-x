@@ -304,17 +304,7 @@ subroutine model_write_paraview(this, name_prefix, myrank)
   character(len=*), intent(in) :: name_prefix
   integer, intent(in) :: myrank
 
-  integer :: i, j, k, p, ierr
-
-  ! For Paraview visualization.
-  real(kind=CUSTOM_REAL), allocatable :: xgrid(:, :, :)
-  real(kind=CUSTOM_REAL), allocatable :: ygrid(:, :, :)
-  real(kind=CUSTOM_REAL), allocatable :: zgrid(:, :, :)
-  real(kind=CUSTOM_REAL), allocatable :: model3d(:, :, :)
-
-  real(kind=CUSTOM_REAL) :: Xmax, Ymax, Zmax
-  integer :: step_x, step_y, step_z
-  integer :: nx, ny, nz, mx, my, mz, ind
+  integer :: nx, ny, nz
   character(len=256) :: filename
 
   ! Write files my master CPU only.
@@ -326,98 +316,41 @@ subroutine model_write_paraview(this, name_prefix, myrank)
   ny = this%grid_full%ny
   nz = this%grid_full%nz
 
-  ! Start arrays with 0 as in the (general) interface of visualisation_paraview().
-  allocate(xgrid(0:nx + 1, 0:ny + 1, 0:nz + 1), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(ygrid(0:nx + 1, 0:ny + 1, 0:nz + 1), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(zgrid(0:nx + 1, 0:ny + 1, 0:nz + 1), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(model3d(0:nx, 0:ny, 0:nz), source=0._CUSTOM_REAL, stat=ierr)
-
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_write!", myrank, ierr)
-
-  ! Calculate 3D grid and model.
-  do p = 1, this%nelements_total
-
-    i = this%grid_full%i_(p)
-    j = this%grid_full%j_(p)
-    k = this%grid_full%k_(p)
-
-    xgrid(i, j, k) = this%grid_full%X1(p)
-    ygrid(i, j, k) = this%grid_full%Y1(p)
-    zgrid(i, j, k) = this%grid_full%Z1(p)
-
-    model3d(i, j, k) = this%val_full(p)
-  enddo
-
-  Xmax = this%grid_full%X2(this%grid_full%ind(nx, 1, 1))
-  Ymax = this%grid_full%Y2(this%grid_full%ind(1, ny, 1))
-  Zmax = this%grid_full%Z2(this%grid_full%ind(1, 1, nz))
-
-  ! Adding last grid points plane:
-  ! For example for nx = 3, there are nx + 1 = 4 grid planes:
-  !   |          |          |          |
-  ! X1(1)      X1(2)      X1(3)      X2(3) = Xmax
-  !            X2(1)      X2(2)
-  !
-  do k = 1, nz + 1
-    do j = 1, ny + 1
-      do i = 1, nx + 1
-        if (i == nx + 1 .or. j == ny + 1 .or. k == nz + 1) then
-        ! A point lies on the outer boundary.
-
-          xgrid(i, j, k) = Xmax
-          ygrid(i, j, k) = Ymax
-          zgrid(i, j, k) = Zmax
-
-          if (i < nx + 1) xgrid(i, j, k) = xgrid(i, ny, nz)
-          if (j < ny + 1) ygrid(i, j, k) = ygrid(nx, j, nz)
-          if (k < nz + 1) zgrid(i, j, k) = zgrid(nx, ny, k)
-        endif
-      enddo
-    enddo
-  enddo
-
-  ! Invert the Z-axis direction.
-  zgrid = - zgrid
-  step_x = 1
-  step_y = 1
-  step_z = 1
-
-  ! To show the central slice when there are odd number of elements.
-  mx = mod(nx, 2)
-  my = mod(ny, 2)
-  mz = mod(nz, 2)
-
-  filename = trim(name_prefix)//"model3D_half_x.vtk"
-  call visualisation_paraview(filename, myrank, nx, ny, nz, &
-                              model3d, xgrid, ygrid, zgrid, &
-                              nx / 2 + mx, nx / 2 + mx + step_x, 1, ny + 1, 1, nz + 1, &
-                              step_x, step_y, step_z, 'CELL_DATA')
-
-  filename = trim(name_prefix)//"model3D_half_y.vtk"
-  call visualisation_paraview(filename, myrank, nx, ny, nz, &
-                              model3d, xgrid, ygrid, zgrid, &
-                              1, nx + 1, ny / 2 + my, ny / 2 + my + step_y, 1, nz + 1, &
-                              step_x, step_y, step_z, 'CELL_DATA')
-
-  filename = trim(name_prefix)//"model3D_full.vtk"
-  call visualisation_paraview(filename, myrank, nx, ny, nz, &
-                              model3d, xgrid, ygrid, zgrid, &
-                              1, nx + 1, 1, ny + 1, 1, nz + 1, &
-                              step_x, step_y, step_z, 'CELL_DATA')
-
-  ! Write the full model using lego-grid.
+  ! Write the full model using lego-grid (it can handle the format: nx, ny, nz = 1, 1, N).
   filename = trim(name_prefix)//"model3D_full_lego.vtk"
   call visualisation_paraview_legogrid(filename, myrank, this%nelements_total, this%val_full, &
                                        this%grid_full%X1, this%grid_full%Y1, this%grid_full%Z1, &
                                        this%grid_full%X2, this%grid_full%Y2, this%grid_full%Z2, &
+                                       this%grid_full%i_, this%grid_full%j_, this%grid_full%k_, &
+                                       1, nx, 1, ny, 1, nz, &
                                        .true.)
 
-  ! Deallocate local arrays.
-  deallocate(xgrid)
-  deallocate(ygrid)
-  deallocate(zgrid)
-  deallocate(model3d)
+  ! Write the x-profile of the model.
+  filename = trim(name_prefix)//"model3D_half_x.vtk"
+  call visualisation_paraview_legogrid(filename, myrank, this%nelements_total, this%val_full, &
+                                       this%grid_full%X1, this%grid_full%Y1, this%grid_full%Z1, &
+                                       this%grid_full%X2, this%grid_full%Y2, this%grid_full%Z2, &
+                                       this%grid_full%i_, this%grid_full%j_, this%grid_full%k_, &
+                                       nx / 2, nx / 2, 1, ny, 1, nz, &
+                                       .true.)
 
+  ! Write the y-profile of the model.
+  filename = trim(name_prefix)//"model3D_half_y.vtk"
+  call visualisation_paraview_legogrid(filename, myrank, this%nelements_total, this%val_full, &
+                                       this%grid_full%X1, this%grid_full%Y1, this%grid_full%Z1, &
+                                       this%grid_full%X2, this%grid_full%Y2, this%grid_full%Z2, &
+                                       this%grid_full%i_, this%grid_full%j_, this%grid_full%k_, &
+                                       1, nx, ny / 2, ny / 2, 1, nz, &
+                                       .true.)
+
+  ! Write the z-profile of the model.
+  filename = trim(name_prefix)//"model3D_half_z.vtk"
+  call visualisation_paraview_legogrid(filename, myrank, this%nelements_total, this%val_full, &
+                                       this%grid_full%X1, this%grid_full%Y1, this%grid_full%Z1, &
+                                       this%grid_full%X2, this%grid_full%Y2, this%grid_full%Z2, &
+                                       this%grid_full%i_, this%grid_full%j_, this%grid_full%k_, &
+                                       1, nx, 1, ny, nz / 2, nz / 2, &
+                                       .true.)
 end subroutine model_write_paraview
 
 !======================================================================================================

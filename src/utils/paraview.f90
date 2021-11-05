@@ -85,10 +85,35 @@ subroutine visualisation_qgis(filename, myrank, val, ncols, nrows, cell_size)
 end subroutine visualisation_qgis
 
 !============================================================================================================
+function index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2) result(included)
+  integer, intent(in) :: p
+  integer, intent(in) :: i_index(:), j_index(:), k_index(:)
+  integer, intent(in) :: i1, i2, j1, j2, k1, k2
+  logical :: included
+
+  integer :: i, j, k
+
+  i = i_index(p)
+  j = j_index(p)
+  k = k_index(p)
+
+  if ((i1 <= i .and. i <= i2) .and. &
+      (j1 <= j .and. j <= j2) .and. &
+      (k1 <= k .and. k <= k2)) then
+    included = .true.
+  else
+    included = .false.
+  endif
+end function index_included
+
+!============================================================================================================
 ! This subroutine writes the file in (legacy) VTK format used for Paraview visualization.
 ! An arbitrary lego grid is considered.
 !============================================================================================================
-subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1, Y1, Z1, X2, Y2, Z2, INVERT_Z_AXIS)
+subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1, Y1, Z1, X2, Y2, Z2, &
+                                           i_index, j_index, k_index, &
+                                           i1, i2, j1, j2, k1, k2, &
+                                           INVERT_Z_AXIS)
   ! MPI rank of this process.
   integer, intent(in) :: myrank
   ! Total number of cells.
@@ -98,6 +123,8 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   ! Coordinates of points in the grid.
   real(kind=CUSTOM_REAL), intent(in) :: X1(:), Y1(:), Z1(:)
   real(kind=CUSTOM_REAL), intent(in) :: X2(:), Y2(:), Z2(:)
+  integer, intent(in) :: i_index(:), j_index(:), k_index(:)
+  integer, intent(in) :: i1, i2, j1, j2, k1, k2
   logical, intent(in) :: INVERT_Z_AXIS
   ! Output file name.
   character(len=*), intent(in) :: filename
@@ -106,7 +133,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   character(len=256) :: msg
   ! I/O error code.
   integer :: ierr
-  integer :: npoints
+  integer :: npoints, nelements_slice
   integer :: i, p, ind
   real(kind=CUSTOM_REAL) :: xgrid(8)
   real(kind=CUSTOM_REAL) :: ygrid(8)
@@ -131,7 +158,10 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
 
   write (333, '(''DATASET UNSTRUCTURED_GRID'')')
 
-  npoints = 8 * nelements
+  ! Number of elements in the requested slice.
+  nelements_slice = (i2 - i1 + 1) * (j2 - j1 + 1) * (k2 - k1 + 1)
+
+  npoints = 8 * nelements_slice
 
   write (333, '(''POINTS '',i9,'' FLOAT'')') npoints
 
@@ -139,47 +169,49 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   ! Build lego-grid.
   !====================================
   do p = 1, nelements
-    ! z = 1
-    xgrid(1) = X1(p)
-    ygrid(1) = Y1(p)
-    zgrid(1) = Z1(p)
+    if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
+      ! z = 1
+      xgrid(1) = X1(p)
+      ygrid(1) = Y1(p)
+      zgrid(1) = Z1(p)
 
-    xgrid(2) = X2(p)
-    ygrid(2) = Y1(p)
-    zgrid(2) = Z1(p)
+      xgrid(2) = X2(p)
+      ygrid(2) = Y1(p)
+      zgrid(2) = Z1(p)
 
-    xgrid(3) = X1(p)
-    ygrid(3) = Y2(p)
-    zgrid(3) = Z1(p)
+      xgrid(3) = X1(p)
+      ygrid(3) = Y2(p)
+      zgrid(3) = Z1(p)
 
-    xgrid(4) = X2(p)
-    ygrid(4) = Y2(p)
-    zgrid(4) = Z1(p)
+      xgrid(4) = X2(p)
+      ygrid(4) = Y2(p)
+      zgrid(4) = Z1(p)
 
-    ! z = 2
-    xgrid(5) = X1(p)
-    ygrid(5) = Y1(p)
-    zgrid(5) = Z2(p)
+      ! z = 2
+      xgrid(5) = X1(p)
+      ygrid(5) = Y1(p)
+      zgrid(5) = Z2(p)
 
-    xgrid(6) = X2(p)
-    ygrid(6) = Y1(p)
-    zgrid(6) = Z2(p)
+      xgrid(6) = X2(p)
+      ygrid(6) = Y1(p)
+      zgrid(6) = Z2(p)
 
-    xgrid(7) = X1(p)
-    ygrid(7) = Y2(p)
-    zgrid(7) = Z2(p)
+      xgrid(7) = X1(p)
+      ygrid(7) = Y2(p)
+      zgrid(7) = Z2(p)
 
-    xgrid(8) = X2(p)
-    ygrid(8) = Y2(p)
-    zgrid(8) = Z2(p)
+      xgrid(8) = X2(p)
+      ygrid(8) = Y2(p)
+      zgrid(8) = Z2(p)
 
-    if (INVERT_Z_AXIS) then
-      zgrid = -zgrid
+      if (INVERT_Z_AXIS) then
+        zgrid = -zgrid
+      endif
+
+      do i = 1, 8
+        write (333, *) xgrid(i), ygrid(i), zgrid(i)
+      enddo
     endif
-
-    do i = 1, 8
-      write (333, *) xgrid(i), ygrid(i), zgrid(i)
-    enddo
   enddo
 
   write (333, *)
@@ -187,11 +219,10 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   ! ************* generate elements ******************
 
   ! See documentation here http://dunne.uni-hd.de/VisuSimple/documents/vtkfileformat.html
-  write (333, '(''CELLS '',2(i9,1x))') nelements, (8 + 1) * nelements
+  write (333, '(''CELLS '',2(i9,1x))') nelements_slice, (8 + 1) * nelements_slice
 
-  do i = 1, nelements
-
-    ind = 8 * (i - 1)
+  do p = 1, nelements_slice
+    ind = 8 * (p - 1)
 
     ! Define a cell.
     write (333, "(i1,8(1x,i9))") 8, ind + 0, ind + 1, ind + 2, ind + 3, &
@@ -200,10 +231,10 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
 
   write (333, *)
 
-  write (333, '(''CELL_TYPES '',2(i9,1x))') nelements
+  write (333, '(''CELL_TYPES '',2(i9,1x))') nelements_slice
 
-  do i = 1, nelements
-    if (i < nelements) then
+  do p = 1, nelements_slice
+    if (p < nelements_slice) then
       write (333, "(i2,1x)", advance="no") 11  ! VTK_VOXEL = 11
     else
       write (333, "(i2)") 11
@@ -214,12 +245,14 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
 
   ! ************* generate element data values ******************
 
-  write (333,'(''CELL_DATA '',i9)') nelements
+  write (333,'(''CELL_DATA '',i9)') nelements_slice
   write (333,'(''SCALARS F FLOAT'')')
   write (333,'(''LOOKUP_TABLE default'')')
 
-  do i = 1, nelements
-    write (333, *) val(i)
+  do p = 1, nelements
+    if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
+      write (333, *) val(p)
+    endif
   enddo
 
   write (333, *)
