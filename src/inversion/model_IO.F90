@@ -312,16 +312,9 @@ subroutine model_write_paraview(this, name_prefix, myrank)
   real(kind=CUSTOM_REAL), allocatable :: zgrid(:, :, :)
   real(kind=CUSTOM_REAL), allocatable :: model3d(:, :, :)
 
-  real(kind=CUSTOM_REAL), allocatable :: xgrid_lego(:)
-  real(kind=CUSTOM_REAL), allocatable :: ygrid_lego(:)
-  real(kind=CUSTOM_REAL), allocatable :: zgrid_lego(:)
-
   real(kind=CUSTOM_REAL) :: Xmax, Ymax, Zmax
-  !real(kind=CUSTOM_REAL) :: zshift
   integer :: step_x, step_y, step_z
   integer :: nx, ny, nz, mx, my, mz, ind
-  !integer :: istep, jstep, kstep
-  !integer :: x, y, z
   character(len=256) :: filename
 
   ! Write files my master CPU only.
@@ -339,10 +332,6 @@ subroutine model_write_paraview(this, name_prefix, myrank)
   allocate(zgrid(0:nx + 1, 0:ny + 1, 0:nz + 1), source=0._CUSTOM_REAL, stat=ierr)
   allocate(model3d(0:nx, 0:ny, 0:nz), source=0._CUSTOM_REAL, stat=ierr)
 
-  allocate(xgrid_lego(1:(8 * this%nelements_total)), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(ygrid_lego(1:(8 * this%nelements_total)), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(zgrid_lego(1:(8 * this%nelements_total)), source=0._CUSTOM_REAL, stat=ierr)
-
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_write!", myrank, ierr)
 
   ! Calculate 3D grid and model.
@@ -357,45 +346,6 @@ subroutine model_write_paraview(this, name_prefix, myrank)
     zgrid(i, j, k) = this%grid_full%Z1(p)
 
     model3d(i, j, k) = this%val_full(p)
-
-    !====================================
-    ! Build lego-grid.
-    !====================================
-    ind = 8 * (p - 1) + 1
-    ! z = 1
-    xgrid_lego(ind + 0) = this%grid_full%X1(p)
-    ygrid_lego(ind + 0) = this%grid_full%Y1(p)
-    zgrid_lego(ind + 0) = this%grid_full%Z1(p)
-
-    xgrid_lego(ind + 1) = this%grid_full%X2(p)
-    ygrid_lego(ind + 1) = this%grid_full%Y1(p)
-    zgrid_lego(ind + 1) = this%grid_full%Z1(p)
-
-    xgrid_lego(ind + 2) = this%grid_full%X1(p)
-    ygrid_lego(ind + 2) = this%grid_full%Y2(p)
-    zgrid_lego(ind + 2) = this%grid_full%Z1(p)
-
-    xgrid_lego(ind + 3) = this%grid_full%X2(p)
-    ygrid_lego(ind + 3) = this%grid_full%Y2(p)
-    zgrid_lego(ind + 3) = this%grid_full%Z1(p)
-
-    ! z = 2
-    xgrid_lego(ind + 4) = this%grid_full%X1(p)
-    ygrid_lego(ind + 4) = this%grid_full%Y1(p)
-    zgrid_lego(ind + 4) = this%grid_full%Z2(p)
-
-    xgrid_lego(ind + 5) = this%grid_full%X2(p)
-    ygrid_lego(ind + 5) = this%grid_full%Y1(p)
-    zgrid_lego(ind + 5) = this%grid_full%Z2(p)
-
-    xgrid_lego(ind + 6) = this%grid_full%X1(p)
-    ygrid_lego(ind + 6) = this%grid_full%Y2(p)
-    zgrid_lego(ind + 6) = this%grid_full%Z2(p)
-
-    xgrid_lego(ind + 7) = this%grid_full%X2(p)
-    ygrid_lego(ind + 7) = this%grid_full%Y2(p)
-    zgrid_lego(ind + 7) = this%grid_full%Z2(p)
-
   enddo
 
   Xmax = this%grid_full%X2(this%grid_full%ind(nx, 1, 1))
@@ -428,8 +378,6 @@ subroutine model_write_paraview(this, name_prefix, myrank)
 
   ! Invert the Z-axis direction.
   zgrid = - zgrid
-  zgrid_lego = - zgrid_lego
-
   step_x = 1
   step_y = 1
   step_z = 1
@@ -459,60 +407,10 @@ subroutine model_write_paraview(this, name_prefix, myrank)
 
   ! Write the full model using lego-grid.
   filename = trim(name_prefix)//"model3D_full_lego.vtk"
-  call visualisation_paraview_legogrid(filename, myrank, this%nelements_total, this%val_full, xgrid_lego, ygrid_lego, zgrid_lego)
-
-!  istep = 2
-!  jstep = max(ny / 14, 1)
-!  kstep = max(nz / 10, 1)
-!
-!  ! Write horizontal layers.
-!  do k = 1, nz, kstep
-!    ! Calculate depth to the middle of the voxel.
-!    ind = this%grid_full%ind(1, 1, k)
-!    z = int(this%grid_full%get_Z_cell_center(ind))
-!
-!    filename = trim(name_prefix)//"model3D_k="//trim(str(k))//"_z="//trim(str(z))//".vtk"
-!
-!    call visualisation_paraview(filename, myrank, nx, ny, nz, &
-!                                model3d, xgrid, ygrid, zgrid, &
-!                                1, nx + 1, 1, ny + 1, k, k + 1, &
-!                                1, 1, 1, 'CELL_DATA')
-!  enddo
-!
-!  ! Generate a set of (shifted) profiles that can be seen all on one screen when opened in Paraview.
-!  zshift = 0.d0
-!  do i = 2, nx, istep
-!    ! Calculate depth to the middle of the voxel.
-!    ind = this%grid_full%ind(i, 1, 1)
-!    x = int(this%grid_full%get_X_cell_center(ind))
-!
-!    filename = trim(name_prefix)//"model3D_x_profiles_i="//trim(str(i))//"_x="//trim(str(x))//".vtk"
-!
-!    call visualisation_paraview(filename, myrank, nx, ny, nz, &
-!                                model3d, xgrid, ygrid, zgrid, &
-!                                i, i + 1, 1, ny + 1, 1, nz + 1, &
-!                                step_x, step_y, step_z, 'CELL_DATA')
-!
-!    zgrid = zgrid + this%grid_full%get_hz() * (dble(nz) + 0.2d0)
-!    zshift = zshift + this%grid_full%get_hz() * (dble(nz) + 0.2d0)
-!  enddo
-!
-!  zgrid = zgrid - zshift
-!
-!  do j = 1, ny, jstep
-!    ! Calculate depth to the middle of the voxel.
-!    ind = this%grid_full%ind(1, j, 1)
-!    y = int(this%grid_full%get_Y_cell_center(ind))
-!
-!    filename = trim(name_prefix)//"model3D_y_profiles_j="//trim(str(j))//"_y="//trim(str(y))//".vtk"
-!
-!    call visualisation_paraview(filename, myrank, nx, ny, nz, &
-!                                model3d, xgrid, ygrid, zgrid, &
-!                                1, nx + 1, j, j + 1, 1, nz + 1, &
-!                                step_x, step_y, step_z, 'CELL_DATA')
-!
-!    zgrid = zgrid + this%grid_full%get_hz() * (dble(nz) + 0.2d0)
-!  enddo
+  call visualisation_paraview_legogrid(filename, myrank, this%nelements_total, this%val_full, &
+                                       this%grid_full%X1, this%grid_full%Y1, this%grid_full%Z1, &
+                                       this%grid_full%X2, this%grid_full%Y2, this%grid_full%Z2, &
+                                       .true.)
 
   ! Deallocate local arrays.
   deallocate(xgrid)

@@ -88,17 +88,17 @@ end subroutine visualisation_qgis
 ! This subroutine writes the file in (legacy) VTK format used for Paraview visualization.
 ! An arbitrary lego grid is considered.
 !============================================================================================================
-subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, xgrid, ygrid, zgrid)
+subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1, Y1, Z1, X2, Y2, Z2, INVERT_Z_AXIS)
   ! MPI rank of this process.
   integer, intent(in) :: myrank
   ! Total number of cells.
   integer, intent(in) :: nelements
   ! Values for visualization.
-  real(kind=CUSTOM_REAL), intent(in) :: val(1:nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: val(:)
   ! Coordinates of points in the grid.
-  real(kind=CUSTOM_REAL), intent(in) :: xgrid(1:(8 * nelements))
-  real(kind=CUSTOM_REAL), intent(in) :: ygrid(1:(8 * nelements))
-  real(kind=CUSTOM_REAL), intent(in) :: zgrid(1:(8 * nelements))
+  real(kind=CUSTOM_REAL), intent(in) :: X1(:), Y1(:), Z1(:)
+  real(kind=CUSTOM_REAL), intent(in) :: X2(:), Y2(:), Z2(:)
+  logical, intent(in) :: INVERT_Z_AXIS
   ! Output file name.
   character(len=*), intent(in) :: filename
 
@@ -107,7 +107,10 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, xgr
   ! I/O error code.
   integer :: ierr
   integer :: npoints
-  integer :: i, ind
+  integer :: i, p, ind
+  real(kind=CUSTOM_REAL) :: xgrid(8)
+  real(kind=CUSTOM_REAL) :: ygrid(8)
+  real(kind=CUSTOM_REAL) :: zgrid(8)
 
   ! (+) Copied from visualisation_paraview -----------------------------------
   call system('mkdir -p '//trim(path_output)//"/Paraview/")
@@ -132,8 +135,51 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, xgr
 
   write (333, '(''POINTS '',i9,'' FLOAT'')') npoints
 
-  do i = 1, npoints
-    write (333, *) xgrid(i), ygrid(i), zgrid(i)
+  !====================================
+  ! Build lego-grid.
+  !====================================
+  do p = 1, nelements
+    ! z = 1
+    xgrid(1) = X1(p)
+    ygrid(1) = Y1(p)
+    zgrid(1) = Z1(p)
+
+    xgrid(2) = X2(p)
+    ygrid(2) = Y1(p)
+    zgrid(2) = Z1(p)
+
+    xgrid(3) = X1(p)
+    ygrid(3) = Y2(p)
+    zgrid(3) = Z1(p)
+
+    xgrid(4) = X2(p)
+    ygrid(4) = Y2(p)
+    zgrid(4) = Z1(p)
+
+    ! z = 2
+    xgrid(5) = X1(p)
+    ygrid(5) = Y1(p)
+    zgrid(5) = Z2(p)
+
+    xgrid(6) = X2(p)
+    ygrid(6) = Y1(p)
+    zgrid(6) = Z2(p)
+
+    xgrid(7) = X1(p)
+    ygrid(7) = Y2(p)
+    zgrid(7) = Z2(p)
+
+    xgrid(8) = X2(p)
+    ygrid(8) = Y2(p)
+    zgrid(8) = Z2(p)
+
+    if (INVERT_Z_AXIS) then
+      zgrid = -zgrid
+    endif
+
+    do i = 1, 8
+      write (333, *) xgrid(i), ygrid(i), zgrid(i)
+    enddo
   enddo
 
   write (333, *)
