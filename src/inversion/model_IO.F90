@@ -15,7 +15,7 @@
 !================================================================================================
 ! This class contains ONLY I/O operations (reading/writing) with the model.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2017.
+! Vitaliy Ogarko, UWA, Australia.
 !================================================================================================
 module model_IO
 

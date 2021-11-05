@@ -15,7 +15,7 @@
 !========================================================================================
 ! Routines for exporting the model data to the vtk format for visualization in Paraview.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, Australia.
 !========================================================================================
 
 module paraview
