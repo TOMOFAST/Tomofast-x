@@ -67,13 +67,22 @@ end subroutine calculate_parallel_array_bounds
 ! By calling it we convert 3D array slices to 1D arrays, needed for parallelisation.
 ! Author: Vitaliy Ogarko.
 !=====================================================================================================
-subroutine Haar3D_all(n, a, b, myrank, nbproc)
-  integer, intent(in) :: n, myrank, nbproc
-  real(kind=CUSTOM_REAL), intent(inout) :: a(n)
-  real(kind=CUSTOM_REAL), intent(inout) :: b(n)
+subroutine Haar3D_all(n1, n2, n3, a_, b_, myrank, nbproc)
+  use iso_c_binding, only: C_F_POINTER, C_LOC
+  integer, intent(in) :: n1, n2, n3, myrank, nbproc
+  real(kind=CUSTOM_REAL), target, intent(inout) :: a_(n1, n2, n3)
+  real(kind=CUSTOM_REAL), target, intent(inout) :: b_(n1, n2, n3)
 
   type(t_parallel_tools) :: pt
-  integer :: i1, i2, n_loc
+  integer :: i1, i2, n, n_loc
+
+  real(kind=CUSTOM_REAL), pointer :: a(:)
+  real(kind=CUSTOM_REAL), pointer :: b(:)
+
+  n = n1 * n2 * n3
+
+  call C_F_POINTER(C_LOC(a_), a, [n])
+  call C_F_POINTER(C_LOC(b_), b, [n])
 
   ! Calculate array bounds to process at this CPU.
   call calculate_parallel_array_bounds(n, i1, i2, n_loc, myrank, nbproc)
@@ -89,8 +98,8 @@ subroutine Haar3D_all(n, a, b, myrank, nbproc)
   b(i1:i2) = b(i1:i2) * sqrt(2._CUSTOM_REAL)
 
   ! Update the full array on all CPUs.
-  call pt%get_full_array_in_place2(n_loc, a(i1:), a, .true., myrank, nbproc)
-  call pt%get_full_array_in_place2(n_loc, b(i1:), b, .true., myrank, nbproc)
+  call pt%get_full_array_in_place2(n_loc, a(i1:i2), a, .true., myrank, nbproc)
+  call pt%get_full_array_in_place2(n_loc, b(i1:i2), b, .true., myrank, nbproc)
 
 end subroutine Haar3D_all
 
@@ -135,11 +144,11 @@ subroutine Haar3D(s, n1, n2, n3, myrank, nbproc)
       ilmax = il + step2 * (ng - 1)
 
       if (ic == 1) then
-        call Haar3D_all(ng * n2 * n3, s(ig:igmax:step2, 1:n2, 1:n3), s(il:ilmax:step2, 1:n2, 1:n3), myrank, nbproc)
+        call Haar3D_all(ng, n2, n3, s(ig:igmax:step2, 1:n2, 1:n3), s(il:ilmax:step2, 1:n2, 1:n3), myrank, nbproc)
       else if (ic == 2) then
-        call Haar3D_all(n1 * ng * n3, s(1:n1, ig:igmax:step2, 1:n3), s(1:n1, il:ilmax:step2, 1:n3), myrank, nbproc)
+        call Haar3D_all(n1, ng, n3, s(1:n1, ig:igmax:step2, 1:n3), s(1:n1, il:ilmax:step2, 1:n3), myrank, nbproc)
       else
-        call Haar3D_all(n1 * n2 * ng, s(1:n1, 1:n2, ig:igmax:step2), s(1:n1, 1:n2, il:ilmax:step2), myrank, nbproc)
+        call Haar3D_all(n1, n2, ng, s(1:n1, 1:n2, ig:igmax:step2), s(1:n1, 1:n2, il:ilmax:step2), myrank, nbproc)
       endif
 
     enddo
