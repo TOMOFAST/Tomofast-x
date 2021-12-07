@@ -52,7 +52,7 @@ mpirun -np 3 ./runtests.sh
 ### Running the examples
 
 The input data is contained in the folder ``data``.  
-The input parameter file (Parfile) which contains all the paramters of the inversion, is stored in the folder: ``parfiles``.  
+The input parameter file (Parfile) which contains all the parameters of the inversion, is stored in the folder: ``parfiles``.  
 The output data is stored in the folder ``output``. The full output folder path is specified in the Parfile parameter ``global.outputFolderPath``.
 
 
