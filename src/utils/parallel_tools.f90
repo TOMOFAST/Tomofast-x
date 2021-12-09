@@ -92,8 +92,7 @@ function get_number_elements_on_other_cpus(nelements, myrank, nbproc) result(nel
   integer :: ierr
   integer :: nelements_at_cpu(nbproc)
 
-  call MPI_Gather(nelements, 1, MPI_INTEGER, nelements_at_cpu, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(nelements_at_cpu, nbproc, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Allgather(nelements, 1, MPI_INTEGER, nelements_at_cpu, 1, MPI_INTEGER, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("MPI error in get_number_elements_on_other_cpus!", myrank, ierr)
 
@@ -216,48 +215,32 @@ subroutine get_full_array_in_place(nelements, array, bcast, myrank, nbproc)
     call MPI_Bcast(array, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   endif
 
-  if (ierr /= 0) call exit_MPI("MPI error in get_full_array!", myrank, ierr)
+  if (ierr /= 0) call exit_MPI("MPI error in get_full_array_in_place!", myrank, ierr)
 
 end subroutine get_full_array_in_place
 
 !======================================================================================================
-! Same as get_full_array_in_place() but allows to specify the send buffer on all CPUs except of the root.
+! Same as get_full_array_in_place() but uses MPI_Allgatherv to combine Gather with Bcast.
 !======================================================================================================
-subroutine get_full_array_in_place2(nelements, array0, array, bcast, myrank, nbproc)
+subroutine get_full_array_in_place2(nelements, array, myrank, nbproc)
   integer, intent(in) :: nelements
-  logical, intent(in) :: bcast
   integer, intent(in) :: myrank, nbproc
-  real(kind=CUSTOM_REAL), intent(in) :: array0(:)
   real(kind=CUSTOM_REAL), intent(inout) :: array(:)
 
   ! Displacement for MPI_Gatherv.
   integer :: displs(nbproc)
   ! The number of elements on every CPU for MPI_Gatherv.
   integer :: nelements_at_cpu(nbproc)
-  integer :: nelements_total
   integer :: ierr
 
   ! Get partitioning for MPI_Gatherv.
   call get_mpi_partitioning(nelements, displs, nelements_at_cpu, myrank, nbproc)
 
-  if (myrank == 0) then
-    call MPI_Gatherv(MPI_IN_PLACE, nelements, CUSTOM_MPI_TYPE, &
-                     array, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  else
-    call MPI_Gatherv(array0, nelements, CUSTOM_MPI_TYPE, &
-                     array, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  endif
+  call MPI_Allgatherv(MPI_IN_PLACE, nelements, CUSTOM_MPI_TYPE, &
+                      array, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, MPI_COMM_WORLD, ierr)
 
-  if (bcast) then
-  ! Cast the array to all CPUs.
-    nelements_total = sum(nelements_at_cpu)
-
-    call MPI_Bcast(array, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  endif
-
-  if (ierr /= 0) call exit_MPI("MPI error in get_full_array!", myrank, ierr)
+  if (ierr /= 0) call exit_MPI("MPI error in get_full_array_in_place2!", myrank, ierr)
 
 end subroutine get_full_array_in_place2
-
 
 end module parallel_tools

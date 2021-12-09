@@ -98,8 +98,8 @@ subroutine Haar3D_all(n1, n2, n3, a_, b_, myrank, nbproc)
   b(i1:i2) = b(i1:i2) * sqrt(2._CUSTOM_REAL)
 
   ! Update the full array on all CPUs.
-  call pt%get_full_array_in_place2(n_loc, a(i1:i2), a, .true., myrank, nbproc)
-  call pt%get_full_array_in_place2(n_loc, b(i1:i2), b, .true., myrank, nbproc)
+  call pt%get_full_array_in_place2(n_loc, a, myrank, nbproc)
+  call pt%get_full_array_in_place2(n_loc, b, myrank, nbproc)
 
 end subroutine Haar3D_all
 
