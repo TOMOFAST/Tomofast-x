@@ -67,22 +67,13 @@ end subroutine calculate_parallel_array_bounds
 ! By calling it we convert 3D array slices to 1D arrays, needed for parallelisation.
 ! Author: Vitaliy Ogarko.
 !=====================================================================================================
-subroutine Haar3D_all(n1, n2, n3, a_, b_, myrank, nbproc)
-  use iso_c_binding, only: C_F_POINTER, C_LOC
-  integer, intent(in) :: n1, n2, n3, myrank, nbproc
-  real(kind=CUSTOM_REAL), target, intent(inout) :: a_(n1, n2, n3)
-  real(kind=CUSTOM_REAL), target, intent(inout) :: b_(n1, n2, n3)
+subroutine Haar3D_all(n, a, b, myrank, nbproc)
+  integer, intent(in) :: n, myrank, nbproc
+  real(kind=CUSTOM_REAL), intent(inout) :: a(n)
+  real(kind=CUSTOM_REAL), intent(inout) :: b(n)
 
   type(t_parallel_tools) :: pt
-  integer :: i1, i2, n, n_loc
-
-  real(kind=CUSTOM_REAL), pointer :: a(:)
-  real(kind=CUSTOM_REAL), pointer :: b(:)
-
-  n = n1 * n2 * n3
-
-  call C_F_POINTER(C_LOC(a_), a, [n])
-  call C_F_POINTER(C_LOC(b_), b, [n])
+  integer :: i1, i2, n_loc
 
   ! Calculate array bounds to process at this CPU.
   call calculate_parallel_array_bounds(n, i1, i2, n_loc, myrank, nbproc)
@@ -130,6 +121,10 @@ subroutine Haar3D(s, n1, n2, n3, myrank, nbproc)
   integer :: istep, step_incr, step2, nscale, ng
   integer :: igmax, ilmax
 
+  ! Auxiliary arrays.
+  real(kind=CUSTOM_REAL), allocatable :: a(:, :, :)
+  real(kind=CUSTOM_REAL), allocatable :: b(:, :, :)
+
   ! Loop over the 3 dimensions.
   do ic = 1, 3
 
@@ -164,12 +159,44 @@ subroutine Haar3D(s, n1, n2, n3, myrank, nbproc)
       endif
 
       if (ic == 1) then
-        call Haar3D_all(ng, n2, n3, s(ig:igmax:step2, 1:n2, 1:n3), s(il:ilmax:step2, 1:n2, 1:n3), myrank, nbproc)
+        allocate(a(ng, n2, n3))
+        allocate(b(ng, n2, n3))
+
+        a = s(ig:igmax:step2, 1:n2, 1:n3)
+        b = s(il:ilmax:step2, 1:n2, 1:n3)
+
+        call Haar3D_all(ng * n2 * n3, a, b, myrank, nbproc)
+
+        s(ig:igmax:step2, 1:n2, 1:n3) = a
+        s(il:ilmax:step2, 1:n2, 1:n3) = b
+
       else if (ic == 2) then
-        call Haar3D_all(n1, ng, n3, s(1:n1, ig:igmax:step2, 1:n3), s(1:n1, il:ilmax:step2, 1:n3), myrank, nbproc)
+        allocate(a(n1, ng, n3))
+        allocate(b(n1, ng, n3))
+
+        a = s(1:n1, ig:igmax:step2, 1:n3)
+        b = s(1:n1, il:ilmax:step2, 1:n3)
+
+        call Haar3D_all(n1 * ng * n3, a, b, myrank, nbproc)
+
+        s(1:n1, ig:igmax:step2, 1:n3) = a
+        s(1:n1, il:ilmax:step2, 1:n3) = b
+
       else
-        call Haar3D_all(n1, n2, ng, s(1:n1, 1:n2, ig:igmax:step2), s(1:n1, 1:n2, il:ilmax:step2), myrank, nbproc)
+        allocate(a(n1, n2, ng))
+        allocate(b(n1, n2, ng))
+
+        a = s(1:n1, 1:n2, ig:igmax:step2)
+        b = s(1:n1, 1:n2, il:ilmax:step2)
+
+        call Haar3D_all(n1 * n2 * ng, a, b, myrank, nbproc)
+
+        s(1:n1, 1:n2, ig:igmax:step2) = a
+        s(1:n1, 1:n2, il:ilmax:step2) = b
       endif
+
+      deallocate(a)
+      deallocate(b)
 
     enddo
   enddo
