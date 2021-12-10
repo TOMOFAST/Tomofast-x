@@ -104,6 +104,20 @@ subroutine Haar3D_all(n1, n2, n3, a_, b_, myrank, nbproc)
 end subroutine Haar3D_all
 
 !=====================================================================================================
+! Sanity check for the min/max bounds of the 3D array slices.
+!=====================================================================================================
+pure function check_array_bounds(n, ig, igmax, il, ilmax) result (passed)
+  integer, intent(in) :: n, ig, igmax, il, ilmax
+  logical :: passed
+
+  passed = .true.
+  if (ig < 1 .or. ig > n) passed = .false.
+  if (il < 1 .or. il > n) passed = .false.
+  if (igmax < 1 .or. igmax > n) passed = .false.
+  if (ilmax < 1 .or. ilmax > n) passed = .false.
+end function check_array_bounds
+
+!=====================================================================================================
 ! Parallel Haar wavelet transform.
 ! Author: Vitaliy Ogarko
 !=====================================================================================================
@@ -112,18 +126,18 @@ subroutine Haar3D(s, n1, n2, n3, myrank, nbproc)
   integer, intent(in) :: myrank, nbproc
   real(kind=CUSTOM_REAL), intent(inout) :: s(n1, n2, n3)
 
-  integer :: ic,L,il,ig,ngmin,ngmax
-  integer :: istep,step_incr,step2,nscale,ng
+  integer :: ic, L, il, ig, ngmin, ngmax
+  integer :: istep, step_incr, step2, nscale, ng
   integer :: igmax, ilmax
 
   ! Loop over the 3 dimensions.
   do ic = 1, 3
 
     ! Loop over the scales.
-    if (ic==1) then
+    if (ic == 1) then
       nscale = int(log(real(n1,CUSTOM_REAL))/log(2._CUSTOM_REAL))
       L = n1
-    else if (ic==2) then
+    else if (ic == 2) then
       nscale = int(log(real(n2,CUSTOM_REAL))/log(2._CUSTOM_REAL))
       L = n2
     else
@@ -142,6 +156,12 @@ subroutine Haar3D(s, n1, n2, n3, myrank, nbproc)
       il = 1
       igmax = ig + step2 * (ng - 1)
       ilmax = il + step2 * (ng - 1)
+
+      ! Sanity check.
+      if (.not. check_array_bounds(L, ig, igmax, il, ilmax)) then
+        print *, ic, istep, L, ig, igmax, il, ilmax, myrank
+        call exit_MPI("Bad array slices bounds in Haar3D!", myrank, 0)
+      endif
 
       if (ic == 1) then
         call Haar3D_all(ng, n2, n3, s(ig:igmax:step2, 1:n2, 1:n3), s(il:ilmax:step2, 1:n2, 1:n3), myrank, nbproc)
