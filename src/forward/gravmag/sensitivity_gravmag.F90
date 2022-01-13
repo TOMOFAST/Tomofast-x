@@ -105,16 +105,20 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
   type(t_magnetic_field) :: mag_field
   type(t_parallel_tools) :: pt
-  integer :: i, ierr
-  integer :: nelements_total
+  integer :: i, p, nel, ierr
+  integer :: nelements_total, nnz_local
   integer :: problem_type
   integer :: idata_loc, ndata_loc, ndata_smaller
   character(len=256) :: filename, filename_full
+  real(kind=CUSTOM_REAL) :: comp_rate, nnz_total_dbl
 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full2(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full3(:)
+
+  integer, allocatable :: sensit_columns(:)
+  real(kind=CUSTOM_REAL), allocatable :: sensit_compressed(:)
 
   ! The full column weight.
   real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
@@ -155,6 +159,12 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
+  allocate(sensit_columns(nelements_total), source=0, stat=ierr)
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
+
+  allocate(sensit_compressed(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
+
   !---------------------------------------------------------------------------------------------
   ! Calculate sensitivity lines.
   !---------------------------------------------------------------------------------------------
@@ -164,6 +174,11 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   ndata_smaller = pt%get_nsmaller(ndata_loc, myrank, nbproc)
 
   print *, "Calculating sensitivity for myrank, ndata_loc =", myrank, ndata_loc
+
+  ! File header.
+  write (77, *) par%ndata, par%nx, par%ny, par%nz, myrank, nbproc, par%wavelet_threshold
+
+  nnz_local = 0
 
   ! Loop over the local data lines.
   do idata_loc = 1, ndata_loc
@@ -183,11 +198,52 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
     ! Applying the depth weight.
     call apply_column_weight(nelements_total, sensit_line_full, column_weight_full)
 
-    write (77, *) idata_loc, i, myrank, nbproc
-    write (77, *) sensit_line_full
+    if (par%compression_type > 0) then
+    ! Wavelet compression.
+      call Haar3D_serial(sensit_line_full, par%nx, par%ny, par%nz)
+
+      nel = 0
+      do p = 1, nelements_total
+        if (abs(sensit_line_full(p)) >= par%wavelet_threshold) then
+        ! Store sensitivity elements greater than the threshold.
+          nel = nel + 1
+          sensit_columns(nel) = p
+          sensit_compressed(nel) = sensit_line_full(p)
+        endif
+      enddo
+
+    else
+    ! No compression.
+      nel = nelements_total
+      sensit_compressed = sensit_line_full
+      do p = 1, nelements_total
+        sensit_columns(p) = p
+      enddo
+    endif
+
+    ! The sensitivity kernel size.
+    nnz_local = nnz_local + nel
+
+    ! Sanity check.
+    if (nnz_local < 0) then
+      call exit_MPI("Integer overflow in nnz_local! Increase the wavelet threshold or the number of CPUs.", myrank, nnz_local)
+    endif
+
+    ! Write the sensitivity line to file.
+    if (nel > 0) then
+      write (77, *) i, nel
+      write (77, *) sensit_columns(1:nel)
+      write (77, *) sensit_compressed(1:nel)
+    endif
   enddo
 
   close(77)
+
+  ! Calculate the kernel compression rate.
+  call mpi_allreduce(dble(nnz_local), nnz_total_dbl, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+  comp_rate = nnz_total_dbl / dble(nelements_total) / dble(par%ndata)
+
+  if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
 
 end subroutine calculate_and_write_sensit
 

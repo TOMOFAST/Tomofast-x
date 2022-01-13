@@ -23,13 +23,12 @@ module wavelet_transform
   private
 
   public :: Haar3D
-  public :: Haar3D_old
+  public :: Haar3D_serial
   public :: iHaar3D
   public :: DaubD43D
   public :: iDaubD43D
 
   private :: Haar3D_all
-
   private :: calculate_parallel_array_bounds
 
 contains
@@ -206,7 +205,7 @@ end subroutine Haar3D
 !=====================================================================================================
 ! Haar wavelet transform adapted from code by Sebastien Chevrot.
 !=====================================================================================================
-subroutine Haar3D_old(s,n1,n2,n3)
+subroutine Haar3D_serial(s,n1,n2,n3)
 
   integer, intent(in) :: n1,n2,n3
   real(kind=CUSTOM_REAL), intent(inout) :: s(n1,n2,n3)
@@ -282,7 +281,7 @@ subroutine Haar3D_old(s,n1,n2,n3)
     enddo
   enddo
 
-end subroutine Haar3D_old
+end subroutine Haar3D_serial
 
 !=====================================================================================================
 ! Inverse Haar transform adapted from code by Sebastien Chevrot.
