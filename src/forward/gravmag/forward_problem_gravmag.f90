@@ -39,10 +39,8 @@ subroutine solve_forward_problem(par, iarr, data, myrank, nbproc)
   type(t_inversion_arrays), intent(inout) :: iarr
   type(t_data), intent(inout) :: data
 
-  type(t_sensitivity_gravmag) :: sens
-
   ! Calculate sensitivity kernel (analytically).
-  call sens%calculate_sensitivity_kernel(par, iarr%model%grid, data, iarr%column_weight, iarr%matrix_sensit, myrank, nbproc)
+  call calculate_sensitivity_kernel(par, iarr%model%grid, data, iarr%column_weight, iarr%matrix_sensit, myrank, nbproc)
 
   ! Calculate the data using sensitivity (S) and prior model (m) as d = S * m.
   call iarr%model%calculate_data(par%ndata, iarr%matrix_sensit, iarr%column_weight, data%val_calc, par%compression_type, &
@@ -61,9 +59,7 @@ subroutine calculate_kernel_size(par, iarr, data, nnz, myrank, nbproc)
 
   integer, intent(out) :: nnz
 
-  type(t_sensitivity_gravmag) :: sens
-
-  nnz = sens%predict_sensit_kernel_size(par, iarr%model%grid, data, iarr%column_weight, myrank, nbproc)
+  nnz = predict_sensit_kernel_size(par, iarr%model%grid, data, iarr%column_weight, myrank, nbproc)
 
 end subroutine calculate_kernel_size
 

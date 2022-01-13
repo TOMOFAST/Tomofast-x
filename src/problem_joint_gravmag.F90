@@ -38,6 +38,7 @@ module problem_joint_gravmag
   use parameters_inversion
   use inversion_arrays
   use forward_problem_gravmag
+  use sensitivity_gravmag
   use weights_gravmag
   use joint_inverse_problem
   use costs
@@ -205,6 +206,12 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   ! Precondition the column weights (to balance the columns in joint inversion).
   if (SOLVE_PROBLEM(1)) iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight
   if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
+
+  !-------------------------------------------------------------------------------------------------------
+  if (SOLVE_PROBLEM(1)) &
+    call calculate_and_write_sensit(gpar, iarr(1)%model%grid_full, data(1), iarr(1)%column_weight, myrank, nbproc)
+
+  stop
 
   !-------------------------------------------------------------------------------------------------------
   ! Calculate nnz for the sensitivity kernel.

@@ -32,24 +32,19 @@ module sensitivity_gravmag
   use vector
   use wavelet_transform
   use parallel_tools
+  use string, only: str
 
   implicit none
 
   private
 
-  type, public :: t_sensitivity_gravmag
-    private
+  public :: calculate_sensitivity_kernel
+  public :: predict_sensit_kernel_size
 
-  contains
-    private
+  private :: calculate_sensitivity
+  private :: apply_column_weight
 
-    procedure, public, nopass :: calculate_sensitivity_kernel
-    procedure, public, nopass :: predict_sensit_kernel_size
-
-    procedure, private, nopass :: calculate_sensitivity
-    procedure, private, nopass :: apply_column_weight
-
-  end type t_sensitivity_gravmag
+  public :: calculate_and_write_sensit
 
 contains
 
@@ -97,6 +92,96 @@ function predict_sensit_kernel_size(par, grid, data, column_weight, myrank, nbpr
                              STORE_KERNEL, nnz, myrank, nbproc)
 
 end function predict_sensit_kernel_size
+
+!=============================================================================================
+! Calculates the sensitivity kernel (parallelized by data) and writes it to files.
+!=============================================================================================
+subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myrank, nbproc)
+  class(t_parameters_base), intent(in) :: par
+  type(t_grid), intent(in) :: grid_full
+  type(t_data), intent(in) :: data
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
+  integer, intent(in) :: myrank, nbproc
+
+  type(t_magnetic_field) :: mag_field
+  type(t_parallel_tools) :: pt
+  integer :: i, ierr
+  integer :: nelements_total
+  integer :: problem_type
+  integer :: idata_loc, ndata_loc, ndata_smaller
+  character(len=256) :: filename, filename_full
+
+  ! Sensitivity matrix row.
+  real(kind=CUSTOM_REAL), allocatable :: sensit_line_full(:)
+  real(kind=CUSTOM_REAL), allocatable :: sensit_line_full2(:)
+  real(kind=CUSTOM_REAL), allocatable :: sensit_line_full3(:)
+
+  select type(par)
+  class is (t_parameters_grav)
+    if (myrank == 0) print *, 'Calculating GRAVITY sensitivity kernel...'
+    problem_type = 1
+
+  class is (t_parameters_mag)
+    if (myrank == 0) print *, 'Calculating MAGNETIC sensitivity kernel...'
+    problem_type = 2
+
+    ! Precompute common magnetic parameters.
+    call mag_field%initialize(par%mi, par%md, par%fi, par%fd, par%theta, par%intensity)
+  end select
+
+  !---------------------------------------------------------------------------------------------
+  ! Define the output file.
+  !---------------------------------------------------------------------------------------------
+  call system('mkdir -p '//trim(path_output)//"/SENSIT/")
+
+  filename = "sensit_"//trim(str(nbproc))//"_"//trim(str(myrank))
+  filename_full = trim(path_output)//"/SENSIT/"//filename
+
+  print *, 'Writing the sensitivity to file ', trim(filename_full)
+
+  open(77, file=trim(filename_full), access='stream', form='formatted', status='unknown', action='write')
+
+  !---------------------------------------------------------------------------------------------
+  ! Allocate memory.
+  !---------------------------------------------------------------------------------------------
+  nelements_total = par%nx * par%ny * par%nz
+
+  allocate(sensit_line_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
+
+  !---------------------------------------------------------------------------------------------
+  ! Loop on data lines.
+  !---------------------------------------------------------------------------------------------
+  ndata_loc = pt%calculate_nelements_at_cpu(par%ndata, myrank, nbproc)
+  ndata_smaller = pt%get_nsmaller(ndata_loc, myrank, nbproc)
+
+  print *, "Calculating sensitivity for myrank, ndata_loc =", myrank, ndata_loc
+
+  ! Loop over the local data lines.
+  do idata_loc = 1, ndata_loc
+    ! Global data index.
+    i = ndata_smaller + idata_loc
+
+    if (problem_type == 1) then
+    ! Gravity problem.
+      call graviprism_full(nelements_total, par%ncomponents, grid_full, data%X(i), data%Y(i), data%Z(i), &
+                           sensit_line_full3, sensit_line_full2, sensit_line_full, myrank)
+
+    else if (problem_type == 2) then
+    ! Magnetic problem.
+      call mag_field%magprism(nelements_total, i, grid_full, data%X, data%Y, data%Z, sensit_line_full)
+    endif
+
+    ! Applying the depth weight.
+    !call apply_column_weight(par%nelements_total, sensit_line, column_weight)
+
+    write (77, *) idata_loc, i, myrank, nbproc
+    write (77, *) sensit_line_full
+  enddo
+
+  close(77)
+
+end subroutine calculate_and_write_sensit
 
 !=============================================================================================
 ! Calculates the sensitivity kernel / or predicts its size without storing the kernel,
