@@ -117,12 +117,14 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full2(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full3(:)
 
+  ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_compressed(:)
 
   ! The full column weight.
   real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
 
+  ! Define the problem type.
   select type(par)
   class is (t_parameters_grav)
     if (myrank == 0) print *, 'Calculating GRAVITY sensitivity kernel...'
@@ -235,15 +237,31 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
       write (77, *) sensit_columns(1:nel)
       write (77, *) sensit_compressed(1:nel)
     endif
-  enddo
+
+    ! Print the progress.
+    if (myrank == 0 .and. mod(i, int(0.1d0 * ndata_loc)) == 0) then
+      print *, 'Percents completed: ', (i / int(0.1d0 * ndata_loc)) * 10 ! Approximate percents.
+    endif
+
+  enddo ! data loop
 
   close(77)
 
+  !---------------------------------------------------------------------------------------------
   ! Calculate the kernel compression rate.
+  !---------------------------------------------------------------------------------------------
   call mpi_allreduce(dble(nnz_local), nnz_total_dbl, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
   comp_rate = nnz_total_dbl / dble(nelements_total) / dble(par%ndata)
 
   if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
+
+  !---------------------------------------------------------------------------------------------
+  deallocate(sensit_line_full)
+  deallocate(column_weight_full)
+  deallocate(sensit_columns)
+  deallocate(sensit_compressed)
+
+  if (myrank == 0) print *, 'Finished calculating the sensitivity kernel.'
 
 end subroutine calculate_and_write_sensit
 
