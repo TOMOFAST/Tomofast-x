@@ -116,6 +116,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full2(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full3(:)
 
+  ! The full column weight.
+  real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
+
   select type(par)
   class is (t_parameters_grav)
     if (myrank == 0) print *, 'Calculating GRAVITY sensitivity kernel...'
@@ -149,9 +152,14 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   allocate(sensit_line_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
+  allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
+
   !---------------------------------------------------------------------------------------------
-  ! Loop on data lines.
+  ! Calculate sensitivity lines.
   !---------------------------------------------------------------------------------------------
+  call pt%get_full_array(column_weight, par%nelements, column_weight_full, .true., myrank, nbproc)
+
   ndata_loc = pt%calculate_nelements_at_cpu(par%ndata, myrank, nbproc)
   ndata_smaller = pt%get_nsmaller(ndata_loc, myrank, nbproc)
 
@@ -173,7 +181,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
     endif
 
     ! Applying the depth weight.
-    !call apply_column_weight(par%nelements_total, sensit_line, column_weight)
+    call apply_column_weight(nelements_total, sensit_line_full, column_weight_full)
 
     write (77, *) idata_loc, i, myrank, nbproc
     write (77, *) sensit_line_full

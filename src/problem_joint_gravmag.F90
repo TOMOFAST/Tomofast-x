@@ -208,8 +208,13 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
 
   !-------------------------------------------------------------------------------------------------------
+  ! Calculate and write the sensitivity matrix to files.
+  !-------------------------------------------------------------------------------------------------------
   if (SOLVE_PROBLEM(1)) &
     call calculate_and_write_sensit(gpar, iarr(1)%model%grid_full, data(1), iarr(1)%column_weight, myrank, nbproc)
+
+  if (SOLVE_PROBLEM(2)) &
+    call calculate_and_write_sensit(mpar, iarr(2)%model%grid_full, data(2), iarr(2)%column_weight, myrank, nbproc)
 
   stop
 
