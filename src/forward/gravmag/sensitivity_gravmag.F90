@@ -108,7 +108,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   integer :: i, p, nel, ierr
   integer :: nelements_total, nnz_local
   integer :: problem_type
-  integer :: idata_loc, ndata_loc, ndata_smaller
+  integer :: idata, ndata_loc, ndata_smaller
   character(len=256) :: filename, filename_full
   real(kind=CUSTOM_REAL) :: comp_rate, nnz_total_dbl
 
@@ -181,18 +181,18 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   nnz_local = 0
 
   ! Loop over the local data lines.
-  do idata_loc = 1, ndata_loc
+  do i = 1, ndata_loc
     ! Global data index.
-    i = ndata_smaller + idata_loc
+    idata = ndata_smaller + i
 
     if (problem_type == 1) then
     ! Gravity problem.
-      call graviprism_full(nelements_total, par%ncomponents, grid_full, data%X(i), data%Y(i), data%Z(i), &
+      call graviprism_full(nelements_total, par%ncomponents, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
                            sensit_line_full3, sensit_line_full2, sensit_line_full, myrank)
 
     else if (problem_type == 2) then
     ! Magnetic problem.
-      call mag_field%magprism(nelements_total, i, grid_full, data%X, data%Y, data%Z, sensit_line_full)
+      call mag_field%magprism(nelements_total, idata, grid_full, data%X, data%Y, data%Z, sensit_line_full)
     endif
 
     ! Applying the depth weight.
@@ -231,7 +231,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
     ! Write the sensitivity line to file.
     if (nel > 0) then
-      write (77, *) i, nel
+      write (77, *) idata, nel
       write (77, *) sensit_columns(1:nel)
       write (77, *) sensit_compressed(1:nel)
     endif
