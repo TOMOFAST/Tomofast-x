@@ -96,26 +96,36 @@ end function predict_sensit_kernel_size
 !=============================================================================================
 ! Calculates the sensitivity kernel (parallelized by data) and writes it to files.
 !=============================================================================================
-subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myrank, nbproc)
+subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid_full
   type(t_data), intent(in) :: data
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   integer, intent(in) :: myrank, nbproc
 
+  ! The number of non-zero elements (on current CPU) in the sensitivity kernel parallelized by model.
+  ! We need this number for reading the sensitivity later from files, for invere problem.
+  ! As the inverse problem is parallelized by model, and calculations here are parallelized by data.
+  integer, intent(out) :: nnz
+
   type(t_magnetic_field) :: mag_field
   type(t_parallel_tools) :: pt
   integer :: i, p, nel, ierr
-  integer :: nelements_total, nnz_local
+  integer :: nelements_total, nnz_data
   integer :: problem_type
   integer :: idata, ndata_loc, ndata_smaller
   character(len=256) :: filename, filename_full
-  real(kind=CUSTOM_REAL) :: comp_rate, nnz_total_dbl
+  real(kind=CUSTOM_REAL) :: comp_rate, nnz_total_dbl, nnz_total_dbl2
+
+  integer :: nnz_model_loc(nbproc), nnz_model(nbproc)
+  ! The number of elements on every CPU.
+  integer :: nelements_at_cpu(nbproc)
+  integer :: nsmaller_at_cpu(nbproc)
+  integer :: cpu
 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full(:)
-  real(kind=CUSTOM_REAL), allocatable :: sensit_line_full2(:)
-  real(kind=CUSTOM_REAL), allocatable :: sensit_line_full3(:)
+  real(kind=CUSTOM_REAL), allocatable :: dummy1(:), dummy2(:)
 
   ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
@@ -180,7 +190,16 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   ! File header.
   write (77, *) par%ndata, par%nx, par%ny, par%nz, myrank, nbproc, par%wavelet_threshold
 
-  nnz_local = 0
+  ! Calculate the number of elements on every CPU.
+  nelements_at_cpu = pt%get_number_elements_on_other_cpus(par%nelements, myrank, nbproc)
+
+  ! Calculate the number of elements on ranks smaller than current.
+  do i = 1, nbproc
+    nsmaller_at_cpu(i) = sum(nelements_at_cpu(1:i-1))
+  enddo
+
+  nnz_data = 0
+  nnz_model_loc = 0
 
   ! Loop over the local data lines.
   do i = 1, ndata_loc
@@ -190,7 +209,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
     if (problem_type == 1) then
     ! Gravity problem.
       call graviprism_full(nelements_total, par%ncomponents, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
-                           sensit_line_full3, sensit_line_full2, sensit_line_full, myrank)
+                           dummy1, dummy2, sensit_line_full, myrank)
 
     else if (problem_type == 2) then
     ! Magnetic problem.
@@ -205,12 +224,20 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
       call Haar3D_serial(sensit_line_full, par%nx, par%ny, par%nz)
 
       nel = 0
+      cpu = 1
       do p = 1, nelements_total
+        ! Partitioning for parallelization by model.
+        if (cpu < nbproc .and. p > nsmaller_at_cpu(cpu + 1)) then
+          cpu = cpu + 1
+        endif
+
         if (abs(sensit_line_full(p)) >= par%wavelet_threshold) then
-        ! Store sensitivity elements greater than the threshold.
+        ! Store sensitivity elements greater than the wavelet threshold.
           nel = nel + 1
           sensit_columns(nel) = p
           sensit_compressed(nel) = sensit_line_full(p)
+
+          nnz_model_loc(cpu) = nnz_model_loc(cpu) + 1
         endif
       enddo
 
@@ -221,14 +248,15 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
       do p = 1, nelements_total
         sensit_columns(p) = p
       enddo
+      nnz_model_loc = nnz_model_loc + nelements_at_cpu
     endif
 
-    ! The sensitivity kernel size.
-    nnz_local = nnz_local + nel
+    ! The sensitivity kernel size (when parallelized by data).
+    nnz_data = nnz_data + nel
 
     ! Sanity check.
-    if (nnz_local < 0) then
-      call exit_MPI("Integer overflow in nnz_local! Increase the wavelet threshold or the number of CPUs.", myrank, nnz_local)
+    if (nnz_data < 0) then
+      call exit_MPI("Integer overflow in nnz_data! Increase the wavelet threshold or the number of CPUs.", myrank, nnz_data)
     endif
 
     ! Write the sensitivity line to file.
@@ -242,7 +270,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
     if (myrank == 0 .and. mod(i, int(0.1d0 * ndata_loc)) == 0) then
       print *, 'Percents completed: ', (i / int(0.1d0 * ndata_loc)) * 10 ! Approximate percents.
     endif
-
   enddo ! data loop
 
   close(77)
@@ -250,10 +277,34 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   !---------------------------------------------------------------------------------------------
   ! Calculate the kernel compression rate.
   !---------------------------------------------------------------------------------------------
-  call mpi_allreduce(dble(nnz_local), nnz_total_dbl, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+  call mpi_allreduce(dble(nnz_data), nnz_total_dbl, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
   comp_rate = nnz_total_dbl / dble(nelements_total) / dble(par%ndata)
 
   if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
+
+  !---------------------------------------------------------------------------------------------
+  ! Calculate the nnz for the sensitivity kernel parallelized by model.
+  !---------------------------------------------------------------------------------------------
+  call mpi_allreduce(nnz_model_loc, nnz_model, nbproc, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+  if (myrank == 0)  print *, 'nnz_model = ', nnz_model
+
+  ! Sanity check.
+  do i = 1, nbproc
+    if (nnz_model(i) < 0) then
+      call exit_MPI("Integer overflow in nnz_model! Increase the wavelet threshold or the number of CPUs.", myrank, nnz_model(i))
+    endif
+  enddo
+
+  ! Sanity check.
+  nnz_total_dbl2 = sum(dble(nnz_model))
+  if (nnz_total_dbl /= nnz_total_dbl2) then
+    print *, myrank, nnz_total_dbl, nnz_total_dbl2
+    call exit_MPI("Wrong nnz_model in calculate_and_write_sensit!", myrank, 0)
+  endif
+
+  ! Return the nnz for the current CPU.
+  nnz = nnz_model(myrank + 1)
 
   !---------------------------------------------------------------------------------------------
   deallocate(sensit_line_full)
