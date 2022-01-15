@@ -37,7 +37,6 @@ module problem_joint_gravmag
   use parameters_gravmag
   use parameters_inversion
   use inversion_arrays
-  use forward_problem_gravmag
   use sensitivity_gravmag
   use weights_gravmag
   use joint_inverse_problem
