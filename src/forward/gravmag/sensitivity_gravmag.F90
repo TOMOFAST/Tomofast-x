@@ -110,7 +110,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   print *, 'Writing the sensitivity to file ', trim(filename_full)
 
-  open(77, file=trim(filename_full), access='stream', form='formatted', status='unknown', action='write')
+  open(77, file=trim(filename_full), form='unformatted', status='unknown', action='write')
 
   !---------------------------------------------------------------------------------------------
   ! Allocate memory.
@@ -140,7 +140,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   print *, "Calculating sensitivity for myrank, ndata_loc =", myrank, ndata_loc
 
   ! File header.
-  write(77, *) ndata_loc, par%ndata, nelements_total, myrank, nbproc, par%wavelet_threshold
+  write(77) ndata_loc, par%ndata, nelements_total, myrank, nbproc, par%wavelet_threshold
 
   ! Calculate the number of elements on every CPU.
   nelements_at_cpu = pt%get_number_elements_on_other_cpus(par%nelements, myrank, nbproc)
@@ -212,10 +212,10 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     endif
 
     ! Write the sensitivity line to file.
-    write(77, *) idata, nel
+    write(77) idata, nel
     if (nel > 0) then
-      write(77, *) sensit_columns(1:nel)
-      write(77, *) sensit_compressed(1:nel)
+      write(77) sensit_columns(1:nel)
+      write(77) sensit_compressed(1:nel)
     endif
 
     ! Print the progress.
@@ -324,12 +324,12 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, myrank, nbproc)
 
     if (myrank == 0) print *, 'Reading the sensitivity file ', trim(filename_full)
 
-    open(78, file=trim(filename_full), status='old', action='read', iostat=ierr, iomsg=msg)
+    open(78, file=trim(filename_full), form='unformatted', status='unknown', action='read', iostat=ierr, iomsg=msg)
     if (ierr /= 0) call exit_MPI("Error in opening the model file! path=" &
                                  //filename_full//" iomsg="//msg, myrank, ierr)
 
     ! Reading the file header.
-    read(78, *) ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read, wavelet_threshold_read
+    read(78) ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read, wavelet_threshold_read
 
     ! Sanity check.
     if (ndata_read /= par%ndata .or. nelements_total_read /= nelements_total &
@@ -342,7 +342,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, myrank, nbproc)
       idata_glob = idata_glob + 1
 
       ! Reading the data descriptor.
-      read(78, *) idata, nel
+      read(78) idata, nel
 
       ! Make sure the data is stored in the correct order.
       if (idata /= idata_glob) then
@@ -351,8 +351,8 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, myrank, nbproc)
 
       if (nel > 0) then
         ! Reading the data.
-        read(78, *) sensit_columns(1:nel)
-        read(78, *) sensit_compressed(1:nel)
+        read(78) sensit_columns(1:nel)
+        read(78) sensit_compressed(1:nel)
       endif
 
       ! Adding the matrix line.
