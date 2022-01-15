@@ -45,6 +45,7 @@ module sensitivity_gravmag
   private :: apply_column_weight
 
   public :: calculate_and_write_sensit
+  public :: read_sensitivity_kernel
 
 contains
 
@@ -188,7 +189,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   print *, "Calculating sensitivity for myrank, ndata_loc =", myrank, ndata_loc
 
   ! File header.
-  write (77, *) par%ndata, par%nx, par%ny, par%nz, myrank, nbproc, par%wavelet_threshold
+  write(77, *) ndata_loc, par%ndata, nelements_total, myrank, nbproc, par%wavelet_threshold
 
   ! Calculate the number of elements on every CPU.
   nelements_at_cpu = pt%get_number_elements_on_other_cpus(par%nelements, myrank, nbproc)
@@ -260,10 +261,10 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     endif
 
     ! Write the sensitivity line to file.
+    write(77, *) idata, nel
     if (nel > 0) then
-      write (77, *) idata, nel
-      write (77, *) sensit_columns(1:nel)
-      write (77, *) sensit_compressed(1:nel)
+      write(77, *) sensit_columns(1:nel)
+      write(77, *) sensit_compressed(1:nel)
     endif
 
     ! Print the progress.
@@ -315,6 +316,89 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   if (myrank == 0) print *, 'Finished calculating the sensitivity kernel.'
 
 end subroutine calculate_and_write_sensit
+
+!=============================================================================================
+! Reads the sensitivity kernel from files,
+! and stores it in the sparse matrix parallelized by model.
+!=============================================================================================
+subroutine read_sensitivity_kernel(par, sensit_matrix, myrank, nbproc)
+  class(t_parameters_base), intent(in) :: par
+  integer, intent(in) :: myrank, nbproc
+
+  ! Sensitivity matrix.
+  type(t_sparse_matrix), intent(inout) :: sensit_matrix
+
+  type(t_parallel_tools) :: pt
+
+  ! Arrays for storing the compressed sensitivity line.
+  integer, allocatable :: sensit_columns(:)
+  real(kind=CUSTOM_REAL), allocatable :: sensit_compressed(:)
+
+  integer :: i, nsmaller, ierr
+  integer :: rank, nelements_total
+  character(len=256) :: filename, filename_full
+  character(len=256) :: msg
+
+  integer :: ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
+  real(kind=CUSTOM_REAL) :: wavelet_threshold_read
+  integer :: idata, nel
+
+  !---------------------------------------------------------------------------------------------
+  ! Allocate memory.
+  !---------------------------------------------------------------------------------------------
+  nelements_total = par%nx * par%ny * par%nz
+
+  allocate(sensit_columns(nelements_total), source=0, stat=ierr)
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
+
+  allocate(sensit_compressed(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
+
+  !---------------------------------------------------------------------------------------------
+  ! Reading the files.
+  !---------------------------------------------------------------------------------------------
+
+  ! The number of elements on CPUs with rank smaller than myrank.
+  nsmaller = pt%get_nsmaller(par%nelements, myrank, nbproc)
+
+  do rank = 0, nbproc - 1
+    ! Form the file name.
+    filename = "sensit_"//trim(str(nbproc))//"_"//trim(str(rank))
+    filename_full = trim(path_output)//"/SENSIT/"//filename
+
+    if (myrank == 0) print *, 'Reading the sensitivity file ', trim(filename_full)
+
+    open(78, file=trim(filename_full), status='old', action='read', iostat=ierr, iomsg=msg)
+    if (ierr /= 0) call exit_MPI("Error in opening the model file! path=" &
+                                 //filename_full//" iomsg="//msg, myrank, ierr)
+
+    read(78, *) ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read, wavelet_threshold_read
+
+    ! Sanity check.
+    if (ndata_read /= par%ndata .or. nelements_total_read /= nelements_total &
+        .or. myrank_read /= rank .or. nbproc_read /= nbproc) then
+      call exit_MPI("Wrong file header in read_sensitivity_kernel!", myrank, 0)
+    endif
+
+    do i = 1, ndata_loc
+      read(78, *) idata, nel
+      if (nel > 0) then
+        read(78, *) sensit_columns(1:nel)
+        read(78, *) sensit_compressed(1:nel)
+      endif
+      if (myrank == 0) print *, idata, nel
+    enddo
+
+    close(78)
+  enddo
+
+  !---------------------------------------------------------------------------------------------
+  deallocate(sensit_columns)
+  deallocate(sensit_compressed)
+
+  if (myrank == 0) print *, 'Finished reading the sensitivity kernel.'
+
+end subroutine read_sensitivity_kernel
 
 !=============================================================================================
 ! Calculates the sensitivity kernel / or predicts its size without storing the kernel,
