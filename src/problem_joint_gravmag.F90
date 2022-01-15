@@ -208,10 +208,9 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
 
   !-------------------------------------------------------------------------------------------------------
-  ! Calculate and write the sensitivity matrix to files.
+  ! Calculate and write the sensitivity kernel to files.
   if (SOLVE_PROBLEM(1)) &
     call calculate_and_write_sensit(gpar, iarr(1)%model%grid_full, data(1), iarr(1)%column_weight, nnz(1), myrank, nbproc)
-
   if (SOLVE_PROBLEM(2)) &
     call calculate_and_write_sensit(mpar, iarr(2)%model%grid_full, data(2), iarr(2)%column_weight, nnz(2), myrank, nbproc)
 
@@ -225,31 +224,12 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call read_sensitivity_kernel(gpar, iarr(1)%matrix_sensit, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call read_sensitivity_kernel(mpar, iarr(2)%matrix_sensit, myrank, nbproc)
 
-  stop
-
   !-------------------------------------------------------------------------------------------------------
-  ! Calculate nnz for the sensitivity kernel.
-  nnz = 0
-  if (ipar%compression_type > 0) then
-  ! Wavelet compression. Calculate the number of nonzero elements in the compressed kernel (on every rank).
-    if (SOLVE_PROBLEM(1)) &
-      call calculate_kernel_size(gpar, iarr(1), data(1), nnz(1), myrank, nbproc)
-
-    if (SOLVE_PROBLEM(2)) &
-      call calculate_kernel_size(mpar, iarr(2), data(2), nnz(2), myrank, nbproc)
-  else
-    nnz(1) = ipar%nelements * ipar%ndata(1)
-    nnz(2) = ipar%nelements * ipar%ndata(2)
-  endif
-
-  ! Allocate the sensitivity kernel.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_sensit(.false., nnz(1), myrank)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_sensit(.false., nnz(2), myrank)
-
-  !-----------------------------------------------------------------------------------------
-  ! Solve forward problems for gravity and magnetism.
-  if (SOLVE_PROBLEM(1)) call solve_forward_problem(gpar, iarr(1), data(1), myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call solve_forward_problem(mpar, iarr(2), data(2), myrank, nbproc)
+  ! Calculate the data from the read model.
+  do i = 1, 2
+    if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, &
+      iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank, nbproc)
+  enddo
 
 #ifndef SUPPRESS_OUTPUT
   ! Write data calculated from the model read.
@@ -298,7 +278,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     endif
 
     if (m > 1) call joint_inversion%reset()
-    
+
     ! SETTING PRIOR MODEL FOR INVERSION  -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) &
       call read_model(iarr(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank, nbproc)
