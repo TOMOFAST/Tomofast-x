@@ -334,14 +334,15 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, myrank, nbproc)
   integer, allocatable :: sensit_columns(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_compressed(:)
 
-  integer :: i, nsmaller, ierr
+  integer :: i, j, p, nsmaller, ierr
   integer :: rank, nelements_total
   character(len=256) :: filename, filename_full
   character(len=256) :: msg
 
   integer :: ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
   real(kind=CUSTOM_REAL) :: wavelet_threshold_read
-  integer :: idata, nel
+  integer :: idata, nel, idata_glob
+  integer :: nnz
 
   !---------------------------------------------------------------------------------------------
   ! Allocate memory.
@@ -355,14 +356,18 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, myrank, nbproc)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
-  ! Reading the files.
+  ! Reading the sensitivity kernel files.
   !---------------------------------------------------------------------------------------------
 
   ! The number of elements on CPUs with rank smaller than myrank.
   nsmaller = pt%get_nsmaller(par%nelements, myrank, nbproc)
 
+  idata_glob = 0
+  nnz = 0
+
+  ! Loop over the MPI ranks (as the sensitivity kernel is stored parallelezied by data in a separate file for each rank).
   do rank = 0, nbproc - 1
-    ! Form the file name.
+    ! Form the file name (containing the MPI rank).
     filename = "sensit_"//trim(str(nbproc))//"_"//trim(str(rank))
     filename_full = trim(path_output)//"/SENSIT/"//filename
 
@@ -372,6 +377,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, myrank, nbproc)
     if (ierr /= 0) call exit_MPI("Error in opening the model file! path=" &
                                  //filename_full//" iomsg="//msg, myrank, ierr)
 
+    ! Reading the file header.
     read(78, *) ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read, wavelet_threshold_read
 
     ! Sanity check.
@@ -380,17 +386,49 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, myrank, nbproc)
       call exit_MPI("Wrong file header in read_sensitivity_kernel!", myrank, 0)
     endif
 
+    ! Loop over the local data chunk within a file.
     do i = 1, ndata_loc
+      idata_glob = idata_glob + 1
+
+      ! Reading the data descriptor.
       read(78, *) idata, nel
+
+      ! Make sure the data is stored in the correct order.
+      if (idata /= idata_glob) then
+        call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, 0)
+      endif
+
       if (nel > 0) then
+        ! Reading the data.
         read(78, *) sensit_columns(1:nel)
         read(78, *) sensit_compressed(1:nel)
       endif
-      if (myrank == 0) print *, idata, nel
-    enddo
+
+      ! Adding the matrix line.
+      call sensit_matrix%new_row(myrank)
+
+      do j = 1, nel
+        p = sensit_columns(j)
+        if (p > nsmaller .and. p <= nsmaller + par%nelements) then
+        ! The element belongs to this rank. Adding it to the matrix.
+          call sensit_matrix%add(sensit_compressed(j), p - nsmaller, myrank)
+          nnz = nnz + 1
+        else
+          if (p > nsmaller + par%nelements) exit
+        endif
+      enddo
+
+    enddo ! data loop
 
     close(78)
   enddo
+
+  ! Sanity check.
+  if (nnz /= sensit_matrix%get_nnz()) then
+    call exit_MPI("Wrong nnz in read_sensitivity_kernel!", myrank, 0)
+  endif
+
+  call sensit_matrix%finalize(par%nelements, myrank)
 
   !---------------------------------------------------------------------------------------------
   deallocate(sensit_columns)

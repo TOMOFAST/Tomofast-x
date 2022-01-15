@@ -491,7 +491,7 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
   integer, intent(in) :: myrank
   integer :: ierr
 
-  if (this%nnz <= 0 .or. this%nl <= 0) &
+  if (this%nnz < 0 .or. this%nl <= 0) &
     call exit_MPI("Wrong sizes in sparse_matrix_allocate_arrays!", myrank, 0)
 
   ierr = 0
