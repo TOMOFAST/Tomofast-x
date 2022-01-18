@@ -350,6 +350,8 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   gpar%wavelet_threshold = 1.d-7
   mpar%compression_type = gpar%compression_type
   mpar%wavelet_threshold = gpar%wavelet_threshold
+  gpar%compression_rate = 1.d-1
+  mpar%compression_rate = 1.d-1
 
   ! PRIOR MODEL parameters.
   gpar%prior_model_type = 1 ! 1-set value, 2-read from file.
@@ -734,6 +736,11 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
         read(10, 1) gpar%wavelet_threshold
         call print_arg(myrank, parname, gpar%wavelet_threshold)
         mpar%wavelet_threshold = gpar%wavelet_threshold
+
+      case("forward.matrixCompression.rate")
+        read(10, 1) gpar%compression_rate
+        call print_arg(myrank, parname, gpar%compression_rate)
+        mpar%compression_rate = gpar%compression_rate
 
       ! PRIOR MODEL -----------------------------------------
 

@@ -33,6 +33,7 @@ module sensitivity_gravmag
   use wavelet_transform
   use parallel_tools
   use string, only: str
+  use sort
 
   implicit none
 
@@ -68,6 +69,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   integer :: idata, ndata_loc, ndata_smaller
   character(len=256) :: filename, filename_full
   real(kind=CUSTOM_REAL) :: comp_rate, nnz_total_dbl, nnz_total_dbl2
+  real(kind=CUSTOM_REAL) :: threshold
+  integer :: threshold_index
 
   integer :: nnz_model_loc(nbproc), nnz_model(nbproc)
   ! The number of elements on every CPU.
@@ -82,6 +85,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_compressed(:)
+  ! Stores indexes of the sorted sensitivity line (argsort).
+  integer, allocatable :: sensit_argsort(:)
 
   ! The full column weight.
   real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
@@ -129,6 +134,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   allocate(sensit_compressed(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
+  allocate(sensit_argsort(nelements_total), source=0, stat=ierr)
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
+
   !---------------------------------------------------------------------------------------------
   ! Calculate sensitivity lines.
   !---------------------------------------------------------------------------------------------
@@ -140,7 +148,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   print *, "Calculating sensitivity for myrank, ndata_loc =", myrank, ndata_loc
 
   ! File header.
-  write(77) ndata_loc, par%ndata, nelements_total, myrank, nbproc, par%wavelet_threshold
+  write(77) ndata_loc, par%ndata, nelements_total, myrank, nbproc
 
   ! Calculate the number of elements on every CPU.
   nelements_at_cpu = pt%get_number_elements_on_other_cpus(par%nelements, myrank, nbproc)
@@ -175,15 +183,25 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     ! Wavelet compression.
       call Haar3D_serial(sensit_line_full, par%nx, par%ny, par%nz)
 
+      ! Perform the argsort (to determine the wavelet threshold corresponding to the desired compression rate).
+      call MRGREF(abs(sensit_line_full), sensit_argsort)
+
+      ! Calculate the wavelet threshold corresponding to the desired compression rate.
+      p = min(nelements_total, int((1.d0 - par%compression_rate) * nelements_total) + 1)
+      threshold_index = sensit_argsort(p)
+      threshold = abs(sensit_line_full(threshold_index))
+
       nel = 0
       cpu = 1
       do p = 1, nelements_total
         ! Partitioning for parallelization by model.
-        if (cpu < nbproc .and. p > nsmaller_at_cpu(cpu + 1)) then
-          cpu = cpu + 1
+        if (cpu < nbproc) then
+          if (p > nsmaller_at_cpu(cpu + 1)) then
+            cpu = cpu + 1
+          endif
         endif
 
-        if (abs(sensit_line_full(p)) >= par%wavelet_threshold) then
+        if (abs(sensit_line_full(p)) >= threshold) then
         ! Store sensitivity elements greater than the wavelet threshold.
           nel = nel + 1
           sensit_columns(nel) = p
@@ -208,7 +226,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     ! Sanity check.
     if (nnz_data < 0) then
-      call exit_MPI("Integer overflow in nnz_data! Increase the wavelet threshold or the number of CPUs.", myrank, nnz_data)
+      call exit_MPI("Integer overflow in nnz_data! Reduce the compression rate or increase the number of CPUs.", myrank, 0)
     endif
 
     ! Write the sensitivity line to file.
@@ -244,7 +262,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! Sanity check.
   do i = 1, nbproc
     if (nnz_model(i) < 0) then
-      call exit_MPI("Integer overflow in nnz_model! Increase the wavelet threshold or the number of CPUs.", myrank, nnz_model(i))
+      call exit_MPI("Integer overflow in nnz_model! Reduce the compression rate or increase the number of CPUs.", myrank, 0)
     endif
   enddo
 
@@ -263,6 +281,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   deallocate(column_weight_full)
   deallocate(sensit_columns)
   deallocate(sensit_compressed)
+  deallocate(sensit_argsort)
 
   if (myrank == 0) print *, 'Finished calculating the sensitivity kernel.'
 
@@ -291,7 +310,6 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, myrank, nbproc)
   character(len=256) :: msg
 
   integer :: ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
-  real(kind=CUSTOM_REAL) :: wavelet_threshold_read
   integer :: idata, nel, idata_glob
   integer :: nnz
 
@@ -329,7 +347,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, myrank, nbproc)
                                  //filename_full//" iomsg="//msg, myrank, ierr)
 
     ! Reading the file header.
-    read(78) ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read, wavelet_threshold_read
+    read(78) ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
 
     ! Sanity check.
     if (ndata_read /= par%ndata .or. nelements_total_read /= nelements_total &

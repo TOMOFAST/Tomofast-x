@@ -71,6 +71,7 @@ module parameters_gravmag
     ! 0 -none, 1 - wavelet
     integer :: compression_type
     real(kind=CUSTOM_REAL) :: wavelet_threshold
+    real(kind=CUSTOM_REAL) :: compression_rate
 
   contains
     private
@@ -108,6 +109,7 @@ subroutine parameters_base_broadcast(this, myrank)
 
   call MPI_Bcast(this%compression_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%wavelet_threshold, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%compression_rate, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("MPI_Bcast error in parameters_base_broadcast!", myrank, ierr)
 

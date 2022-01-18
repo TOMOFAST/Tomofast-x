@@ -139,7 +139,8 @@ string.f90 \
 noise.f90 \
 paraview.f90 \
 parallel_tools.f90 \
-wavelet_transform.F90
+wavelet_transform.F90 \
+sort.f90
 
 # Source files for inversion.
 SRC_LIST_INVERSION = \
