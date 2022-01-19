@@ -41,6 +41,7 @@ module sensitivity_gravmag
 
   public :: calculate_and_write_sensit
   public :: read_sensitivity_kernel
+  public :: read_sensitivity_metadata
 
   private :: apply_column_weight
 
@@ -146,8 +147,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   ndata_loc = pt%calculate_nelements_at_cpu(par%ndata, myrank, nbproc)
   ndata_smaller = pt%get_nsmaller(ndata_loc, myrank, nbproc)
-
-  print *, "Calculating sensitivity for myrank, ndata_loc =", myrank, ndata_loc
 
   ! File header.
   write(77) ndata_loc, par%ndata, nelements_total, myrank, nbproc
@@ -359,18 +358,23 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_type, myrank, nbp
   do rank = 0, nbproc - 1
     ! Form the file name (containing the MPI rank).
     filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(rank))
-    filename_full = trim(path_output)//"/SENSIT/"//filename
+
+    if (par%sensit_read /= 0) then
+      filename_full = trim(par%sensit_path)//filename
+    else
+      filename_full = trim(path_output)//"/SENSIT/"//filename
+    endif
 
     if (myrank == 0) print *, 'Reading the sensitivity file ', trim(filename_full)
 
     open(78, file=trim(filename_full), form='unformatted', status='unknown', action='read', iostat=ierr, iomsg=msg)
-    if (ierr /= 0) call exit_MPI("Error in opening the model file! path=" &
-                                 //filename_full//" iomsg="//msg, myrank, ierr)
+    if (ierr /= 0) call exit_MPI("Error in opening the sensitivity file! path=" &
+                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
     ! Reading the file header.
     read(78) ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
 
-    ! Sanity check.
+    ! Consistency check.
     if (ndata_read /= par%ndata .or. nelements_total_read /= nelements_total &
         .or. myrank_read /= rank .or. nbproc_read /= nbproc) then
       call exit_MPI("Wrong file header in read_sensitivity_kernel!", myrank, 0)
@@ -427,6 +431,50 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_type, myrank, nbp
   if (myrank == 0) print *, 'Finished reading the sensitivity kernel.'
 
 end subroutine read_sensitivity_kernel
+
+!=============================================================================================
+! Reads the sensitivity kernel metadata and defines the nnz for re-reading the kernel.
+!=============================================================================================
+subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
+  class(t_parameters_base), intent(in) :: par
+  integer, intent(in) :: problem_type
+  integer, intent(in) :: myrank, nbproc
+
+  integer, intent(out) :: nnz
+
+  integer :: ierr
+  character(len=256) :: filename, filename_full
+  character(len=256) :: msg
+  integer :: nnz_model(nbproc)
+  integer :: nx_read, ny_read, nz_read, ndata_read, nbproc_read
+
+  ! Define the file name.
+  filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_meta.dat"
+  filename_full = trim(par%sensit_path)//filename
+
+  if (myrank == 0) print *, "Reading the sensitivity metadata file ", trim(filename_full)
+
+  ! Open the file.
+  open(78, file=trim(filename_full), form='formatted', status='unknown', action='read', iostat=ierr, iomsg=msg)
+  if (ierr /= 0) call exit_MPI("Error in opening the sensitivity metadata file! path=" &
+                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
+
+  read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read
+
+  ! Consistency check.
+  if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz &
+      .or. ndata_read /= par%ndata .or. nbproc_read /= nbproc) then
+    call exit_MPI("Sensitivity metadata file info does not match the Parfile!", myrank, 0)
+  endif
+
+  read(78, *) nnz_model
+
+  close(78)
+
+  ! Return the nnz for the current rank.
+  nnz = nnz_model(myrank + 1)
+
+end subroutine read_sensitivity_metadata
 
 !==========================================================================================================
 ! Applying the column weight to sensitivity line.

@@ -312,12 +312,6 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! GLOBAL parameters.
   path_output = "output/test/"
 
-  ! SENSITIVITY KERNEL parameters.
-  gpar%sensit_read = 0
-  gpar%sensit_path = "SENSIT/"
-  mpar%sensit_read = gpar%sensit_read
-  mpar%sensit_path = gpar%sensit_path
-
   ! MODEL GRID parameters.
   gpar%nx = 0
   gpar%ny = 0
@@ -346,10 +340,17 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
 
   ! DEPTH WEIGHTING parameters.
   gpar%depth_weighting_type = 2 ! 1-depth weighting, 2-distance weighting
+  mpar%depth_weighting_type = 2
   gpar%depth_weighting_power = 2.0d0
-  gpar%Z0 = 0.d0
   mpar%depth_weighting_power = 3.0d0
+  gpar%Z0 = 0.d0
   mpar%Z0 = 0.d0
+
+  ! SENSITIVITY KERNEL parameters.
+  gpar%sensit_read = 0
+  gpar%sensit_path = "SENSIT/"
+  mpar%sensit_read = gpar%sensit_read
+  mpar%sensit_path = gpar%sensit_path
 
   ! MATRIX COMPRESSION parameters.
   gpar%compression_type = 0
@@ -526,18 +527,6 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
       case("global.description")
         read(10, 3) parfile_description
         call print_arg(myrank, parname, parfile_description)
-
-      ! SENSITIVITY KERNEL parameters -----------------------
-
-      case("sensit.readFromFiles")
-        read(10, 2) gpar%sensit_read
-        call print_arg(myrank, parname, gpar%sensit_read)
-        mpar%sensit_read = gpar%sensit_read
-
-      case("sensit.folderPath")
-        call read_filename(10, gpar%sensit_path)
-        call print_arg(myrank, parname, gpar%sensit_path)
-        mpar%sensit_path = gpar%sensit_path
 
       ! ECT GRID parameters ---------------------------------
 
@@ -743,6 +732,18 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
       case("forward.depthWeighting.magn.Z0")
         read(10, 1) mpar%Z0
         call print_arg(myrank, parname, mpar%Z0)
+
+      ! SENSITIVITY KERNEL parameters -----------------------
+
+      case("sensit.readFromFiles")
+        read(10, 2) gpar%sensit_read
+        call print_arg(myrank, parname, gpar%sensit_read)
+        mpar%sensit_read = gpar%sensit_read
+
+      case("sensit.folderPath")
+        call read_filename(10, gpar%sensit_path)
+        call print_arg(myrank, parname, gpar%sensit_path)
+        mpar%sensit_path = gpar%sensit_path
 
       ! MATRIX COMPRESSION parameters ----------------------
 

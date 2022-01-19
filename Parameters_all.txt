@@ -15,12 +15,6 @@ global.outputFolderPath     = output/test/
 global.description          = Your parfile description
 
 ===================================================================================
-SENSITIVITY KERNEL
-===================================================================================
-sensit.readFromFiles       = 0
-sensit.folderPath          = SENSIT/
-
-===================================================================================
 MODEL GRID parameters
 ===================================================================================
 # nx ny nz
@@ -59,6 +53,13 @@ forward.depthWeighting.grav.power          = 2.0d0
 forward.depthWeighting.grav.Z0             = 0.d0
 forward.depthWeighting.magn.power          = 3.0d0
 forward.depthWeighting.magn.Z0             = 0.d0
+
+===================================================================================
+SENSITIVITY KERNEL
+===================================================================================
+# 0-calculate the sensitivity, 1-read from files at the specified folder.
+sensit.readFromFiles                = 0
+sensit.folderPath                   = SENSIT/
 
 ===================================================================================
 MATRIX COMPRESSION
