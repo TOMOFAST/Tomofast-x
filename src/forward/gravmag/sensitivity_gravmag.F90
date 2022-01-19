@@ -44,6 +44,8 @@ module sensitivity_gravmag
 
   private :: apply_column_weight
 
+  character(len=4) :: SUFFIX(2) = ["grav", "magn"]
+
 contains
 
 !=============================================================================================
@@ -110,7 +112,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   call system('mkdir -p '//trim(path_output)//"/SENSIT/")
 
-  filename = "sensit_"//trim(str(nbproc))//"_"//trim(str(myrank))
+  filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(myrank))
   filename_full = trim(path_output)//"/SENSIT/"//filename
 
   print *, 'Writing the sensitivity to file ', trim(filename_full)
@@ -277,7 +279,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! Write the metadata file, with nnz info for re-reading sensitivity from files.
   !---------------------------------------------------------------------------------------------
   if (myrank == 0) then
-    filename = "sensit_"//trim(str(nbproc))//"_meta.dat"
+    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_meta.dat"
     filename_full = trim(path_output)//"/SENSIT/"//filename
 
     print *, 'Writing the sensitivity metadata to file ', trim(filename_full)
@@ -309,8 +311,9 @@ end subroutine calculate_and_write_sensit
 ! Reads the sensitivity kernel from files,
 ! and stores it in the sparse matrix parallelized by model.
 !=============================================================================================
-subroutine read_sensitivity_kernel(par, sensit_matrix, myrank, nbproc)
+subroutine read_sensitivity_kernel(par, sensit_matrix, problem_type, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
+  integer, intent(in) :: problem_type
   integer, intent(in) :: myrank, nbproc
 
   ! Sensitivity matrix.
@@ -355,7 +358,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, myrank, nbproc)
   ! Loop over the MPI ranks (as the sensitivity kernel is stored parallelezied by data in a separate file for each rank).
   do rank = 0, nbproc - 1
     ! Form the file name (containing the MPI rank).
-    filename = "sensit_"//trim(str(nbproc))//"_"//trim(str(rank))
+    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(rank))
     filename_full = trim(path_output)//"/SENSIT/"//filename
 
     if (myrank == 0) print *, 'Reading the sensitivity file ', trim(filename_full)
