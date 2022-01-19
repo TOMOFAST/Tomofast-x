@@ -312,6 +312,12 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! GLOBAL parameters.
   path_output = "output/test/"
 
+  ! SENSITIVITY KERNEL parameters.
+  gpar%sensit_read = 0
+  gpar%sensit_path = "SENSIT/"
+  mpar%sensit_read = gpar%sensit_read
+  mpar%sensit_path = gpar%sensit_path
+
   ! MODEL GRID parameters.
   gpar%nx = 0
   gpar%ny = 0
@@ -512,6 +518,7 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
     select case(trim(parname))
 
       ! GLOBAL parameters -----------------------------------
+
       case("global.outputFolderPath")
         call read_filename(10, path_output)
         call print_arg(myrank, parname, path_output)
@@ -519,6 +526,18 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
       case("global.description")
         read(10, 3) parfile_description
         call print_arg(myrank, parname, parfile_description)
+
+      ! SENSITIVITY KERNEL parameters -----------------------
+
+      case("sensit.readFromFiles")
+        read(10, 2) gpar%sensit_read
+        call print_arg(myrank, parname, gpar%sensit_read)
+        mpar%sensit_read = gpar%sensit_read
+
+      case("sensit.folderPath")
+        call read_filename(10, gpar%sensit_path)
+        call print_arg(myrank, parname, gpar%sensit_path)
+        mpar%sensit_path = gpar%sensit_path
 
       ! ECT GRID parameters ---------------------------------
 

@@ -59,6 +59,7 @@ module parameters_gravmag
     ! Set starting model to this value.
     real(kind=CUSTOM_REAL) :: start_model_val
 
+    !------ Depth weighting ------------------------------------------------
     ! Type of the depth weighting (1-depth weight, 2-distance weight).
     integer :: depth_weighting_type
     ! Power constant for depth weighting.
@@ -66,12 +67,16 @@ module parameters_gravmag
     ! Empirical constant (Z-shift) for depth weighting type #1.
     real(kind=CUSTOM_REAL) :: Z0
 
-    ! ------ Matrix compression ---------------------------------------------
+    !------ Matrix compression ---------------------------------------------
     ! Parameters for reduction of the memory requirements (to store the sensitivity matrix).
     ! 0 -none, 1 - wavelet
     integer :: compression_type
     real(kind=CUSTOM_REAL) :: wavelet_threshold
     real(kind=CUSTOM_REAL) :: compression_rate
+
+    !------ Sensitivity kernel ---------------------------------------------
+    integer :: sensit_read
+    character(len=256) :: sensit_path
 
   contains
     private
@@ -110,6 +115,9 @@ subroutine parameters_base_broadcast(this, myrank)
   call MPI_Bcast(this%compression_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%wavelet_threshold, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%compression_rate, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
+  call MPI_Bcast(this%sensit_read, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%sensit_path, 256, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("MPI_Bcast error in parameters_base_broadcast!", myrank, ierr)
 

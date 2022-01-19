@@ -5,6 +5,12 @@ global.outputFolderPath     = output/mansf_slice/
 global.description          = Gravity inversion with ADMM constraints (Mansfield area)
 
 ===================================================================================
+SENSITIVITY KERNEL
+===================================================================================
+sensit.readFromFiles       = 0
+sensit.folderPath          = output/mansf_slice/SENSIT/
+
+===================================================================================
 MODEL GRID parameters
 ===================================================================================
 # nx ny nz
