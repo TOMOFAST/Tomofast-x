@@ -273,6 +273,24 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     call exit_MPI("Wrong nnz_model in calculate_and_write_sensit!", myrank, 0)
   endif
 
+  !---------------------------------------------------------------------------------------------
+  ! Write the metadata file, with nnz info for re-reading sensitivity from files.
+  !---------------------------------------------------------------------------------------------
+  if (myrank == 0) then
+    filename = "sensit_"//trim(str(nbproc))//"_meta.dat"
+    filename_full = trim(path_output)//"/SENSIT/"//filename
+
+    print *, 'Writing the sensitivity metadata to file ', trim(filename_full)
+
+    open(77, file=trim(filename_full), form='formatted', status='unknown', action='write')
+
+    write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc
+    write(77, *) nnz_model
+
+    close(77)
+  endif
+
+  !---------------------------------------------------------------------------------------------
   ! Return the nnz for the current CPU.
   nnz = nnz_model(myrank + 1)
 
