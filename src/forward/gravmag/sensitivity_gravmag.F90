@@ -73,7 +73,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   character(len=256) :: filename, filename_full
   real(kind=CUSTOM_REAL) :: comp_rate, nnz_total_dbl, nnz_total_dbl2
   real(kind=CUSTOM_REAL) :: threshold
-  integer :: threshold_index
 
   integer :: nnz_model_loc(nbproc), nnz_model(nbproc)
   ! The number of elements on every CPU.
@@ -83,6 +82,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full(:)
+  real(kind=CUSTOM_REAL), allocatable :: sensit_line_orig(:)
   real(kind=CUSTOM_REAL), allocatable :: dummy1(:), dummy2(:)
 
   ! Arrays for storing the compressed sensitivity line.
@@ -90,6 +90,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   real(kind=CUSTOM_REAL), allocatable :: sensit_compressed(:)
   ! Stores indexes of the sorted sensitivity line (argsort).
   integer, allocatable :: sensit_argsort(:)
+  real(kind=CUSTOM_REAL) :: cost, cost_full, cost_compressed
+  real(kind=CUSTOM_REAL) :: cost_full_loc, cost_compressed_loc
 
   ! The full column weight.
   real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
@@ -128,6 +130,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   allocate(sensit_line_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
+  allocate(sensit_line_orig(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
+
   allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
@@ -162,6 +167,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   nnz_data = 0
   nnz_model_loc = 0
 
+  cost_full_loc = 0.d0
+  cost_compressed_loc = 0.d0
+
   ! Loop over the local data lines.
   do i = 1, ndata_loc
     ! Global data index.
@@ -182,6 +190,10 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     if (par%compression_type > 0) then
     ! Wavelet compression.
+      ! Store the original sensitivity (before applying the wavelet transform).
+      sensit_line_orig = sensit_line_full
+
+      ! Apply the wavelet transform.
       call Haar3D(sensit_line_full, par%nx, par%ny, par%nz)
 
       ! Perform the argsort (to determine the wavelet threshold corresponding to the desired compression rate).
@@ -189,8 +201,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
       ! Calculate the wavelet threshold corresponding to the desired compression rate.
       p = min(nelements_total, int((1.d0 - par%compression_rate) * nelements_total) + 1)
-      threshold_index = sensit_argsort(p)
-      threshold = abs(sensit_line_full(threshold_index))
+      threshold = abs(sensit_line_full(sensit_argsort(p)))
 
       nel = 0
       cpu = 1
@@ -203,13 +214,20 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
         endif
 
         if (abs(sensit_line_full(p)) >= threshold) then
-        ! Store sensitivity elements greater than the wavelet threshold.
+          ! Store sensitivity elements greater than the wavelet threshold.
           nel = nel + 1
           sensit_columns(nel) = p
           sensit_compressed(nel) = sensit_line_full(p)
 
+          ! Calculate the partitioning.
           nnz_model_loc(cpu) = nnz_model_loc(cpu) + 1
+
+          ! Update the compressed line cost.
+          cost_compressed_loc = cost_compressed_loc + sensit_line_orig(p)**2
         endif
+
+        ! Update the full line cost.
+        cost_full_loc = cost_full_loc + sensit_line_orig(p)**2
       enddo
 
     else
@@ -241,6 +259,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     if (myrank == 0 .and. mod(i, int(0.1d0 * ndata_loc)) == 0) then
       print *, 'Percents completed: ', (i / int(0.1d0 * ndata_loc)) * 10 ! Approximate percents.
     endif
+
   enddo ! data loop
 
   close(77)
@@ -252,6 +271,19 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   comp_rate = nnz_total_dbl / dble(nelements_total) / dble(par%ndata)
 
   if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
+
+  !---------------------------------------------------------------------------------------------
+  ! Calculate the kernel compression cost.
+  !---------------------------------------------------------------------------------------------
+  if (par%compression_type > 0) then
+    call mpi_allreduce(cost_full_loc, cost_full, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    call mpi_allreduce(cost_compressed_loc, cost_compressed, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    cost = sqrt(cost_compressed / cost_full)
+  else
+    cost = 1.d0
+  endif
+
+  if (myrank == 0) print *, 'COMPRESSION COST = ', cost
 
   !---------------------------------------------------------------------------------------------
   ! Calculate the nnz for the sensitivity kernel parallelized by model.
@@ -285,7 +317,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     open(77, file=trim(filename_full), form='formatted', status='unknown', action='write')
 
-    write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc
+    write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, cost
     write(77, *) nnz_model
 
     close(77)
@@ -297,6 +329,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   !---------------------------------------------------------------------------------------------
   deallocate(sensit_line_full)
+  deallocate(sensit_line_orig)
   deallocate(column_weight_full)
   deallocate(sensit_columns)
   deallocate(sensit_compressed)
