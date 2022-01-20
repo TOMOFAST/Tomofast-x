@@ -109,12 +109,12 @@ subroutine test_wavelet_calculate_data()
 
   ! Wavelet transform the matrix rows, transforming matrix to the wavelet domain: A --> A_w
   do j = 1, nrows
-    call Haar3D(A(:, j), nx, ny, nz, 0, 1)
+    call Haar3D(A(:, j), nx, ny, nz)
   enddo
 
   ! Calculate A * x in the wavelet domain: b2 = A_w * x_w.
   ! To perform this, we first transform x to the wavelet domain: x --> x_w
-  call Haar3D(x, nx, ny, nz, 0, 1)
+  call Haar3D(x, nx, ny, nz)
   call matvecmul(A, x, b2)
 
   print *, "b (wavelet) = ", b2
@@ -160,7 +160,7 @@ subroutine test_wavelet_diagonal_matrix()
 
   ! Wavelet transform the matrix rows, transforming matrix to the wavelet domain: A --> A_w
   do j = 1, nrows
-    call Haar3D(A(:, j), nx, ny, nz, 0, 1)
+    call Haar3D(A(:, j), nx, ny, nz)
   enddo
 
   ! The number of non-zero elements in the matrix.
@@ -214,7 +214,7 @@ subroutine test_wavelet_norm_preserving_kind(waveletType)
   print *, 'norm =', norm
 
   if (waveletType == 1) then
-    call Haar3D(x, nx, ny, nz, 0, 1)
+    call Haar3D(x, nx, ny, nz)
   else
     call DaubD43D(x, nx, ny, nz)
   endif
@@ -275,7 +275,7 @@ subroutine test_wavelet_inverse_kind(waveletType)
   ! Wavelet transform the matrix rows.
   do j = 1, nrows
     if (waveletType == 1) then
-      call Haar3D(A(:, j), nx, ny, nz, 0, 1)
+      call Haar3D(A(:, j), nx, ny, nz)
     else
       call DaubD43D(A(:, j), nx, ny, nz)
     endif

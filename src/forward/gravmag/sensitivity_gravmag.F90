@@ -182,7 +182,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     if (par%compression_type > 0) then
     ! Wavelet compression.
-      call Haar3D_serial(sensit_line_full, par%nx, par%ny, par%nz)
+      call Haar3D(sensit_line_full, par%nx, par%ny, par%nz)
 
       ! Perform the argsort (to determine the wavelet threshold corresponding to the desired compression rate).
       call MRGREF(abs(sensit_line_full), sensit_argsort)
