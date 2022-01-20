@@ -324,6 +324,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_type, myrank, nbp
   integer, allocatable :: sensit_columns(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_compressed(:)
 
+  real(kind=CUSTOM_REAL) :: comp_rate, nnz_total_dbl
   integer :: i, j, p, nsmaller, ierr
   integer :: rank, nelements_total
   character(len=256) :: filename, filename_full
@@ -423,6 +424,14 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_type, myrank, nbp
   endif
 
   call sensit_matrix%finalize(par%nelements, myrank)
+
+  !---------------------------------------------------------------------------------------------
+  ! Calculate the read kernel compression rate.
+  !---------------------------------------------------------------------------------------------
+  call mpi_allreduce(dble(nnz), nnz_total_dbl, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+  comp_rate = nnz_total_dbl / dble(nelements_total) / dble(par%ndata)
+
+  if (myrank == 0) print *, 'COMPRESSION RATE (of the read kernel)  = ', comp_rate
 
   !---------------------------------------------------------------------------------------------
   deallocate(sensit_columns)
