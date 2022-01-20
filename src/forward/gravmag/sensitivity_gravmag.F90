@@ -489,6 +489,7 @@ subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
   character(len=256) :: msg
   integer :: nnz_model(nbproc)
   integer :: nx_read, ny_read, nz_read, ndata_read, nbproc_read
+  real(kind=CUSTOM_REAL) :: cost
 
   ! Define the file name.
   filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_meta.dat"
@@ -501,7 +502,9 @@ subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
   if (ierr /= 0) call exit_MPI("Error in opening the sensitivity metadata file! path=" &
                                  //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
-  read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read
+  read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read, cost
+
+  if (myrank == 0) print *, "COMPRESSION COST (read) =", cost
 
   ! Consistency check.
   if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz &
