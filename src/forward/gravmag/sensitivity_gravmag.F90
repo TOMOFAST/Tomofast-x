@@ -96,6 +96,11 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! The full column weight.
   real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
 
+  ! Sanity check.
+  if (par%compression_rate < 0 .or. par%compression_rate > 1) then
+    call exit_MPI("Wrong compression rate! It must be between 0 and 1.", myrank, 0)
+  endif
+
   ! Define the problem type.
   select type(par)
   class is (t_parameters_grav)
