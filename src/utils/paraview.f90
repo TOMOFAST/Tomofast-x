@@ -134,10 +134,14 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   ! I/O error code.
   integer :: ierr
   integer :: npoints, nelements_slice
-  integer :: i, p, ind
+  integer :: i, j, p, ind
   real(kind=CUSTOM_REAL) :: xgrid(8)
   real(kind=CUSTOM_REAL) :: ygrid(8)
   real(kind=CUSTOM_REAL) :: zgrid(8)
+
+  real(kind=CUSTOM_REAL), allocatable :: xgrid_all(:, :)
+  real(kind=CUSTOM_REAL), allocatable :: ygrid_all(:, :)
+  real(kind=CUSTOM_REAL), allocatable :: zgrid_all(:, :)
 
   ! (+) Copied from visualisation_paraview -----------------------------------
   call system('mkdir -p '//trim(path_output)//"/Paraview/")
@@ -165,11 +169,21 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
 
   write (333, '(''POINTS '',i9,'' FLOAT'')') npoints
 
+  !=================================================================
+  ! Allocate memory.
+  !=================================================================
+  allocate(xgrid_all(8, nelements_slice), stat=ierr)
+  allocate(ygrid_all(8, nelements_slice), stat=ierr)
+  allocate(zgrid_all(8, nelements_slice), stat=ierr)
+
   !====================================
   ! Build lego-grid.
   !====================================
+  j = 0
   do p = 1, nelements
     if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
+      j = j + 1
+
       ! z = 1
       xgrid(1) = X1(p)
       ygrid(1) = Y1(p)
@@ -208,13 +222,21 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
         zgrid = -zgrid
       endif
 
-      do i = 1, 8
-        write (333, *) xgrid(i), ygrid(i), zgrid(i)
-      enddo
+      ! Store the values.
+      xgrid_all(:, j) = xgrid
+      ygrid_all(:, j) = ygrid
+      zgrid_all(:, j) = zgrid
+
     endif
   enddo
 
+  write (333, *) ((xgrid_all(i, j), ygrid_all(i, j), zgrid_all(i, j), i = 1, 8), j = 1, nelements_slice)
+
   write (333, *)
+
+  deallocate(xgrid_all)
+  deallocate(ygrid_all)
+  deallocate(zgrid_all)
 
   ! ************* generate elements ******************
 
