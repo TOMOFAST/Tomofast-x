@@ -134,7 +134,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   ! I/O error code.
   integer :: ierr
   integer :: npoints, nelements_slice
-  integer :: i, j, p, ind
+  integer :: i, j, p
   real(kind=CUSTOM_REAL) :: xgrid(8)
   real(kind=CUSTOM_REAL) :: ygrid(8)
   real(kind=CUSTOM_REAL) :: zgrid(8)
