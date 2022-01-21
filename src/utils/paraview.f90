@@ -138,12 +138,14 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   real(kind=CUSTOM_REAL) :: xgrid(8)
   real(kind=CUSTOM_REAL) :: ygrid(8)
   real(kind=CUSTOM_REAL) :: zgrid(8)
+  integer :: cell_type
 
   real(kind=CUSTOM_REAL), allocatable :: xgrid_all(:, :)
   real(kind=CUSTOM_REAL), allocatable :: ygrid_all(:, :)
   real(kind=CUSTOM_REAL), allocatable :: zgrid_all(:, :)
+  real(kind=CUSTOM_REAL), allocatable :: cell_data(:)
 
-  ! (+) Copied from visualisation_paraview -----------------------------------
+  ! Create a file.
   call system('mkdir -p '//trim(path_output)//"/Paraview/")
 
   filename_full = trim(path_output)//"/Paraview/"//filename
@@ -151,16 +153,15 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   open(unit=333, file=filename_full, status='unknown', action='write', iostat=ierr, iomsg=msg)
 
   if (ierr /= 0) call exit_MPI("Error with writing the VTK file! path="&
-                               //filename_full//" iomsg="//msg, myrank, ierr)
-  ! (-) ----------------------------------------------------------------------
+                               //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
   ! ************* generate points ******************
 
-  write (333, '(''# vtk DataFile Version 3.1'')')
-  write (333, '(''TOMOFAST3D'')')
-  write (333, '(''ASCII'')')
+  write(333, '(''# vtk DataFile Version 3.1'')')
+  write(333, '(''TOMOFAST-X'')')
+  write(333, '(''ASCII'')')
 
-  write (333, '(''DATASET UNSTRUCTURED_GRID'')')
+  write(333, '(''DATASET UNSTRUCTURED_GRID'')')
 
   ! Number of elements in the requested slice.
   nelements_slice = (i2 - i1 + 1) * (j2 - j1 + 1) * (k2 - k1 + 1)
@@ -175,6 +176,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   allocate(xgrid_all(8, nelements_slice), stat=ierr)
   allocate(ygrid_all(8, nelements_slice), stat=ierr)
   allocate(zgrid_all(8, nelements_slice), stat=ierr)
+  allocate(cell_data(nelements_slice), stat=ierr)
 
   !====================================
   ! Build lego-grid.
@@ -227,41 +229,32 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
       ygrid_all(:, j) = ygrid
       zgrid_all(:, j) = zgrid
 
+      cell_data(j) = val(p)
+
     endif
   enddo
 
-  write (333, *) ((xgrid_all(i, j), ygrid_all(i, j), zgrid_all(i, j), i = 1, 8), j = 1, nelements_slice)
+  ! Write the grid to a file.
+  write(333, *) ((xgrid_all(i, j), ygrid_all(i, j), zgrid_all(i, j), i = 1, 8), j = 1, nelements_slice)
 
-  write (333, *)
-
-  deallocate(xgrid_all)
-  deallocate(ygrid_all)
-  deallocate(zgrid_all)
+  write(333, *)
 
   ! ************* generate elements ******************
 
   ! See documentation here http://dunne.uni-hd.de/VisuSimple/documents/vtkfileformat.html
-  write (333, '(''CELLS '',2(i9,1x))') nelements_slice, (8 + 1) * nelements_slice
+  write(333, '(''CELLS '',2(i9,1x))') nelements_slice, (8 + 1) * nelements_slice
 
-  do p = 1, nelements_slice
-    ind = 8 * (p - 1)
+  write(333, *) (8, 8 * (p - 1) + 0, 8 * (p - 1) + 1, 8 * (p - 1) + 2, 8 * (p - 1) + 3, &
+                    8 * (p - 1) + 4, 8 * (p - 1) + 5, 8 * (p - 1) + 6, 8 * (p - 1) + 7, p = 1, nelements_slice)
 
-    ! Define a cell.
-    write (333, "(i1,8(1x,i9))") 8, ind + 0, ind + 1, ind + 2, ind + 3, &
-                                    ind + 4, ind + 5, ind + 6, ind + 7
-  enddo
+  write(333, *)
 
-  write (333, *)
+  write(333, '(''CELL_TYPES '',2(i9,1x))') nelements_slice
 
-  write (333, '(''CELL_TYPES '',2(i9,1x))') nelements_slice
+  ! VTK_VOXEL = 11
+  cell_type = 11
 
-  do p = 1, nelements_slice
-    if (p < nelements_slice) then
-      write (333, "(i2,1x)", advance="no") 11  ! VTK_VOXEL = 11
-    else
-      write (333, "(i2)") 11
-    endif
-  enddo
+  write(333, *) (cell_type, p = 1, nelements_slice)
 
   write (333, *)
 
@@ -271,15 +264,16 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   write (333,'(''SCALARS F FLOAT'')')
   write (333,'(''LOOKUP_TABLE default'')')
 
-  do p = 1, nelements
-    if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
-      write (333, *) val(p)
-    endif
-  enddo
+  write (333, *) cell_data
 
   write (333, *)
 
   close(333)
+
+  deallocate(xgrid_all)
+  deallocate(ygrid_all)
+  deallocate(zgrid_all)
+  deallocate(cell_data)
 
 end subroutine visualisation_paraview_legogrid
 
