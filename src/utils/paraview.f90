@@ -109,6 +109,9 @@ end function index_included
 !============================================================================================================
 ! This subroutine writes the file in (legacy) VTK format used for Paraview visualization.
 ! An arbitrary lego grid is considered.
+!
+! VO: Converted the ASCII version to binary using part of the code of Renato N. Elias:
+!     http://www.nacad.ufrj.br/~rnelias/paraview/VTKFormats.f90
 !============================================================================================================
 subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1, Y1, Z1, X2, Y2, Z2, &
                                            i_index, j_index, k_index, &
@@ -140,35 +143,39 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   real(kind=CUSTOM_REAL) :: zgrid(8)
   integer :: cell_type
 
-  real(kind=CUSTOM_REAL), allocatable :: xgrid_all(:, :)
-  real(kind=CUSTOM_REAL), allocatable :: ygrid_all(:, :)
-  real(kind=CUSTOM_REAL), allocatable :: zgrid_all(:, :)
-  real(kind=CUSTOM_REAL), allocatable :: cell_data(:)
+  real(kind=4), allocatable :: xgrid_all(:, :)
+  real(kind=4), allocatable :: ygrid_all(:, :)
+  real(kind=4), allocatable :: zgrid_all(:, :)
+  real(kind=4), allocatable :: cell_data(:)
+
+  character :: buffer*80, lf*1, str1*8, str2*8
+  lf = char(10) ! line feed character
 
   ! Create a file.
   call system('mkdir -p '//trim(path_output)//"/Paraview/")
 
   filename_full = trim(path_output)//"/Paraview/"//filename
 
-  open(unit=333, file=filename_full, status='unknown', action='write', iostat=ierr, iomsg=msg)
+  open(unit=333, file=filename_full, status='replace', access='stream', form='unformatted', &
+       iostat=ierr, iomsg=msg)
 
   if (ierr /= 0) call exit_MPI("Error with writing the VTK file! path="&
                                //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
   ! ************* generate points ******************
 
-  write(333, '(''# vtk DataFile Version 3.1'')')
-  write(333, '(''TOMOFAST-X'')')
-  write(333, '(''ASCII'')')
-
-  write(333, '(''DATASET UNSTRUCTURED_GRID'')')
+  buffer = '# vtk DataFile Version 3.0'//lf                                             ; write(333) trim(buffer)
+  buffer = 'TOMOFAST-X'//lf                                                             ; write(333) trim(buffer)
+  buffer = 'BINARY'//lf                                                                 ; write(333) trim(buffer)
+  buffer = 'DATASET UNSTRUCTURED_GRID'//lf//lf                                          ; write(333) trim(buffer)
 
   ! Number of elements in the requested slice.
   nelements_slice = (i2 - i1 + 1) * (j2 - j1 + 1) * (k2 - k1 + 1)
 
   npoints = 8 * nelements_slice
 
-  write (333, '(''POINTS '',i9,'' FLOAT'')') npoints
+  write(str1(1:8),'(i8)') npoints
+  buffer = 'POINTS '//str1//' float'//lf                                               ; write(333) trim(buffer)
 
   !=================================================================
   ! Allocate memory.
@@ -225,48 +232,47 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
       endif
 
       ! Store the values.
-      xgrid_all(:, j) = xgrid
-      ygrid_all(:, j) = ygrid
-      zgrid_all(:, j) = zgrid
+      xgrid_all(:, j) = real(xgrid, 4)
+      ygrid_all(:, j) = real(ygrid, 4)
+      zgrid_all(:, j) = real(zgrid, 4)
 
-      cell_data(j) = val(p)
+      cell_data(j) = real(val(p), 4)
 
     endif
   enddo
 
   ! Write the grid to a file.
-  write(333, *) ((xgrid_all(i, j), ygrid_all(i, j), zgrid_all(i, j), i = 1, 8), j = 1, nelements_slice)
-
-  write(333, *)
+  write(333) ((xgrid_all(i, j), ygrid_all(i, j), zgrid_all(i, j), i = 1, 8), j = 1, nelements_slice)
 
   ! ************* generate elements ******************
 
   ! See documentation here http://dunne.uni-hd.de/VisuSimple/documents/vtkfileformat.html
-  write(333, '(''CELLS '',2(i9,1x))') nelements_slice, (8 + 1) * nelements_slice
 
-  write(333, *) (8, 8 * (p - 1) + 0, 8 * (p - 1) + 1, 8 * (p - 1) + 2, 8 * (p - 1) + 3, &
-                    8 * (p - 1) + 4, 8 * (p - 1) + 5, 8 * (p - 1) + 6, 8 * (p - 1) + 7, p = 1, nelements_slice)
+  write(str1(1:8),'(i8)') nelements_slice
+  write(str2(1:8),'(i8)') (8 + 1) * nelements_slice
+  buffer = lf//lf//'CELLS '//str1//' '//str2//lf                                        ; write(333) trim(buffer)
 
-  write(333, *)
+  write(333) (8, 8 * (p - 1) + 0, 8 * (p - 1) + 1, 8 * (p - 1) + 2, 8 * (p - 1) + 3, &
+                 8 * (p - 1) + 4, 8 * (p - 1) + 5, 8 * (p - 1) + 6, 8 * (p - 1) + 7, p = 1, nelements_slice)
 
-  write(333, '(''CELL_TYPES '',2(i9,1x))') nelements_slice
+
+  write(str1(1:8),'(i8)') nelements_slice
+  buffer = lf//lf//'CELL_TYPES '//str1//lf                                              ; write(333) trim(buffer)
 
   ! VTK_VOXEL = 11
   cell_type = 11
 
-  write(333, *) (cell_type, p = 1, nelements_slice)
-
-  write (333, *)
+  write(333) (cell_type, p = 1, nelements_slice)
 
   ! ************* generate element data values ******************
 
-  write (333,'(''CELL_DATA '',i9)') nelements_slice
-  write (333,'(''SCALARS F FLOAT'')')
-  write (333,'(''LOOKUP_TABLE default'')')
+  write(str1(1:8),'(i8)') nelements_slice
 
-  write (333, *) cell_data
+  buffer = lf//lf//'CELL_DATA '//str1//lf                                              ; write(333) trim(buffer)
+  buffer = 'SCALARS F FLOAT'//lf                                                       ; write(333) trim(buffer)
+  buffer = 'LOOKUP_TABLE default'//lf                                                  ; write(333) trim(buffer)
 
-  write (333, *)
+  write(333) (cell_data(p), p = 1, nelements_slice)
 
   close(333)
 

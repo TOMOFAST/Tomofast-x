@@ -61,20 +61,22 @@ EXEC = tomofastx
 # I/O throughput lingers at .5 MB/s, with it it can increase to ~44 MB/s
 # However it does not make much of a difference on NFS mounted volumes or with SFS 3.1.1 / Lustre 1.6.7.1
 # DG DG the actual values strongly depend on the machine, only the relations matter here
-#FFLAGS = -vec-report0  -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn argument_checking -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check all -debug -g -O0 -fp-stack-check -traceback -ftrapuv -module $(OBJDIR)
+#FFLAGS = -convert big_endian -vec-report0  -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn argument_checking -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check all -debug -g -O0 -fp-stack-check -traceback -ftrapuv -module $(OBJDIR)
 
 # Intel ifort optimized for speed for production runs (add -mcmodel=medium -shared-intel to use more than 2 GB of memory)
-#FFLAGS = -vec-report0 -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn argument_checking -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check nobounds -O3 -xHost -module $(OBJDIR)
+#FFLAGS = -convert big_endian -vec-report0 -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn argument_checking -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check nobounds -O3 -xHost -module $(OBJDIR)
+
+# VO: Added flag '-fconvert=big-endian' (GCC) / '-convert big_endian' (Intel) to write binary VTK files for Paraview (Jan 2022).
+
+# GNU gfortran pseudo-optimized.
+FFLAGS = -std=gnu -fimplicit-none -frange-check -fconvert=big-endian -O3 -fmax-errors=10 -pedantic -pedantic-errors -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -DUSE_FLUSH6 -J $(OBJDIR)
+
+# GNU gfortran with debug symbols and full debugging.
+#FFLAGS = -fconvert=big-endian -O0 -g -std=gnu -fimplicit-none -frange-check -fmax-errors=10 -pedantic -pedantic-errors -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -fbacktrace -Wunreachable-code -Wunused-label -Wunused-variable -Wall -fbounds-check -ffpe-trap=invalid,zero,overflow,underflow,denormal -DUSE_FLUSH6 -J $(OBJDIR)
 
 # (GNU) Flags to output the vector optimizations report.
 # possible flags: -fopt-info-vec-optimized, -fopt-info-vec-missed, -fopt-info-vec-note, -fopt-info-vec-all
 OPT_INFO = -ftree-vectorize -fopt-info-vec-optimized=vec.info
-
-# GNU gfortran pseudo-optimized.
-FFLAGS = -std=gnu -fimplicit-none -frange-check -O3 -fmax-errors=10 -pedantic -pedantic-errors -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -DUSE_FLUSH6 -J $(OBJDIR)
-
-# GNU gfortran with debug symbols and full debugging.
-#FFLAGS = -O0 -g -std=gnu -fimplicit-none -frange-check -fmax-errors=10 -pedantic -pedantic-errors -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -fbacktrace -Wunreachable-code -Wunused-label -Wunused-variable -Wall -fbounds-check -ffpe-trap=invalid,zero,overflow,underflow,denormal -DUSE_FLUSH6 -J $(OBJDIR)
 
 # Comment this for non GNU compiler.
 #FFLAGS := $(OPT_INFO) $(FFLAGS)
