@@ -35,7 +35,7 @@ contains
 !================================================================
 recursive subroutine quicksort(a, first, last)
   integer, intent(in) :: first, last
-  real(kind=CUSTOM_REAL), intent(inout) ::  a(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: a(:)
 
   real(kind=CUSTOM_REAL) :: x, t
   integer :: i, j
