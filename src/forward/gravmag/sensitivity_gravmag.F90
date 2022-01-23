@@ -83,13 +83,13 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_orig(:)
+  real(kind=CUSTOM_REAL), allocatable :: sensit_line_sorted(:)
   real(kind=CUSTOM_REAL), allocatable :: dummy1(:), dummy2(:)
 
   ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_compressed(:)
-  ! Stores indexes of the sorted sensitivity line (argsort).
-  integer, allocatable :: sensit_argsort(:)
+
   real(kind=CUSTOM_REAL) :: cost, cost_full, cost_compressed
   real(kind=CUSTOM_REAL) :: cost_full_loc, cost_compressed_loc
 
@@ -138,6 +138,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   allocate(sensit_line_orig(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
+  allocate(sensit_line_sorted(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
+
   allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
@@ -145,9 +148,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
   allocate(sensit_compressed(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
-
-  allocate(sensit_argsort(nelements_total), source=0, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
@@ -201,12 +201,13 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
       ! Apply the wavelet transform.
       call Haar3D(sensit_line_full, par%nx, par%ny, par%nz)
 
-      ! Perform the argsort (to determine the wavelet threshold corresponding to the desired compression rate).
-      call MRGREF(abs(sensit_line_full), sensit_argsort)
+      ! Perform sorting (to determine the wavelet threshold corresponding to the desired compression rate).
+      sensit_line_sorted = abs(sensit_line_full)
+      call quicksort(sensit_line_sorted, 1, nelements_total)
 
       ! Calculate the wavelet threshold corresponding to the desired compression rate.
       p = min(nelements_total, int((1.d0 - par%compression_rate) * nelements_total) + 1)
-      threshold = abs(sensit_line_full(sensit_argsort(p)))
+      threshold = abs(sensit_line_sorted(p))
 
       nel = 0
       cpu = 1
@@ -335,10 +336,10 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   deallocate(sensit_line_full)
   deallocate(sensit_line_orig)
+  deallocate(sensit_line_sorted)
   deallocate(column_weight_full)
   deallocate(sensit_columns)
   deallocate(sensit_compressed)
-  deallocate(sensit_argsort)
 
   if (myrank == 0) print *, 'Finished calculating the sensitivity kernel.'
 
