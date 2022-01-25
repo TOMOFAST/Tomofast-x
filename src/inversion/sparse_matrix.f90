@@ -28,8 +28,10 @@ module sparse_matrix
 
   private
 
+  integer, parameter :: MATRIX_ACCURACY = 4
+
   type, public :: t_sparse_matrix
-    !private
+    private
 
     ! Predicted number of nonzero elements.
     integer, private :: nnz
@@ -41,7 +43,7 @@ module sparse_matrix
     integer, private :: nl_current
 
     ! An array of the (left-to-right, then top-to-bottom) non-zero values of the matrix.
-    real(kind=CUSTOM_REAL), allocatable, private :: sa(:)
+    real(kind=MATRIX_ACCURACY), allocatable, private :: sa(:)
     ! The column indexes corresponding to the values.
     integer, allocatable, private :: ija(:)
     ! The list of 'sa' indexes where each row starts.
@@ -242,7 +244,7 @@ subroutine sparse_matrix_add(this, value, column, myrank)
     call exit_MPI("Error in total number of elements in sparse_matrix_add!", myrank, this%nnz)
 
   this%nel = this%nel + 1
-  this%sa(this%nel) = value
+  this%sa(this%nel) = real(value, MATRIX_ACCURACY)
   this%ija(this%nel) = column
 
 end subroutine sparse_matrix_add
@@ -476,7 +478,7 @@ subroutine sparse_matrix_normalize_columns(this, column_norm)
       j = this%ija(k)
 
       if (column_norm(j) /= 0.d0) then
-        this%sa(k) = this%sa(k) / column_norm(j)
+        this%sa(k) = real(this%sa(k) / column_norm(j), MATRIX_ACCURACY)
       endif
     enddo
   enddo
@@ -496,7 +498,7 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
 
   ierr = 0
 
-  if (.not. allocated(this%sa)) allocate(this%sa(this%nnz), source=0._CUSTOM_REAL, stat=ierr)
+  if (.not. allocated(this%sa)) allocate(this%sa(this%nnz), source=0._MATRIX_ACCURACY, stat=ierr)
   if (.not. allocated(this%ijl)) allocate(this%ijl(this%nl + 1), source=0, stat=ierr)
   if (.not. allocated(this%ija)) allocate(this%ija(this%nnz), source=0, stat=ierr)
 
