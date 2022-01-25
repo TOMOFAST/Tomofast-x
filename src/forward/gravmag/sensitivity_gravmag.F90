@@ -96,9 +96,33 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! The full column weight.
   real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
 
+  integer :: ind(4)
+  integer :: i_res(4), j_res(4), k_res(4)
+
   ! Sanity check.
   if (par%compression_rate < 0 .or. par%compression_rate > 1) then
     call exit_MPI("Wrong compression rate! It must be between 0 and 1.", myrank, 0)
+  endif
+
+  ! Sanity check for the correct grid cells ordering.
+  if (par%compression_rate > 0) then
+    ind(1) = 1
+    ind(2) = 2
+    ind(3) = par%nx + 1
+    ind(4) = par%nx * par%ny + 1
+
+    i_res(1) = 1; j_res(1) = 1; k_res(1) = 1 ! 1 1 1
+    i_res(2) = 2; j_res(2) = 1; k_res(2) = 1 ! 2 1 1
+    i_res(3) = 1; j_res(3) = 2; k_res(3) = 1 ! 1 2 1
+    i_res(4) = 1; j_res(4) = 1; k_res(4) = 2 ! 1 1 2
+
+    do i = 1, 4
+      if (grid_full%i_(ind(i)) /= i_res(i) .or. &
+          grid_full%j_(ind(i)) /= j_res(i) .or. &
+          grid_full%k_(ind(i)) /= k_res(i)) then
+        call exit_MPI("Wrong grid cells ordering in the gird file! Use the kji-loop order!", myrank, 0)
+      endif
+    enddo
   endif
 
   ! Define the problem type.
