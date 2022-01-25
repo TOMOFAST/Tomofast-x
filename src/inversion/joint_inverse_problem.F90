@@ -53,8 +53,8 @@ module joint_inverse_problem
   type, public :: t_joint_inversion
     private
 
-    ! Matrix that stores both of the joint problems and cross-gradient part.
-    type(t_sparse_matrix) :: matrix
+    ! Matrix that stores both of the joint problems and constraints (e.g. cross-gradient part).
+    type(t_sparse_matrix), public :: matrix
     ! Right hand side (corresponding to the matrix).
     real(kind=CUSTOM_REAL), allocatable :: b_RHS(:)
 

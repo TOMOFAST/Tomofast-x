@@ -69,6 +69,7 @@ module sparse_matrix
     procedure, public, pass :: add_matrix => sparse_matrix_add_matrix
 
     procedure, public, pass :: mult_vector => sparse_matrix_mult_vector
+    procedure, public, pass :: part_mult_vector => sparse_matrix_part_mult_vector
     procedure, public, pass :: trans_mult_vector => sparse_matrix_trans_mult_vector
     procedure, public, pass :: trans_mult_matrix => sparse_matrix_trans_mult_matrix
 
@@ -321,6 +322,38 @@ pure subroutine sparse_matrix_mult_vector(this, x, b)
   enddo
 
 end subroutine sparse_matrix_mult_vector
+
+!===============================================================================================
+! Computes the product between the part of sparse matrix and vector x.
+! The required part of the matrix is specified via: line_start, line_end, param_shift.
+!===============================================================================================
+subroutine sparse_matrix_part_mult_vector(this, x, b, line_start, line_end, param_shift, myrank)
+  class(t_sparse_matrix), intent(in) :: this
+  real(kind=CUSTOM_REAL), intent(in) :: x(:)
+  integer, intent(in) :: line_start, line_end, param_shift
+  integer, intent(in) :: myrank
+
+  real(kind=CUSTOM_REAL), intent(out) :: b(:)
+
+  integer :: i, k, l
+
+  ! Sanity check.
+  if (line_start < 1 .or. line_start > this%nl .or. &
+      line_end < 1 .or. line_end > this%nl) then
+    call exit_MPI("Wrong line index in sparse_matrix_part_mult_vector!", myrank, 0)
+  endif
+
+  b = 0._CUSTOM_REAL
+
+  l = 0
+  do i = line_start, line_end
+    l = l + 1
+    do k = this%ijl(i), this%ijl(i + 1) - 1
+      b(l) = b(l) + this%sa(k) * x(this%ija(k) - param_shift)
+    enddo
+  enddo
+
+end subroutine sparse_matrix_part_mult_vector
 
 !=========================================================================
 ! Extract the j-th line from the matrix and stores in b-vector.

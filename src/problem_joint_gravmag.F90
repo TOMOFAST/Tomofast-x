@@ -123,6 +123,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   real(kind=CUSTOM_REAL) :: cost_data(2)
   real(kind=CUSTOM_REAL) :: cost_model(2)
   integer :: it, i, m, number_prior_models, ierr
+  integer :: line_start(2), line_end(2), param_shift(2)
+
   character(len=256) :: path_output_parfile
   character(len=256) :: grav_prior_model_filename, mag_prior_model_filename
 
@@ -138,6 +140,15 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
   cost_data = 0._CUSTOM_REAL
   cost_model = 0._CUSTOM_REAL
+
+  ! Parameters for calculating the data using the big (joint inversion) parallel sparse matrix.
+  line_start(1) = 1
+  line_end(1) = ipar%ndata(1)
+  param_shift(1) = 0
+
+  line_start(2) = ipar%ndata(1) + 1
+  line_end(2) = ipar%ndata(1) + ipar%ndata(2)
+  param_shift(2) = ipar%nelements
 
   ! (I) MODEL ALLOCATION.  ---------------------------------------------------------------
 
@@ -351,7 +362,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       open(FILE_COSTS, file=trim(path_output)//'costs', access='stream', form='formatted', status='unknown', action='write')
 #endif
 
-    ! Non-linear inversion loop.
+    ! Major inversion loop.
     do it = 1, ipar%ninversions
 
       if (myrank == 0) then
@@ -382,8 +393,10 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
       ! Calculate data based on the new model from inversion.
       do i = 1, 2
-        if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, &
-          iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank, nbproc)
+        if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data2(ipar%ndata(i), joint_inversion%matrix, &
+          iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
+          line_start(i), line_end(i), param_shift(i), &
+          myrank, nbproc)
       enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -409,7 +422,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
         endif
       enddo
 
-    enddo
+    enddo ! Major inversion loop.
 
 #ifndef SUPPRESS_OUTPUT
     ! Write final costs (excluding cross-gradient cost, as it is being calculated only during solution).
