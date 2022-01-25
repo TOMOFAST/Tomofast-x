@@ -252,7 +252,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   !-------------------------------------------------------------------------------------------------------
   ! Calculate the data from the read model.
   do i = 1, 2
-    if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data2(ipar%ndata(i), joint_inversion%matrix, &
+    if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
       iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
       line_start(i), line_end(i), param_shift(i), &
       myrank, nbproc)
@@ -321,7 +321,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the prior model.
     do i = 1, 2
-      if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data2(ipar%ndata(i), joint_inversion%matrix, &
+      if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
         iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
         line_start(i), line_end(i), param_shift(i), &
         myrank, nbproc)
@@ -346,7 +346,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the starting model.
     do i = 1, 2
-      if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data2(ipar%ndata(i), joint_inversion%matrix, &
+      if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
         iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
         line_start(i), line_end(i), param_shift(i), &
         myrank, nbproc)
@@ -403,7 +403,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
       ! Calculate data based on the new model from inversion.
       do i = 1, 2
-        if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data2(ipar%ndata(i), joint_inversion%matrix, &
+        if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
           iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
           line_start(i), line_end(i), param_shift(i), &
           myrank, nbproc)
