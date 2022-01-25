@@ -61,7 +61,9 @@ module sparse_matrix
 
     procedure, public, pass :: initialize => sparse_matrix_initialize
     procedure, public, pass :: reset => sparse_matrix_reset
+    procedure, public, pass :: remove_lines => sparse_matrix_remove_lines
     procedure, public, pass :: finalize => sparse_matrix_finalize
+    procedure, public, pass :: finalize_part => sparse_matrix_finalize_part
 
     procedure, public, pass :: add => sparse_matrix_add
     procedure, public, pass :: new_row => sparse_matrix_new_row
@@ -189,6 +191,29 @@ pure subroutine sparse_matrix_reset(this)
 end subroutine sparse_matrix_reset
 
 !=========================================================================
+! Remove matrix lines from the bottom.
+!=========================================================================
+subroutine sparse_matrix_remove_lines(this, nlines_to_keep)
+  class(t_sparse_matrix), intent(inout) :: this
+  integer, intent(in) :: nlines_to_keep
+
+  integer :: i, k, nel
+
+  this%nl_current = nlines_to_keep
+
+  ! Count the remaining number of elements.
+  nel = 0
+  do i = 1, nlines_to_keep
+    do k = this%ijl(i), this%ijl(i + 1) - 1
+      nel = nel + 1
+    enddo
+  enddo
+
+  this%nel = nel
+
+end subroutine sparse_matrix_remove_lines
+
+!=========================================================================
 ! (1) Stores the index of last element.
 ! (2) Validates the matrix indexes.
 !=========================================================================
@@ -207,6 +232,17 @@ subroutine sparse_matrix_finalize(this, ncolumns, myrank)
   if (ncolumns > 0) call this%validate(ncolumns, myrank)
 
 end subroutine sparse_matrix_finalize
+
+!============================================================================
+! Stores the index of last element (for the not fully built sparse matrix).
+! To be able to calculate the forward data using the big joint matrix.
+!============================================================================
+subroutine sparse_matrix_finalize_part(this)
+  class(t_sparse_matrix), intent(inout) :: this
+
+  this%ijl(this%nl_current + 1) = this%nel + 1
+
+end subroutine sparse_matrix_finalize_part
 
 !============================================================================
 ! Validates the boundaries of column indexes.

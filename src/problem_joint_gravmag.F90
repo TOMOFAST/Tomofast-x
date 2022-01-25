@@ -75,7 +75,7 @@ module problem_joint_gravmag
     procedure, public, pass :: solve_problem_joint_gravmag
 
     procedure, private, nopass :: calculate_model_costs
-    procedure, private, nopass :: write_sensitivity_matrix
+    !procedure, private, nopass :: write_sensitivity_matrix
     procedure, private, nopass :: read_model
 
   end type t_problem_joint_gravmag
@@ -143,13 +143,21 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   cost_model = 0._CUSTOM_REAL
 
   ! Parameters for calculating the data using the big (joint inversion) parallel sparse matrix.
-  line_start(1) = 1
-  line_end(1) = ipar%ndata(1)
   param_shift(1) = 0
-
-  line_start(2) = ipar%ndata(1) + 1
-  line_end(2) = ipar%ndata(1) + ipar%ndata(2)
   param_shift(2) = ipar%nelements
+
+  line_start = 0
+  line_end = 0
+
+  if (SOLVE_PROBLEM(1)) then
+    line_start(1) = 1
+    line_end(1) = ipar%ndata(1)
+  endif
+
+  if (SOLVE_PROBLEM(2)) then
+    line_start(2) = line_end(1) + 1
+    line_end(2) = line_end(1) + ipar%ndata(2)
+  endif
 
   ! (I) MODEL ALLOCATION.  ---------------------------------------------------------------
 
@@ -234,24 +242,20 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
   !-------------------------------------------------------------------------------------------------------
   ! Allocate the sensitivity kernel.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_sensit(.false., nnz(1), myrank)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_sensit(.false., nnz(2), myrank)
-
-  ! Initialize joint inversion object.
-  ! Allocate the memory for sensitivity matrix.
-  ! Read the clustering parameters from file inside.
   call joint_inversion%initialize(ipar, nnz(1) + nnz(2), myrank)
 
   !-------------------------------------------------------------------------------------------------------
   ! Reading the sensitivity kernel from files.
-  if (SOLVE_PROBLEM(1)) call read_sensitivity_kernel(gpar, iarr(1)%matrix_sensit, 1, myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call read_sensitivity_kernel(mpar, iarr(2)%matrix_sensit, 2, myrank, nbproc)
+  if (SOLVE_PROBLEM(1)) call read_sensitivity_kernel(gpar, joint_inversion%matrix, 1, myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call read_sensitivity_kernel(mpar, joint_inversion%matrix, 2, myrank, nbproc)
 
   !-------------------------------------------------------------------------------------------------------
   ! Calculate the data from the read model.
   do i = 1, 2
-    if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, &
-      iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank, nbproc)
+    if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data2(ipar%ndata(i), joint_inversion%matrix, &
+      iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
+      line_start(i), line_end(i), param_shift(i), &
+      myrank, nbproc)
   enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -317,8 +321,10 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the prior model.
     do i = 1, 2
-      if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, &
-        iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank, nbproc)
+      if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data2(ipar%ndata(i), joint_inversion%matrix, &
+        iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
+        line_start(i), line_end(i), param_shift(i), &
+        myrank, nbproc)
     enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -340,8 +346,10 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the starting model.
     do i = 1, 2
-      if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), iarr(i)%matrix_sensit, &
-        iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, myrank, nbproc)
+      if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data2(ipar%ndata(i), joint_inversion%matrix, &
+        iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
+        line_start(i), line_end(i), param_shift(i), &
+        myrank, nbproc)
     enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -503,7 +511,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 #ifndef SUPPRESS_OUTPUT
   if (WRITE_SENSITIVITY) then
     ! Write a root mean square sensitivity (integrated sensitivity).
-    call write_sensitivity_matrix(iarr, SOLVE_PROBLEM, myrank, nbproc)
+    !call write_sensitivity_matrix(iarr, SOLVE_PROBLEM, myrank, nbproc)
   endif
 #endif
 
@@ -512,23 +520,23 @@ end subroutine solve_problem_joint_gravmag
 !========================================================================================
 ! Write a root mean square sensitivity (integrated sensitivity) to a file.
 !========================================================================================
-subroutine write_sensitivity_matrix(iarr, solve_problem, myrank, nbproc)
-  type(t_inversion_arrays), intent(inout) :: iarr(2)
-  logical, intent(in) :: solve_problem(2)
-  integer, intent(in) :: myrank, nbproc
-
-  integer :: i
-
-  ! Loop over problems.
-  do i = 1, 2
-    if (solve_problem(i)) call iarr(i)%matrix_sensit%get_integrated_sensit(iarr(i)%model%val)
-  enddo
-
-   ! Write sensitivity to files.
-  if (solve_problem(1)) call iarr(1)%model%write('sensit_grav_', .true., myrank, nbproc)
-  if (solve_problem(2)) call iarr(2)%model%write('sensit_mag_', .true., myrank, nbproc)
-
-end subroutine write_sensitivity_matrix
+!subroutine write_sensitivity_matrix(iarr, solve_problem, myrank, nbproc)
+!  type(t_inversion_arrays), intent(inout) :: iarr(2)
+!  logical, intent(in) :: solve_problem(2)
+!  integer, intent(in) :: myrank, nbproc
+!
+!  integer :: i
+!
+!  ! Loop over problems.
+!  do i = 1, 2
+!    if (solve_problem(i)) call iarr(i)%matrix_sensit%get_integrated_sensit(iarr(i)%model%val)
+!  enddo
+!
+!   ! Write sensitivity to files.
+!  if (solve_problem(1)) call iarr(1)%model%write('sensit_grav_', .true., myrank, nbproc)
+!  if (solve_problem(2)) call iarr(2)%model%write('sensit_mag_', .true., myrank, nbproc)
+!
+!end subroutine write_sensitivity_matrix
 
 !========================================================================================
 ! Computes and prints norm Lp of the difference between inverted and prior models.

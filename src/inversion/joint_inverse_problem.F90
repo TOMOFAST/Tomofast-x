@@ -31,7 +31,6 @@ module joint_inverse_problem
   use sparse_matrix
   use vector
   use lsqr_solver
-  use sensitivity_matrix
   use damping
   use model
   use method_of_weights
@@ -93,6 +92,8 @@ module joint_inverse_problem
 
     ! Clustering constraints.
     type(t_clustering), public :: clustering
+
+    integer :: ndata_lines
 
   contains
     private
@@ -172,9 +173,11 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   ! Calculate number of matrix rows and (approx.) non-zero elements.
   nl = 0
+  this%ndata_lines = 0
   do i = 1, 2
     if (par%problem_weight(i) /= 0.d0) then
       nl = nl + par%ndata(i)
+      this%ndata_lines = this%ndata_lines + par%ndata(i)
     endif
   enddo
 
@@ -256,7 +259,7 @@ end subroutine joint_inversion_initialize
 subroutine joint_inversion_reset(this)
   class(t_joint_inversion), intent(inout) :: this
 
-  call this%matrix%reset()
+  call this%matrix%remove_lines(this%ndata_lines)
   this%b_RHS = 0._CUSTOM_REAL
 
   if (this%add_cross_grad) then
@@ -277,20 +280,19 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
 
   real(kind=CUSTOM_REAL), intent(out) :: delta_model(:)
 
-  type(t_sensitivity_matrix) :: sensit
   type(t_damping) :: damping
   type(t_damping_gradient) :: damping_gradient
   type(t_parameters_lsqr) :: par_lsqr
-  integer :: i, j, k, param_shift(2)
+  integer :: i, j, k
+  integer :: line_start(2), line_end(2), param_shift(2)
   ! Adjusted problem weights for joint inversion.
   real(kind=CUSTOM_REAL) :: problem_weight_adjusted(2), cost
   logical :: solve_gravity_only
   logical :: solve_mag_only
   integer :: der_type
-  real(kind=CUSTOM_REAL) :: matrix_dummy(1, 1)
   character(len=32) :: filename
   integer :: nsmaller
-  
+
   ! TODO: Move out with writing the variance.
   integer :: ierr
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full1(:)
@@ -331,6 +333,19 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
   param_shift(1) = 0
   param_shift(2) = par%nelements
 
+  line_start = 0
+  line_end = 0
+
+  if (SOLVE_PROBLEM(1)) then
+    line_start(1) = 1
+    line_end(1) = par%ndata(1)
+  endif
+
+  if (SOLVE_PROBLEM(2)) then
+    line_start(2) = line_end(1) + 1
+    line_end(2) = line_end(1) + par%ndata(2)
+  endif
+
   ! ***** Data misfit and damping and damping gradient  *****
 
   ! Loop over joint problems.
@@ -345,12 +360,12 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
 
     if (myrank == 0) print *, 'Adding joint problem #', i, ' weight =', problem_weight_adjusted(i)
 
-    call sensit%initialize(par%ndata(i), par%nelements, problem_weight_adjusted(i))
+    ! Adding the right-hand side only, as the sensitivity was added when reading the kernel from files.
+    this%b_RHS(line_start(i):line_end(i)) = problem_weight_adjusted(i) * arr(i)%residuals
 
-    call sensit%add(this%matrix, this%b_RHS, param_shift(i), matrix_dummy, arr(i)%matrix_sensit, &
-                    arr(i)%column_weight, arr(i)%residuals, .false., .false., myrank)
+    cost = sum(this%b_RHS(line_start(i):line_end(i))**2)
 
-    if (myrank == 0) print *, 'misfit term cost = ', sensit%get_cost()
+    if (myrank == 0) print *, 'misfit term cost = ', cost
     if (myrank == 0) print *, 'nel = ', this%matrix%get_number_elements()
 
     if (this%add_damping(i)) then

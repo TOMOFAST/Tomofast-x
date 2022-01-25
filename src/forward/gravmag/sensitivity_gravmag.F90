@@ -395,7 +395,11 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_type, myrank, nbp
 
   integer :: ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
   integer :: idata, nel, idata_glob
-  integer :: nnz
+  integer :: nnz, column
+  integer :: param_shift(2)
+
+  param_shift(1) = 0
+  param_shift(2) = par%nelements
 
   !---------------------------------------------------------------------------------------------
   ! Allocate memory.
@@ -469,7 +473,9 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_type, myrank, nbp
         p = sensit_columns(j)
         if (p > nsmaller .and. p <= nsmaller + par%nelements) then
         ! The element belongs to this rank. Adding it to the matrix.
-          call sensit_matrix%add(sensit_compressed(j), p - nsmaller, myrank)
+          ! The column index in a big (joint) parallel sparse matrix.
+          column = p - nsmaller + param_shift(problem_type)
+          call sensit_matrix%add(sensit_compressed(j), column, myrank)
           nnz = nnz + 1
         else
           if (p > nsmaller + par%nelements) exit
@@ -481,12 +487,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_type, myrank, nbp
     close(78)
   enddo
 
-  ! Sanity check.
-  if (nnz /= sensit_matrix%get_nnz()) then
-    call exit_MPI("Wrong nnz in read_sensitivity_kernel!", myrank, 0)
-  endif
-
-  call sensit_matrix%finalize(par%nelements, myrank)
+  call sensit_matrix%finalize_part()
 
   !---------------------------------------------------------------------------------------------
   ! Calculate the read kernel compression rate.

@@ -22,7 +22,7 @@
 ! In this case the program will be killed by OS during initialization.
 ! When "source=0" parameter is used, then it will invoke an error via "stat=ierr" in such case.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !==========================================================================================
 module inversion_arrays
 
@@ -53,7 +53,6 @@ module inversion_arrays
 
     ! Sensitivity kernel computed in forward problem.
     real(kind=CUSTOM_REAL), allocatable :: sensitivity(:, :)
-    type(t_sparse_matrix) :: matrix_sensit
 
     ! Solution model (with grid).
     type(t_model) :: model
@@ -117,16 +116,14 @@ subroutine inversion_arrays_allocate_aux(this, myrank)
 end subroutine inversion_arrays_allocate_aux
 
 !==================================================================================
-! Allocates memory for the sensitivity kernel.
+! Allocates memory for the ECT ensitivity kernel (not used for grav/mag).
 ! USE_LEGACY_SENSIT_MATRIX flag to support old sensitivity matrix allocation (non-sparse) for the ECT problem.
 !==================================================================================
-subroutine inversion_arrays_allocate_sensit(this, USE_LEGACY_SENSIT_MATRIX, nnz, myrank)
+subroutine inversion_arrays_allocate_sensit(this, USE_LEGACY_SENSIT_MATRIX, myrank)
   class(t_inversion_arrays), intent(inout) :: this
-  integer, intent(in) :: nnz
   logical, intent(in) :: USE_LEGACY_SENSIT_MATRIX
   integer, intent(in) :: myrank
 
-  integer :: nl
   integer :: ierr
 
   if (myrank == 0) print *, "Allocating sensitivity kernel..."
@@ -144,14 +141,6 @@ subroutine inversion_arrays_allocate_sensit(this, USE_LEGACY_SENSIT_MATRIX, nnz,
     if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in inversion_arrays_allocate_sensit!", myrank, ierr)
 
     if (myrank == 0) print *, "sensitivity done."
-
-
-  else
-    nl = this%ndata
-
-    ! Allocating the sparse matrix.
-    call this%matrix_sensit%initialize(nl, nnz, myrank)
-    if (myrank == 0) print *, "sensitivity (sparse) done."
   endif
 
   if (myrank == 0) print *, "Sensitivity kernel allocated!"
