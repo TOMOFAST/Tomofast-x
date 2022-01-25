@@ -138,6 +138,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     if (myrank == 0) print *, "SOLVE_PROBLEM("//trim(str(i))//") = ", SOLVE_PROBLEM(i)
   enddo
 
+  nnz = 0
   cost_data = 0._CUSTOM_REAL
   cost_model = 0._CUSTOM_REAL
 
@@ -236,6 +237,11 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_sensit(.false., nnz(1), myrank)
   if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_sensit(.false., nnz(2), myrank)
 
+  ! Initialize joint inversion object.
+  ! Allocate the memory for sensitivity matrix.
+  ! Read the clustering parameters from file inside.
+  call joint_inversion%initialize(ipar, nnz(1) + nnz(2), myrank)
+
   !-------------------------------------------------------------------------------------------------------
   ! Reading the sensitivity kernel from files.
   if (SOLVE_PROBLEM(1)) call read_sensitivity_kernel(gpar, iarr(1)%matrix_sensit, 1, myrank, nbproc)
@@ -267,10 +273,6 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   !-----------------------------------------------------------------------------------------
   number_prior_models = gpar%number_prior_models
   path_output_parfile = path_output
-
-  ! Initialize joint inversion object.
-  ! Read the clustering parameters from file inside.
-  call joint_inversion%initialize(ipar, nnz(1) + nnz(2), myrank)
 
   !******************************************************************************************
   ! Loop over different prior models.
