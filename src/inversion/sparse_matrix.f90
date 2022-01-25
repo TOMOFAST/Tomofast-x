@@ -197,19 +197,9 @@ subroutine sparse_matrix_remove_lines(this, nlines_to_keep)
   class(t_sparse_matrix), intent(inout) :: this
   integer, intent(in) :: nlines_to_keep
 
-  integer :: i, k, nel
-
   this%nl_current = nlines_to_keep
 
-  ! Count the remaining number of elements.
-  nel = 0
-  do i = 1, nlines_to_keep
-    do k = this%ijl(i), this%ijl(i + 1) - 1
-      nel = nel + 1
-    enddo
-  enddo
-
-  this%nel = nel
+  this%nel = this%ijl(this%nl_current + 1) - 1
 
 end subroutine sparse_matrix_remove_lines
 
