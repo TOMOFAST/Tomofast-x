@@ -220,7 +220,12 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   endif
 
   call this%matrix%initialize(nl, nnz, myrank)
-  call this%matrix_B%initialize(3 * par%nelements_total, this%cross_grad%get_num_elements(par%derivative_type), myrank)
+
+  if (this%add_cross_grad) then
+    ! Memory allocation for the matrix and right-hand side for cross-gradient constraints.
+    call this%matrix_B%initialize(3 * par%nelements_total, this%cross_grad%get_num_elements(par%derivative_type), myrank)
+    allocate(this%d_RHS(3 * par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  endif
 
   call this%matrix%allocate_variance_array(2 * par%nelements, myrank)
 
@@ -229,9 +234,6 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   ! Memory allocation.
   if (.not. allocated(this%b_RHS)) &
     allocate(this%b_RHS(this%matrix%get_total_row_number()), source=0._CUSTOM_REAL, stat=ierr)
-
-  if (.not. allocated(this%d_RHS)) &
-    allocate(this%d_RHS(3 * par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   if (.not. allocated(this%column_norm)) &
     allocate(this%column_norm(2 * par%nelements), source=1._CUSTOM_REAL, stat=ierr)
@@ -255,10 +257,12 @@ subroutine joint_inversion_reset(this)
   class(t_joint_inversion), intent(inout) :: this
 
   call this%matrix%reset()
-  call this%matrix_B%reset()
-
   this%b_RHS = 0._CUSTOM_REAL
-  this%d_RHS = 0._CUSTOM_REAL
+
+  if (this%add_cross_grad) then
+    call this%matrix_B%reset()
+    this%d_RHS = 0._CUSTOM_REAL
+  endif
 
 end subroutine joint_inversion_reset
 
@@ -508,16 +512,18 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
 
   ! ***** Method of weights *****
 
-  if (par%method_of_weights_niter > 0 .and. norm2(this%d_RHS) /= 0._CUSTOM_REAL) then
-  ! If cross gradient is not zero everywhere.
+  if (par%method_of_weights_niter > 0) then
+    if (norm2(this%d_RHS) /= 0._CUSTOM_REAL) then
+    ! If cross gradient is not zero everywhere.
 
-    par_lsqr%niter = par%niter
-    par_lsqr%gamma = par%gamma
-    par_lsqr%rmin = par%rmin
+      par_lsqr%niter = par%niter
+      par_lsqr%gamma = par%gamma
+      par_lsqr%rmin = par%rmin
 
-    ! Applying weighting method for equality-constrained LSQR.
-    call apply_method_of_weights(par_lsqr, par%method_of_weights_niter, this%matrix, this%matrix_B, &
-                                 delta_model, this%b_RHS, this%d_RHS, par%cross_grad_weight, 3, myrank)
+      ! Applying weighting method for equality-constrained LSQR.
+      call apply_method_of_weights(par_lsqr, par%method_of_weights_niter, this%matrix, this%matrix_B, &
+                                   delta_model, this%b_RHS, this%d_RHS, par%cross_grad_weight, 3, myrank)
+    endif
   endif
 
   !-------------------------------------------------------------------------------------

@@ -180,9 +180,11 @@ pure subroutine sparse_matrix_reset(this)
   this%nl_current = 0
   this%nel = 0
 
-  this%sa = 0._CUSTOM_REAL
-  this%ija = 0
-  this%ijl = 0
+  if (allocated(this%sa)) then
+    this%sa = 0._MATRIX_ACCURACY
+    this%ija = 0
+    this%ijl = 0
+  endif
 
 end subroutine sparse_matrix_reset
 
