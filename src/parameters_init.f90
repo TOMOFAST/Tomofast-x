@@ -395,8 +395,6 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ipar%problem_weight(2) = 0.d0
   ipar%column_weight_multiplier(1) = 4.d+3
   ipar%column_weight_multiplier(2) = 1.d0
-  ipar%niter_single(1) = 0
-  ipar%niter_single(2) = 0
 
   ! DAMPING-GRADIENT constraints.
   ipar%damp_grad_weight_type = 1 ! 1-global, 2-local
@@ -870,14 +868,6 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
       case("inversion.joint.magn.columnWeightMultiplier")
         read(10, 1) ipar%column_weight_multiplier(2)
         call print_arg(myrank, parname, ipar%column_weight_multiplier(2))
-
-      case("inversion.joint.grav.nIterSingle")
-        read(10, 2) ipar%niter_single(1)
-        call print_arg(myrank, parname, ipar%niter_single(1))
-
-      case("inversion.joint.magn.nIterSingle")
-        read(10, 2) ipar%niter_single(2)
-        call print_arg(myrank, parname, ipar%niter_single(2))
 
       ! DAMPING-GRADIENT constraints -------------------------------
 

@@ -287,8 +287,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
   type(t_parameters_lsqr) :: par_lsqr
   integer :: i, j, k
   integer :: line_start(2), line_end(2), param_shift(2)
-  ! Adjusted problem weights for joint inversion.
-  real(kind=CUSTOM_REAL) :: problem_weight_adjusted(2), cost
+  real(kind=CUSTOM_REAL) :: cost
   logical :: solve_gravity_only
   logical :: solve_mag_only
   integer :: der_type
@@ -309,24 +308,12 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
   integer, save :: ncalls = 0
 
   ncalls = ncalls + 1
-  
+
   ! Initialize variance array.
   this%matrix%lsqr_var = 0.d0;
-  ! Store iteration number.
+
+  ! Store the iteration number.
   this%matrix%tag = ncalls
-
-  ! Adjust problem weights: solve individual (grav/mag) problems for a few iterations before solving the joint system.
-  if (.not. par%single_problem_complete(1, ncalls)) then
-    problem_weight_adjusted(1) = par%problem_weight(1)
-    problem_weight_adjusted(2) = 0.d0
-
-  else if (.not. par%single_problem_complete(2, ncalls)) then
-    problem_weight_adjusted(1) = 0.d0
-    problem_weight_adjusted(2) = par%problem_weight(2)
-
-  else
-    problem_weight_adjusted = par%problem_weight
-  endif
 
   do i = 1, 2
     SOLVE_PROBLEM(i) = (par%problem_weight(i) /= 0.d0)
@@ -346,10 +333,10 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
 
     if (myrank == 0 .and. i > 1) print *, '-------------------------------------------------------'
 
-    if (myrank == 0) print *, 'Adding joint problem #', i, ' weight =', problem_weight_adjusted(i)
+    if (myrank == 0) print *, 'Adding joint problem #', i, ' weight =', par%problem_weight(i)
 
     ! Adding the right-hand side only, as the sensitivity was added when reading the kernel from files.
-    this%b_RHS(line_start(i):line_end(i)) = problem_weight_adjusted(i) * arr(i)%residuals
+    this%b_RHS(line_start(i):line_end(i)) = par%problem_weight(i) * arr(i)%residuals
 
     cost = sum(this%b_RHS(line_start(i):line_end(i))**2)
 
@@ -359,7 +346,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
     if (this%add_damping(i)) then
       if (myrank == 0) print *, 'adding damping with alpha =', par%alpha(i)
 
-      call damping%initialize(par%nelements, par%alpha(i), problem_weight_adjusted(i), par%norm_power, &
+      call damping%initialize(par%nelements, par%alpha(i), par%problem_weight(i), par%norm_power, &
                               par%compression_type, par%nx, par%ny, par%nz)
 
       ! Note: we use model covariance now for the local damping weight, which is equivalent of having local alpha.
@@ -373,7 +360,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
     if (this%add_damping_gradient(i)) then
       if (myrank == 0) print *, 'adding damping_gradient with beta =', par%beta(i), ' weight type =', par%damp_grad_weight_type
 
-      call damping_gradient%initialize(par%beta(i), problem_weight_adjusted(i), par%nx, par%ny, par%nz, par%nelements, myrank)
+      call damping_gradient%initialize(par%beta(i), par%problem_weight(i), par%nx, par%ny, par%nz, par%nelements, myrank)
 
       cost = 0.d0
 
@@ -422,10 +409,10 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
     solve_gravity_only = .false.
     solve_mag_only = .false.
 
-    if (problem_weight_adjusted(1) /= 0.d0 .and. problem_weight_adjusted(2) == 0.d0) then
+    if (par%problem_weight(1) /= 0.d0 .and. par%problem_weight(2) == 0.d0) then
       solve_gravity_only = .true.
 
-    else if (problem_weight_adjusted(1) == 0.d0 .and. problem_weight_adjusted(2) /= 0.d0) then
+    else if (par%problem_weight(1) == 0.d0 .and. par%problem_weight(2) /= 0.d0) then
       solve_mag_only = .true.
     endif
 
@@ -447,7 +434,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
       this%weight_ADMM = 1.d0
       !this%weight_ADMM = arr(i)%damping_weight
 
-      call damping%initialize(par%nelements, par%rho_ADMM(i), problem_weight_adjusted(i), par%norm_power, &
+      call damping%initialize(par%nelements, par%rho_ADMM(i), par%problem_weight(i), par%norm_power, &
                               par%compression_type, par%nx, par%ny, par%nz)
 
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, this%weight_ADMM, &
@@ -481,19 +468,19 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
         der_type = par%derivative_type
       endif
 
-      call this%add_cross_grad_constraints(par, arr, der_type, ncalls, myrank, nbproc)
+      call this%add_cross_grad_constraints(par, arr, der_type, myrank, nbproc)
     else
     ! Adding two cross-grad terms with different derivatives.
-      call this%add_cross_grad_constraints(par, arr, 1, ncalls, myrank, nbproc)
+      call this%add_cross_grad_constraints(par, arr, 1, myrank, nbproc)
       call this%matrix_B%reset()
-      call this%add_cross_grad_constraints(par, arr, 2, ncalls, myrank, nbproc)
+      call this%add_cross_grad_constraints(par, arr, 2, myrank, nbproc)
     endif
   endif
 
   ! ***** Clustering *****
 
   if (this%add_clustering) then
-    call this%add_clustering_constraints(par, arr, ncalls, myrank, nbproc)
+    call this%add_clustering_constraints(arr, myrank, nbproc)
   endif
 
   !-------------------------------------------------------------------------------------
@@ -645,11 +632,11 @@ end subroutine joint_inversion_solve
 !=======================================================================================================
 ! Adds the cross-gradient constraints to the least square system.
 !=======================================================================================================
-subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, der_type, ncalls, myrank, nbproc)
+subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, der_type, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
   type(t_inversion_arrays), intent(in) :: arr(2)
-  integer, intent(in) :: der_type, ncalls
+  integer, intent(in) :: der_type
   integer, intent(in) :: myrank, nbproc
 
   type(t_vector) :: cost
@@ -665,26 +652,19 @@ subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, der_type, 
   if (myrank == 0) print *, 'cross-grad cost = ', cost%x + cost%y + cost%z
 
   if (this%add_cross_grad) then
-    if (par%single_problem_complete(1, ncalls) .and. par%single_problem_complete(2, ncalls)) then
-      ! Adding the corresponding cross-gradient SLAE to the main system.
-      call this%matrix_B%finalize(2 * par%nelements, myrank)
+    ! Adding the corresponding cross-gradient SLAE to the main system.
+    call this%matrix_B%finalize(2 * par%nelements, myrank)
 
-      ibeg = this%matrix%get_current_row_number() + 1
+    ibeg = this%matrix%get_current_row_number() + 1
 
-      call this%matrix%add_matrix(this%matrix_B, par%cross_grad_weight, myrank)
+    call this%matrix%add_matrix(this%matrix_B, par%cross_grad_weight, myrank)
 
-      iend = this%matrix%get_current_row_number()
+    iend = this%matrix%get_current_row_number()
 
-      this%b_RHS(ibeg:iend) = par%cross_grad_weight * this%d_RHS
+    this%b_RHS(ibeg:iend) = par%cross_grad_weight * this%d_RHS
 
-      if (myrank == 0) print *, 'cross-grad term cost = ', sum(this%b_RHS(ibeg:iend)**2)
-      if (myrank == 0) print *, 'nel (with cross-grad) = ', this%matrix%get_number_elements()
-
-    else
-    ! Finding the initial solution without adding the cross-gradient term, for a few iterations.
-      call this%matrix%add_empty_rows(this%matrix_B%get_total_row_number(), myrank)
-
-    endif
+    if (myrank == 0) print *, 'cross-grad term cost = ', sum(this%b_RHS(ibeg:iend)**2)
+    if (myrank == 0) print *, 'nel (with cross-grad) = ', this%matrix%get_number_elements()
   endif
 
 end subroutine joint_inversion_add_cross_grad_constraints
@@ -692,27 +672,20 @@ end subroutine joint_inversion_add_cross_grad_constraints
 !=======================================================================================================
 ! Adds the clustering constraints to the least square system.
 !=======================================================================================================
-subroutine joint_inversion_add_clustering_constraints(this, par, arr, ncalls, myrank, nbproc)
+subroutine joint_inversion_add_clustering_constraints(this, arr, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
-  type(t_parameters_inversion), intent(in) :: par
   type(t_inversion_arrays), intent(in) :: arr(2)
-  integer, intent(in) :: ncalls
   integer, intent(in) :: myrank, nbproc
 
   integer :: i
 
-  if (par%single_problem_complete(1, ncalls) .and. par%single_problem_complete(2, ncalls)) then
-    do i = 1, 2
-      call this%clustering%add(arr(1)%model, arr(2)%model, arr(1)%column_weight, arr(2)%column_weight, &
-                               this%matrix, this%b_RHS, i, myrank, nbproc)
+  do i = 1, 2
+    call this%clustering%add(arr(1)%model, arr(2)%model, arr(1)%column_weight, arr(2)%column_weight, &
+                             this%matrix, this%b_RHS, i, myrank, nbproc)
 
-      if (myrank == 0) print *, 'clustering term', i, 'cost = ', this%clustering%get_cost(i)
-      if (myrank == 0) print *, 'nel (with clustering) = ', this%matrix%get_number_elements()
-    enddo
-  else
-  ! Finding the initial solution without adding the clustering term, for a few iterations.
-    call this%matrix%add_empty_rows(2 * this%nelements_total, myrank)
-  endif
+    if (myrank == 0) print *, 'clustering term', i, 'cost = ', this%clustering%get_cost(i)
+    if (myrank == 0) print *, 'nel (with clustering) = ', this%matrix%get_number_elements()
+  enddo
 
 end subroutine joint_inversion_add_clustering_constraints
 

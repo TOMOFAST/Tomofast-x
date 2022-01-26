@@ -119,8 +119,6 @@ inversion.joint.grav.problemWeight           = 1.d0
 inversion.joint.magn.problemWeight           = 0.d0
 inversion.joint.grav.columnWeightMultiplier  = 4.d+3
 inversion.joint.magn.columnWeightMultiplier  = 1.d0
-inversion.joint.grav.nIterSingle             = 0
-inversion.joint.magn.nIterSingle             = 0
 
 ===================================================================================
 DISJOINT INTERVAL BOUND constraints (ADMM)

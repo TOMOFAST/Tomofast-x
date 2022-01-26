@@ -73,9 +73,6 @@ module parameters_inversion
     ! To control the influence of the cross-grad term on grav/mag problems.
     real(kind=CUSTOM_REAL) :: column_weight_multiplier(2)
 
-    ! Parameters controlling single-to-joint inversion switch (by the number of single inversion iterations).
-    integer :: niter_single(2)
-
     ! ------ Cross-gradient constraints ------------------------------------
     ! Contribution of the cross-gradient to the cost function.
     real(kind=CUSTOM_REAL) :: cross_grad_weight
@@ -111,41 +108,11 @@ module parameters_inversion
   contains
     private
 
-    procedure, public, pass :: single_problem_complete => parameters_single_problem_complete
     procedure, public, pass :: broadcast => parameters_inversion_broadcast
 
   end type t_parameters_inversion
 
 contains
-
-!==============================================================================================
-! Determines if single domaing problem is complete with respect to niter_single parameter.
-!==============================================================================================
-function parameters_single_problem_complete(this, problem_type, current_iteration) result(res)
-  class(t_parameters_inversion), intent(in) :: this
-  integer, intent(in) :: problem_type, current_iteration
-  logical :: res
-
-  integer :: i, niter_single_modified(2)
-
-  niter_single_modified = this%niter_single
-
-  do i = 1, 2
-    if (this%problem_weight(i) == 0.d0) niter_single_modified(i) = 0
-  enddo
-
-  if (this%problem_weight(problem_type) == 0.d0) then
-    res = .true.
-
-  else
-    if (current_iteration <= sum(niter_single_modified(1:problem_type))) then
-      res = .false.
-    else
-      res = .true.
-    endif
-  endif
-
-end function parameters_single_problem_complete
 
 !==================================================================================
 ! MPI broadcast parameters that are read from a Parfile.
@@ -175,7 +142,6 @@ subroutine parameters_inversion_broadcast(this, myrank)
   ! Joint inversion parameters.
   call MPI_Bcast(this%problem_weight, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%column_weight_multiplier, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%niter_single, 2, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
   call MPI_Bcast(this%cross_grad_weight, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%method_of_weights_niter, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
