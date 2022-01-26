@@ -387,7 +387,7 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
 
   ! MODEL DAMPING (m - m_prior).
   ipar%alpha(1) = 1.d-11
-  ipar%alpha(2) = 1.d-11
+  ipar%alpha(2) = 1.d-8
   ipar%norm_power = 2.d0
 
   ! JOINT INVERSION parameters.
