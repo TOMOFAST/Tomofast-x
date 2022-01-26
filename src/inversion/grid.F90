@@ -15,7 +15,7 @@
 !================================================================================================
 ! A class to work with grids for forward and inverse problems.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !================================================================================================
 module grid
 
@@ -48,6 +48,7 @@ module grid
     private
 
     procedure, public, pass :: initialize => grid_initialize
+    procedure, public, pass :: deallocate => grid_deallocate
     procedure, public, pass :: broadcast => grid_broadcast
 
     procedure, public, pass :: get_ind => grid_get_ind
@@ -99,6 +100,27 @@ subroutine grid_initialize(this, nelements, nx, ny, nz, myrank)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in grid_initialize!", myrank, ierr)
 
 end subroutine grid_initialize
+
+!=======================================================================================
+! Dealocate grid arrays.
+!=======================================================================================
+subroutine grid_deallocate(this)
+  class(t_grid), intent(inout) :: this
+
+  deallocate(this%X1)
+  deallocate(this%X2)
+  deallocate(this%Y1)
+  deallocate(this%Y2)
+  deallocate(this%Z1)
+  deallocate(this%Z2)
+
+  deallocate(this%i_)
+  deallocate(this%j_)
+  deallocate(this%k_)
+
+  deallocate(this%ind)
+
+end subroutine grid_deallocate
 
 !==============================================================================================
 ! Broadcasts grid arrays from master CPU to all.

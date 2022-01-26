@@ -153,7 +153,7 @@ subroutine model_read_voxels_format(this, file_name, read_grid, myrank)
   integer :: ierr
   character(len=256) :: msg
   real(kind=CUSTOM_REAL) :: dummy, val, cov
-  integer :: i_, j_, k_, ind
+  integer :: i_, j_, k_
 
   if (myrank == 0) then
   ! Reading the full model and grid by master CPU only.
@@ -211,18 +211,15 @@ subroutine model_read_voxels_format(this, file_name, read_grid, myrank)
       enddo
 
     else
-    ! Reading the model only (without grid). Note: grid should already exist.
+    ! Reading the model only (without grid).
       do i = 1, this%nelements_total
         read(10, *, iostat=ierr) dummy, dummy, dummy, dummy, dummy, dummy, val, i_, j_, k_, cov
 
-        ! Obtain 1D grid index of the model parameter.
-        ind = this%grid_full%ind(i_, j_, k_)
-
         ! Set the model value.
-        this%val_full(ind) = val
+        this%val_full(i) = val
 
         ! Set the covariance value.
-        this%cov_full(ind) = cov
+        this%cov_full(i) = cov
 
         if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_voxels!", myrank, ierr)
       enddo

@@ -168,8 +168,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 #endif
 
   ! Distribute the model and grid among CPUs.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%model%distribute(myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%model%distribute(myrank, nbproc)
+  if (SOLVE_PROBLEM(1)) call iarr(1)%model%distribute(.true., myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%model%distribute(.true., myrank, nbproc)
 
   ! (I2) SETTING ADMM BOUNDS --------------------------------------------------------------
 
@@ -224,6 +224,21 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     ! Read the sensitivity metadata file to define the nnz.
     if (SOLVE_PROBLEM(1)) call read_sensitivity_metadata(gpar, nnz(1), 1, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call read_sensitivity_metadata(mpar, nnz(2), 2, myrank, nbproc)
+  endif
+
+  !-------------------------------------------------------------------------------------------------------
+  ! Deallocate the model grid.
+  ! Keep the grid only on rank 0 for writing the models.
+  ! keep the grid on all ranks if we use gradient-based constraints (cross-gradient or damping gradient).
+  if (myrank /= 0) then
+    if (ipar%cross_grad_weight == 0.d0) then
+      do i = 1, 2
+        if (SOLVE_PROBLEM(i) .and. ipar%beta(i) == 0.d0) then ! beta is the damping gradient weight.
+          call iarr(i)%model%grid%deallocate()
+          call iarr(i)%model%grid_full%deallocate()
+        endif
+      enddo
+    endif
   endif
 
   !-------------------------------------------------------------------------------------------------------
@@ -438,12 +453,12 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
     ! Compare final models of single and joint inversions.
-    compres = 0.d0
-    if (SOLVE_PROBLEM(1)) call comp%compare(iarr(1)%model, ipar%derivative_type, compres(1), myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call comp%compare(iarr(2)%model, ipar%derivative_type, compres(2), myrank, nbproc)
-
-    if (myrank == 0) print *, 'Model comparison:', ipar%column_weight_multiplier(1), ipar%column_weight_multiplier(2), &
-                              compres(1), compres(2), ipar%cross_grad_weight, joint_inversion%get_cross_grad_cost()
+!    compres = 0.d0
+!    if (SOLVE_PROBLEM(1)) call comp%compare(iarr(1)%model, ipar%derivative_type, compres(1), myrank, nbproc)
+!    if (SOLVE_PROBLEM(2)) call comp%compare(iarr(2)%model, ipar%derivative_type, compres(2), myrank, nbproc)
+!
+!    if (myrank == 0) print *, 'Model comparison:', ipar%column_weight_multiplier(1), ipar%column_weight_multiplier(2), &
+!                              compres(1), compres(2), ipar%cross_grad_weight, joint_inversion%get_cross_grad_cost()
 #endif
 
 #ifndef SUPPRESS_OUTPUT
@@ -549,7 +564,7 @@ subroutine calculate_model_costs(ipar, iarr, cost_model, solve_problem, myrank, 
 end subroutine calculate_model_costs
 
 !========================================================================================
-! Computes and prints norm Lp of the difference between inverted and prior models.
+! Reads the model.
 !========================================================================================
 subroutine read_model(iarr, model_type, model_val, model_file, myrank, nbproc)
   integer, intent(in) :: model_type, myrank, nbproc
@@ -570,8 +585,8 @@ subroutine read_model(iarr, model_type, model_val, model_file, myrank, nbproc)
     stop
   endif
 
-  ! Distribute the model and grid among CPUs.
-  call iarr%model%distribute(myrank, nbproc)
+  ! Distribute the model among CPUs.
+  call iarr%model%distribute(.false., myrank, nbproc)
 end subroutine read_model
 
 end module problem_joint_gravmag
