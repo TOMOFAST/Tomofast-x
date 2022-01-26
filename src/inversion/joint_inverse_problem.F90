@@ -126,6 +126,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   integer :: ierr
   integer :: i, nl, nnz
 
+  ierr = 0
+
   do i = 1, 2
     if (par%alpha(i) == 0.d0 .or. par%problem_weight(i) == 0.d0) then
       this%add_damping(i) = .false.
@@ -173,7 +175,9 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     call this%clustering%read_mixtures(par%mixture_file, par%cell_weights_file, myrank)
   endif
 
+  !--------------------------------------------------------------------------------------
   ! Calculate number of matrix rows and (approx.) non-zero elements.
+  !--------------------------------------------------------------------------------------
   nl = 0
   this%ndata_lines = 0
   do i = 1, 2
@@ -224,7 +228,13 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     nnz = nnz + 2 * par%nelements
   endif
 
+  !-------------------------------------------------------------------------------------------
+  ! MAIN MATRIX MEMORY ALLOCATION.
+  !-------------------------------------------------------------------------------------------
   call this%matrix%initialize(nl, nnz, myrank)
+
+  allocate(this%b_RHS(this%matrix%get_total_row_number()), source=0._CUSTOM_REAL, stat=ierr)
+  call this%matrix%allocate_variance_array(2 * par%nelements, myrank)
 
   if (this%add_cross_grad) then
     ! Memory allocation for the matrix and right-hand side for cross-gradient constraints.
@@ -232,23 +242,13 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     allocate(this%d_RHS(3 * par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   endif
 
-  call this%matrix%allocate_variance_array(2 * par%nelements, myrank)
-
-  ierr = 0
-
-  ! Memory allocation.
-  if (.not. allocated(this%b_RHS)) &
-    allocate(this%b_RHS(this%matrix%get_total_row_number()), source=0._CUSTOM_REAL, stat=ierr)
-
-  if (.not. allocated(this%column_norm)) &
+  if (NORMALIZE_MATRIX_COLUMNS) then
     allocate(this%column_norm(2 * par%nelements), source=1._CUSTOM_REAL, stat=ierr)
+  endif
 
   if (par%admm_type > 0) then
-    if (.not. allocated(this%x0_ADMM)) &
-      allocate(this%x0_ADMM(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
-
-    if (.not. allocated(this%weight_ADMM)) &
-      allocate(this%weight_ADMM(par%nelements), source=1._CUSTOM_REAL, stat=ierr)
+    allocate(this%x0_ADMM(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
+    allocate(this%weight_ADMM(par%nelements), source=1._CUSTOM_REAL, stat=ierr)
   endif
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize!", myrank, ierr)
@@ -565,6 +565,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
         ! Extract the local model update.
         delta_model(par%nelements + 1:) = delta_model_full(nsmaller + 1 : nsmaller + par%nelements)
       endif
+      deallocate(delta_model_full)
 
     else
     ! Serial version.
