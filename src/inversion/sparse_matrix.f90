@@ -28,7 +28,8 @@ module sparse_matrix
 
   private
 
-  integer, parameter :: MATRIX_ACCURACY = 4
+  ! Parameter controlling the precision of the stored values (single / double).
+  integer, parameter :: MATRIX_PRECISION = 4
 
   type, public :: t_sparse_matrix
     private
@@ -43,7 +44,7 @@ module sparse_matrix
     integer, private :: nl_current
 
     ! An array of the (left-to-right, then top-to-bottom) non-zero values of the matrix.
-    real(kind=MATRIX_ACCURACY), allocatable, private :: sa(:)
+    real(kind=MATRIX_PRECISION), allocatable, private :: sa(:)
     ! The column indexes corresponding to the values.
     integer, allocatable, private :: ija(:)
     ! The list of 'sa' indexes where each row starts.
@@ -183,7 +184,7 @@ pure subroutine sparse_matrix_reset(this)
   this%nel = 0
 
   if (allocated(this%sa)) then
-    this%sa = 0._MATRIX_ACCURACY
+    this%sa = 0._MATRIX_PRECISION
     this%ija = 0
     this%ijl = 0
   endif
@@ -193,7 +194,7 @@ end subroutine sparse_matrix_reset
 !=========================================================================
 ! Remove matrix lines from the bottom.
 !=========================================================================
-subroutine sparse_matrix_remove_lines(this, nlines_to_keep)
+pure subroutine sparse_matrix_remove_lines(this, nlines_to_keep)
   class(t_sparse_matrix), intent(inout) :: this
   integer, intent(in) :: nlines_to_keep
 
@@ -227,7 +228,7 @@ end subroutine sparse_matrix_finalize
 ! Stores the index of last element (for the not fully built sparse matrix).
 ! To be able to calculate the forward data using the big joint matrix.
 !============================================================================
-subroutine sparse_matrix_finalize_part(this)
+pure subroutine sparse_matrix_finalize_part(this)
   class(t_sparse_matrix), intent(inout) :: this
 
   this%ijl(this%nl_current + 1) = this%nel + 1
@@ -273,7 +274,7 @@ subroutine sparse_matrix_add(this, value, column, myrank)
     call exit_MPI("Error in total number of elements in sparse_matrix_add!", myrank, this%nnz)
 
   this%nel = this%nel + 1
-  this%sa(this%nel) = real(value, MATRIX_ACCURACY)
+  this%sa(this%nel) = real(value, MATRIX_PRECISION)
   this%ija(this%nel) = column
 
 end subroutine sparse_matrix_add
@@ -539,7 +540,7 @@ subroutine sparse_matrix_normalize_columns(this, column_norm)
       j = this%ija(k)
 
       if (column_norm(j) /= 0.d0) then
-        this%sa(k) = real(this%sa(k) / column_norm(j), MATRIX_ACCURACY)
+        this%sa(k) = real(this%sa(k) / column_norm(j), MATRIX_PRECISION)
       endif
     enddo
   enddo
@@ -559,7 +560,7 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
 
   ierr = 0
 
-  if (.not. allocated(this%sa)) allocate(this%sa(this%nnz), source=0._MATRIX_ACCURACY, stat=ierr)
+  if (.not. allocated(this%sa)) allocate(this%sa(this%nnz), source=0._MATRIX_PRECISION, stat=ierr)
   if (.not. allocated(this%ijl)) allocate(this%ijl(this%nl + 1), source=0, stat=ierr)
   if (.not. allocated(this%ija)) allocate(this%ija(this%nnz), source=0, stat=ierr)
 
@@ -571,14 +572,14 @@ end subroutine sparse_matrix_allocate_arrays
 !=========================================================================
 ! Allocates dynamic array to store solution variance.
 !=========================================================================
-subroutine sparse_matrix_allocate_variance_array(this, isize, myrank)
+subroutine sparse_matrix_allocate_variance_array(this, nelements, myrank)
   class(t_sparse_matrix), intent(inout) :: this
-  integer, intent(in) :: isize, myrank
+  integer, intent(in) :: nelements, myrank
   integer :: ierr
 
   ierr = 0
 
-  if (.not. allocated(this%lsqr_var)) allocate(this%lsqr_var(isize), source=0._CUSTOM_REAL, stat=ierr)
+  if (.not. allocated(this%lsqr_var)) allocate(this%lsqr_var(nelements), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) &
     call exit_MPI("Dynamic memory allocation error in sparse_matrix_allocate_variance_array!", myrank, ierr)
