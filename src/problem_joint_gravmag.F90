@@ -232,14 +232,14 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
   !-------------------------------------------------------------------------------------------------------
   ! Reading the sensitivity kernel from files.
-  if (SOLVE_PROBLEM(1)) call read_sensitivity_kernel(gpar, joint_inversion%matrix, 1, myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call read_sensitivity_kernel(mpar, joint_inversion%matrix, 2, myrank, nbproc)
+  if (SOLVE_PROBLEM(1)) call read_sensitivity_kernel(gpar, joint_inversion%matrix, ipar%problem_weight(1), 1, myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call read_sensitivity_kernel(mpar, joint_inversion%matrix, ipar%problem_weight(2), 2, myrank, nbproc)
 
   !-------------------------------------------------------------------------------------------------------
   ! Calculate the data from the read model.
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
-      iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
+      ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
       line_start(i), line_end(i), param_shift(i), &
       myrank, nbproc)
   enddo
@@ -308,7 +308,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     ! Calculate data from the prior model.
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
-        iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
+        ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
         line_start(i), line_end(i), param_shift(i), &
         myrank, nbproc)
     enddo
@@ -333,7 +333,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     ! Calculate data from the starting model.
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
-        iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
+        ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
         line_start(i), line_end(i), param_shift(i), &
         myrank, nbproc)
     enddo
@@ -390,7 +390,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       ! Calculate data based on the new model from inversion.
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
-          iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
+          ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
           line_start(i), line_end(i), param_shift(i), &
           myrank, nbproc)
       enddo

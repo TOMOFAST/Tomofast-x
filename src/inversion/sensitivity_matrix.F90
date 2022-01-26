@@ -17,7 +17,7 @@
 ! to the System of Linear Algebraic Equations (SLAE) that is stored
 ! using Compressed Sparse Row (CSR) format.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !==============================================================================================
 module sensitivity_matrix
 

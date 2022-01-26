@@ -369,12 +369,13 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
 end subroutine calculate_and_write_sensit
 
-!=============================================================================================
+!====================================================================================================
 ! Reads the sensitivity kernel from files,
 ! and stores it in the sparse matrix parallelized by model.
-!=============================================================================================
-subroutine read_sensitivity_kernel(par, sensit_matrix, problem_type, myrank, nbproc)
+!====================================================================================================
+subroutine read_sensitivity_kernel(par, sensit_matrix, problem_weight, problem_type, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
+  real(kind=CUSTOM_REAL), intent(in) :: problem_weight
   integer, intent(in) :: problem_type
   integer, intent(in) :: myrank, nbproc
 
@@ -475,7 +476,8 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_type, myrank, nbp
         ! The element belongs to this rank. Adding it to the matrix.
           ! The column index in a big (joint) parallel sparse matrix.
           column = p - nsmaller + param_shift(problem_type)
-          call sensit_matrix%add(sensit_compressed(j), column, myrank)
+          ! Add element to the sparse matrix.
+          call sensit_matrix%add(sensit_compressed(j) * problem_weight, column, myrank)
           nnz = nnz + 1
         else
           if (p > nsmaller + par%nelements) exit
