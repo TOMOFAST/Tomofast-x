@@ -15,7 +15,7 @@
 !================================================================================================
 ! This class contains basic model operations.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !================================================================================================
 module model_base
 
@@ -35,10 +35,6 @@ module model_base
 
     ! Local model parameters.
     real(kind=CUSTOM_REAL), allocatable :: val(:)
-
-    ! Local model parameters of the final model.
-    ! Stores e.g. resulting models of the single (non-joint) inversions, to compare them with final models of joint inversions.
-    real(kind=CUSTOM_REAL), allocatable :: val_final0(:)
 
     ! Full model parameters.
     ! (Read initial model here, write final model from here, and use also for cross-gradient.)
@@ -88,8 +84,6 @@ contains
 
 !================================================================================================
 ! Initialization.
-! split = true:  the model is split between CPUs,
-! split = false: each CPU has the full model.
 !================================================================================================
 subroutine model_initialize(this, nelements, myrank, nbproc)
   class(t_model_base), intent(inout) :: this
@@ -104,7 +98,6 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
   ierr = 0
 
   if (.not. allocated(this%val)) allocate(this%val(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%val_final0)) allocate(this%val_final0(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
   if (.not. allocated(this%val_full)) allocate(this%val_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   if (.not. allocated(this%cov)) allocate(this%cov(this%nelements), source=1._CUSTOM_REAL, stat=ierr)

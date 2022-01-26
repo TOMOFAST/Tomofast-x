@@ -164,7 +164,6 @@ method_of_weights.F90 \
 admm_method.F90 \
 clustering.F90 \
 damping_gradient.F90 \
-compare_models.F90 \
 inverse_problem.F90 \
 joint_inverse_problem.F90
 

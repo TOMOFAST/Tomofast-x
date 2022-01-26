@@ -43,9 +43,6 @@ module problem_joint_gravmag
   use costs
   use data_gravmag
   use parallel_tools
-  use filter
-  use noise
-  use compare_models
   use string, only: str
 
   implicit none
@@ -118,15 +115,14 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   type(t_data) :: data(2)
   type(t_weights) :: weights
   type(t_parallel_tools) :: pt
-  type(t_compare_models) :: comp
-  real(kind=CUSTOM_REAL) :: compres(2)
   real(kind=CUSTOM_REAL) :: cost_data(2)
   real(kind=CUSTOM_REAL) :: cost_model(2)
   integer :: it, i, m, number_prior_models, ierr
   integer :: line_start(2), line_end(2), param_shift(2)
 
   character(len=256) :: path_output_parfile
-  character(len=256) :: grav_prior_model_filename, mag_prior_model_filename
+  character(len=256) :: grav_prior_model_filename
+  character(len=256) :: mag_prior_model_filename
 
   logical :: SOLVE_PROBLEM(2)
   integer :: nnz(2)
@@ -424,15 +420,6 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       ! Calculate new costs for the models (damping term in the cost function).
       call calculate_model_costs(ipar, iarr, cost_model, SOLVE_PROBLEM, myrank, nbproc)
 
-      ! Store final models from the single (non-joint) inversions.
-      do i = 1, 2
-        if (SOLVE_PROBLEM(i)) then
-          if (ipar%single_problem_complete(i, it) .and. .not. ipar%single_problem_complete(i, it - 1)) then
-            iarr(i)%model%val_final0 = iarr(i)%model%val
-          endif
-        endif
-      enddo
-
     enddo ! Major inversion loop.
 
 #ifndef SUPPRESS_OUTPUT
@@ -449,16 +436,6 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
           print *, 'Model', i , 'min/max values =', minval(iarr(i)%model%val_full), maxval(iarr(i)%model%val_full)
       enddo
     endif
-#endif
-
-#ifndef SUPPRESS_OUTPUT
-    ! Compare final models of single and joint inversions.
-!    compres = 0.d0
-!    if (SOLVE_PROBLEM(1)) call comp%compare(iarr(1)%model, ipar%derivative_type, compres(1), myrank, nbproc)
-!    if (SOLVE_PROBLEM(2)) call comp%compare(iarr(2)%model, ipar%derivative_type, compres(2), myrank, nbproc)
-!
-!    if (myrank == 0) print *, 'Model comparison:', ipar%column_weight_multiplier(1), ipar%column_weight_multiplier(2), &
-!                              compres(1), compres(2), ipar%cross_grad_weight, joint_inversion%get_cross_grad_cost()
 #endif
 
 #ifndef SUPPRESS_OUTPUT
