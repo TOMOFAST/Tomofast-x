@@ -367,8 +367,8 @@ subroutine sparse_matrix_part_mult_vector(this, x, b, line_start, line_end, para
   integer :: i, k, l
 
   ! Sanity check.
-  if (line_start < 1 .or. line_start > this%nl .or. &
-      line_end < 1 .or. line_end > this%nl) then
+  if (line_start < 1 .or. line_start > this%nl_current .or. &
+      line_end < 1 .or. line_end > this%nl_current) then
     call exit_MPI("Wrong line index in sparse_matrix_part_mult_vector!", myrank, 0)
   endif
 
