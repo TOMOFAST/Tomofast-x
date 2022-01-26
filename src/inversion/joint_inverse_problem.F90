@@ -110,6 +110,8 @@ module joint_inverse_problem
     procedure, private, pass :: add_cross_grad_constraints => joint_inversion_add_cross_grad_constraints
     procedure, private, pass :: add_clustering_constraints => joint_inversion_add_clustering_constraints
 
+    procedure, public, nopass :: calculate_matrix_partitioning => joint_inversion_calculate_matrix_partitioning
+
   end type t_joint_inversion
 
 contains
@@ -330,21 +332,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
     SOLVE_PROBLEM(i) = (par%problem_weight(i) /= 0.d0)
   enddo
 
-  param_shift(1) = 0
-  param_shift(2) = par%nelements
-
-  line_start = 0
-  line_end = 0
-
-  if (SOLVE_PROBLEM(1)) then
-    line_start(1) = 1
-    line_end(1) = par%ndata(1)
-  endif
-
-  if (SOLVE_PROBLEM(2)) then
-    line_start(2) = line_end(1) + 1
-    line_end(2) = line_end(1) + par%ndata(2)
-  endif
+  call this%calculate_matrix_partitioning(par, line_start, line_end, param_shift)
 
   ! ***** Data misfit and damping and damping gradient  *****
 
@@ -773,5 +761,37 @@ pure function joint_inversion_get_clustering_cost(this, problem_type) result(res
   res = this%clustering%get_cost(problem_type)
 
 end function joint_inversion_get_clustering_cost
+
+!==================================================================================================
+! Calculates the matrix pertitioning.
+!==================================================================================================
+subroutine joint_inversion_calculate_matrix_partitioning(par, line_start, line_end, param_shift)
+  type(t_parameters_inversion), intent(in) :: par
+  integer, intent(out) :: line_start(2), line_end(2), param_shift(2)
+
+  logical :: SOLVE_PROBLEM(2)
+  integer :: i
+
+  do i = 1, 2
+    SOLVE_PROBLEM(i) = (par%problem_weight(i) /= 0.d0)
+  enddo
+
+  param_shift(1) = 0
+  param_shift(2) = par%nelements
+
+  line_start = 0
+  line_end = 0
+
+  if (SOLVE_PROBLEM(1)) then
+    line_start(1) = 1
+    line_end(1) = par%ndata(1)
+  endif
+
+  if (SOLVE_PROBLEM(2)) then
+    line_start(2) = line_end(1) + 1
+    line_end(2) = line_end(1) + par%ndata(2)
+  endif
+
+end subroutine joint_inversion_calculate_matrix_partitioning
 
 end module joint_inverse_problem

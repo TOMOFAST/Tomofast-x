@@ -142,22 +142,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   cost_data = 0._CUSTOM_REAL
   cost_model = 0._CUSTOM_REAL
 
-  ! Parameters for calculating the data using the big (joint inversion) parallel sparse matrix.
-  param_shift(1) = 0
-  param_shift(2) = ipar%nelements
-
-  line_start = 0
-  line_end = 0
-
-  if (SOLVE_PROBLEM(1)) then
-    line_start(1) = 1
-    line_end(1) = ipar%ndata(1)
-  endif
-
-  if (SOLVE_PROBLEM(2)) then
-    line_start(2) = line_end(1) + 1
-    line_end(2) = line_end(1) + ipar%ndata(2)
-  endif
+  ! Calculate parameters for calculating the data using the big (joint inversion) parallel sparse matrix.
+  call joint_inversion%calculate_matrix_partitioning(ipar, line_start, line_end, param_shift)
 
   ! (I) MODEL ALLOCATION.  ---------------------------------------------------------------
 
