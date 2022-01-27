@@ -279,7 +279,7 @@ end subroutine joint_inversion_reset
 subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
-  type(t_inversion_arrays), intent(in) :: arr(2)
+  type(t_inversion_arrays), intent(inout) :: arr(2)
   integer, intent(in) :: myrank, nbproc
 
   real(kind=CUSTOM_REAL), intent(out) :: delta_model(:)
@@ -287,6 +287,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
   type(t_damping) :: damping
   type(t_damping_gradient) :: damping_gradient
   type(t_parameters_lsqr) :: par_lsqr
+  type(t_parallel_tools) :: pt
   integer :: i, j, k
   integer :: line_start(2), line_end(2), param_shift(2)
   real(kind=CUSTOM_REAL) :: cost
@@ -295,13 +296,6 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
   integer :: der_type
   character(len=32) :: filename
   integer :: nsmaller
-
-  ! TODO: Move out with writing the variance.
-  integer :: ierr
-  real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full1(:)
-  real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full2(:)
-  real(kind=CUSTOM_REAL), allocatable :: delta_model_full(:)
-  type(t_parallel_tools) :: pt
 
   logical :: SOLVE_PROBLEM(2)
 
@@ -536,25 +530,25 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
   ! Applying the Inverse Wavelet Transform.
     if (nbproc > 1) then
     ! Parallel version.
-      allocate(delta_model_full(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
       nsmaller = pt%get_nsmaller(par%nelements, myrank, nbproc)
 
+      ! Note: use 'model%val_full' for storage here, as we overwrite it later anyway.
+
       if (SOLVE_PROBLEM(1)) then
-        call pt%get_full_array(delta_model(1:par%nelements), par%nelements, delta_model_full, .true., myrank, nbproc)
-        call iHaar3D(delta_model_full, par%nx, par%ny, par%nz)
+        call pt%get_full_array(delta_model(1:par%nelements), par%nelements, arr(1)%model%val_full, .true., myrank, nbproc)
+        call iHaar3D(arr(1)%model%val_full, par%nx, par%ny, par%nz)
 
         ! Extract the local model update.
-        delta_model(1:par%nelements) = delta_model_full(nsmaller + 1 : nsmaller + par%nelements)
+        delta_model(1:par%nelements) = arr(1)%model%val_full(nsmaller + 1 : nsmaller + par%nelements)
       endif
 
       if (SOLVE_PROBLEM(2)) then
-        call pt%get_full_array(delta_model(par%nelements + 1:), par%nelements, delta_model_full, .true., myrank, nbproc)
-        call iHaar3D(delta_model_full, par%nx, par%ny, par%nz)
+        call pt%get_full_array(delta_model(par%nelements + 1:), par%nelements, arr(2)%model%val_full, .true., myrank, nbproc)
+        call iHaar3D(arr(2)%model%val_full, par%nx, par%ny, par%nz)
 
         ! Extract the local model update.
-        delta_model(par%nelements + 1:) = delta_model_full(nsmaller + 1 : nsmaller + par%nelements)
+        delta_model(par%nelements + 1:) = arr(2)%model%val_full(nsmaller + 1 : nsmaller + par%nelements)
       endif
-      deallocate(delta_model_full)
 
     else
     ! Serial version.
@@ -578,18 +572,13 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
     if (SOLVE_PROBLEM(1)) call rescale_model(this%matrix%lsqr_var(1:par%nelements), arr(1)%column_weight, par%nelements)
     if (SOLVE_PROBLEM(2)) call rescale_model(this%matrix%lsqr_var(par%nelements + 1:), arr(2)%column_weight, par%nelements)
 
-    if (myrank == 0) then
-      ! Allocate array for the whole vector.
-      if (SOLVE_PROBLEM(1)) allocate(lsqr_var_full1(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-      if (SOLVE_PROBLEM(2)) allocate(lsqr_var_full2(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-      if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_solve!", myrank, ierr)
-    endif
+    ! Note: use 'model%val_full' for storage here, as we overwrite it later anyway.
 
     ! Gather full (parallel) vector on the master.
     if (SOLVE_PROBLEM(1)) &
-      call pt%get_full_array(this%matrix%lsqr_var(1:par%nelements), par%nelements, lsqr_var_full1, .false., myrank, nbproc)
+      call pt%get_full_array(this%matrix%lsqr_var(1:par%nelements), par%nelements, arr(1)%model%val_full, .false., myrank, nbproc)
     if (SOLVE_PROBLEM(2)) &
-      call pt%get_full_array(this%matrix%lsqr_var(par%nelements + 1:), par%nelements, lsqr_var_full2, .false., myrank, nbproc)
+      call pt%get_full_array(this%matrix%lsqr_var(par%nelements+1:), par%nelements, arr(2)%model%val_full, .false., myrank, nbproc)
 
     if (myrank == 0) then
     ! Writing variance by master CPU.
@@ -606,11 +595,10 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
              status='unknown', action='write')
 
         do i = 1, par%nelements_total
-          write (27, *) lsqr_var_full1(i)
+          write (27, *) arr(1)%model%val_full(i)
         enddo
 
         close(27)
-        deallocate(lsqr_var_full1)
       endif
 
       if (SOLVE_PROBLEM(2)) then
@@ -619,11 +607,10 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
              status='unknown', action='write')
 
         do i = 1, par%nelements_total
-          write (28, *) lsqr_var_full2(i)
+          write (28, *) arr(2)%model%val_full(i)
         enddo
 
         close(28)
-        deallocate(lsqr_var_full2)
       endif
 
     endif
