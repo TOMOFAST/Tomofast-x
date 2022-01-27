@@ -357,8 +357,12 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
     !-----------------------------------------------------------------------------------------
     ! Calculate initial cost (misfit).
-    if (SOLVE_PROBLEM(1)) call calculate_cost(ipar%ndata(1), data(1)%val_meas, data(1)%val_calc, cost_data(1), myrank)
-    if (SOLVE_PROBLEM(2)) call calculate_cost(ipar%ndata(2), data(2)%val_meas, data(2)%val_calc, cost_data(2), myrank)
+    do i = 1, 2
+      if (SOLVE_PROBLEM(i)) then
+        call calculate_cost(ipar%ndata(i), data(i)%val_meas, data(i)%val_calc, cost_data(i), myrank)
+        if (myrank == 0) print *, 'cost =', cost_data(i)
+      endif
+    enddo
 
     ! Calculate costs for the models (damping term in the cost function).
     call calculate_model_costs(ipar, iarr, cost_model, SOLVE_PROBLEM, myrank, nbproc)
@@ -414,8 +418,12 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 #endif
 
       ! Calculate new costs for data misfits.
-      if (SOLVE_PROBLEM(1)) call calculate_cost(ipar%ndata(1), data(1)%val_meas, data(1)%val_calc, cost_data(1), myrank)
-      if (SOLVE_PROBLEM(2)) call calculate_cost(ipar%ndata(2), data(2)%val_meas, data(2)%val_calc, cost_data(2), myrank)
+      do i = 1, 2
+        if (SOLVE_PROBLEM(i)) then
+          call calculate_cost(ipar%ndata(i), data(i)%val_meas, data(i)%val_calc, cost_data(i), myrank)
+          if (myrank == 0) print *, 'cost =', cost_data(i)
+        endif
+      enddo
 
       ! Calculate new costs for the models (damping term in the cost function).
       call calculate_model_costs(ipar, iarr, cost_model, SOLVE_PROBLEM, myrank, nbproc)

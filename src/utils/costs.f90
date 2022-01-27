@@ -32,10 +32,9 @@ module costs
 contains
 
 !=====================================================================
-! Calculates and prints out the cost functions.
+! Calculates the relative cost.
 !=====================================================================
 subroutine calculate_cost(n, arr1, arr2, cost, myrank)
-
   integer, intent(in) :: n, myrank
   real(kind=CUSTOM_REAL), intent(in) :: arr1(:)
   real(kind=CUSTOM_REAL), intent(in) :: arr2(:)
@@ -55,8 +54,6 @@ subroutine calculate_cost(n, arr1, arr2, cost, myrank)
   enddo
 
   if (cost2 /= 0) cost = cost1 / cost2
-
-  if (myrank == 0) print *, 'cost =', cost, 'cost1 =', cost1, 'cost2 =', cost2
 
 end subroutine calculate_cost
 
