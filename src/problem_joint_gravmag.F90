@@ -163,9 +163,9 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call iarr(2)%model%write('mag_read_', .false., myrank, nbproc)
 #endif
 
-  ! Distribute the model and grid among CPUs.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%model%distribute(.true., myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%model%distribute(.true., myrank, nbproc)
+  ! Distribute the model among CPUs.
+  if (SOLVE_PROBLEM(1)) call iarr(1)%model%distribute(myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%model%distribute(myrank, nbproc)
 
   ! (I2) SETTING ADMM BOUNDS --------------------------------------------------------------
 
@@ -559,6 +559,7 @@ subroutine read_model(iarr, model_type, model_val, model_file, myrank, nbproc)
   if (model_type == 1) then
     ! Setting homogeneous starting value.
     iarr%model%val_full = model_val
+    iarr%model%cov_full = 1.d0
 
   else if (model_type == 2) then
     ! Reading from file.
@@ -570,7 +571,7 @@ subroutine read_model(iarr, model_type, model_val, model_file, myrank, nbproc)
   endif
 
   ! Distribute the model among CPUs.
-  call iarr%model%distribute(.false., myrank, nbproc)
+  call iarr%model%distribute(myrank, nbproc)
 end subroutine read_model
 
 end module problem_joint_gravmag

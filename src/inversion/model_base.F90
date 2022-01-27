@@ -142,9 +142,8 @@ end subroutine model_init_grid
 !=================================================================================
 ! Distribute the grid and the prior model among CPUs.
 !=================================================================================
-subroutine model_distribute(this, distribute_grid, myrank, nbproc)
+subroutine model_distribute(this, myrank, nbproc)
   class(t_model_base), intent(inout) :: this
-  logical, intent(in) :: distribute_grid
   integer, intent(in) :: myrank, nbproc
 
   ! Displacement for mpi_scatterv.
