@@ -122,9 +122,12 @@ contains
 subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
-  integer, intent(in) :: nnz_sensit, myrank
+  integer(kind=8), intent(in) :: nnz_sensit
+  integer, intent(in) :: myrank
+
   integer :: ierr
-  integer :: i, nl, nnz
+  integer :: i, nl
+  integer(kind=8) :: nnz
 
   do i = 1, 2
     if (par%alpha(i) == 0.d0 .or. par%problem_weight(i) == 0.d0) then
@@ -240,7 +243,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   if (this%add_cross_grad) then
     ! Memory allocation for the matrix and right-hand side for the cross-gradient constraints.
-    call this%matrix_B%initialize(3 * par%nelements_total, this%cross_grad%get_num_elements(par%derivative_type), myrank)
+    call this%matrix_B%initialize(3 * par%nelements_total, int8(this%cross_grad%get_num_elements(par%derivative_type)), myrank)
     allocate(this%d_RHS(3 * par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   endif
 

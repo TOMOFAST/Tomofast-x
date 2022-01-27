@@ -93,7 +93,7 @@ subroutine test_lsqr_determined(myrank, nbproc)
     return
   endif
 
-  call matrix%initialize(nelements_total, nelements * nrows, myrank)
+  call matrix%initialize(nelements_total, int8(nelements * nrows), myrank)
 
   allocate(b_RHS(nrows), source=0._CUSTOM_REAL, stat=ierr)
   allocate(delta_model(nelements), source=0._CUSTOM_REAL, stat=ierr)
@@ -169,7 +169,7 @@ subroutine test_lsqr_overdetermined_1(myrank, nbproc)
     return
   endif
 
-  call matrix%initialize(nrows, nelements * nrows, myrank)
+  call matrix%initialize(nrows, int8(nelements * nrows), myrank)
 
   allocate(b_RHS(nrows), source=0._CUSTOM_REAL, stat=ierr)
   allocate(delta_model(nelements), source=0._CUSTOM_REAL, stat=ierr)
@@ -254,7 +254,7 @@ subroutine test_lsqr_overdetermined_2(myrank, nbproc)
     return
   endif
 
-  call matrix%initialize(nrows, ncols_loc * nrows, myrank)
+  call matrix%initialize(nrows, int8(ncols_loc * nrows), myrank)
 
   allocate(b_RHS(nrows), source=0._CUSTOM_REAL, stat=ierr)
   allocate(x(ncols_loc), source=0._CUSTOM_REAL, stat=ierr)
@@ -384,7 +384,7 @@ subroutine test_lsqr_underdetermined_1(myrank, nbproc)
     return
   endif
 
-  call matrix%initialize(nrows, ncols_loc * nrows, myrank)
+  call matrix%initialize(nrows, int8(ncols_loc * nrows), myrank)
 
   allocate(b_RHS(nrows), source=0._CUSTOM_REAL, stat=ierr)
   allocate(delta_model(ncols_loc), source=0._CUSTOM_REAL, stat=ierr)
@@ -492,7 +492,7 @@ subroutine test_lsqr_underdetermined_2(myrank, nbproc)
     return
   endif
 
-  call matrix%initialize(nrows, ncols_loc * nrows, myrank)
+  call matrix%initialize(nrows, int8(ncols_loc * nrows), myrank)
 
   allocate(b_RHS(nrows), source=0._CUSTOM_REAL, stat=ierr)
   allocate(x(ncols_loc), source=0._CUSTOM_REAL, stat=ierr)
@@ -578,7 +578,7 @@ subroutine test_lsqr_underdetermined_3(myrank, nbproc)
     return
   endif
 
-  call matrix%initialize(nrows, ncols_loc * nrows, myrank)
+  call matrix%initialize(nrows, int8(ncols_loc * nrows), myrank)
 
   allocate(b_RHS(nrows), source=0._CUSTOM_REAL, stat=ierr)
   allocate(x(ncols_loc), source=0._CUSTOM_REAL, stat=ierr)

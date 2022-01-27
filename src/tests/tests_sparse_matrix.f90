@@ -53,7 +53,7 @@ subroutine test_get_value(myrank)
   ncolumns = 10
   nrows = 30
 
-  call matrix%initialize(nrows, ncolumns * nrows, myrank)
+  call matrix%initialize(nrows, int8(ncolumns * nrows), myrank)
 
   ! Building the matrix.
   counter = 0
@@ -126,7 +126,7 @@ subroutine test_normalize_columns(myrank)
     enddo
   enddo
 
-  call matrix%initialize(nrows, ncolumns * nrows, myrank)
+  call matrix%initialize(nrows, int8(ncolumns * nrows), myrank)
 
   ! Copy values from A to the sparse matrix.
   do j = 1, nrows
@@ -199,7 +199,7 @@ subroutine test_trans_mult_matrix(myrank)
   allocate(H(ncolumns, ncolumns))
 
   ! Building the matrix.
-  call matrix%initialize(nrows, ncolumns * nrows, myrank)
+  call matrix%initialize(nrows, int8(ncolumns * nrows), myrank)
 
   call matrix%new_row(myrank)
   call matrix%add(1.d0, 1, myrank)

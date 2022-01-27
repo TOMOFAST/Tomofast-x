@@ -62,19 +62,21 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! The number of non-zero elements (on current CPU) in the sensitivity kernel parallelized by model.
   ! We need this number for reading the sensitivity later from files, for invere problem.
   ! As the inverse problem is parallelized by model, and calculations here are parallelized by data.
-  integer, intent(out) :: nnz
+  integer(kind=8), intent(out) :: nnz
 
   type(t_magnetic_field) :: mag_field
   type(t_parallel_tools) :: pt
   integer :: i, p, nel, ierr
-  integer :: nelements_total, nnz_data
+  integer :: nelements_total
+  integer(kind=8) :: nnz_data
   integer :: problem_type
   integer :: idata, ndata_loc, ndata_smaller
   character(len=256) :: filename, filename_full
   real(kind=CUSTOM_REAL) :: comp_rate, nnz_total_dbl, nnz_total_dbl2
   real(kind=CUSTOM_REAL) :: threshold
 
-  integer :: nnz_model_loc(nbproc), nnz_model(nbproc)
+  integer(kind=8) :: nnz_model_loc(nbproc)
+  integer(kind=8) :: nnz_model(nbproc)
   ! The number of elements on every CPU.
   integer :: nelements_at_cpu(nbproc)
   integer :: nsmaller_at_cpu(nbproc)
@@ -318,7 +320,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   ! Calculate the nnz for the sensitivity kernel parallelized by model.
   !---------------------------------------------------------------------------------------------
-  call mpi_allreduce(nnz_model_loc, nnz_model, nbproc, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
+  call mpi_allreduce(nnz_model_loc, nnz_model, nbproc, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD, ierr)
 
   if (myrank == 0)  print *, 'nnz_model = ', nnz_model
 
@@ -396,7 +398,8 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_weight, problem_t
 
   integer :: ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
   integer :: idata, nel, idata_glob
-  integer :: nnz, column
+  integer(kind=8) :: nnz
+  integer :: column
   integer :: param_shift(2)
 
   param_shift(1) = 0
@@ -516,12 +519,12 @@ subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
   integer, intent(in) :: problem_type
   integer, intent(in) :: myrank, nbproc
 
-  integer, intent(out) :: nnz
+  integer(kind=8), intent(out) :: nnz
 
   integer :: ierr
   character(len=256) :: filename, filename_full
   character(len=256) :: msg
-  integer :: nnz_model(nbproc)
+  integer(kind=8) :: nnz_model(nbproc)
   integer :: nx_read, ny_read, nz_read, ndata_read, nbproc_read
   integer :: precision_read
   real(kind=CUSTOM_REAL) :: cost

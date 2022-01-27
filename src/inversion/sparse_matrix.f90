@@ -32,9 +32,9 @@ module sparse_matrix
     private
 
     ! Predicted number of nonzero elements.
-    integer, private :: nnz
+    integer(kind=8), private :: nnz
     ! Actual number of nonzero elements.
-    integer, private :: nel
+    integer(kind=8), private :: nel
     ! Total number of rows in the matrix.
     integer, private :: nl
     ! Current number of the added lines (rows) in the matrix.
@@ -45,7 +45,7 @@ module sparse_matrix
     ! The column indexes corresponding to the values.
     integer, allocatable, private :: ija(:)
     ! The list of 'sa' indexes where each row starts.
-    integer, allocatable, private :: ijl(:)
+    integer(kind=8), allocatable, private :: ijl(:)
 
     ! Auxilary array to calculate the solution variance (var = diag(D.D')).
     ! [1] E. Kostina, M. A. Saunders, and I. Schierle, Computation of covariance matrices 
@@ -119,7 +119,7 @@ end function sparse_matrix_get_current_row_number
 !=========================================================================
 pure function sparse_matrix_get_number_elements(this) result(res)
   class(t_sparse_matrix), intent(in) :: this
-  integer :: res
+  integer(kind=8) :: res
 
   res = this%nel
 end function sparse_matrix_get_number_elements
@@ -129,7 +129,7 @@ end function sparse_matrix_get_number_elements
 !===========================================================================
 pure function sparse_matrix_get_nnz(this) result(res)
   class(t_sparse_matrix), intent(in) :: this
-  integer :: res
+  integer(kind=8) :: res
 
   res = this%nnz
 end function sparse_matrix_get_nnz
@@ -142,7 +142,7 @@ pure function sparse_matrix_get_value(this, i, j) result(res)
   class(t_sparse_matrix), intent(in) :: this
   integer, intent(in) :: i, j
   real(kind=CUSTOM_REAL) :: res
-  integer :: k
+  integer(kind=8) :: k
 
   res = 0.d0
   do k = this%ijl(j), this%ijl(j + 1) - 1
@@ -160,7 +160,8 @@ end function sparse_matrix_get_value
 !=========================================================================
 subroutine sparse_matrix_initialize(this, nl, nnz, myrank)
   class(t_sparse_matrix), intent(inout) :: this
-  integer, intent(in) :: nl, nnz, myrank
+  integer, intent(in) :: nl, myrank
+  integer(kind=8), intent(in) :: nnz
 
   this%nl_current = 0
   this%nel = 0
@@ -238,13 +239,14 @@ end subroutine sparse_matrix_finalize_part
 subroutine sparse_matrix_validate(this, ncolumns, myrank)
   class(t_sparse_matrix), intent(in) :: this
   integer, intent(in) :: ncolumns, myrank
-  integer :: i, j, k
+  integer :: i, j
+  integer(kind=8) :: k
 
   ! Use the same loop as in sparse_matrix_trans_mult_vector().
   do i = 1, this%nl
     do k = this%ijl(i), this%ijl(i + 1) - 1
       if (k < 1 .or. k > this%nnz) &
-        call exit_MPI("Sparse matrix validation failed (k)!", myrank, k)
+        call exit_MPI("Sparse matrix validation failed (k)!", myrank, 0)
 
       j = this%ija(k)
 
@@ -268,7 +270,7 @@ subroutine sparse_matrix_add(this, value, column, myrank)
 
   ! Sanity check.
   if (this%nel >= this%nnz) &
-    call exit_MPI("Error in total number of elements in sparse_matrix_add!", myrank, this%nnz)
+    call exit_MPI("Error in total number of elements in sparse_matrix_add!", myrank, 0)
 
   this%nel = this%nel + 1
   this%sa(this%nel) = real(value, MATRIX_PRECISION)
@@ -318,7 +320,9 @@ subroutine sparse_matrix_add_matrix(this, matrix_B, mu, myrank)
   type(t_sparse_matrix), intent(in) :: matrix_B
   real(kind=CUSTOM_REAL), intent(in) :: mu
   integer, intent(in) :: myrank
-  integer :: i, k
+
+  integer :: i
+  integer(kind=8) :: k
 
   do i = 1, matrix_B%nl
     call this%new_row(myrank)
@@ -337,7 +341,8 @@ pure subroutine sparse_matrix_mult_vector(this, x, b)
   class(t_sparse_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: x(:)
   real(kind=CUSTOM_REAL), intent(out) :: b(:)
-  integer :: i, k
+  integer :: i
+  integer(kind=8) :: k
 
   b = 0._CUSTOM_REAL
 
@@ -361,7 +366,8 @@ subroutine sparse_matrix_part_mult_vector(this, x, b, line_start, line_end, para
 
   real(kind=CUSTOM_REAL), intent(out) :: b(:)
 
-  integer :: i, k, l
+  integer :: i, l
+  integer(kind=8) :: k
 
   ! Sanity check.
   if (line_start < 1 .or. line_start > this%nl_current .or. &
@@ -388,7 +394,7 @@ pure subroutine sparse_matrix_get_line(this, j, b)
   class(t_sparse_matrix), intent(in) :: this
   integer, intent(in) :: j
   real(kind=CUSTOM_REAL), intent(out) :: b(:)
-  integer :: k
+  integer(kind=8) :: k
 
   b = 0._CUSTOM_REAL
 
@@ -405,7 +411,8 @@ pure subroutine sparse_matrix_trans_mult_vector(this, x, b)
   class(t_sparse_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: x(:)
   real(kind=CUSTOM_REAL), intent(out) :: b(:)
-  integer :: i, j, k
+  integer :: i, j
+  integer(kind=8) :: k
 
   b = 0._CUSTOM_REAL
 
@@ -427,7 +434,8 @@ pure subroutine sparse_matrix_get_column(this, column, b)
   class(t_sparse_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(out) :: b(:)
   integer, intent(in) :: column
-  integer :: i, j, k
+  integer :: i, j
+  integer(kind=8) :: k
 
   b = 0._CUSTOM_REAL
 
@@ -451,7 +459,8 @@ end subroutine sparse_matrix_get_column
 pure subroutine sparse_matrix_get_integrated_sensit(this, b)
   class(t_sparse_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(out) :: b(:)
-  integer :: i, j, k
+  integer :: i, j
+  integer(kind=8) :: k
 
   b = 0._CUSTOM_REAL
 
@@ -517,7 +526,8 @@ end function sparse_matrix_trans_mult_matrix
 subroutine sparse_matrix_normalize_columns(this, column_norm)
   class(t_sparse_matrix), intent(inout) :: this
   real(kind=CUSTOM_REAL), intent(out) :: column_norm(:)
-  integer :: i, j, k
+  integer :: i, j
+  integer(kind=8) :: k
 
   column_norm = 0._CUSTOM_REAL
 
@@ -558,7 +568,7 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
   ierr = 0
 
   if (.not. allocated(this%sa)) allocate(this%sa(this%nnz), source=0._MATRIX_PRECISION, stat=ierr)
-  if (.not. allocated(this%ijl)) allocate(this%ijl(this%nl + 1), source=0, stat=ierr)
+  if (.not. allocated(this%ijl)) allocate(this%ijl(this%nl + 1), source=int8(0), stat=ierr)
   if (.not. allocated(this%ija)) allocate(this%ija(this%nnz), source=0, stat=ierr)
 
   if (ierr /= 0) &

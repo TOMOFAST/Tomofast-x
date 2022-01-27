@@ -125,7 +125,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   character(len=256) :: mag_prior_model_filename
 
   logical :: SOLVE_PROBLEM(2)
-  integer :: nnz(2)
+  integer(kind=8) :: nnz(2)
 
   if (myrank == 0) print *, "Solving problem joint grav/mag."
 
