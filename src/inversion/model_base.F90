@@ -53,9 +53,6 @@ module model_base
     real(kind=CUSTOM_REAL), allocatable :: max_local_bound(:, :)
     real(kind=CUSTOM_REAL), allocatable :: local_bound_constraints_weight(:)
 
-    ! Local grid.
-    type(t_grid) :: grid
-
     ! Full grid.
     type(t_grid) :: grid_full
 
@@ -138,7 +135,6 @@ subroutine model_init_grid(this, nx, ny, nz, myrank)
   integer, intent(in) :: nx, ny, nz
   integer, intent(in) :: myrank
 
-  call this%grid%initialize(this%nelements, nx, ny, nz, .false., myrank)
   call this%grid_full%initialize(this%nelements_total, nx, ny, nz, .true., myrank)
 
 end subroutine model_init_grid
@@ -160,37 +156,6 @@ subroutine model_distribute(this, distribute_grid, myrank, nbproc)
 
   ! Partitioning for MPI_Scatterv.
   call pt%get_mpi_partitioning(this%nelements, displs, nelements_at_cpu, myrank, nbproc)
-
-  ! Scatter the corresponding parts of the full model and grid among all CPUs.
-  if (distribute_grid) then
-
-    call MPI_Scatterv(this%grid_full%X1, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
-                      this%grid%X1, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-    call MPI_Scatterv(this%grid_full%X2, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
-                      this%grid%X2, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-    call MPI_Scatterv(this%grid_full%Y1, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
-                      this%grid%Y1, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-    call MPI_Scatterv(this%grid_full%Y2, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
-                      this%grid%Y2, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-    call MPI_Scatterv(this%grid_full%Z1, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
-                      this%grid%Z1, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-    call MPI_Scatterv(this%grid_full%Z2, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
-                      this%grid%Z2, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-    call MPI_Scatterv(this%grid_full%i_, nelements_at_cpu, displs, MPI_INTEGER, &
-                      this%grid%i_, this%nelements, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-
-    call MPI_Scatterv(this%grid_full%j_, nelements_at_cpu, displs, MPI_INTEGER, &
-                      this%grid%j_, this%nelements, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-
-    call MPI_Scatterv(this%grid_full%k_, nelements_at_cpu, displs, MPI_INTEGER, &
-                      this%grid%k_, this%nelements, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-  endif
 
   call MPI_Scatterv(this%val_full, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
                     this%val, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)

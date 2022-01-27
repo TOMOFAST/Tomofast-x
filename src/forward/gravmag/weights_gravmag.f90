@@ -26,6 +26,7 @@ module weights_gravmag
   use grid
   use mpi_tools, only: exit_MPI
   use data_gravmag
+  use parallel_tools
 
   implicit none
 
@@ -62,8 +63,13 @@ subroutine weights_calculate(par, iarr, data, myrank, nbproc)
   real(kind=CUSTOM_REAL) :: Rij(8), R0
   real(kind=CUSTOM_REAL) :: dVj
   real(kind=CUSTOM_REAL) :: integral, wr
+  integer :: nsmaller, p
+  type(t_parallel_tools) :: pt
 
   if (myrank == 0) print *, 'Calculating the depth weight, type = ', par%depth_weighting_type
+
+  ! The number of elements on CPUs with rank smaller than myrank.
+  nsmaller = pt%get_nsmaller(par%nelements, myrank, nbproc)
 
   !--------------------------------------------------------------------------------
   ! Calculate the normalized depth weight.
@@ -73,7 +79,9 @@ subroutine weights_calculate(par, iarr, data, myrank, nbproc)
 
     ! Use empirical function 1/(z+z0)**(beta/2).
     do i = 1, par%nelements
-      iarr%damping_weight(i) = calculate_depth_weight(iarr%model%grid, par%depth_weighting_power, par%Z0, i, myrank)
+      ! Full grid index.
+      p = nsmaller + i
+      iarr%damping_weight(i) = calculate_depth_weight(iarr%model%grid_full, par%depth_weighting_power, par%Z0, p, myrank)
     enddo
 
   else if (par%depth_weighting_type == 2) then
@@ -87,26 +95,29 @@ subroutine weights_calculate(par, iarr, data, myrank, nbproc)
     dfactor = 0.25d0
 
     do i = 1, par%nelements
+      ! Full grid index.
+      p = nsmaller + i
+
       ! Cell colume.
-      dVj = iarr%model%grid%get_cell_volume(i)
+      dVj = iarr%model%grid_full%get_cell_volume(p)
 
       ! Shifts to make the integral points to lie inside the cell volume.
-      dhx = dfactor * abs(iarr%model%grid%X2(i) - iarr%model%grid%X1(i))
-      dhy = dfactor * abs(iarr%model%grid%Y2(i) - iarr%model%grid%Y1(i))
-      dhz = dfactor * abs(iarr%model%grid%Z2(i) - iarr%model%grid%Z1(i))
+      dhx = dfactor * abs(iarr%model%grid_full%X2(p) - iarr%model%grid_full%X1(p))
+      dhy = dfactor * abs(iarr%model%grid_full%Y2(p) - iarr%model%grid_full%Y1(p))
+      dhz = dfactor * abs(iarr%model%grid_full%Z2(p) - iarr%model%grid_full%Z1(p))
 
       wr = 0.d0
 
       do j = 1, par%ndata
 
         ! The squared 1D distances along each cell dimension.
-        distX_sq(1) = (iarr%model%grid%X1(i) + dhx - data%X(j))**2.d0
-        distY_sq(1) = (iarr%model%grid%Y1(i) + dhy - data%Y(j))**2.d0
-        distZ_sq(1) = (iarr%model%grid%Z1(i) + dhz - data%Z(j))**2.d0
+        distX_sq(1) = (iarr%model%grid_full%X1(p) + dhx - data%X(j))**2.d0
+        distY_sq(1) = (iarr%model%grid_full%Y1(p) + dhy - data%Y(j))**2.d0
+        distZ_sq(1) = (iarr%model%grid_full%Z1(p) + dhz - data%Z(j))**2.d0
 
-        distX_sq(2) = (iarr%model%grid%X2(i) - dhx - data%X(j))**2.d0
-        distY_sq(2) = (iarr%model%grid%Y2(i) - dhy - data%Y(j))**2.d0
-        distZ_sq(2) = (iarr%model%grid%Z2(i) - dhz - data%Z(j))**2.d0
+        distX_sq(2) = (iarr%model%grid_full%X2(p) - dhx - data%X(j))**2.d0
+        distY_sq(2) = (iarr%model%grid_full%Y2(p) - dhy - data%Y(j))**2.d0
+        distZ_sq(2) = (iarr%model%grid_full%Z2(p) - dhz - data%Z(j))**2.d0
 
         ! Calculate the distance from 8 points inside a cell to the data location.
         ind = 0
