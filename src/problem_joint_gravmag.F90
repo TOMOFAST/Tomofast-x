@@ -359,7 +359,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     ! Calculate initial cost (misfit).
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) then
-        call calculate_cost(ipar%ndata(i), data(i)%val_meas, data(i)%val_calc, cost_data(i), myrank)
+        call calculate_cost(data(i)%val_meas, data(i)%val_calc, cost_data(i), .false., nbproc)
         if (myrank == 0) print *, 'cost =', cost_data(i)
       endif
     enddo
@@ -420,7 +420,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       ! Calculate new costs for data misfits.
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) then
-          call calculate_cost(ipar%ndata(i), data(i)%val_meas, data(i)%val_calc, cost_data(i), myrank)
+          call calculate_cost(data(i)%val_meas, data(i)%val_calc, cost_data(i), .false., nbproc)
           if (myrank == 0) print *, 'cost =', cost_data(i)
         endif
       enddo

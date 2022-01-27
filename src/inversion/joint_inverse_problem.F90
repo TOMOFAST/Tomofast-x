@@ -40,6 +40,7 @@ module joint_inverse_problem
   use damping_gradient
   use parallel_tools
   use wavelet_transform
+  use costs
 
   implicit none
 
@@ -439,10 +440,9 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, this%weight_ADMM, &
                        arr(i)%model, this%x0_ADMM, param_shift(i), myrank, nbproc)
 
-      ! TODO: Calculate the norms with MPI for the parallel case.
-      if (norm2(arr(i)%model%val) /= 0.d0) then
-        if (myrank == 0) print *, 'ADMM |x - x0| / |x| =', norm2(arr(i)%model%val - this%x0_ADMM) / norm2(arr(i)%model%val)
-      endif
+      ! Calculate the ADMM cost.
+      call calculate_cost(arr(i)%model%val, this%x0_ADMM, cost, .true., nbproc)
+      if (myrank == 0) print *, "ADMM |x - x0| / |x| =", sqrt(cost)
       if (myrank == 0) print *, 'ADMM term cost = ', damping%get_cost()
       if (myrank == 0) print *, 'nel (with ADMM) = ', this%matrix%get_number_elements()
 

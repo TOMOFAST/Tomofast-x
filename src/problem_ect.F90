@@ -122,7 +122,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
 
   if (myrank == 0) then
     ! Calculate initial misfit.
-    call calculate_cost(ipar%ndata(1), data_measured, data_calculated, cost_data, myrank)
+    call calculate_cost(data_measured, data_calculated, cost_data, .false., nbproc)
 
     ! Write initial misfit to a file.
     write(10,*) 0, cost_data
@@ -165,7 +165,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
 
     if (myrank == 0) then
       ! Calculate cost (misfit).
-      call calculate_cost(ipar%ndata(1), data_measured, data_calculated, cost_data, myrank)
+      call calculate_cost(data_measured, data_calculated, cost_data, .false., nbproc)
 
       ! Write misfit to a file.
       write(10, *) it, cost_data, cost_model

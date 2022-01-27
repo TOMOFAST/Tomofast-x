@@ -33,27 +33,36 @@ contains
 
 !=====================================================================
 ! Calculates the relative cost.
+! Flag 'in_parallel' for when arrays are split between the CPUs.
 !=====================================================================
-subroutine calculate_cost(n, arr1, arr2, cost, myrank)
-  integer, intent(in) :: n, myrank
+subroutine calculate_cost(arr1, arr2, cost, in_parallel, nbproc)
+  integer, intent(in) :: nbproc
   real(kind=CUSTOM_REAL), intent(in) :: arr1(:)
   real(kind=CUSTOM_REAL), intent(in) :: arr2(:)
+  logical, intent(in) :: in_parallel
 
   real(kind=CUSTOM_REAL), intent(out) :: cost
 
   real(kind=CUSTOM_REAL) :: cost1, cost2
-  integer :: i
+  real(kind=CUSTOM_REAL) :: cost1_glob, cost2_glob
+  integer :: ierr
 
   cost = 0._CUSTOM_REAL
   cost1 = 0._CUSTOM_REAL
   cost2 = 0._CUSTOM_REAL
 
-  do i = 1, n
-    cost1 = cost1 + (arr1(i) - arr2(i))**2
-    cost2 = cost2 + arr1(i)**2
-  enddo
+  cost1 = sum((arr1 - arr2)**2)
+  cost2 = sum((arr1)**2)
 
-  if (cost2 /= 0) cost = cost1 / cost2
+  if (in_parallel .and. nbproc > 1) then
+    call mpi_allreduce(cost1, cost1_glob, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    call mpi_allreduce(cost2, cost2_glob, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+  else
+    cost1_glob = cost1
+    cost2_glob = cost2
+  endif
+
+  if (cost2_glob /= 0) cost = cost1_glob / cost2_glob
 
 end subroutine calculate_cost
 
