@@ -549,7 +549,7 @@ subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
 
   ! Matrix precision consistency check.
   if (precision_read /= MATRIX_PRECISION) then
-    call exit_MPI("Matrix precision is not consistent", myrank, 0)
+    call exit_MPI("Matrix precision is not consistent!", myrank, 0)
   endif
 
   read(78, *) nnz_model
