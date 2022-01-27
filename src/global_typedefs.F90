@@ -15,10 +15,8 @@
 module global_typedefs
 
   !use mpi
-  ! VO VO: Comment from Dimitri from partII revision 405:
-  ! replaced "use mpi" back with "include 'mpif.h'" because of problems on two systems
-  ! (that have no 'module load' system, which is common);
-  ! please do NOT change that back in the future.
+  ! Replaced "use mpi" back with "include 'mpif.h'" because of problems on two systems
+  ! (that have no 'module load' system, which is common).
 
   implicit none
 
@@ -40,6 +38,9 @@ module global_typedefs
   ! set to SIZE_DOUBLE to run in double precision (increases memory size by 2 and makes code 30% slower or so)
   ! integer, parameter :: CUSTOM_REAL = SIZE_REAL
   integer, parameter :: CUSTOM_REAL = SIZE_DOUBLE
+
+  ! The precision of the stored sensitivity kernel values (single / double).
+  integer, parameter :: MATRIX_PRECISION = SIZE_REAL
   !-----------------------------------------------------------------------
 
   ! Path to the output folder, set in the Parfile.

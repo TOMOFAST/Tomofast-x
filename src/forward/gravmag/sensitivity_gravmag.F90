@@ -88,7 +88,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
-  real(kind=CUSTOM_REAL), allocatable :: sensit_compressed(:)
+  real(kind=MATRIX_PRECISION), allocatable :: sensit_compressed(:)
 
   real(kind=CUSTOM_REAL) :: cost, cost_full, cost_compressed
   real(kind=CUSTOM_REAL) :: cost_full_loc, cost_compressed_loc
@@ -171,7 +171,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   allocate(sensit_columns(nelements_total), source=0, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
-  allocate(sensit_compressed(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(sensit_compressed(nelements_total), source=0._MATRIX_PRECISION, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
@@ -247,7 +247,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
           ! Store sensitivity elements greater than the wavelet threshold.
           nel = nel + 1
           sensit_columns(nel) = p
-          sensit_compressed(nel) = sensit_line_full(p)
+          sensit_compressed(nel) = real(sensit_line_full(p), MATRIX_PRECISION)
 
           ! Calculate the partitioning.
           nnz_model_loc(cpu) = nnz_model_loc(cpu) + 1
@@ -263,7 +263,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     else
     ! No compression.
       nel = nelements_total
-      sensit_compressed = sensit_line_full
+      sensit_compressed = real(sensit_line_full, MATRIX_PRECISION)
       do p = 1, nelements_total
         sensit_columns(p) = p
       enddo
@@ -347,7 +347,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     open(77, file=trim(filename_full), form='formatted', status='unknown', action='write')
 
-    write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, cost
+    write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, MATRIX_PRECISION, cost
     write(77, *) nnz_model
 
     close(77)
@@ -386,7 +386,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_weight, problem_t
 
   ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
-  real(kind=CUSTOM_REAL), allocatable :: sensit_compressed(:)
+  real(kind=MATRIX_PRECISION), allocatable :: sensit_compressed(:)
 
   real(kind=CUSTOM_REAL) :: comp_rate, nnz_total_dbl
   integer :: i, j, p, nsmaller, ierr
@@ -410,7 +410,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_weight, problem_t
   allocate(sensit_columns(nelements_total), source=0, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
-  allocate(sensit_compressed(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(sensit_compressed(nelements_total), source=0._MATRIX_PRECISION, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
@@ -476,6 +476,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_weight, problem_t
         ! The element belongs to this rank. Adding it to the matrix.
           ! The column index in a big (joint) parallel sparse matrix.
           column = p - nsmaller + param_shift(problem_type)
+
           ! Add element to the sparse matrix.
           call sensit_matrix%add(sensit_compressed(j) * problem_weight, column, myrank)
           nnz = nnz + 1
@@ -522,6 +523,7 @@ subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
   character(len=256) :: msg
   integer :: nnz_model(nbproc)
   integer :: nx_read, ny_read, nz_read, ndata_read, nbproc_read
+  integer :: precision_read
   real(kind=CUSTOM_REAL) :: cost
 
   ! Define the file name.
@@ -535,14 +537,19 @@ subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
   if (ierr /= 0) call exit_MPI("Error in opening the sensitivity metadata file! path=" &
                                  //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
-  read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read, cost
+  read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read, precision_read, cost
 
   if (myrank == 0) print *, "COMPRESSION COST (read) =", cost
 
   ! Consistency check.
-  if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz &
-      .or. ndata_read /= par%ndata .or. nbproc_read /= nbproc) then
+  if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
+      ndata_read /= par%ndata .or. nbproc_read /= nbproc) then
     call exit_MPI("Sensitivity metadata file info does not match the Parfile!", myrank, 0)
+  endif
+
+  ! Matrix precision consistency check.
+  if (precision_read /= MATRIX_PRECISION) then
+    call exit_MPI("Matrix precision is not consistent", myrank, 0)
   endif
 
   read(78, *) nnz_model

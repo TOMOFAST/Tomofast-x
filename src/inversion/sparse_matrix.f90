@@ -20,16 +20,13 @@
 !========================================================================================
 module sparse_matrix
 
-  use global_typedefs, only: CUSTOM_REAL
+  use global_typedefs, only: CUSTOM_REAL, MATRIX_PRECISION
   use mpi_tools, only: exit_MPI
   use string, only: str
 
   implicit none
 
   private
-
-  ! Parameter controlling the precision of the stored values (single / double).
-  integer, parameter :: MATRIX_PRECISION = 4
 
   type, public :: t_sparse_matrix
     private
