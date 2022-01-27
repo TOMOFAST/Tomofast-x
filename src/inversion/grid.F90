@@ -208,83 +208,86 @@ end function grid_get_k_top
 !===================================================================================
 ! Returns grid step hx.
 !===================================================================================
-pure function grid_get_hx(this) result(res)
+pure function grid_get_hx(this, i) result(res)
   class(t_grid), intent(in) :: this
+  integer, intent(in) :: i
   real(kind=CUSTOM_REAL) :: res
 
-  res = abs(this%X2(1) - this%X1(1))
+  res = abs(this%X2(i) - this%X1(i))
 
 end function grid_get_hx
 
 !===================================================================================
 ! Returns grid step hy.
 !===================================================================================
-pure function grid_get_hy(this) result(res)
+pure function grid_get_hy(this, i) result(res)
   class(t_grid), intent(in) :: this
+  integer, intent(in) :: i
   real(kind=CUSTOM_REAL) :: res
 
-  res = abs(this%Y2(1) - this%Y1(1))
+  res = abs(this%Y2(i) - this%Y1(i))
 
 end function grid_get_hy
 
 !===================================================================================
 ! Returns grid step hz.
 !===================================================================================
-pure function grid_get_hz(this) result(res)
+pure function grid_get_hz(this, i) result(res)
   class(t_grid), intent(in) :: this
+  integer, intent(in) :: i
   real(kind=CUSTOM_REAL) :: res
 
-  res = abs(this%Z2(1) - this%Z1(1))
+  res = abs(this%Z2(i) - this%Z1(i))
 
 end function grid_get_hz
 
 !===================================================================================
 ! Returns X-coordinate of the cell center.
 !===================================================================================
-pure function grid_get_X_cell_center(this, cell_index) result(res)
+pure function grid_get_X_cell_center(this, i) result(res)
   class(t_grid), intent(in) :: this
-  integer, intent(in) :: cell_index
+  integer, intent(in) :: i
   real(kind=CUSTOM_REAL) :: res
 
-  res = 0.5d0 * (this%X1(cell_index) + this%X2(cell_index))
+  res = 0.5d0 * (this%X1(i) + this%X2(i))
 
 end function grid_get_X_cell_center
 
 !===================================================================================
 ! Returns Y-coordinate of the cell center.
 !===================================================================================
-pure function grid_get_Y_cell_center(this, cell_index) result(res)
+pure function grid_get_Y_cell_center(this, i) result(res)
   class(t_grid), intent(in) :: this
-  integer, intent(in) :: cell_index
+  integer, intent(in) :: i
   real(kind=CUSTOM_REAL) :: res
 
-  res = 0.5d0 * (this%Y1(cell_index) + this%Y2(cell_index))
+  res = 0.5d0 * (this%Y1(i) + this%Y2(i))
 
 end function grid_get_Y_cell_center
 
 !===================================================================================
 ! Returns Z-coordinate of the cell center.
 !===================================================================================
-pure function grid_get_Z_cell_center(this, cell_index) result(res)
+pure function grid_get_Z_cell_center(this, i) result(res)
   class(t_grid), intent(in) :: this
-  integer, intent(in) :: cell_index
+  integer, intent(in) :: i
   real(kind=CUSTOM_REAL) :: res
 
-  res = 0.5d0 * (this%Z1(cell_index) + this%Z2(cell_index))
+  res = 0.5d0 * (this%Z1(i) + this%Z2(i))
 
 end function grid_get_Z_cell_center
 
 !===================================================================================
 ! Returns the cell volume.
 !===================================================================================
-pure function grid_get_cell_volume(this, cell_index) result(res)
+pure function grid_get_cell_volume(this, i) result(res)
   class(t_grid), intent(in) :: this
-  integer, intent(in) :: cell_index
+  integer, intent(in) :: i
   real(kind=CUSTOM_REAL) :: res
 
-  res = abs((this%X2(cell_index) - this%X1(cell_index)) * &
-            (this%Y2(cell_index) - this%Y1(cell_index)) * &
-            (this%Z2(cell_index) - this%Z1(cell_index)))
+  res = abs((this%X2(i) - this%X1(i)) * &
+            (this%Y2(i) - this%Y1(i)) * &
+            (this%Z2(i) - this%Z1(i)))
 
 end function grid_get_cell_volume
 

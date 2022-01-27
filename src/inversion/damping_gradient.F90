@@ -149,7 +149,7 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
     ! NOTE: Use only gradient in one direction per time.
 
     if (direction == 1) then
-      delta = model%grid_full%get_hx()
+      delta = model%grid_full%get_hx(p)
 
       if (i /= this%nx) then
         ind(1) = model%grid_full%get_ind(i + 1, j, k) ! f(i + 1, j, k)
@@ -163,7 +163,7 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
       endif
 
     else if (direction == 2) then
-      delta = model%grid_full%get_hy()
+      delta = model%grid_full%get_hy(p)
 
       if (j /= this%ny) then
         ind(1) = model%grid_full%get_ind(i, j + 1, k) ! f(i, j + 1, k)
@@ -177,7 +177,7 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
       endif
 
     else if (direction == 3) then
-      delta = model%grid_full%get_hz()
+      delta = model%grid_full%get_hz(p)
 
       if (k /= this%nz) then
         ind(1) = model%grid_full%get_ind(i, j, k + 1) ! f(i, j, k + 1)

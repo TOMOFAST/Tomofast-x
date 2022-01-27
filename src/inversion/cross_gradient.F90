@@ -377,6 +377,9 @@ function cross_gradient_calculate_tau(model1, model2, i, j, k, der_type) result(
   type(t_vector) :: m1_grad, m2_grad
   type(t_vector) :: step
   type(t_gradient) :: grad
+  integer :: ind
+
+  ind = model1%grid_full%get_ind(i, j, k)
 
   ! Calculate model gradients.
   ! NOTE: These gradients are used to calculate the partial derivatives below,
@@ -390,7 +393,7 @@ function cross_gradient_calculate_tau(model1, model2, i, j, k, der_type) result(
   ! Calculate partial derivatives (with respect to the model parameters),
   ! and corresponding matrix column indexes.
 
-  step = t_vector(model1%grid_full%get_hx(), model1%grid_full%get_hy(), model1%grid_full%get_hz())
+  step = t_vector(model1%grid_full%get_hx(ind), model1%grid_full%get_hy(ind), model1%grid_full%get_hz(ind))
 
   if (der_type /= 1) then
     step = 2._CUSTOM_REAL * step
@@ -510,6 +513,9 @@ function cross_gradient_calculate_tau2(model1, model2, i, j, k) result(tau)
   type(t_vector) :: m1_grad, m2_grad
   type(t_vector) :: step
   type(t_gradient) :: grad
+  integer :: ind
+
+  ind = model1%grid_full%get_ind(i, j, k)
 
   ! Calculate model gradients.
   ! NOTE: These gradients are used to calculate the partial derivatives below,
@@ -524,7 +530,7 @@ function cross_gradient_calculate_tau2(model1, model2, i, j, k) result(tau)
   ! Calculate partial derivatives (with respect to the model parameters),
   ! and corresponding matrix column indexes.
 
-  step = 2.d0 * t_vector(model1%grid_full%get_hx(), model1%grid_full%get_hy(), model1%grid_full%get_hz())
+  step = 2.d0 * t_vector(model1%grid_full%get_hx(ind), model1%grid_full%get_hy(ind), model1%grid_full%get_hz(ind))
 
   !------------------------------------------------------------------
   ! Note: assume both models have the same grid indexes.
@@ -606,6 +612,9 @@ function cross_gradient_calculate_tau_backward(model1, model2, i, j, k) result(t
   type(t_vector) :: m1_grad, m2_grad
   type(t_vector) :: step
   type(t_gradient) :: grad
+  integer :: ind
+
+  ind = model1%grid_full%get_ind(i, j, k)
 
   ! Calculate model gradients.
   ! NOTE: These gradients are used to calculate the partial derivatives below,
@@ -621,7 +630,7 @@ function cross_gradient_calculate_tau_backward(model1, model2, i, j, k) result(t
   ! Calculate partial derivatives (with respect to the model parameters),
   ! and corresponding matrix column indexes.
 
-  step = t_vector(model1%grid_full%get_hx(), model1%grid_full%get_hy(), model1%grid_full%get_hz())
+  step = t_vector(model1%grid_full%get_hx(ind), model1%grid_full%get_hy(ind), model1%grid_full%get_hz(ind))
 
   !------------------------------------------------------------------
   ! Note: assume both models have the same grid indexes.
@@ -690,6 +699,9 @@ function cross_gradient_calculate_tau_mixed_gradients(model1, model2, i, j, k) r
   type(t_vector) :: m1_grad, m2_grad
   type(t_vector) :: step
   type(t_gradient) :: grad
+  integer :: ind
+
+  ind = model1%grid_full%get_ind(i, j, k)
 
   ! Calculate model gradients.
   ! NOTE: These gradients are used to calculate the partial derivatives below,
@@ -709,7 +721,7 @@ function cross_gradient_calculate_tau_mixed_gradients(model1, model2, i, j, k) r
   ! Calculate partial derivatives (with respect to the model parameters),
   ! and corresponding matrix column indexes.
 
-  step = t_vector(model1%grid_full%get_hx(), model1%grid_full%get_hy(), model1%grid_full%get_hz())
+  step = t_vector(model1%grid_full%get_hx(ind), model1%grid_full%get_hy(ind), model1%grid_full%get_hz(ind))
 
   !------------------------------------------------------------------
   ! Note: assume both models have the same grid indexes.

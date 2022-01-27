@@ -70,9 +70,10 @@ subroutine apply_Gaussian_filter(model, lfgauss, sigma, type, myrank)
 
   gauss_const = 1.d0 / (2.d0 * PI * sigma**2)
 
-  dx = model%grid_full%get_hx()
-  dy = model%grid_full%get_hy()
-  dz = model%grid_full%get_hz()
+  ! TODO: Assume uniform grid here!
+  dx = model%grid_full%get_hx(1)
+  dy = model%grid_full%get_hy(1)
+  dz = model%grid_full%get_hz(1)
 
   avg_cell_size = (dx + dy + dz) / 3.d0
 
