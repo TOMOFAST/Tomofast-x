@@ -138,9 +138,8 @@ subroutine model_init_grid(this, nx, ny, nz, myrank)
   integer, intent(in) :: nx, ny, nz
   integer, intent(in) :: myrank
 
-  ! TODO: try to use nx=ny=nz=1 for grid%initialize() to save memory as we do not need ind-array for local grids.
-  call this%grid%initialize(this%nelements, nx, ny, nz, myrank)
-  call this%grid_full%initialize(this%nelements_total, nx, ny, nz, myrank)
+  call this%grid%initialize(this%nelements, nx, ny, nz, .false., myrank)
+  call this%grid_full%initialize(this%nelements_total, nx, ny, nz, .true., myrank)
 
 end subroutine model_init_grid
 

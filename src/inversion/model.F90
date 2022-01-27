@@ -108,7 +108,7 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
       call pt%get_full_array(model_scaled, this%nelements, model_scaled_full, .true., myrank, nbproc)
 
       ! Compress the full model.
-      call Haar3D(model_scaled_full, this%grid%nx, this%grid%ny, this%grid%nz)
+      call Haar3D(model_scaled_full, this%grid_full%nx, this%grid_full%ny, this%grid_full%nz)
 
       ! Extract the local model part.
       nsmaller = pt%get_nsmaller(this%nelements, myrank, nbproc)
@@ -118,7 +118,7 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
 
     else
     ! Serial version.
-      call Haar3D(model_scaled, this%grid%nx, this%grid%ny, this%grid%nz)
+      call Haar3D(model_scaled, this%grid_full%nx, this%grid_full%ny, this%grid_full%nz)
     endif
   endif
 

@@ -71,9 +71,10 @@ contains
 !=======================================================================================
 ! Allocate grid arrays.
 !=======================================================================================
-subroutine grid_initialize(this, nelements, nx, ny, nz, myrank)
+subroutine grid_initialize(this, nelements, nx, ny, nz, allocate_ind, myrank)
   class(t_grid), intent(inout) :: this
   integer, intent(in) :: nelements, nx, ny, nz, myrank
+  logical, intent(in) :: allocate_ind
   integer :: ierr
 
   this%nx = nx
@@ -95,7 +96,9 @@ subroutine grid_initialize(this, nelements, nx, ny, nz, myrank)
   if (.not. allocated(this%j_)) allocate(this%j_(this%nelements), source=0, stat=ierr)
   if (.not. allocated(this%k_)) allocate(this%k_(this%nelements), source=0, stat=ierr)
 
-  if (.not. allocated(this%ind)) allocate(this%ind(nx, ny, nz), source=0, stat=ierr)
+  if (allocate_ind) then
+    if (.not. allocated(this%ind)) allocate(this%ind(nx, ny, nz), source=0, stat=ierr)
+  endif
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in grid_initialize!", myrank, ierr)
 
@@ -118,7 +121,7 @@ subroutine grid_deallocate(this)
   deallocate(this%j_)
   deallocate(this%k_)
 
-  deallocate(this%ind)
+  if (allocated(this%ind)) deallocate(this%ind)
 
 end subroutine grid_deallocate
 
