@@ -18,7 +18,7 @@
 ! This solver is unit tested in tests_lsqr.f90 and in tests_method_of_weights.f90.
 ! The unit tests are available for serial and parallel versions.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !=============================================================================
 module lsqr_solver
 
@@ -58,8 +58,8 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   integer, intent(in) :: niter
   real(kind=CUSTOM_REAL), intent(in) :: rmin, gamma
   real(kind=CUSTOM_REAL), intent(in) :: b(:)
-  type(t_sparse_matrix), intent(inout) :: matrix
 
+  type(t_sparse_matrix), intent(inout) :: matrix
   real(kind=CUSTOM_REAL), intent(inout) :: x(:)
 
   ! Local variables.
@@ -68,18 +68,19 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   ! Local (at current CPU) number of parameters.
   integer :: nelements
   real(kind=CUSTOM_REAL) :: alpha, beta, rho, rhobar, phi, phibar, theta
-  real(kind=CUSTOM_REAL) :: b1, c, r, g, s, t1, t2
-  real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w, u, v0
-  real(kind=CUSTOM_REAL), dimension(:), allocatable :: Hv, Hv_loc
+  real(kind=CUSTOM_REAL) :: b1, c, r, s, t1, t2
   real(kind=CUSTOM_REAL) :: rho_inv
   ! Flag for calculating variance.
   logical :: calculateVariance
+
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w, u, v0
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: Hv, Hv_loc
 
   if (myrank == 0) print *, 'Entered subroutine lsqr_solve, gamma =', gamma
 
   N_lines = matrix%get_total_row_number()
   nelements = size(x)
-  
+
   if (allocated(matrix%lsqr_var) .and. size(matrix%lsqr_var) == nelements) then
     calculateVariance = .true.
   else
@@ -96,7 +97,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
 
   ! Sanity check.
   if (norm2(b) == 0.d0) then
-    call exit_MPI("|b| = 0, prior model is exact? Exiting.", myrank, 0)
+    call exit_MPI("|b| = 0, starting model is exact? Exiting.", myrank, 0)
   end if
 
   ! Initialization.
@@ -108,6 +109,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   endif
 
   b1 = beta
+
   ! Required by the algorithm.
   x = 0._CUSTOM_REAL
 
@@ -122,8 +124,6 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   rhobar = alpha
   phibar = beta
   w = v
-
-  !print *, 'myrank, alpha0=', myrank, alpha
 
   iter = 1
   r = 1._CUSTOM_REAL
@@ -207,16 +207,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
 
 #ifndef SUPPRESS_OUTPUT
     if (mod(iter, 10) == 0) then
-      ! Calculate the gradient: 2A'(Ax - b).
-      call matrix%mult_vector(x, Hv_loc)
-      call mpi_allreduce(Hv_loc, Hv, N_lines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-      Hv = Hv - b
-      call matrix%trans_mult_vector(Hv, v0)
-
-      ! Norm of the gradient.
-      g = 2.d0 * get_norm_parallel(v0)
-
-      if (myrank == 0) print *, 'it, r, g =', iter, r, g
+      if (myrank == 0) print *, 'it, r =', iter, r
     endif
 #endif
 
@@ -228,7 +219,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
 
     iter = iter + 1
   enddo
-  
+
   if (calculateVariance) then
     ! Scale with data residual (see the bottom of the page 53 in Paige & Saunders 1982).
     ! Note, we are using that phibar = ||Ax - b||
