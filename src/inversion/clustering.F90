@@ -116,6 +116,8 @@ subroutine clustering_initialize(this, nelements_total, nelements, weight_glob, 
 
   integer :: ierr, i
 
+  if (myrank == 0) print *, "Initializing clustering constraints."
+
   this%nelements_total = nelements_total
   this%nelements = nelements
   this%weight_glob = weight_glob

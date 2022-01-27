@@ -168,10 +168,10 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   call this%cross_grad%initialize(par%nx, par%ny, par%nz, par%nelements, myrank)
 
-  call this%clustering%initialize(par%nelements_total, par%nelements, par%clustering_weight_glob, &
-                                  par%nclusters, par%clustering_opt_type, par%clustering_constraints_type, myrank)
-
   if (this%add_clustering) then
+    ! Allocate memory for clustering constraints.
+    call this%clustering%initialize(par%nelements_total, par%nelements, par%clustering_weight_glob, &
+                                    par%nclusters, par%clustering_opt_type, par%clustering_constraints_type, myrank)
     call this%clustering%read_mixtures(par%mixture_file, par%cell_weights_file, myrank)
   endif
 
@@ -732,7 +732,11 @@ pure function joint_inversion_get_clustering_cost(this, problem_type) result(res
   integer, intent(in) :: problem_type
   real(kind=CUSTOM_REAL) :: res
 
-  res = this%clustering%get_cost(problem_type)
+  if (this%add_clustering) then
+    res = this%clustering%get_cost(problem_type)
+  else
+    res = 0.d0
+  endif
 
 end function joint_inversion_get_clustering_cost
 
