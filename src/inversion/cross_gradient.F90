@@ -17,7 +17,7 @@
 ! to the System of Linear Algebraic Equations (SLAE) that is stored
 ! using Compressed Sparse Row (CSR) format.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !==========================================================================
 module cross_gradient
 
@@ -104,6 +104,8 @@ subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, myrank)
   integer, intent(in) :: myrank
 
   integer :: ierr
+
+  if (myrank == 0) print *, "Initializing cross-gradient constraints."
 
   this%size%x = nx
   this%size%y = ny

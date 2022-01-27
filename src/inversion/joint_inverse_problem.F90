@@ -126,8 +126,6 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   integer :: ierr
   integer :: i, nl, nnz
 
-  ierr = 0
-
   do i = 1, 2
     if (par%alpha(i) == 0.d0 .or. par%problem_weight(i) == 0.d0) then
       this%add_damping(i) = .false.
@@ -166,7 +164,9 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     print *, 'myrank, ndata2, nelements2 =', myrank, par%ndata(2), par%nelements
   endif
 
-  call this%cross_grad%initialize(par%nx, par%ny, par%nz, par%nelements, myrank)
+  if (this%add_cross_grad) then
+    call this%cross_grad%initialize(par%nx, par%ny, par%nz, par%nelements, myrank)
+  endif
 
   if (this%add_clustering) then
     ! Allocate memory for clustering constraints.
@@ -233,11 +233,13 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   !-------------------------------------------------------------------------------------------
   call this%matrix%initialize(nl, nnz, myrank)
 
+  ierr = 0
+
   allocate(this%b_RHS(this%matrix%get_total_row_number()), source=0._CUSTOM_REAL, stat=ierr)
   call this%matrix%allocate_variance_array(2 * par%nelements, myrank)
 
   if (this%add_cross_grad) then
-    ! Memory allocation for the matrix and right-hand side for cross-gradient constraints.
+    ! Memory allocation for the matrix and right-hand side for the cross-gradient constraints.
     call this%matrix_B%initialize(3 * par%nelements_total, this%cross_grad%get_num_elements(par%derivative_type), myrank)
     allocate(this%d_RHS(3 * par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   endif
@@ -719,8 +721,12 @@ pure function joint_inversion_get_cross_grad_cost(this) result(res)
   real(kind=CUSTOM_REAL) :: res
   type(t_vector) :: cost
 
-  cost = this%cross_grad%get_cost()
-  res = cost%get_norm()
+  if (this%add_cross_grad) then
+    cost = this%cross_grad%get_cost()
+    res = cost%get_norm()
+  else
+    res = 0.d0
+  endif
 
 end function joint_inversion_get_cross_grad_cost
 
