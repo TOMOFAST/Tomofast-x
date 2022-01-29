@@ -290,7 +290,14 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
         ipar%clustering_weight_glob(1) /= 0.d0 .or. ipar%clustering_weight_glob(2) /= 0.d0 .or. &
         ipar%cross_grad_weight /= 0.d0) then
 
-      call exit_MPI("Wavelet compression currently is supported with model damping and ADMM constraints only!", myrank, 0)
+      call exit_MPI("Wavelet compression currently is currently supported with model damping and ADMM constraints only!", myrank, 0)
+    endif
+  endif
+
+  if (ipar%beta(1) /= 0.d0 .or. ipar%beta(2) /= 0.d0) then
+    if (ipar%damp_grad_weight_type == 2) then
+      call exit_MPI("Local damping gradient weight is currently not available! "// &
+                    "Contact the code authors if you want to use it.", myrank, 0)
     endif
   endif
 
