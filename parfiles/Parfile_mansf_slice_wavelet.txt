@@ -35,9 +35,7 @@ MATRIX COMPRESSION
 ===================================================================================
 # 0-none, 1-wavelet compression.
 forward.matrixCompression.type                       = 1
-# The minimum compressed sensitivity absolute value.
-forward.matrixCompression.waveletThreshold           = 1.d-8
-forward.matrixCompression.rate                       = 0.14819908142089844
+forward.matrixCompression.rate                       = 0.15
 
 ===================================================================================
 PRIOR MODEL

@@ -266,7 +266,6 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
     ipar%nelements_total = ipar%nx * ipar%ny * ipar%nz
 
     ipar%compression_type = gpar%compression_type
-    ipar%wavelet_threshold = gpar%wavelet_threshold
 
     ! Define model splitting for parallelization.
     nelements = pt%calculate_nelements_at_cpu(ipar%nelements_total, myrank, nbproc)
@@ -361,9 +360,7 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
 
   ! MATRIX COMPRESSION parameters.
   gpar%compression_type = 0
-  gpar%wavelet_threshold = 1.d-7
-  mpar%compression_type = gpar%compression_type
-  mpar%wavelet_threshold = gpar%wavelet_threshold
+  mpar%compression_type = 0
   gpar%compression_rate = 1.d-1
   mpar%compression_rate = 1.d-1
 
@@ -756,11 +753,6 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
         read(10, 2) gpar%compression_type
         call print_arg(myrank, parname, gpar%compression_type)
         mpar%compression_type = gpar%compression_type
-
-      case("forward.matrixCompression.waveletThreshold")
-        read(10, 1) gpar%wavelet_threshold
-        call print_arg(myrank, parname, gpar%wavelet_threshold)
-        mpar%wavelet_threshold = gpar%wavelet_threshold
 
       case("forward.matrixCompression.rate")
         read(10, 1) gpar%compression_rate
