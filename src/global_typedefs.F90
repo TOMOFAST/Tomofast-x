@@ -50,7 +50,7 @@ module global_typedefs
   real(kind=CUSTOM_REAL), parameter :: PI = 3.1415926535897932385_CUSTOM_REAL
 
   ! Tolerance for comparing real numbers in unit tests.
-  real(kind=CUSTOM_REAL), parameter :: tol = 1.e-12_CUSTOM_REAL
+  real(kind=CUSTOM_REAL), parameter :: tol = merge(1.e-12_CUSTOM_REAL, 1.e-6_CUSTOM_REAL, MATRIX_PRECISION == SIZE_DOUBLE)
 
   ! Type of norm used for convergence control.
   integer, parameter :: NORM_L2 = 1

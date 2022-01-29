@@ -204,7 +204,7 @@ subroutine test_lsqr_overdetermined_1(myrank, nbproc)
   if (nbproc == 1) then
     call assert_comparable_real(delta_model(1), b(1), tol, "delta_model(i) /= b(i) in test_lsqr_overdetermined.")
     call assert_comparable_real(delta_model(2), b(2), tol, "delta_model(i) /= b(i) in test_lsqr_overdetermined.")
-    call assert_true(abs(delta_model(3)) < 1.e-14_CUSTOM_REAL, "delta_model(3) /= 0 in test_lsqr_overdetermined.")
+    call assert_true(abs(delta_model(3)) < tol, "delta_model(3) /= 0 in test_lsqr_overdetermined.")
 
   else if (nbproc == 3) then
     if (myrank == 0) &
@@ -212,7 +212,7 @@ subroutine test_lsqr_overdetermined_1(myrank, nbproc)
     if (myrank == 1) &
       call assert_comparable_real(delta_model(1), b(2), tol, "delta_model(i) /= b(i) in test_lsqr_overdetermined.")
     if (myrank == 2) &
-      call assert_true(abs(delta_model(1)) < 1.e-14_CUSTOM_REAL, "delta_model(3) /= 0 in test_lsqr_overdetermined.")
+      call assert_true(abs(delta_model(1)) < tol, "delta_model(3) /= 0 in test_lsqr_overdetermined.")
   endif
 
   deallocate(b_RHS)
@@ -239,6 +239,7 @@ subroutine test_lsqr_overdetermined_2(myrank, nbproc)
   integer :: i, j, ierr
   integer :: nrows, ncols, ncols_loc
   real(kind=CUSTOM_REAL) :: a(3, 5)
+  real(kind=CUSTOM_REAL) :: tolerance_local
 
   rmin = 1.e-13_CUSTOM_REAL
   niter = 100
@@ -313,14 +314,22 @@ subroutine test_lsqr_overdetermined_2(myrank, nbproc)
   ! LeastSquares[{{1.2550, 1.6731, - 1.3927}, {0.4891, 0.0943, - 0.7829}, {- 0.1755, 1.8612, 1.0972}, {0.4189, 0.2469, - 0.5990}, {- 0.2900, 0.7677, 0.8188}}, {0.3511, - 1.6710, 6.838, - 0.8843, 3.7018}]
   ! Mathematica output is: {157.611, -38.0747, 96.0291}
 
+  if (MATRIX_PRECISION == SIZE_DOUBLE) then
+  ! Double precision.
+    tolerance_local = 1.e-3_CUSTOM_REAL
+  else
+  ! Single precision.
+    tolerance_local = 1.e-2_CUSTOM_REAL
+  endif
+
   if (nbproc == 1) then
     print *, 'x1 =', x(1)
     print *, 'x2 =', x(2)
     print *, 'x3 =', x(3)
 
-    call assert_true(abs(x(1) - 157.611) < 1.e-3_CUSTOM_REAL, "x(1) is wrong in test_lsqr_overdetermined_2.")
-    call assert_true(abs(x(2) + 38.0747) < 1.e-3_CUSTOM_REAL, "x(2) is wrong in test_lsqr_overdetermined_2.")
-    call assert_true(abs(x(3) - 96.0291) < 1.e-3_CUSTOM_REAL, "x(3) is wrong in test_lsqr_overdetermined_2.")
+    call assert_true(abs(x(1) - 157.611) < tolerance_local, "x(1) is wrong in test_lsqr_overdetermined_2.")
+    call assert_true(abs(x(2) + 38.0747) < tolerance_local, "x(2) is wrong in test_lsqr_overdetermined_2.")
+    call assert_true(abs(x(3) - 96.0291) < tolerance_local, "x(3) is wrong in test_lsqr_overdetermined_2.")
 
     call matrix%mult_vector(x, Ax)
     print *, 'norm 1 =', norm2(Ax - b_RHS)
@@ -334,9 +343,9 @@ subroutine test_lsqr_overdetermined_2(myrank, nbproc)
     print *, 'norm 2 =', norm2(Ax - b_RHS)
 
   else if (nbproc == 3) then
-    if (myrank == 0) call assert_true(abs(x(1) - 157.611) < 1.e-3_CUSTOM_REAL, "x(1) is wrong in test_lsqr_overdetermined_2.")
-    if (myrank == 1) call assert_true(abs(x(1) + 38.0747) < 1.e-3_CUSTOM_REAL, "x(2) is wrong in test_lsqr_overdetermined_2.")
-    if (myrank == 2) call assert_true(abs(x(1) - 96.0291) < 1.e-3_CUSTOM_REAL, "x(3) is wrong in test_lsqr_overdetermined_2.")
+    if (myrank == 0) call assert_true(abs(x(1) - 157.611) < tolerance_local, "x(1) is wrong in test_lsqr_overdetermined_2.")
+    if (myrank == 1) call assert_true(abs(x(1) + 38.0747) < tolerance_local, "x(2) is wrong in test_lsqr_overdetermined_2.")
+    if (myrank == 2) call assert_true(abs(x(1) - 96.0291) < tolerance_local, "x(3) is wrong in test_lsqr_overdetermined_2.")
   endif
 
   deallocate(b_RHS)
