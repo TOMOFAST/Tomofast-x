@@ -74,7 +74,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   logical :: calculateVariance
 
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w, u, v0
-  real(kind=CUSTOM_REAL), dimension(:), allocatable :: Hv, Hv_loc
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: Hv
 
   if (myrank == 0) print *, 'Entered subroutine lsqr_solve, gamma =', gamma
 
@@ -90,7 +90,6 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   ! Allocate memory.
   allocate(u(N_lines))
   allocate(Hv(N_lines))
-  allocate(Hv_loc(N_lines))
   allocate(v0(nelements))
   allocate(v(nelements))
   allocate(w(nelements))
@@ -135,8 +134,8 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
     u = - alpha * u
 
     ! Compute u = u + H.v parallel.
-    call matrix%mult_vector(v, Hv_loc)
-    call mpi_allreduce(Hv_loc, Hv, N_lines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    call matrix%mult_vector(v, Hv)
+    call mpi_allreduce(MPI_IN_PLACE, Hv, N_lines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
     u = u + Hv
 
@@ -195,8 +194,8 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
       call apply_soft_thresholding(x, nelements, gamma)
 
       ! Calculate the residual for thresholded solution.
-      call matrix%mult_vector(x, Hv_loc)
-      call mpi_allreduce(Hv_loc, Hv, N_lines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+      call matrix%mult_vector(x, Hv)
+      call mpi_allreduce(MPI_IN_PLACE, Hv, N_lines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
       ! Norm of the relative residual.
       r = norm2(Hv - b) / b1
@@ -239,7 +238,6 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
 
   deallocate(u)
   deallocate(Hv)
-  deallocate(Hv_loc)
   deallocate(v0)
   deallocate(v)
   deallocate(w)
