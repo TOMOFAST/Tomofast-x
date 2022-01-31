@@ -97,16 +97,16 @@ subroutine dircos(incl, decl, azim, a, b, c)
 
 end subroutine dircos
 
-!==============================================================================
+!===================================================================================================
 ! Calculates the magnetic tensor for each point and is returned to the calling process
 ! This subroutine is meant to perform mbox on a set of voxels before returning their
 ! respective magnetic tensor flattened in vector form.
-!==============================================================================
-subroutine magnetic_field_magprism(this, nelements, data_j, grid, Xdata, Ydata, Zdata, sensit_line)
+!===================================================================================================
+subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, sensit_line)
     class(t_magnetic_field), intent(in)     :: this
-    integer, intent(in)                     :: nelements, data_j
+    integer, intent(in)                     :: nelements
     type(t_grid), intent(in)                :: grid
-    real(kind=CUSTOM_REAL), intent(in)      :: Xdata(:), Ydata(:), Zdata(:)
+    real(kind=CUSTOM_REAL), intent(in)      :: Xdata, Ydata, Zdata
 
     real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(:)
 
@@ -116,7 +116,7 @@ subroutine magnetic_field_magprism(this, nelements, data_j, grid, Xdata, Ydata, 
     double precision    :: weight
 
     do i = 1, nelements
-        call this%sharmbox(Xdata(data_j), Ydata(data_j), Zdata(data_j), &
+        call this%sharmbox(Xdata, Ydata, Zdata, &
                            grid%X1(i), grid%Y1(i), grid%Z1(i), &
                            grid%X2(i), grid%Y2(i), grid%Z2(i), &
                            tx, ty, tz)

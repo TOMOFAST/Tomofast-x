@@ -213,7 +213,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     else if (problem_type == 2) then
     ! Magnetic problem.
-      call mag_field%magprism(nelements_total, idata, grid_full, data%X, data%Y, data%Z, sensit_line_full)
+      call mag_field%magprism(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), sensit_line_full)
     endif
 
     ! Applying the depth weight.
