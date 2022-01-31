@@ -72,7 +72,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   integer :: problem_type
   integer :: idata, ndata_loc, ndata_smaller
   character(len=256) :: filename, filename_full
-  real(kind=CUSTOM_REAL) :: comp_rate, nnz_total_dbl, nnz_total_dbl2
+  real(kind=CUSTOM_REAL) :: comp_rate
+  integer(kind=8) :: nnz_total, nnz_total2
   real(kind=CUSTOM_REAL) :: threshold
 
   integer(kind=8) :: nnz_model_loc(nbproc)
@@ -299,9 +300,10 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   ! Calculate the kernel compression rate.
   !---------------------------------------------------------------------------------------------
-  call mpi_allreduce(dble(nnz_data), nnz_total_dbl, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-  comp_rate = nnz_total_dbl / dble(nelements_total) / dble(par%ndata)
+  call mpi_allreduce(nnz_data, nnz_total, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+  comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata)
 
+  if (myrank == 0) print *, 'nnz_total = ', nnz_total
   if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
 
   !---------------------------------------------------------------------------------------------
@@ -320,7 +322,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   ! Calculate the nnz for the sensitivity kernel parallelized by model.
   !---------------------------------------------------------------------------------------------
-  call mpi_allreduce(nnz_model_loc, nnz_model, nbproc, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD, ierr)
+  call mpi_allreduce(nnz_model_loc, nnz_model, nbproc, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
 
   if (myrank == 0)  print *, 'nnz_model = ', nnz_model
 
@@ -332,9 +334,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   enddo
 
   ! Sanity check.
-  nnz_total_dbl2 = sum(dble(nnz_model))
-  if (nnz_total_dbl /= nnz_total_dbl2) then
-    print *, myrank, nnz_total_dbl, nnz_total_dbl2
+  nnz_total2 = sum(nnz_model)
+  if (nnz_total /= nnz_total2) then
     call exit_MPI("Wrong nnz_model in calculate_and_write_sensit!", myrank, 0)
   endif
 
@@ -502,7 +503,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_weight, problem_t
   call mpi_allreduce(nnz, nnz_total, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
   comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata)
 
-  if (myrank == 0) print *, 'nnz total (of the read kernel)  = ', nnz_total
+  if (myrank == 0) print *, 'nnz_total (of the read kernel)  = ', nnz_total
   if (myrank == 0) print *, 'COMPRESSION RATE (of the read kernel)  = ', comp_rate
 
   !---------------------------------------------------------------------------------------------
