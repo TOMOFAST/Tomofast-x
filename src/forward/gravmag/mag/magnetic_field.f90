@@ -56,9 +56,9 @@ contains
 ! cosines.
 ! Currently the ambient magnetic field components are not used
 !==============================================================================
-subroutine magnetic_field_initialize(this, mi, md, fi, fd, theta, intensity)
+subroutine magnetic_field_initialize(this, mi, md, theta, intensity)
     class(t_magnetic_field), intent(inout) :: this
-    double precision, intent(in) :: mi, md, fi, fd, theta, intensity
+    double precision, intent(in) :: mi, md, theta, intensity
 
     double precision :: ma, mb, mc
 

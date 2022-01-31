@@ -16,7 +16,7 @@
 ! A class that stores magnetism specific parameters,
 ! and inherits common grav/mag parameters from the base class.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !========================================================================================
 module parameters_mag
 
@@ -35,10 +35,6 @@ module parameters_mag
     real(kind=CUSTOM_REAL) :: mi
     ! Magnetic field declination.
     real(kind=CUSTOM_REAL) :: md
-    ! Ambient field inclination.
-    real(kind=CUSTOM_REAL) :: fi
-    ! Ambient field declination.
-    real(kind=CUSTOM_REAL) :: fd
     ! X axis declination
     real(kind=CUSTOM_REAL) :: theta
     ! Ambient field intensity.
@@ -68,8 +64,6 @@ subroutine parameters_mag_broadcast(this, myrank)
 
   call MPI_Bcast(this%mi, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%md, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%fi, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%fd, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%theta, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%intensity, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 

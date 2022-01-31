@@ -138,7 +138,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     problem_type = 2
 
     ! Precompute common magnetic parameters.
-    call mag_field%initialize(par%mi, par%md, par%fi, par%fd, par%theta, par%intensity)
+    call mag_field%initialize(par%mi, par%md, par%theta, par%intensity)
   end select
 
   !---------------------------------------------------------------------------------------------

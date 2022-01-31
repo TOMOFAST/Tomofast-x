@@ -339,8 +339,6 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! MAGNETIC FIELD constants.
   mpar%mi = 75.d0
   mpar%md = 25.d0
-  mpar%fi = 75.d0
-  mpar%fd = 25.d0
   mpar%intensity = 50000.d0
   mpar%theta = 0.d0
 
@@ -696,15 +694,7 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
         read(10, 1) mpar%md
         call print_arg(myrank, parname, mpar%md)
 
-      case("forward.magneticField.ambient.inclination")
-        read(10, 1) mpar%fi
-        call print_arg(myrank, parname, mpar%fi)
-
-      case("forward.magneticField.ambient.declination")
-        read(10, 1) mpar%fd
-        call print_arg(myrank, parname, mpar%fd)
-
-      case("forward.magneticField.ambient.intensity_nT")
+      case("forward.magneticField.intensity_nT")
         read(10, 1) mpar%intensity
         call print_arg(myrank, parname, mpar%intensity)
 
