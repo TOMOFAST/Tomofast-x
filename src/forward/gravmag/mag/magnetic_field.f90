@@ -110,34 +110,26 @@ subroutine magnetic_field_magprism(this, nelements, data_j, grid, Xdata, Ydata, 
 
     real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(:)
 
-    integer             :: i, j
+    integer             :: i
     double precision    :: tx(3), ty(3), tz(3)
     double precision    :: mx, my, mz
+    double precision    :: weight
 
     do i = 1, nelements
-        tx = 0.d0
-        ty = 0.d0
-        tz = 0.d0
-        mx = 0.d0
-        my = 0.d0
-        mz = 0.d0
-
         call this%sharmbox(Xdata(data_j), Ydata(data_j), Zdata(data_j), &
                            grid%X1(i), grid%Y1(i), grid%Z1(i), &
                            grid%X2(i), grid%Y2(i), grid%Z2(i), &
                            tx, ty, tz)
 
-    ! could be probably more efficient using fortran's native matrix multiplication support
-        do j = 1, 3
-            mx = mx + tx(j) * this%intensity * this%magv(j)
-            my = my + ty(j) * this%intensity * this%magv(j)
-            mz = mz + tz(j) * this%intensity * this%magv(j)
-        end do
+        mx = sum(tx * this%magv)
+        my = sum(ty * this%magv)
+        mz = sum(tz * this%magv)
 
         sensit_line(i) = my * this%magv(1) + mx * this%magv(2) + mz * this%magv(3)
-    end do
+    enddo
 
-    sensit_line = sensit_line / (4.d0 * PI)
+    weight = this%intensity / (4.d0 * PI)
+    sensit_line = weight * sensit_line
 
 end subroutine magnetic_field_magprism
 
