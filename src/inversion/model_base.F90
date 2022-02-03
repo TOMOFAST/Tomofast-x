@@ -45,7 +45,6 @@ module model_base
     ! This is the weight that will be applied to the model damping term.
     ! This is equivalent of having local alpha, i.e., changing with model cell.
     real(kind=CUSTOM_REAL), allocatable :: cov(:) ! Local on one CPU.
-    real(kind=CUSTOM_REAL), allocatable :: cov_full(:)
 
     ! Data arrays for local ADMM constraints.
     integer :: nlithos
@@ -98,7 +97,6 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
   if (.not. allocated(this%val_full)) allocate(this%val_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   if (.not. allocated(this%cov)) allocate(this%cov(this%nelements), source=1._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%cov_full)) allocate(this%cov_full(this%nelements_total), source=1._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_initialize!", myrank, ierr)
 
@@ -158,9 +156,6 @@ subroutine model_distribute(this, myrank, nbproc)
 
   call MPI_Scatterv(this%val_full, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
                     this%val, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-  call MPI_Scatterv(this%cov_full, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
-                    this%cov, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("Error in MPI_Scatterv in model_distribute!", myrank, ierr)
 

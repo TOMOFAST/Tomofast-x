@@ -154,8 +154,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call iarr(2)%init_model(myrank, nbproc)
 
   ! Reading the full grid and model.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%model%read(gpar%model_files(1), .true., myrank)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%model%read(mpar%model_files(1), .true., myrank)
+  if (SOLVE_PROBLEM(1)) call iarr(1)%model%read(gpar%model_files(1), .true., myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%model%read(mpar%model_files(1), .true., myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
   ! Write the model read to a file for Paraview visualization.
@@ -559,11 +559,10 @@ subroutine read_model(iarr, model_type, model_val, model_file, myrank, nbproc)
   if (model_type == 1) then
     ! Setting homogeneous starting value.
     iarr%model%val_full = model_val
-    iarr%model%cov_full = 1.d0
 
   else if (model_type == 2) then
     ! Reading from file.
-    call iarr%model%read(model_file, .false., myrank)
+    call iarr%model%read(model_file, .false., myrank, nbproc)
 
   else
     print *, "Unknown model type!"

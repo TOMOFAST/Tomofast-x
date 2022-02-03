@@ -54,17 +54,15 @@ contains
 !==========================================================================================================
 ! Read the full model and grid, and then broadcast to all CPUs.
 !==========================================================================================================
-subroutine model_read(this, file_name, read_grid, myrank)
+subroutine model_read(this, file_name, read_grid, myrank, nbproc)
   class(t_model_IO), intent(inout) :: this
   character(len=*), intent(in) :: file_name
-  integer, intent(in) :: myrank
+  integer, intent(in) :: myrank, nbproc
   logical, intent(in) :: read_grid
 
   integer :: ierr
 
-  if (myrank == 0) then
-    call this%read_voxels_format(file_name, read_grid, myrank)
-  endif
+  call this%read_voxels_format(file_name, read_grid, myrank, nbproc)
 
   if (read_grid) then
     ! Broadcast full grid to all CPUs.
@@ -143,11 +141,11 @@ end subroutine read_bound_constraints
 !================================================================================================
 ! Read the full model and grid in voxels format.
 !================================================================================================
-subroutine model_read_voxels_format(this, file_name, read_grid, myrank)
+subroutine model_read_voxels_format(this, file_name, read_grid, myrank, nbproc)
   class(t_model_IO), intent(inout) :: this
   character(len=*), intent(in) :: file_name
   logical, intent(in) :: read_grid
-  integer, intent(in) :: myrank
+  integer, intent(in) :: myrank, nbproc
 
   integer :: i, nelements_read
   integer :: ierr
@@ -155,8 +153,17 @@ subroutine model_read_voxels_format(this, file_name, read_grid, myrank)
   real(kind=CUSTOM_REAL) :: dummy, val, cov
   integer :: i_, j_, k_
 
+  ! Displacement for mpi_scatterv.
+  integer :: displs(nbproc)
+  ! The number of elements on every CPU for mpi_scatterv.
+  integer :: nelements_at_cpu(nbproc)
+  type(t_parallel_tools) :: pt
+  real(kind=CUSTOM_REAL), allocatable :: cov_full(:)
+
   if (myrank == 0) then
   ! Reading the full model and grid by master CPU only.
+    allocate(cov_full(this%nelements_total), stat=ierr)
+
     print *, 'Reading model from file ', trim(file_name)
 
     open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
@@ -181,7 +188,7 @@ subroutine model_read_voxels_format(this, file_name, read_grid, myrank)
                                  this%grid_full%Z1(i), this%grid_full%Z2(i), &
                                  this%val_full(i), &
                                  this%grid_full%i_(i), this%grid_full%j_(i), this%grid_full%k_(i), &
-                                 this%cov_full(i)
+                                 cov_full(i)
 
         ! Sanity check.
         if (this%grid_full%i_(i) < 1 .or. &
@@ -219,7 +226,7 @@ subroutine model_read_voxels_format(this, file_name, read_grid, myrank)
         this%val_full(i) = val
 
         ! Set the covariance value.
-        this%cov_full(i) = cov
+        cov_full(i) = cov
 
         if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_voxels!", myrank, ierr)
       enddo
@@ -227,6 +234,17 @@ subroutine model_read_voxels_format(this, file_name, read_grid, myrank)
 
     close(10)
   endif
+
+  !------------------------------------------------------------------------------
+  ! Distribute the covarianve values among CPUS.
+  !------------------------------------------------------------------------------
+  ! Partitioning for MPI_Scatterv.
+  call pt%get_mpi_partitioning(this%nelements, displs, nelements_at_cpu, myrank, nbproc)
+
+  call MPI_Scatterv(cov_full, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
+                    this%cov, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
+  if (allocated(cov_full)) deallocate(cov_full)
 
 end subroutine model_read_voxels_format
 
