@@ -331,8 +331,8 @@ subroutine model_write_paraview(this, name_prefix, myrank)
   ny = this%grid_full%ny
   nz = this%grid_full%nz
 
-  ! Write the full model using lego-grid (it can handle the format: nx, ny, nz = 1, 1, N).
-  filename = trim(name_prefix)//"model3D_full_lego.vtk"
+  ! Write the full model.
+  filename = trim(name_prefix)//"model3D_full.vtk"
   call visualisation_paraview_legogrid(filename, myrank, this%nelements_total, this%val_full, &
                                        this%grid_full%X1, this%grid_full%Y1, this%grid_full%Z1, &
                                        this%grid_full%X2, this%grid_full%Y2, this%grid_full%Z2, &

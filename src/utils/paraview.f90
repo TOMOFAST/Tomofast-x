@@ -333,20 +333,7 @@ subroutine visualisation_paraview(filename, myrank, nx, ny, nz, val, xgrid, ygri
   endif
 
   ! ************** create data file **********************
-  ! TODO: Put this into a separate function in utils and also use for creating the path_output.
   ! If a folder Paraview does not exist, then it will be created.
-  !call execute_command_line('mkdir -p '//trim(path_output)//"/Paraview/",CMDSTAT=cmd_s,CMDMSG=msg)
-
-  ! TODO: ifort with debug flags complains about CMDSTAT and CMDMSG:
-  ! "error #6632: Keyword arguments are invalid without an explicit interface".
-  !call execute_command_line('mkdir -p '//trim(path_output)//"/Paraview/")
-
-  ! TODO: In some cases on the cluster an error appears:
-  ! TODO: "CMDMSG=Termination status of the command-language interpreter cannot be obtained"
-  ! TODO: Find why this happens?
-  !if (cmd_s /= 0) call exit_MPI("Error with writing the Paraview folder! "&
-  !                             //" CMDMSG="//msg, myrank, cmd_s)
-
   ! ifort 14.0 does not support execute_command_line()
   call system('mkdir -p '//trim(path_output)//"/Paraview/")
 
@@ -371,10 +358,6 @@ subroutine visualisation_paraview(filename, myrank, nx, ny, nz, val, xgrid, ygri
 
   npoints = xdim * ydim * zdim
   nelements = (xdim - 1) * (ydim - 1) * (zdim - 1)
-
-  !if (myrank == 0) print *, 'npoints =', npoints
-  !if (myrank == 0) print *, 'nelements =', nelements
-  !if (myrank == 0) print *, 'PARAVIEW xdim, ydim, zdim = ', xdim, ydim, zdim
 
   ! ************* generate points ******************
 
