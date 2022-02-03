@@ -21,15 +21,27 @@ forward.data.grav.dataValuesFile    = output/mansf_slice/grav_calc_read_data.txt
 ===================================================================================
 DEPTH WEIGHTING
 ===================================================================================
-forward.depthWeighting.type                          = 1
-forward.depthWeighting.powerWeight.grav.beta         = 2.0d0
-forward.depthWeighting.powerWeight.grav.Z0           = 0.d0
+forward.depthWeighting.type         = 2
+forward.depthWeighting.grav.power   = 2.0d0
+
+===================================================================================
+SENSITIVITY KERNEL
+===================================================================================
+sensit.readFromFiles                = 0
+sensit.folderPath                   = SENSIT/
+
+===================================================================================
+MATRIX COMPRESSION
+===================================================================================
+# 0-none, 1-wavelet compression.
+forward.matrixCompression.type                       = 1
+forward.matrixCompression.rate                       = 0.15
 
 ===================================================================================
 PRIOR MODEL
 ===================================================================================
 inversion.priorModel.type           = 1
-inversion.priorModel.grav.value     = 10.d0
+inversion.priorModel.grav.value     = 0.d0
 
 ===================================================================================
 STARTING MODEL
@@ -40,14 +52,15 @@ inversion.startingModel.grav.value  = 0.d0
 ===================================================================================
 INVERSION parameters
 ===================================================================================
-inversion.nMajorIterations          = 50
+inversion.nMajorIterations          = 20
 inversion.nMinorIterations          = 100
 inversion.minResidual               = 1.d-13
 
 ===================================================================================
 MODEL DAMPING (m - m_prior)
 ===================================================================================
-inversion.modelDamping.grav.weight  = 2.d-11
+inversion.modelDamping.grav.weight  = 1.d-11
+inversion.modelDamping.normPower    = 2.0d0
 
 ===================================================================================
 JOINT INVERSION parameters
@@ -61,7 +74,7 @@ ADMM constraints
 inversion.admm.enableADMM           = 1
 inversion.admm.nLithologies         = 5
 inversion.admm.grav.boundsFile      = data/gravmag/mansf_slice/grav_bound_constraints_2.txt
-inversion.admm.grav.weight          = 11.d-8
+inversion.admm.grav.weight          = 22.d-5
 
 ===================================================================================
 
