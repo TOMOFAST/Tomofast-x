@@ -73,7 +73,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   ! Flag for calculating variance.
   logical :: calculateVariance
 
-  real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w, u, v0
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w, u
 
   if (myrank == 0) print *, 'Entered subroutine lsqr_solve, gamma =', gamma
 
@@ -88,7 +88,6 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
 
   ! Allocate memory.
   allocate(u(N_lines))
-  allocate(v0(nelements))
   allocate(v(nelements))
   allocate(w(nelements))
 
@@ -154,9 +153,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
     v = - beta * v
 
     ! Compute v = v + Ht.u.
-    call matrix%trans_mult_vector(u, v0)
-
-    v = v + v0
+    call matrix%trans_mult_vector(u, v, .true.)
 
     ! Normalize v and update alpha.
     if (.not. normalize(v, alpha, .true.)) then
@@ -245,7 +242,6 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
 #endif
 
   deallocate(u)
-  deallocate(v0)
   deallocate(v)
   deallocate(w)
 

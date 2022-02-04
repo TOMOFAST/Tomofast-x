@@ -136,13 +136,8 @@ subroutine test_method_of_weights_1(myrank, nbproc)
   y_LSE(1) =  (1.d0 / 29.d0) * 39.d0
   y_LSE(2) =  (1.d0 / 29.d0) * (- 19.d0)
 
-!  call assert_true(abs(y(1) - y_LSE(1)) / abs(y_LSE(1)) < 1.e-15_CUSTOM_REAL, "y(1) is not correct in test_method_of_weights_1.")
-!  call assert_true(abs(y(2) - y_LSE(2)) / abs(y_LSE(2)) < 1.e-15_CUSTOM_REAL, "y(2) is not correct in test_method_of_weights_1.")
-
-  ! Somehow the exact solution is found (with gcc 4.9.4). Not sure if this is true for other machines/compilers...
-  ! If this fails, use the above version.
-  call assert_true(abs(y(1) - y_LSE(1)) / abs(y_LSE(1)) == 0._CUSTOM_REAL, "y(1) is not correct in test_method_of_weights_1.")
-  call assert_true(abs(y(2) - y_LSE(2)) / abs(y_LSE(2)) == 0._CUSTOM_REAL, "y(2) is not correct in test_method_of_weights_1.")
+  call assert_true(abs(y(1) - y_LSE(1)) / abs(y_LSE(1)) < 1.e-14_CUSTOM_REAL, "y(1) is not correct in test_method_of_weights_1.")
+  call assert_true(abs(y(2) - y_LSE(2)) / abs(y_LSE(2)) < 1.e-14_CUSTOM_REAL, "y(2) is not correct in test_method_of_weights_1.")
 
   deallocate(b)
   deallocate(y)
