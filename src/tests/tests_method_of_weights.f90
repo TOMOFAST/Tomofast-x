@@ -269,9 +269,9 @@ subroutine test_method_of_weights_2(myrank, nbproc)
   y_LSE(2) =  (1.d0 / 8.d0) * (- 2.d0)
   y_LSE(3) =  (1.d0 / 8.d0) * 12.d0
 
-  call assert_true(abs(y(1) - y_LSE(1)) / abs(y_LSE(1)) < 1.e-15_CUSTOM_REAL, "y(1) is not correct in test_method_of_weights_2.")
-  call assert_true(abs(y(2) - y_LSE(2)) / abs(y_LSE(2)) < 1.e-15_CUSTOM_REAL, "y(2) is not correct in test_method_of_weights_2.")
-  call assert_true(abs(y(3) - y_LSE(3)) / abs(y_LSE(3)) < 1.e-15_CUSTOM_REAL, "y(3) is not correct in test_method_of_weights_2.")
+  call assert_true(abs(y(1) - y_LSE(1)) / abs(y_LSE(1)) < 1.e-14_CUSTOM_REAL, "y(1) is not correct in test_method_of_weights_2.")
+  call assert_true(abs(y(2) - y_LSE(2)) / abs(y_LSE(2)) < 1.e-14_CUSTOM_REAL, "y(2) is not correct in test_method_of_weights_2.")
+  call assert_true(abs(y(3) - y_LSE(3)) / abs(y_LSE(3)) < 1.e-14_CUSTOM_REAL, "y(3) is not correct in test_method_of_weights_2.")
 
   deallocate(b)
   deallocate(y)

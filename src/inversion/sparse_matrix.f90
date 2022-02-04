@@ -336,15 +336,27 @@ end subroutine sparse_matrix_add_matrix
 
 !=========================================================================
 ! Computes the product between the sparse matrix and vector x.
+! If add_result_arg=true: b = b + Ax, else b = Ax.
 !=========================================================================
-pure subroutine sparse_matrix_mult_vector(this, x, b)
+pure subroutine sparse_matrix_mult_vector(this, x, b, add_result_arg)
   class(t_sparse_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: x(:)
+  logical, intent(in), optional :: add_result_arg
   real(kind=CUSTOM_REAL), intent(out) :: b(:)
+
   integer :: i
   integer(kind=8) :: k
+  logical :: add_result
 
-  b = 0._CUSTOM_REAL
+  if (present(add_result_arg)) then
+    add_result = add_result_arg
+  else
+    add_result = .false.
+  endif
+
+  if (.not. add_result) then
+    b = 0._CUSTOM_REAL
+  endif
 
   do i = 1, this%nl
     do k = this%ijl(i), this%ijl(i + 1) - 1

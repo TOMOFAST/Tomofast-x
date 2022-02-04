@@ -74,7 +74,6 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   logical :: calculateVariance
 
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w, u, v0
-  real(kind=CUSTOM_REAL), dimension(:), allocatable :: Hv
 
   if (myrank == 0) print *, 'Entered subroutine lsqr_solve, gamma =', gamma
 
@@ -89,7 +88,6 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
 
   ! Allocate memory.
   allocate(u(N_lines))
-  allocate(Hv(N_lines))
   allocate(v0(nelements))
   allocate(v(nelements))
   allocate(w(nelements))
@@ -133,11 +131,18 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
     ! Scale u.
     u = - alpha * u
 
+    !---------------------------------------------------------------
     ! Compute u = u + H.v parallel.
-    call matrix%mult_vector(v, Hv)
-    call mpi_allreduce(MPI_IN_PLACE, Hv, N_lines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    !---------------------------------------------------------------
+    ! Adding the original vector 'u' on master CPU: u = u + Hv_loc.
+    if (myrank == 0) call matrix%mult_vector(v, u, .true.)
 
-    u = u + Hv
+    ! Store only the matrix-vector product on other CPUs: u = Hv_loc.
+    if (myrank > 0) call matrix%mult_vector(v, u, .false.)
+
+    ! Sum partial results from all CPUs: u = (u + Hv_loc1) + Hv_loc2 + ... + Hv_locN = u + Hv.
+    call mpi_allreduce(MPI_IN_PLACE, u, N_lines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    !---------------------------------------------------------------
 
     ! Normalize u and update beta.
     if (.not. normalize(u, beta, .false.)) then
@@ -190,15 +195,18 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
     w = t2 * w + v
 
     if (gamma /= 0._CUSTOM_REAL) then
-      ! Soft thresholding.
+    ! Soft thresholding.
       call apply_soft_thresholding(x, nelements, gamma)
 
       ! Calculate the residual for thresholded solution.
-      call matrix%mult_vector(x, Hv)
-      call mpi_allreduce(MPI_IN_PLACE, Hv, N_lines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+      !call matrix%mult_vector(x, Hv)
+      !call mpi_allreduce(MPI_IN_PLACE, Hv, N_lines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
       ! Norm of the relative residual.
-      r = norm2(Hv - b) / b1
+      !r = norm2(Hv - b) / b1
+
+      ! Approximate residual.
+      r = phibar / b1
     else
       ! Norm of the relative residual.
       r = phibar / b1
@@ -237,7 +245,6 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
 #endif
 
   deallocate(u)
-  deallocate(Hv)
   deallocate(v0)
   deallocate(v)
   deallocate(w)
