@@ -110,15 +110,26 @@ subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, s
 
     real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(:)
 
-    integer             :: i
-    double precision    :: tx(3), ty(3), tz(3)
-    double precision    :: mx, my, mz
-    double precision    :: weight
+    integer :: i
+    real(kind=SENSIT_REAL) :: tx(3), ty(3), tz(3)
+    double precision :: mx, my, mz
+    double precision :: weight
 
     do i = 1, nelements
-        call this%sharmbox(Xdata, Ydata, Zdata, &
-                           grid%X1(i), grid%Y1(i), grid%Z1(i), &
-                           grid%X2(i), grid%Y2(i), grid%Z2(i), &
+!        call this%sharmbox(Xdata, Ydata, Zdata, &
+!                           grid%X1(i), grid%Y1(i), grid%Z1(i), &
+!                           grid%X2(i), grid%Y2(i), grid%Z2(i), &
+!                           tx, ty, tz)
+
+        call this%sharmbox(real(Xdata, SENSIT_REAL), &
+                           real(Ydata, SENSIT_REAL), &
+                           real(Zdata, SENSIT_REAL), &
+                           real(grid%X1(i), SENSIT_REAL), &
+                           real(grid%Y1(i), SENSIT_REAL), &
+                           real(grid%Z1(i), SENSIT_REAL), &
+                           real(grid%X2(i), SENSIT_REAL), &
+                           real(grid%Y2(i), SENSIT_REAL), &
+                           real(grid%Z2(i), SENSIT_REAL), &
                            tx, ty, tz)
 
         mx = sum(tx * this%magv)
@@ -138,41 +149,44 @@ end subroutine magnetic_field_magprism
 ! [Rapid Computation of Magnetic Anomalies and Demagnetization Effects Caused by Arbitrary Shape]
 ! Requires the DIRCOS subroutine.
 !
-! units:
+! Units:
 !   coordinates:        m
 !   field intensity:    nT
 !   incl/decl/azi:      deg
 !   mag suscept.:       cgs
 !
-! inputs:
+! Inputs:
 !   x0, y0, z0      coordinates of the observation point
 !   x1, y1, z1      coordinates of one of the corners on the top face, where z1 is the depth
 !   x2, y2, z2      coordinates of the opposite corner on the bottom face, where z2 is the depth
 !
-! outputs:
+! Outputs:
 !   tx = [txx txy txz]
 !   ty = [tyx tyy tyz]
 !   tz = [tzx tzy tzz]
 !   components of the magnetic tensor
 !===================================================================================
-subroutine sharmbox(y0,x0,z0, y1,x1,z1, y2,x2,z2, ts_y,ts_x,ts_z)
-    double precision, intent(in)            :: x0,y0,z0, x1,y1,z1, x2,y2,z2
+subroutine sharmbox(y0, x0, z0, y1, x1, z1, y2, x2, z2, ts_y, ts_x, ts_z)
+    real(kind=SENSIT_REAL), intent(in) :: x0, y0, z0, x1, y1, z1, x2, y2, z2
 
-    double precision, intent(out)           :: ts_x(3), ts_y(3), ts_z(3)
+    real(kind=SENSIT_REAL), intent(out) :: ts_x(3), ts_y(3), ts_z(3)
 
-    ! local
-    double precision :: rx1, rx2,        ry1, ry2,        rz1, rz2
-    double precision :: rx1sq, rx2sq,    ry1sq, ry2sq,    rz1sq, rz2sq
-    double precision :: arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8
-    double precision :: R1, R2, R3, R4
-    double precision :: dx, dy, dz, eps = 1.d-8
-    logical          :: l_inside
+    real(kind=SENSIT_REAL) :: rx1, rx2, ry1, ry2, rz1, rz2
+    real(kind=SENSIT_REAL) :: rx1sq, rx2sq, ry1sq, ry2sq, rz1sq, rz2sq
+    real(kind=SENSIT_REAL) :: arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8
+    real(kind=SENSIT_REAL) :: R1, R2, R3, R4
+    real(kind=SENSIT_REAL) :: dx, dy, dz, eps
+    real(kind=SENSIT_REAL) :: four_pi
+    logical :: l_inside
+
+    eps = 1.e-8
+    four_pi = 4 * 3.1415926535897932385_SENSIT_REAL
 
     l_inside = .false.
 
-    ! relative coordinates to obs
-    ! voxel runs from x1 to x2, y1 to y2, z1 to z2
-    ! observation points at obs_x obs_y obs_z
+    ! Relative coordinates to obs.
+    ! Voxel runs from x1 to x2, y1 to y2, z1 to z2.
+    ! Observation points at obs_x obs_y obs_z.
     rx1 = x1 - x0 + eps; ! rx1 = -u2
     rx2 = x2 - x0 + eps; ! rx2 = -u1
     ry1 = y1 - y0 + eps; ! ry1 = -v2
@@ -180,7 +194,7 @@ subroutine sharmbox(y0,x0,z0, y1,x1,z1, y2,x2,z2, ts_y,ts_x,ts_z)
     rz1 = z1 - z0 + eps; ! rz1 = -w2
     rz2 = z2 - z0 + eps; ! rz2 = -w1
 
-    ! squares
+    ! Squares.
     rx1sq = rx1 ** 2; rx2sq = rx2 ** 2;
     ry1sq = ry1 ** 2; ry2sq = ry2 ** 2;
     rz1sq = rz1 ** 2; rz2sq = rz2 ** 2;
@@ -199,34 +213,34 @@ subroutine sharmbox(y0,x0,z0, y1,x1,z1, y2,x2,z2, ts_y,ts_x,ts_z)
     arg8 = SQRT(rz1sq + R3)
 
     ! ts_xx
-    ts_x(1) =   DATAN2(ry1 * rz2, (rx2 * arg5 + eps)) - &
-                DATAN2(ry2 * rz2, (rx2 * arg2 + eps)) + &
-                DATAN2(ry2 * rz1, (rx2 * arg3 + eps)) - &
-                DATAN2(ry1 * rz1, (rx2 * arg8 + eps)) + &
-                DATAN2(ry2 * rz2, (rx1 * arg1 + eps)) - &
-                DATAN2(ry1 * rz2, (rx1 * arg6 + eps)) + &
-                DATAN2(ry1 * rz1, (rx1 * arg7 + eps)) - &
-                DATAN2(ry2 * rz1, (rx1 * arg4 + eps))
+    ts_x(1) =   ATAN2(ry1 * rz2, (rx2 * arg5 + eps)) - &
+                ATAN2(ry2 * rz2, (rx2 * arg2 + eps)) + &
+                ATAN2(ry2 * rz1, (rx2 * arg3 + eps)) - &
+                ATAN2(ry1 * rz1, (rx2 * arg8 + eps)) + &
+                ATAN2(ry2 * rz2, (rx1 * arg1 + eps)) - &
+                ATAN2(ry1 * rz2, (rx1 * arg6 + eps)) + &
+                ATAN2(ry1 * rz1, (rx1 * arg7 + eps)) - &
+                ATAN2(ry2 * rz1, (rx1 * arg4 + eps))
 
     ! ts_yx
-    ts_y(1) =   DLOG((rz2 + arg2 + eps) / (rz1 + arg3 + eps)) - &
-                DLOG((rz2 + arg1 + eps) / (rz1 + arg4 + eps)) + &
-                DLOG((rz2 + arg6 + eps) / (rz1 + arg7 + eps)) - &
-                DLOG((rz2 + arg5 + eps) / (rz1 + arg8 + eps))
+    ts_y(1) =   LOG((rz2 + arg2 + eps) / (rz1 + arg3 + eps)) - &
+                LOG((rz2 + arg1 + eps) / (rz1 + arg4 + eps)) + &
+                LOG((rz2 + arg6 + eps) / (rz1 + arg7 + eps)) - &
+                LOG((rz2 + arg5 + eps) / (rz1 + arg8 + eps))
 
     ! ts_yy
-    ts_y(2) =   DATAN2(rx1 * rz2, (ry2 * arg1 + eps)) - &
-                DATAN2(rx2 * rz2, (ry2 * arg2 + eps)) + &
-                DATAN2(rx2 * rz1, (ry2 * arg3 + eps)) - &
-                DATAN2(rx1 * rz1, (ry2 * arg4 + eps)) + &
-                DATAN2(rx2 * rz2, (ry1 * arg5 + eps)) - &
-                DATAN2(rx1 * rz2, (ry1 * arg6 + eps)) + &
-                DATAN2(rx1 * rz1, (ry1 * arg7 + eps)) - &
-                DATAN2(rx2 * rz1, (ry1 * arg8 + eps))
+    ts_y(2) =   ATAN2(rx1 * rz2, (ry2 * arg1 + eps)) - &
+                ATAN2(rx2 * rz2, (ry2 * arg2 + eps)) + &
+                ATAN2(rx2 * rz1, (ry2 * arg3 + eps)) - &
+                ATAN2(rx1 * rz1, (ry2 * arg4 + eps)) + &
+                ATAN2(rx2 * rz2, (ry1 * arg5 + eps)) - &
+                ATAN2(rx1 * rz2, (ry1 * arg6 + eps)) + &
+                ATAN2(rx1 * rz1, (ry1 * arg7 + eps)) - &
+                ATAN2(rx2 * rz1, (ry1 * arg8 + eps))
 
-    ! following computations do not reuse variables so it may be
-    ! faster to just compute them directly instead of storing
-    ! them. It does help legibility, however
+    ! Following computations do not reuse variables so it may be
+    ! faster to just compute them directly instead of storing them.
+    ! It does help legibility, however.
     R1 = ry2sq + rz1sq
     R2 = ry2sq + rz2sq
     R3 = ry1sq + rz1sq
@@ -241,10 +255,10 @@ subroutine sharmbox(y0,x0,z0, y1,x1,z1, y2,x2,z2, ts_y,ts_x,ts_z)
     arg8 = SQRT(rx2sq + R4)
 
     ! ts_yz
-    ts_y(3) =   DLOG((rx1 + arg1 + eps) / (rx2 + arg2 + eps)) - &
-                DLOG((rx1 + arg3 + eps) / (rx2 + arg4 + eps)) + &
-                DLOG((rx1 + arg7 + eps) / (rx2 + arg8 + eps)) - &
-                DLOG((rx1 + arg5 + eps) / (rx2 + arg6 + eps))
+    ts_y(3) =   LOG((rx1 + arg1 + eps) / (rx2 + arg2 + eps)) - &
+                LOG((rx1 + arg3 + eps) / (rx2 + arg4 + eps)) + &
+                LOG((rx1 + arg7 + eps) / (rx2 + arg8 + eps)) - &
+                LOG((rx1 + arg5 + eps) / (rx2 + arg6 + eps))
 
     R1 = rx2sq + rz1sq
     R2 = rx2sq + rz2sq
@@ -260,13 +274,13 @@ subroutine sharmbox(y0,x0,z0, y1,x1,z1, y2,x2,z2, ts_y,ts_x,ts_z)
     arg8 = SQRT(ry2sq + R4)
 
     ! ts_xz
-    ts_x(3) =   DLOG((ry1 + arg1 + eps) / (ry2 + arg2 + eps)) - &
-                DLOG((ry1 + arg3 + eps) / (ry2 + arg4 + eps)) + &
-                DLOG((ry1 + arg7 + eps) / (ry2 + arg8 + eps)) - &
-                DLOG((ry1 + arg5 + eps) / (ry2 + arg6 + eps))
+    ts_x(3) =   LOG((ry1 + arg1 + eps) / (ry2 + arg2 + eps)) - &
+                LOG((ry1 + arg3 + eps) / (ry2 + arg4 + eps)) + &
+                LOG((ry1 + arg7 + eps) / (ry2 + arg8 + eps)) - &
+                LOG((ry1 + arg5 + eps) / (ry2 + arg6 + eps))
 
-    ! checking if point is inside the voxel
-    ! if so, use poisson's relation
+    ! Checking if point is inside the voxel.
+    ! If so, use poisson's relation.
     dx = x2 - x1
     dy = y2 - y1
     dz = z2 - z1
@@ -278,15 +292,14 @@ subroutine sharmbox(y0,x0,z0, y1,x1,z1, y2,x2,z2, ts_y,ts_x,ts_z)
         end if
     end if
 
-
-    ! filling the rest of the tensor
+    ! Filling the rest of the tensor.
     ! ts_zz
     if (l_inside) then
         print *, "Observation point inside target voxel!"
         print *, "obs:", x0,y0,z0
-        print *, "voxel:", x1,x2, y1,y2, z1,z2
+        print *, "voxel:", x1, x2, y1, y2, z1, z2
 
-        ts_z(3) = -1 * (ts_x(1) + ts_y(2) + 4*PI) ! poisson
+        ts_z(3) = -1 * (ts_x(1) + ts_y(2) + four_pi) ! poisson
     else
         ts_z(3) = -1 * (ts_x(1) + ts_y(2)) ! gauss
     end if
