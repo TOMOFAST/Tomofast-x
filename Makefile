@@ -148,7 +148,6 @@ sort.f90
 SRC_LIST_INVERSION = \
 sparse_matrix.f90 \
 grid.F90 \
-model_base.F90 \
 model.F90 \
 model_IO.F90 \
 filter.f90 \
