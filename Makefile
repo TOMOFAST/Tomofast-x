@@ -149,8 +149,8 @@ SRC_LIST_INVERSION = \
 sparse_matrix.f90 \
 grid.F90 \
 model_base.F90 \
-model_IO.F90 \
 model.F90 \
+model_IO.F90 \
 filter.f90 \
 parameters_inversion.f90 \
 inversion_arrays.f90 \

@@ -25,7 +25,7 @@ module model_IO
   use string, only: str
   use parallel_tools
   use string
-  use model_base
+  use model
 
   implicit none
 
@@ -45,7 +45,7 @@ contains
 ! Read the full model and grid, and then broadcast to all CPUs.
 !==========================================================================================================
 subroutine model_read(model, file_name, read_grid, myrank, nbproc)
-  class(t_model_base), intent(inout) :: model
+  class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank, nbproc
   logical, intent(in) :: read_grid
@@ -75,7 +75,7 @@ end subroutine model_read
 ! Read the local bound constraints (for ADMM).
 !==========================================================================================================
 subroutine model_read_bound_constraints(model, file_name, myrank, nbproc)
-  class(t_model_base), intent(inout) :: model
+  class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank, nbproc
   
@@ -133,7 +133,7 @@ end subroutine model_read_bound_constraints
 ! Read the full model and grid in voxels format.
 !================================================================================================
 subroutine model_read_voxels_format(model, file_name, read_grid, myrank, nbproc)
-  class(t_model_base), intent(inout) :: model
+  class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: file_name
   logical, intent(in) :: read_grid
   integer, intent(in) :: myrank, nbproc
@@ -243,7 +243,7 @@ end subroutine model_read_voxels_format
 ! Write the model snapshots for visualization.
 !======================================================================================================
 subroutine model_write(model, name_prefix, gather_full_model, myrank, nbproc)
-  class(t_model_base), intent(inout) :: model
+  class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: name_prefix
   logical, intent(in) :: gather_full_model
   integer, intent(in) :: myrank, nbproc
@@ -269,7 +269,7 @@ end subroutine model_write
 ! Using the same format as in model_read_voxels_format subroutine.
 !================================================================================================
 subroutine model_write_voxels_format(model, file_name, myrank)
-  class(t_model_base), intent(in) :: model
+  class(t_model), intent(in) :: model
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank
 
@@ -306,7 +306,7 @@ end subroutine model_write_voxels_format
 ! Write the model snapshots in Paraview format for visualization.
 !======================================================================================================
 subroutine model_write_paraview(model, name_prefix, myrank)
-  class(t_model_base), intent(in) :: model
+  class(t_model), intent(in) :: model
   character(len=*), intent(in) :: name_prefix
   integer, intent(in) :: myrank
 
