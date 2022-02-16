@@ -44,7 +44,6 @@ module model_IO
 
     procedure, private, pass :: read_voxels_format => model_read_voxels_format
     procedure, private, pass :: write_voxels_format => model_write_voxels_format
-    procedure, private, pass :: write_qgis => model_write_qgis
     procedure, private, pass :: write_paraview => model_write_paraview
 
   end type t_model_IO
@@ -367,87 +366,5 @@ subroutine model_write_paraview(this, name_prefix, myrank)
                                        1, nx, 1, ny, nz / 2, nz / 2, &
                                        .true.)
 end subroutine model_write_paraview
-
-!======================================================================================================
-! Write model snapshots in QGIS raster format for visualization.
-!======================================================================================================
-subroutine model_write_qgis(this, name_prefix, myrank)
-  class(t_model_IO), intent(in) :: this
-  character(len=*), intent(in) :: name_prefix
-  integer, intent(in) :: myrank
-
-  integer :: i, j, k, p, ierr
-
-  real(kind=CUSTOM_REAL), allocatable :: model3d(:, :, :)
-
-  real(kind=CUSTOM_REAL) :: cell_size
-  integer :: istep, jstep, kstep
-  integer :: nx, ny, nz
-  integer :: nsections_x, nsections_y, nsections_z
-  integer :: ind, x, y, z
-  character(len=256) :: filename
-
-  ! Write files my master CPU only.
-  if (myrank /= 0) return
-
-  nx = this%grid_full%nx
-  ny = this%grid_full%ny
-  nz = this%grid_full%nz
-
-  allocate(model3d(1:nx, 1:ny, 1:nz), source=0._CUSTOM_REAL, stat=ierr)
-
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_write_qgis!", myrank, ierr)
-
-  ! Calculate 3D grid and model.
-  do p = 1, this%nelements_total
-    i = this%grid_full%i_(p)
-    j = this%grid_full%j_(p)
-    k = this%grid_full%k_(p)
-
-    model3d(i, j, k) = this%val_full(p)
-  enddo
-
-  nsections_x = 10
-  nsections_y = 10
-  nsections_z = 10
-
-  istep = max(nx / nsections_x, 1)
-  jstep = max(ny / nsections_y, 1)
-  kstep = max(nz / nsections_z, 1)
-
-  ! QGIS does not support non-cubical cells. Use arbitrary cell size.
-  cell_size = 100.d0
-
-  ! Write YZ profiles.
-  do i = 1, nx, istep
-    ind = this%grid_full%ind(i, 1, 1)
-    x = int(this%grid_full%get_X_cell_center(ind))
-
-    filename = trim(name_prefix)//"model_YZ_x="//trim(str(x))//"_i="//trim(str(i))//".txt"
-    call visualisation_qgis(filename, myrank, reshape(model3d(i:i, 1:ny, 1:nz), (/ny, nz/)), ny, nz, cell_size)
-  enddo
-
-  ! Write XZ profiles.
-  do j = 1, ny, jstep
-    ind = this%grid_full%ind(1, j, 1)
-    y = int(this%grid_full%get_Y_cell_center(ind))
-
-    filename = trim(name_prefix)//"model_XZ_y="//trim(str(y))//"_j="//trim(str(j))//".txt"
-    call visualisation_qgis(filename, myrank, reshape(model3d(1:nx, j:j, 1:nz), (/nx, nz/)), nx, nz, cell_size)
-  enddo
-
-  ! Write XY profiles.
-  do k = 1, nz, kstep
-    ind = this%grid_full%ind(1, 1, k)
-    z = int(this%grid_full%get_Z_cell_center(ind))
-
-    filename = trim(name_prefix)//"model_XY_z="//trim(str(z))//"_k="//trim(str(k))//".txt"
-    call visualisation_qgis(filename, myrank, reshape(model3d(1:nx, 1:ny, k:k), (/nx, ny/)), nx, ny, cell_size)
-  enddo
-
-  ! Deallocate local arrays.
-  deallocate(model3d)
-
-end subroutine model_write_qgis
 
 end module model_IO

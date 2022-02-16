@@ -29,60 +29,10 @@ module paraview
 
   public :: visualisation_paraview
   public :: visualisation_paraview_legogrid
-  public :: visualisation_qgis
+
+  private :: index_included
 
 contains
-
-!=================================================================================================================
-! TODO: Move to another module.
-! This subroutine writes model snapshots for visualization in QGIS.
-! The file can bu opened in QGIS using "Add Raster Layer" option.
-! Tested using QGIS 2.12.3-Lyon.
-!=================================================================================================================
-subroutine visualisation_qgis(filename, myrank, val, ncols, nrows, cell_size)
-  ! MPI rank of this process.
-  integer, intent(in) :: myrank
-  ! Values for visualization (2D slice).
-  real(kind=CUSTOM_REAL), intent(in) :: val(:, :)
-  integer, intent(in) :: ncols, nrows
-  ! The cell size.
-  real(kind=CUSTOM_REAL), intent(in) :: cell_size
-  ! Output file name.
-  character(len=*), intent(in) :: filename
-
-  ! I/O error code.
-  integer :: ierr
-  character(len=256) :: filename_full
-  character(len=256) :: msg
-  integer :: i, j
-
-  ! ************** Create data file **********************
-  ! TODO: move this part to a function (and use it also in visualisation_paraview())
-  call system('mkdir -p '//trim(path_output)//"/QGIS/")
-
-  filename_full = trim(path_output)//"/QGIS/"//filename
-
-  open(unit=333, file=filename_full, status='unknown', action='write', iostat=ierr, iomsg=msg)
-
-  if (ierr /= 0) call exit_MPI("Error with writing the QGIS file! path="&
-                               //filename_full//" iomsg="//msg, myrank, ierr)
-
-  ! ************** Write data into file **********************
-
-  write (333, '(''ncols '',i9)') ncols
-  write (333, '(''nrows '',i9)') nrows
-  write (333, '(''xllcenter '',f16.8)') 0.d0
-  write (333, '(''yllcenter '',f16.8)') 0.d0
-  write (333, '(''cellsize '',f16.8)') cell_size
-
-  do j = 1, nrows
-    do i = 1, ncols
-      write(333, '(f16.8)', advance='no') val(i, j)
-    enddo
-    write(333, *)
-  enddo
-
-end subroutine visualisation_qgis
 
 !============================================================================================================
 function index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2) result(included)
