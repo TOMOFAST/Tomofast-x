@@ -27,7 +27,6 @@ module model
   use parallel_tools
   use string
   use model_base
-  use model_IO
   use sparse_matrix
   use wavelet_transform
 
@@ -35,7 +34,7 @@ module model
 
   private
 
-  type, extends(t_model_IO), public :: t_model
+  type, extends(t_model_base), public :: t_model
 
   contains
     private

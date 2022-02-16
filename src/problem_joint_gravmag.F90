@@ -44,14 +44,11 @@ module problem_joint_gravmag
   use data_gravmag
   use parallel_tools
   use string, only: str
+  use model_IO
 
   implicit none
 
   private
-
-  ! Flags for writing data for visualization.
-  logical, parameter :: WRITE_SENSITIVITY     = .true.
-  logical, parameter :: WRITE_DAMPING_WEIGHT  = .false.
 
   ! Unit number for cost file handle.
   integer, parameter :: FILE_COSTS = 1234567
@@ -72,7 +69,6 @@ module problem_joint_gravmag
     procedure, public, pass :: solve_problem_joint_gravmag
 
     procedure, private, nopass :: calculate_model_costs
-    !procedure, private, nopass :: write_sensitivity_matrix
     procedure, private, nopass :: read_model
 
   end type t_problem_joint_gravmag
@@ -154,13 +150,13 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call iarr(2)%init_model(myrank, nbproc)
 
   ! Reading the full grid and model.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%model%read(gpar%model_files(1), .true., myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%model%read(mpar%model_files(1), .true., myrank, nbproc)
+  if (SOLVE_PROBLEM(1)) call model_read(iarr(1)%model, gpar%model_files(1), .true., myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call model_read(iarr(2)%model, mpar%model_files(1), .true., myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
   ! Write the model read to a file for Paraview visualization.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%model%write('grav_read_', .false., myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%model%write('mag_read_', .false., myrank, nbproc)
+  if (SOLVE_PROBLEM(1)) call model_write(iarr(1)%model, 'grav_read_', .false., myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call model_write(iarr(2)%model, 'mag_read_', .false., myrank, nbproc)
 #endif
 
   ! Distribute the model among CPUs.
@@ -174,7 +170,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       if (SOLVE_PROBLEM(i)) then
         ! Reading min/max ADMM bounds from file.
         call iarr(i)%model%allocate_bound_arrays(ipar%nlithos, myrank)
-        call iarr(i)%model%read_bound_constraints(ipar%bounds_ADMM_file(i), myrank, nbproc)
+        call model_read_bound_constraints(iarr(i)%model, ipar%bounds_ADMM_file(i), myrank, nbproc)
       endif
     enddo
   endif
@@ -310,8 +306,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
     ! Write the prior model to a file for visualization.
-    if (SOLVE_PROBLEM(1)) call iarr(1)%model%write('grav_prior_', .false., myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call iarr(2)%model%write('mag_prior_', .false., myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) call model_write(iarr(1)%model, 'grav_prior_', .false., myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call model_write(iarr(2)%model, 'mag_prior_', .false., myrank, nbproc)
 #endif
 
     !-----------------------------------------------------------------------------------------
@@ -335,8 +331,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
     ! Write the starting model to a file for visualization.
-    if (SOLVE_PROBLEM(1)) call iarr(1)%model%write('grav_starting_', .true., myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call iarr(2)%model%write('mag_starting_', .true., myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) call model_write(iarr(1)%model, 'grav_starting_', .true., myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call model_write(iarr(2)%model, 'mag_starting_', .true., myrank, nbproc)
 #endif
 
     !-----------------------------------------------------------------------------------------
@@ -447,8 +443,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
     ! Write the final model to a file.
-    if (SOLVE_PROBLEM(1)) call iarr(1)%model%write('grav_final_', .false., myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call iarr(2)%model%write('mag_final_', .false., myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) call model_write(iarr(1)%model, 'grav_final_', .false., myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call model_write(iarr(2)%model, 'mag_final_', .false., myrank, nbproc)
 #endif
 
 #ifndef SUPPRESS_OUTPUT
@@ -462,7 +458,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       ! Write final cross-gradient vector magnitude to a file.
       iarr(1)%model%val_full = joint_inversion%get_cross_grad()
 
-      call iarr(1)%model%write('cross_grad_final_', .false., myrank, nbproc)
+      call model_write(iarr(1)%model, 'cross_grad_final_', .false., myrank, nbproc)
     endif
 #endif
 
@@ -471,7 +467,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       ! Write final clustering probabilities, i.e., P(m) per cell.
       iarr(1)%model%val_full = joint_inversion%get_clustering()
 
-      call iarr(1)%model%write('clustering_final_', .false., myrank, nbproc)
+      call model_write(iarr(1)%model, 'clustering_final_', .false., myrank, nbproc)
 
       call joint_inversion%clustering%write_data('clustering_data.txt', iarr(1)%model%grid_full, myrank)
     endif
@@ -482,46 +478,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   enddo ! loop over prior models
   !******************************
 
-#ifndef SUPPRESS_OUTPUT
-  if (WRITE_DAMPING_WEIGHT) then
-    ! Write the damping weight.
-    if (SOLVE_PROBLEM(1)) iarr(1)%model%val = iarr(1)%damping_weight
-    if (SOLVE_PROBLEM(2)) iarr(2)%model%val = iarr(2)%damping_weight
-
-    if (SOLVE_PROBLEM(1)) call iarr(1)%model%write('damping_weight_grav_', .true., myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call iarr(2)%model%write('damping_weight_mag_', .true., myrank, nbproc)
-  endif
-#endif
-
-#ifndef SUPPRESS_OUTPUT
-  if (WRITE_SENSITIVITY) then
-    ! Write a root mean square sensitivity (integrated sensitivity).
-    !call write_sensitivity_matrix(iarr, SOLVE_PROBLEM, myrank, nbproc)
-  endif
-#endif
-
 end subroutine solve_problem_joint_gravmag
-
-!========================================================================================
-! Write a root mean square sensitivity (integrated sensitivity) to a file.
-!========================================================================================
-!subroutine write_sensitivity_matrix(iarr, solve_problem, myrank, nbproc)
-!  type(t_inversion_arrays), intent(inout) :: iarr(2)
-!  logical, intent(in) :: solve_problem(2)
-!  integer, intent(in) :: myrank, nbproc
-!
-!  integer :: i
-!
-!  ! Loop over problems.
-!  do i = 1, 2
-!    if (solve_problem(i)) call iarr(i)%matrix_sensit%get_integrated_sensit(iarr(i)%model%val)
-!  enddo
-!
-!   ! Write sensitivity to files.
-!  if (solve_problem(1)) call iarr(1)%model%write('sensit_grav_', .true., myrank, nbproc)
-!  if (solve_problem(2)) call iarr(2)%model%write('sensit_mag_', .true., myrank, nbproc)
-!
-!end subroutine write_sensitivity_matrix
 
 !========================================================================================
 ! Computes and prints norm Lp of the difference between inverted and prior models.
@@ -562,7 +519,7 @@ subroutine read_model(iarr, model_type, model_val, model_file, myrank, nbproc)
 
   else if (model_type == 2) then
     ! Reading from file.
-    call iarr%model%read(model_file, .false., myrank, nbproc)
+    call model_read(iarr%model, model_file, .false., myrank, nbproc)
 
   else
     print *, "Unknown model type!"
