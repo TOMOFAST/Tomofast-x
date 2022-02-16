@@ -6,7 +6,7 @@ Authors: Vitaliy Ogarko, Jeremie Giraud, Roland Martin.
 Tomofast-x is 3D parallel inversion platform to run single domain or joint inversion (gravity and magnetic data).
 It can use local weighting of gradient regularization function, global and local petrophysical constraints (Gaussian mixture model and multiple disjoint bound constraints).
 Tomofast-x can run in parallel on laptops and supercomputers, using distributed and shared memory systems.
-Tomofast-x supports the parallel wavelet compression of the sensitivity kernel for significant memory reduction and faster performace.
+Tomofast-x supports the parallel wavelet compression of the sensitivity kernel for significant memory reduction and faster performance.
 
 The source code is a companion to the publication detailing Tomofast-x geophysical calculations and examples of utilisation and realistic dataset:
 J. Giraud, V. Ogarko, R. Martin, M. Jessell, and M. Lindsay (2021),
@@ -25,7 +25,7 @@ Geosci. Model Dev., 14, 6681–6709, https://doi.org/10.5194/gmd-14-6681-2021
 
 ### Compiling and running
 
-To compile the code you need: gcc v.4.9 or more recent, and the MPI library (such as OpenMPI).
+To compile the code you need: GCC (version 4.9 or newer) or Intel compiler, and the MPI library (such as OpenMPI).
 
 The makefile is contained in the root folder and should be used to compile Tomofast-x. Compiling the code is a necessary step to be able to run inversions.  
 To compile the code run the make command in the code directory as:  
