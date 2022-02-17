@@ -113,6 +113,8 @@ module joint_inverse_problem
 
     procedure, public, nopass :: calculate_matrix_partitioning => joint_inversion_calculate_matrix_partitioning
 
+    procedure, private, nopass :: write_posterior_variance
+
   end type t_joint_inversion
 
 contains
@@ -298,7 +300,6 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
   logical :: solve_gravity_only
   logical :: solve_mag_only
   integer :: der_type
-  character(len=32) :: filename
   integer :: nsmaller
 
   logical :: SOLVE_PROBLEM(2)
@@ -565,61 +566,73 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
 
   !--------------------------------------------------------------------------------
   ! Writing grav/mag prior and posterior variance.
-  ! TODO: Move to a new function.
   !--------------------------------------------------------------------------------
   if (ncalls == 1 .or. ncalls == par%ninversions) then
-    ! Calculate standard deviation sigma = sqrt(Var(X)).
-    this%matrix%lsqr_var = sqrt(this%matrix%lsqr_var)
-
-    ! Rescale with depth weight.
-    if (SOLVE_PROBLEM(1)) call rescale_model(this%matrix%lsqr_var(1:par%nelements), arr(1)%column_weight, par%nelements)
-    if (SOLVE_PROBLEM(2)) call rescale_model(this%matrix%lsqr_var(par%nelements + 1:), arr(2)%column_weight, par%nelements)
-
-    ! Note: use 'model%val_full' for storage here, as we overwrite it later anyway.
-
-    ! Gather full (parallel) vector on the master.
     if (SOLVE_PROBLEM(1)) &
-      call pt%get_full_array(this%matrix%lsqr_var(1:par%nelements), par%nelements, arr(1)%model%val_full, .false., myrank, nbproc)
+      call write_posterior_variance(this%matrix%lsqr_var(1:par%nelements), par, arr(1)%column_weight, 1, ncalls, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) &
-      call pt%get_full_array(this%matrix%lsqr_var(par%nelements+1:), par%nelements, arr(2)%model%val_full, .false., myrank, nbproc)
-
-    if (myrank == 0) then
-    ! Writing variance by master CPU.
-
-      if (ncalls == 1) then
-        filename = "/lsqr_std_prior"
-      else
-        filename = "/lsqr_std_posterior"
-      endif
-
-      if (SOLVE_PROBLEM(1)) then
-      ! Writing grav variance to file.
-        open(27, file=trim(trim(path_output)//trim(filename)//"_grav.txt"), access='stream', form='formatted', &
-             status='unknown', action='write')
-
-        do i = 1, par%nelements_total
-          write (27, *) arr(1)%model%val_full(i)
-        enddo
-
-        close(27)
-      endif
-
-      if (SOLVE_PROBLEM(2)) then
-      ! Writing mag variance to file.
-        open(28, file=trim(trim(path_output)//trim(filename)//"_mag.txt"), access='stream', form='formatted', &
-             status='unknown', action='write')
-
-        do i = 1, par%nelements_total
-          write (28, *) arr(2)%model%val_full(i)
-        enddo
-
-        close(28)
-      endif
-
-    endif
+      call write_posterior_variance(this%matrix%lsqr_var(par%nelements + 1:), par, arr(2)%column_weight, 2, ncalls, myrank, nbproc)
   endif
 
 end subroutine joint_inversion_solve
+
+!=======================================================================================================
+! Writing posterior variance to a file.
+!=======================================================================================================
+subroutine write_posterior_variance(lsqr_var, par, column_weight, problem_type, ncalls, myrank, nbproc)
+  real(kind=CUSTOM_REAL), intent(inout) :: lsqr_var(:)
+  type(t_parameters_inversion), intent(in) :: par
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
+  integer, intent(in) :: problem_type, ncalls
+  integer, intent(in) :: myrank, nbproc
+
+  integer :: i, ierr
+  character(len=32) :: filename
+  character(len=128) :: filename_full
+  type(t_parallel_tools) :: pt
+
+  real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full(:)
+
+  allocate(lsqr_var_full(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+
+  ! Calculate standard deviation sigma = sqrt(Var(X)).
+  lsqr_var = sqrt(lsqr_var)
+
+  ! Rescale with depth weight.
+  call rescale_model(lsqr_var, column_weight, par%nelements)
+
+  ! Gather full (parallel) vector on the master.
+  call pt%get_full_array(lsqr_var, par%nelements, lsqr_var_full, .false., myrank, nbproc)
+
+  if (myrank == 0) then
+  ! Writing variance by master CPU.
+
+    if (ncalls == 1) then
+      filename = "/lsqr_std_prior"
+    else
+      filename = "/lsqr_std_posterior"
+    endif
+
+    if (problem_type == 1) then
+    ! Writing grav variance to file.
+      filename_full = trim(trim(path_output)//trim(filename)//"_grav.txt")
+    else
+    ! Writing mag variance to file.
+      filename_full = trim(trim(path_output)//trim(filename)//"_mag.txt")
+    endif
+
+    open(27, file=trim(filename_full), form='formatted', status='unknown', action='write')
+
+    do i = 1, par%nelements_total
+      write (27, *) lsqr_var_full(i)
+    enddo
+
+    close(27)
+  endif
+
+  deallocate(lsqr_var_full)
+
+end subroutine write_posterior_variance
 
 !=======================================================================================================
 ! Adds the cross-gradient constraints to the least square system.
