@@ -71,10 +71,9 @@ contains
 !=======================================================================================
 ! Allocate grid arrays.
 !=======================================================================================
-subroutine grid_initialize(this, nelements, nx, ny, nz, allocate_ind, myrank)
+subroutine grid_initialize(this, nelements, nx, ny, nz, myrank)
   class(t_grid), intent(inout) :: this
   integer, intent(in) :: nelements, nx, ny, nz, myrank
-  logical, intent(in) :: allocate_ind
   integer :: ierr
 
   this%nx = nx
@@ -85,20 +84,18 @@ subroutine grid_initialize(this, nelements, nx, ny, nz, allocate_ind, myrank)
 
   ierr = 0
 
-  if (.not. allocated(this%X1)) allocate(this%X1(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%X2)) allocate(this%X2(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%Y1)) allocate(this%Y1(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%Y2)) allocate(this%Y2(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%Z1)) allocate(this%Z1(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%Z2)) allocate(this%Z2(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%X1(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%X2(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Y1(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Y2(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Z1(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Z2(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
-  if (.not. allocated(this%i_)) allocate(this%i_(this%nelements), source=0, stat=ierr)
-  if (.not. allocated(this%j_)) allocate(this%j_(this%nelements), source=0, stat=ierr)
-  if (.not. allocated(this%k_)) allocate(this%k_(this%nelements), source=0, stat=ierr)
+  allocate(this%i_(this%nelements), source=0, stat=ierr)
+  allocate(this%j_(this%nelements), source=0, stat=ierr)
+  allocate(this%k_(this%nelements), source=0, stat=ierr)
 
-  if (allocate_ind) then
-    if (.not. allocated(this%ind)) allocate(this%ind(nx, ny, nz), source=0, stat=ierr)
-  endif
+  allocate(this%ind(nx, ny, nz), source=0, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in grid_initialize!", myrank, ierr)
 
@@ -121,7 +118,7 @@ subroutine grid_deallocate(this)
   deallocate(this%j_)
   deallocate(this%k_)
 
-  if (allocated(this%ind)) deallocate(this%ind)
+  deallocate(this%ind)
 
 end subroutine grid_deallocate
 

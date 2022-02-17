@@ -99,10 +99,9 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
 
   ierr = 0
 
-  if (.not. allocated(this%val)) allocate(this%val(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%val_full)) allocate(this%val_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-
-  if (.not. allocated(this%cov)) allocate(this%cov(this%nelements), source=1._CUSTOM_REAL, stat=ierr)
+  allocate(this%val(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%cov(this%nelements), source=1._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_initialize!", myrank, ierr)
 
@@ -120,12 +119,9 @@ subroutine model_allocate_bound_arrays(this, nlithos, myrank)
 
   this%nlithos = nlithos
 
-  if (.not. allocated(this%min_local_bound)) allocate(this%min_local_bound(this%nelements, this%nlithos), &
-    source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%max_local_bound)) allocate(this%max_local_bound(this%nelements, this%nlithos), &
-    source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%local_bound_constraints_weight)) allocate(this%local_bound_constraints_weight(this%nelements), &
-    source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%min_local_bound(this%nelements, this%nlithos), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%max_local_bound(this%nelements, this%nlithos), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%local_bound_constraints_weight(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_allocate_bound_arrays!", myrank, ierr)
 
@@ -139,7 +135,7 @@ subroutine model_init_grid(this, nx, ny, nz, myrank)
   integer, intent(in) :: nx, ny, nz
   integer, intent(in) :: myrank
 
-  call this%grid_full%initialize(this%nelements_total, nx, ny, nz, .true., myrank)
+  call this%grid_full%initialize(this%nelements_total, nx, ny, nz, myrank)
 
 end subroutine model_init_grid
 
