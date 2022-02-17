@@ -157,15 +157,9 @@ subroutine inversion_solve(this, par, arr, myrank, nbproc)
     call lsqr_solve(par%niter, par%rmin, par%gamma, &
                     this%matrix, this%b_RHS, this%delta_model, myrank)
 
-  else if (par%method == 2) then
-    ! TODO: BFGS
+  else
+    call exit_MPI("Wrong method in inversion_solve!", myrank, 0)
   endif
-
-! DISABLED.
-!  if (par%compress_matrix) then
-!    ! Inverse wavelet transform.
-!    call iHaar3D(this%delta_model, par%nx, par%ny, par%nz)
-!  endif
 
   ! Scale model back to the original variables.
   call rescale_model(this%delta_model, arr%column_weight, par%nelements)

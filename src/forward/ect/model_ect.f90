@@ -20,7 +20,7 @@ module model_ect
   use utils
   use geometry, only: compute_shifted_grid_coordinates, compute_grid_coordinates
   use paraview_ect
-  use mpi_tools
+  use conjugate_gradient, only: mpisendrecv
 
   implicit none
 
