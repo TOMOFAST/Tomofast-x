@@ -310,9 +310,6 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
 
   ncalls = ncalls + 1
 
-  ! Initialize variance array.
-  this%matrix%lsqr_var = 0.d0;
-
   ! Store the iteration number.
   this%matrix%tag = ncalls
 
@@ -580,29 +577,54 @@ end subroutine joint_inversion_solve
 ! Writing posterior variance to a file.
 !=======================================================================================================
 subroutine write_posterior_variance(lsqr_var, par, column_weight, problem_type, ncalls, myrank, nbproc)
-  real(kind=CUSTOM_REAL), intent(inout) :: lsqr_var(:)
+  real(kind=CUSTOM_REAL), intent(in) :: lsqr_var(:)
   type(t_parameters_inversion), intent(in) :: par
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   integer, intent(in) :: problem_type, ncalls
   integer, intent(in) :: myrank, nbproc
 
   integer :: i, ierr
+  integer :: nsmaller
   character(len=32) :: filename
   character(len=128) :: filename_full
   type(t_parallel_tools) :: pt
 
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full(:)
+  real(kind=CUSTOM_REAL), allocatable :: lsqr_var_scaled(:)
 
   allocate(lsqr_var_full(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(lsqr_var_scaled(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
-  ! Calculate standard deviation sigma = sqrt(Var(X)).
-  lsqr_var = sqrt(lsqr_var)
+  if (par%compression_type > 0) then
+  ! When using the wavelet compression the lsqr variance is very different from the non-compressed case,
+  ! even for high compression rate of 0.99. Also, the variance numbers do not look correct with compression.
+  ! Possibly, we cannot compute the variance this way with wavelet compression (by simply applying the inverse wavelet transform), not sure.
+  ! Skip it for now.
+    return
+  endif
+
+  if (par%compression_type > 0) then
+  ! Applying the Inverse Wavelet Transform.
+    if (nbproc > 1) then
+      ! Gather full (parallel) vector on the master.
+      call pt%get_full_array(lsqr_var, par%nelements, lsqr_var_full, .true., myrank, nbproc)
+      call iHaar3D(lsqr_var_full, par%nx, par%ny, par%nz)
+
+      nsmaller = pt%get_nsmaller(par%nelements, myrank, nbproc)
+      lsqr_var_scaled = lsqr_var_full(nsmaller + 1 : nsmaller + par%nelements)
+    else
+      lsqr_var_scaled = lsqr_var
+      call iHaar3D(lsqr_var_scaled, par%nx, par%ny, par%nz)
+    endif
+  else
+    lsqr_var_scaled = lsqr_var
+  endif
 
   ! Rescale with depth weight.
-  call rescale_model(lsqr_var, column_weight, par%nelements)
+  call rescale_model(lsqr_var_scaled, column_weight, par%nelements)
 
   ! Gather full (parallel) vector on the master.
-  call pt%get_full_array(lsqr_var, par%nelements, lsqr_var_full, .false., myrank, nbproc)
+  call pt%get_full_array(lsqr_var_scaled, par%nelements, lsqr_var_full, .false., myrank, nbproc)
 
   if (myrank == 0) then
   ! Writing variance by master CPU.
@@ -631,6 +653,7 @@ subroutine write_posterior_variance(lsqr_var, par, column_weight, problem_type, 
   endif
 
   deallocate(lsqr_var_full)
+  deallocate(lsqr_var_scaled)
 
 end subroutine write_posterior_variance
 

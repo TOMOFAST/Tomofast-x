@@ -82,6 +82,9 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
 
   if (allocated(matrix%lsqr_var) .and. size(matrix%lsqr_var) == nelements) then
     calculateVariance = .true.
+
+    ! Initialize variance array.
+    matrix%lsqr_var = 0.d0
   else
     calculateVariance = .false.
   endif
@@ -233,6 +236,8 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
     ! First major iteration (stored in matrix%tag). Scale with original residual to calculate the prior variance.
       matrix%lsqr_var = b1**2 * matrix%lsqr_var
     endif
+    ! Calculate the standard error (s_i).
+    matrix%lsqr_var = sqrt(matrix%lsqr_var)
   endif
 
   if (myrank == 0) print *, 'End of subroutine lsqr_solve, r =', r, ' iter =', iter - 1
