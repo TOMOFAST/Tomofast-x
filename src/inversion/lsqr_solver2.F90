@@ -36,13 +36,6 @@ module lsqr_solver
   private :: normalize
   private :: apply_soft_thresholding
 
-  ! Input scalar parameters used in LSQR solver.
-  type, public :: t_parameters_lsqr
-    integer :: niter
-    real(kind=CUSTOM_REAL) :: rmin
-    real(kind=CUSTOM_REAL) :: gamma
-  end type t_parameters_lsqr
-
 contains
 
 !================================================================================

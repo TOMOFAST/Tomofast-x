@@ -16,7 +16,7 @@
 ! Implementation of methods of weights that is applied to a SLAE,
 ! to enforce equality-constrained LSQR.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================================
 module method_of_weights
 
@@ -30,6 +30,13 @@ module method_of_weights
   private
 
   public :: apply_method_of_weights
+
+  ! Input scalar parameters used in LSQR solver.
+  type, public :: t_parameters_lsqr
+    integer :: niter
+    real(kind=CUSTOM_REAL) :: rmin
+    real(kind=CUSTOM_REAL) :: gamma
+  end type t_parameters_lsqr
 
 contains
 
