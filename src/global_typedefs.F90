@@ -42,8 +42,8 @@ module global_typedefs
   ! The precision of the stored sensitivity kernel values (single / double).
   integer, parameter :: MATRIX_PRECISION = SIZE_REAL
 
-  ! The precision used for calculating the sensitivity kernel.
-  integer, parameter :: SENSIT_REAL = SIZE_REAL
+  ! The precision used for calculating the sensitivity kernel (mag only).
+  integer, parameter :: SENSIT_REAL = SIZE_DOUBLE
   !-----------------------------------------------------------------------
 
   ! Path to the output folder, set in the Parfile.
