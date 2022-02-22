@@ -140,7 +140,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! Sanity check for the correct grid cells ordering.
   if (par%compression_rate > 0) then
     if (.not. test_grid_cell_order(par, grid_full)) then
-      call exit_MPI("Wrong grid cells ordering in the gird file! Use the kji-loop order!", myrank, 0)
+      call exit_MPI("Wrong grid cells ordering in the grid file! Use the kji-loop order!", myrank, 0)
     endif
   endif
 
