@@ -119,6 +119,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   character(len=256) :: path_output_parfile
   character(len=256) :: grav_prior_model_filename
   character(len=256) :: mag_prior_model_filename
+  character(len=256) :: filename
 
   logical :: SOLVE_PROBLEM(2)
   integer(kind=8) :: nnz(2)
@@ -396,6 +397,17 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
         if (SOLVE_PROBLEM(i)) &
           call pt%get_full_array(iarr(i)%model%val, ipar%nelements, iarr(i)%model%val_full, .true., myrank, nbproc)
       enddo
+
+      if (ipar%write_model_niter > 0 .and. mod(it, ipar%write_model_niter) == 0) then
+      ! Write intermediate model to a file.
+        if (it < 10) then
+          filename = 'inter_it0'//trim(str(it))//'_'
+        else
+          filename = 'inter_it'//trim(str(it))//'_'
+        endif
+        if (SOLVE_PROBLEM(1)) call model_write(iarr(1)%model, 'grav_'//trim(filename), .false., myrank, nbproc)
+        if (SOLVE_PROBLEM(2)) call model_write(iarr(2)%model, 'mag_'//trim(filename), .false., myrank, nbproc)
+      endif
 
       ! Calculate data based on the new model from inversion.
       do i = 1, 2

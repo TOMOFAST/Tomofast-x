@@ -42,6 +42,8 @@ module parameters_inversion
     integer :: niter
     ! Number of inversions (outer inversion loop).
     integer :: ninversions
+    ! Write intermediate model every N major iterations.
+    integer :: write_model_niter
 
     ! Error in prior model -- damping for the inverse problem.
     real(kind=CUSTOM_REAL) :: alpha(2)
@@ -74,6 +76,7 @@ module parameters_inversion
     real(kind=CUSTOM_REAL) :: column_weight_multiplier(2)
 
     ! ------ Cross-gradient constraints ------------------------------------
+
     ! Contribution of the cross-gradient to the cost function.
     real(kind=CUSTOM_REAL) :: cross_grad_weight
 
@@ -85,6 +88,7 @@ module parameters_inversion
     integer :: derivative_type
 
     ! ------ Clustering constraints ----------------------------------------
+
     ! Clustering weights.
     real(kind=CUSTOM_REAL) :: clustering_weight_glob(2)
     ! Number of clusters.
@@ -99,7 +103,9 @@ module parameters_inversion
     character(len=256) :: cell_weights_file
 
     ! ------ ADMM constraints ------------------------------------
-    integer :: admm_type ! 0 - no admm, 1 - with admm.
+
+    ! 0 - no admm, 1 - with admm.
+    integer :: admm_type
     ! Number of lithologies.
     integer :: nlithos
     character(len=256) :: bounds_ADMM_file(2)
@@ -124,8 +130,10 @@ subroutine parameters_inversion_broadcast(this, myrank)
 
   ierr = 0
 
-  call MPI_Bcast(this%ninversions, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%niter, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%ninversions, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%write_model_niter, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+
   call MPI_Bcast(this%rmin, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%method, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%gamma, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)

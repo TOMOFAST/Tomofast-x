@@ -93,11 +93,8 @@ INVERSION parameters
 ===================================================================================
 inversion.nMajorIterations               = 10
 inversion.nMinorIterations               = 100
+inversion.writeModelEveryNiter           = 5
 inversion.minResidual                    = 1.d-13
-# LSQR=1
-inversion.solver                         = 1
-# Soft threshold ("L1-norm", no=0.)
-inversion.softThresholdL1                = 0.
 
 ===================================================================================
 MODEL DAMPING (m - m_prior)

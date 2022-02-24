@@ -383,6 +383,7 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! INVERSION parameters.
   ipar%ninversions = 10
   ipar%niter = 100
+  ipar%write_model_niter = 5
   ipar%rmin = 1.d-13
   ipar%method = 1 ! LSQR = 1
   ipar%gamma = 0. ! soft threshold ("L1-norm", no=0.)
@@ -809,6 +810,10 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
       case("inversion.nMinorIterations")
         read(10, 2) ipar%niter
         call print_arg(myrank, parname, ipar%niter)
+
+      case("inversion.writeModelEveryNiter")
+        read(10, 2) ipar%write_model_niter
+        call print_arg(myrank, parname, ipar%write_model_niter)
 
       case("inversion.minResidual")
         read(10, 1) ipar%rmin
