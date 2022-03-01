@@ -18,8 +18,6 @@ global.description          = Your parfile description
 MODEL GRID parameters
 ===================================================================================
 # nx ny nz
-# Note, that the (nx ny nz) grid dimensions are only required for gradient-based constraints,
-# and one can use the (1 1 N) format for other cases.
 modelGrid.size                      = 0 0 0
 modelGrid.grav.file                 = None
 modelGrid.magn.file                 = None
@@ -63,8 +61,8 @@ sensit.folderPath                   = SENSIT/
 MATRIX COMPRESSION
 ===================================================================================
 # 0-none, 1-wavelet compression.
-forward.matrixCompression.type                       = 0
-forward.matrixCompression.rate                       = 0.1d0
+forward.matrixCompression.type           = 0
+forward.matrixCompression.rate           = 0.1d0
 
 ===================================================================================
 PRIOR MODEL
@@ -122,7 +120,6 @@ inversion.admm.grav.boundsFile         = None
 inversion.admm.magn.boundsFile         = None
 inversion.admm.grav.weight             = 1.d-7
 inversion.admm.magn.weight             = 1.d+5
-===================================================================================
 
 ===================================================================================
 DAMPING-GRADIENT constraints
@@ -138,7 +135,6 @@ CROSS-GRADIENT constraints
 https://doi.org/10.1093/gji/ggaa414
 ===================================================================================
 inversion.crossGradient.weight               = 0.d0
-inversion.crossGradient.nIterMethodOfWeight  = 0
 # 1-forward, 2-central, 3-mixed.
 inversion.crossGradient.derivativeType       = 1
 
@@ -146,15 +142,15 @@ inversion.crossGradient.derivativeType       = 1
 CLUSTERING constraints
 https://doi.org/10.1093/gji/ggz152
 ===================================================================================
-inversion.clustering.grav.weight      = 0.d0
-inversion.clustering.magn.weight      = 0.d0
-inversion.clustering.nClusters        = 4
-inversion.clustering.mixtureFile      = None
-inversion.clustering.cellWeightsFile  = None
+inversion.clustering.grav.weight         = 0.d0
+inversion.clustering.magn.weight         = 0.d0
+inversion.clustering.nClusters           = 4
+inversion.clustering.mixtureFile         = None
+inversion.clustering.cellWeightsFile     = None
 # 1-normal, 2-log.
-inversion.clustering.optimizationType = 2
+inversion.clustering.optimizationType    = 2
 # 1-global, 2-local.
-inversion.clustering.constraintsType  = 2
+inversion.clustering.constraintsType     = 2
 
 ***********************************************************************************
 * ELECTRICAL CAPACITANCE TOMOGRAPHY (ECT) forward problem parameters.
@@ -201,13 +197,13 @@ forward.ect.model.permittivityOil           = 2.
 ===================================================================================
 ECT SOLVER parameters
 ===================================================================================
-# 0=NO, YES>0
-forward.ect.solver.precond               = 1
-forward.ect.solver.precond.relaxOmega    = 0.8d0
-# 1=L2, 2=max
-forward.ect.solver.normType              = 1
-forward.ect.solver.nMaxIterations        = 1000
-forward.ect.solver.outputFrequencyIter   = 20
-forward.ect.solver.tolerance             = 1.d-12
+# 0 = NO, YES > 0
+forward.ect.solver.precond                  = 1
+forward.ect.solver.precond.relaxOmega       = 0.8d0
+# 1 = L2, 2 = max
+forward.ect.solver.normType                 = 1
+forward.ect.solver.nMaxIterations           = 1000
+forward.ect.solver.outputFrequencyIter      = 20
+forward.ect.solver.tolerance                = 1.d-12
 
 ===================================================================================
