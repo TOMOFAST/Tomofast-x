@@ -104,5 +104,5 @@ which allows commercial use but forces users to acknowledge usage of Tomofast-x 
 
 ### Acknowledgments
 
-The authors acknowledge Mark Jessell, Mark Lindsay, and Dimitri Komatitsch.
+The authors acknowledge Mark Jessell, Mark Lindsay, Dimitri Komatitsch, Kim Frankcombe, and Taige Liu.
 
