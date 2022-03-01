@@ -40,7 +40,7 @@ To run the code with your parameter file:
 
 To run the code in parallel execute:
 ```shell
-mpirun -np <number CPUs> -j <Parfile path>
+mpirun -np <Number of CPUs> ./tomofastx -j <Parfile path>
 ```
 
 To run unit tests (serial and parallel):
