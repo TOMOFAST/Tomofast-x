@@ -382,7 +382,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     print *, 'Writing the depth weight to file ', trim(filename_full)
 
     open(77, file=trim(filename_full), form='unformatted', status='unknown', action='write')
-    write(77) par%nx, par%ny, par%nz, par%ndata
+    write(77) par%nx, par%ny, par%nz, par%ndata, par%depth_weighting_type
     write(77) column_weight_full
 
     close(77)
@@ -404,11 +404,11 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
 end subroutine calculate_and_write_sensit
 
-!====================================================================================================
+!==================================================================================================================
 ! Reads the sensitivity kernel from files,
 ! and stores it in the sparse matrix parallelized by model.
-!====================================================================================================
-subroutine read_sensitivity_kernel(par, sensit_matrix, problem_weight, problem_type, myrank, nbproc)
+!==================================================================================================================
+subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_weight, problem_type, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
   integer, intent(in) :: problem_type
@@ -416,12 +416,16 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_weight, problem_t
 
   ! Sensitivity matrix.
   type(t_sparse_matrix), intent(inout) :: sensit_matrix
+  real(kind=CUSTOM_REAL), intent(out) :: column_weight(:)
 
   type(t_parallel_tools) :: pt
 
   ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
   real(kind=MATRIX_PRECISION), allocatable :: sensit_compressed(:)
+
+  ! The full column weight.
+  real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
 
   real(kind=CUSTOM_REAL) :: comp_rate
   integer(kind=8) :: nnz_total
@@ -435,6 +439,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_weight, problem_t
   integer(kind=8) :: nnz
   integer :: column
   integer :: param_shift(2)
+  integer :: nx_read, ny_read, nz_read, weight_type_read
 
   param_shift(1) = 0
   param_shift(2) = par%nelements
@@ -445,10 +450,10 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_weight, problem_t
   nelements_total = par%nx * par%ny * par%nz
 
   allocate(sensit_columns(nelements_total), source=0, stat=ierr)
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
-
   allocate(sensit_compressed(nelements_total), source=0._MATRIX_PRECISION, stat=ierr)
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
+  allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in read_sensitivity_kernel!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
   ! Reading the sensitivity kernel files.
@@ -539,8 +544,43 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, problem_weight, problem_t
   if (myrank == 0) print *, 'COMPRESSION RATE (of the read kernel)  = ', comp_rate
 
   !---------------------------------------------------------------------------------------------
+  ! Read the depth weight
+  !---------------------------------------------------------------------------------------------
+  ! Define the file name.
+  filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_weight"
+
+  if (par%sensit_read /= 0) then
+    filename_full = trim(par%sensit_path)//filename
+  else
+    filename_full = trim(path_output)//"/SENSIT/"//filename
+  endif
+
+  if (myrank == 0) print *, "Reading the sensitivity weight file ", trim(filename_full)
+
+  ! Open the file.
+  open(78, file=trim(filename_full), form='unformatted', status='unknown', action='read', iostat=ierr, iomsg=msg)
+  if (ierr /= 0) call exit_MPI("Error in opening the sensitivity weight file! path=" &
+                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
+
+  read(78) nx_read, ny_read, nz_read, ndata_read, weight_type_read
+  read(78) column_weight_full
+  close(78)
+
+  if (myrank == 0) print *, "Depth weight type (read) =", weight_type_read
+
+  ! Consistency check.
+  if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
+      ndata_read /= par%ndata) then
+    call exit_MPI("Sensitivity weight file dimensions do not match the Parfile!", myrank, 0)
+  endif
+
+  ! Extract the column weight for the current rank.
+  column_weight = column_weight_full(nsmaller + 1 : nsmaller + par%nelements)
+
+  !---------------------------------------------------------------------------------------------
   deallocate(sensit_columns)
   deallocate(sensit_compressed)
+  deallocate(column_weight_full)
 
   if (myrank == 0) print *, 'Finished reading the sensitivity kernel.'
 

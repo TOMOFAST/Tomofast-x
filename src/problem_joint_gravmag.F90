@@ -196,17 +196,16 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_aux(myrank)
   if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_aux(myrank)
 
-  !-----------------------------------------------------------------------------------------
-  ! Calculates weights.
-  if (SOLVE_PROBLEM(1)) call weights%calculate(gpar, iarr(1), data(1), myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call weights%calculate(mpar, iarr(2), data(2), myrank, nbproc)
-
-  ! Precondition the column weights (to balance the columns in joint inversion).
-  if (SOLVE_PROBLEM(1)) iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight
-  if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
-
   !-------------------------------------------------------------------------------------------------------
   if (gpar%sensit_read == 0) then
+    ! Calculates the depth weights.
+    if (SOLVE_PROBLEM(1)) call weights%calculate(gpar, iarr(1), data(1), myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call weights%calculate(mpar, iarr(2), data(2), myrank, nbproc)
+
+    ! Precondition the column weights (to balance the columns in joint inversion).
+    if (SOLVE_PROBLEM(1)) iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight
+    if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
+
     ! Calculate and write the sensitivity kernel to files.
     if (SOLVE_PROBLEM(1)) &
       call calculate_and_write_sensit(gpar, iarr(1)%model%grid_full, data(1), iarr(1)%column_weight, nnz(1), myrank, nbproc)
@@ -222,7 +221,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   !-------------------------------------------------------------------------------------------------------
   ! Deallocate the model grid.
   ! Keep the grid only on rank 0 for writing the models.
-  ! keep the grid on all ranks if we use gradient-based constraints (cross-gradient or damping gradient).
+  ! Keep the grid on all ranks if we use gradient-based constraints (cross-gradient or damping gradient).
   if (myrank /= 0) then
     if (ipar%cross_grad_weight == 0.d0) then
       do i = 1, 2
@@ -238,9 +237,11 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   call joint_inversion%initialize(ipar, nnz(1) + nnz(2), myrank)
 
   !-------------------------------------------------------------------------------------------------------
-  ! Reading the sensitivity kernel from files.
-  if (SOLVE_PROBLEM(1)) call read_sensitivity_kernel(gpar, joint_inversion%matrix, ipar%problem_weight(1), 1, myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call read_sensitivity_kernel(mpar, joint_inversion%matrix, ipar%problem_weight(2), 2, myrank, nbproc)
+  ! Reading the sensitivity kernel and depth weight from files.
+  if (SOLVE_PROBLEM(1)) &
+    call read_sensitivity_kernel(gpar, joint_inversion%matrix, iarr(1)%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) &
+    call read_sensitivity_kernel(mpar, joint_inversion%matrix, iarr(2)%column_weight, ipar%problem_weight(2), 2, myrank, nbproc)
 
   !-------------------------------------------------------------------------------------------------------
   ! Calculate the data from the read model.
