@@ -176,21 +176,12 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   nelements_total = par%nx * par%ny * par%nz
 
   allocate(sensit_line_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
-
   allocate(sensit_line_orig(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
-
   allocate(sensit_line_sorted(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
-
   allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
-
   allocate(sensit_columns(nelements_total), source=0, stat=ierr)
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
-
   allocate(sensit_compressed(nelements_total), source=0._MATRIX_PRECISION, stat=ierr)
+
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
@@ -382,6 +373,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     print *, 'Writing the depth weight to file ', trim(filename_full)
 
     open(77, file=trim(filename_full), form='unformatted', status='unknown', action='write')
+
     write(77) par%nx, par%ny, par%nz, par%ndata, par%depth_weighting_type
     write(77) column_weight_full
 
@@ -564,6 +556,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
   read(78) nx_read, ny_read, nz_read, ndata_read, weight_type_read
   read(78) column_weight_full
+
   close(78)
 
   if (myrank == 0) print *, "Depth weight type (read) =", weight_type_read
