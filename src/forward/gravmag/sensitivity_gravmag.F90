@@ -373,6 +373,22 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   endif
 
   !---------------------------------------------------------------------------------------------
+  ! Write the depth weight.
+  !---------------------------------------------------------------------------------------------
+  if (myrank == 0) then
+    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_weight"
+    filename_full = trim(path_output)//"/SENSIT/"//filename
+
+    print *, 'Writing the depth weight to file ', trim(filename_full)
+
+    open(77, file=trim(filename_full), form='unformatted', status='unknown', action='write')
+    write(77) par%nx, par%ny, par%nz, par%ndata
+    write(77) column_weight_full
+
+    close(77)
+  endif
+
+  !---------------------------------------------------------------------------------------------
   ! Return the nnz for the current CPU.
   nnz = nnz_model(myrank + 1)
 
