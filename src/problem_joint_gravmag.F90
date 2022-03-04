@@ -247,8 +247,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
       ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
-      line_start(i), line_end(i), param_shift(i), &
-      myrank, nbproc)
+      line_start(i), line_end(i), param_shift(i), myrank, nbproc)
   enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -316,8 +315,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
         ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
-        line_start(i), line_end(i), param_shift(i), &
-        myrank, nbproc)
+        line_start(i), line_end(i), param_shift(i), myrank, nbproc)
     enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -341,8 +339,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
         ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
-        line_start(i), line_end(i), param_shift(i), &
-        myrank, nbproc)
+        line_start(i), line_end(i), param_shift(i), myrank, nbproc)
     enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -413,15 +410,17 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) call iarr(i)%model%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
           ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
-          line_start(i), line_end(i), param_shift(i), &
-          myrank, nbproc)
+          line_start(i), line_end(i), param_shift(i), myrank, nbproc)
       enddo
 
 #ifndef SUPPRESS_OUTPUT
       ! Write costs (for the previous iteration).
-      if (myrank == 0) write(FILE_COSTS, *) it - 1, cost_data(1), cost_data(2), cost_model(1), cost_model(2), &
-                                            joint_inversion%get_cross_grad_cost(), &
-                                            joint_inversion%get_clustering_cost(1), joint_inversion%get_clustering_cost(2)
+      if (myrank == 0) then
+        write(FILE_COSTS, *) it - 1, cost_data(1), cost_data(2), cost_model(1), cost_model(2), &
+                             joint_inversion%get_cross_grad_cost(), &
+                             joint_inversion%get_clustering_cost(1), joint_inversion%get_clustering_cost(2)
+        call flush(FILE_COSTS)
+      endif
 #endif
 
       ! Calculate new costs for data misfits.
