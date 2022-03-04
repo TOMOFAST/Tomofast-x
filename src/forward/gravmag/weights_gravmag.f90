@@ -13,7 +13,7 @@
 !========================================================================
 
 !===============================================================================================
-! A class to calculate weights for the sensitivity matrix.
+! A class to calculate depth weights for the sensitivity kernel.
 !
 ! Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================================
@@ -32,25 +32,17 @@ module weights_gravmag
 
   private
 
-  type, public :: t_weights
-    private
+  public :: calculate_depth_weight
 
-  contains
-    private
-
-    procedure, public, nopass :: calculate => weights_calculate
-    procedure, public, nopass :: normalize_depth_weight
-
-    procedure, private, nopass :: calculate_depth_weight
-
-  end type t_weights
+  private :: normalize_depth_weight
+  private :: calc_depth_weight_pixel
 
 contains
 
 !===================================================================================
-! Calculates the weights for inversion.
+! Calculates the depth weight for sensitivity kernel.
 !===================================================================================
-subroutine weights_calculate(par, iarr, data, myrank, nbproc)
+subroutine calculate_depth_weight(par, iarr, data, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   integer, intent(in) :: myrank, nbproc
   type(t_data), intent(in) :: data
@@ -81,7 +73,7 @@ subroutine weights_calculate(par, iarr, data, myrank, nbproc)
     do i = 1, par%nelements
       ! Full grid index.
       p = nsmaller + i
-      iarr%damping_weight(i) = calculate_depth_weight(iarr%model%grid_full, par%depth_weighting_power, par%Z0, p, myrank)
+      iarr%damping_weight(i) = calc_depth_weight_pixel(iarr%model%grid_full, par%depth_weighting_power, par%Z0, p, myrank)
     enddo
 
   else if (par%depth_weighting_type == 2) then
@@ -169,12 +161,12 @@ subroutine weights_calculate(par, iarr, data, myrank, nbproc)
 
   if (myrank == 0) print *, 'Finished calculating the depth weight.'
 
-end subroutine weights_calculate
+end subroutine calculate_depth_weight
 
 !===================================================================================
 ! Calculates the depth weight for a pixel using empirical function.
 !===================================================================================
-function calculate_depth_weight(grid, beta, Z0, i, myrank) result(weight)
+function calc_depth_weight_pixel(grid, beta, Z0, i, myrank) result(weight)
   type(t_grid), intent(in) :: grid
   real(kind=CUSTOM_REAL), intent(in) :: beta
   integer, intent(in) :: i, myrank
@@ -194,7 +186,7 @@ function calculate_depth_weight(grid, beta, Z0, i, myrank) result(weight)
     call exit_MPI("Error: non-positive depth in calculate_depth_weight!", myrank, 0)
   endif
 
-end function calculate_depth_weight
+end function calc_depth_weight_pixel
 
 !===================================================================================
 ! Normalizes the depth weight.

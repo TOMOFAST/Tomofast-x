@@ -109,7 +109,6 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   ! Data arrays for (1) gravity and (2) magnetism inversions.
   type(t_inversion_arrays) :: iarr(2)
   type(t_data) :: data(2)
-  type(t_weights) :: weights
   type(t_parallel_tools) :: pt
   real(kind=CUSTOM_REAL) :: cost_data(2)
   real(kind=CUSTOM_REAL) :: cost_model(2)
@@ -199,8 +198,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   !-------------------------------------------------------------------------------------------------------
   if (gpar%sensit_read == 0) then
     ! Calculates the depth weights.
-    if (SOLVE_PROBLEM(1)) call weights%calculate(gpar, iarr(1), data(1), myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call weights%calculate(mpar, iarr(2), data(2), myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) call calculate_depth_weight(gpar, iarr(1), data(1), myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call calculate_depth_weight(mpar, iarr(2), data(2), myrank, nbproc)
 
     ! Precondition the column weights (to balance the columns in joint inversion).
     if (SOLVE_PROBLEM(1)) iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight
