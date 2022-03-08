@@ -122,6 +122,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
   logical :: SOLVE_PROBLEM(2)
   integer(kind=8) :: nnz(2)
+  logical :: file_exists
 
   if (myrank == 0) print *, "Solving problem joint grav/mag."
 
@@ -370,7 +371,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     do it = 1, ipar%ninversions
 
       ! Exiting the loop when a file 'stop' is found.
-      if (access("stop", 'r') == 0) then
+      inquire(file="stop", exist=file_exists)
+      if (file_exists) then
         if (myrank == 0) print *, 'Stop file found! Exiting the loop.'
         exit
       endif
