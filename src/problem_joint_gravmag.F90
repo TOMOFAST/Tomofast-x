@@ -369,6 +369,12 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     ! Major inversion loop.
     do it = 1, ipar%ninversions
 
+      ! Exiting the loop when a file 'stop' is found.
+      if (access("stop", 'r') == 0) then
+        if (myrank == 0) print *, 'Stop file found! Exiting the loop.'
+        exit
+      endif
+
       if (myrank == 0) then
         print *, '======================================================='
         print *, 'Iteration, prior model =', it, ' ', m
