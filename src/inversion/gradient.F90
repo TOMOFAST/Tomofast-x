@@ -15,7 +15,7 @@
 !==========================================================================
 ! A class to calculate parameter gradients.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !==========================================================================
 module gradient
 
@@ -33,25 +33,16 @@ module gradient
   character(len=4), public, parameter :: FWD2_TYPE = "FWD2"
   character(len=4), public, parameter :: FWD3_TYPE = "FWD3"
 
-  type, public :: t_gradient
-    private
-
-  contains
-    private
-
-    procedure, public, nopass :: get_grad => gradient_get_grad
-    procedure, public, nopass :: get_par => gradient_get_par
-
-    procedure, public, nopass :: get_der_type => gradient_get_der_type
-
-  end type t_gradient
+  public :: get_grad
+  public :: grad_get_par
+  public :: get_der_type
 
 contains
 
 !==============================================================================================
 ! Map derivative type to local types.
 !==============================================================================================
-pure function gradient_get_der_type(der_type) result(res)
+function get_der_type(der_type) result(res)
   integer, intent(in) :: der_type
 
   character(len=4) :: res
@@ -72,12 +63,12 @@ pure function gradient_get_der_type(der_type) result(res)
     res = FWD_TYPE
   endif
 
-end function gradient_get_der_type
+end function get_der_type
 
 !==============================================================================================
 ! Returns the model gradient at pixel (i, j, k).
 !==============================================================================================
-recursive function gradient_get_grad(val, grid, i, j, k, der_type) result(res)
+recursive function get_grad(val, grid, i, j, k, der_type) result(res)
   real(kind=CUSTOM_REAL), intent(in) :: val(:)
   type(t_grid), intent(in) :: grid
   integer, intent(in) :: i, j, k
@@ -88,50 +79,49 @@ recursive function gradient_get_grad(val, grid, i, j, k, der_type) result(res)
   real(kind=CUSTOM_REAL) :: c(4)
   logical :: do_x, do_y, do_z
   integer :: ind
-  type(t_gradient) :: grad
 
   ind = grid%get_ind(i, j, k)
 
   if (der_type == BWD_TYPE) then
   ! Backward difference scheme. O(h).
-    res%x = (grad%get_par(val, grid, i, j, k) - grad%get_par(val, grid, i - 1, j, k)) / grid%get_hx(ind)
-    res%y = (grad%get_par(val, grid, i, j, k) - grad%get_par(val, grid, i, j - 1, k)) / grid%get_hy(ind)
-    res%z = (grad%get_par(val, grid, i, j, k) - grad%get_par(val, grid, i, j, k - 1)) / grid%get_hz(ind)
+    res%x = (grad_get_par(val, grid, i, j, k) - grad_get_par(val, grid, i - 1, j, k)) / grid%get_hx(ind)
+    res%y = (grad_get_par(val, grid, i, j, k) - grad_get_par(val, grid, i, j - 1, k)) / grid%get_hy(ind)
+    res%z = (grad_get_par(val, grid, i, j, k) - grad_get_par(val, grid, i, j, k - 1)) / grid%get_hz(ind)
 
   else if (der_type == FWD_TYPE) then
   ! Forward difference scheme. O(h).
-    res%x = (grad%get_par(val, grid, i + 1, j, k) - grad%get_par(val, grid, i, j, k)) / grid%get_hx(ind)
-    res%y = (grad%get_par(val, grid, i, j + 1, k) - grad%get_par(val, grid, i, j, k)) / grid%get_hy(ind)
-    res%z = (grad%get_par(val, grid, i, j, k + 1) - grad%get_par(val, grid, i, j, k)) / grid%get_hz(ind)
+    res%x = (grad_get_par(val, grid, i + 1, j, k) - grad_get_par(val, grid, i, j, k)) / grid%get_hx(ind)
+    res%y = (grad_get_par(val, grid, i, j + 1, k) - grad_get_par(val, grid, i, j, k)) / grid%get_hy(ind)
+    res%z = (grad_get_par(val, grid, i, j, k + 1) - grad_get_par(val, grid, i, j, k)) / grid%get_hz(ind)
 
   else if (der_type == CNT_TYPE) then
   ! Central difference scheme. O(h^2).
-    res%x = (grad%get_par(val, grid, i + 1, j, k) - grad%get_par(val, grid, i - 1, j, k)) / 2.d0 / grid%get_hx(ind)
-    res%y = (grad%get_par(val, grid, i, j + 1, k) - grad%get_par(val, grid, i, j - 1, k)) / 2.d0 / grid%get_hy(ind)
-    res%z = (grad%get_par(val, grid, i, j, k + 1) - grad%get_par(val, grid, i, j, k - 1)) / 2.d0 / grid%get_hz(ind)
+    res%x = (grad_get_par(val, grid, i + 1, j, k) - grad_get_par(val, grid, i - 1, j, k)) / 2.d0 / grid%get_hx(ind)
+    res%y = (grad_get_par(val, grid, i, j + 1, k) - grad_get_par(val, grid, i, j - 1, k)) / 2.d0 / grid%get_hy(ind)
+    res%z = (grad_get_par(val, grid, i, j, k + 1) - grad_get_par(val, grid, i, j, k - 1)) / 2.d0 / grid%get_hz(ind)
 
   else if (der_type == FWD2_TYPE) then
   ! Forward difference scheme using three points. O(h^2).
     ! Use O(h) formula if there are less than two cells away from boundary.
     if (i >= grid%nx - 1) then
-      res%x = (grad%get_par(val, grid, i + 1, j, k) - grad%get_par(val, grid, i, j, k)) / grid%get_hx(ind)
+      res%x = (grad_get_par(val, grid, i + 1, j, k) - grad_get_par(val, grid, i, j, k)) / grid%get_hx(ind)
     else
-      res%x = (- 1.d0 * grad%get_par(val, grid, i + 2, j, k) + 4.d0 * grad%get_par(val, grid, i + 1, j, k) &
-               - 3.d0 * grad%get_par(val, grid, i, j, k)) / grid%get_hx(ind) / 2.d0
+      res%x = (- 1.d0 * grad_get_par(val, grid, i + 2, j, k) + 4.d0 * grad_get_par(val, grid, i + 1, j, k) &
+               - 3.d0 * grad_get_par(val, grid, i, j, k)) / grid%get_hx(ind) / 2.d0
     endif
 
     if (j >= grid%ny - 1) then
-      res%y = (grad%get_par(val, grid, i, j + 1, k) - grad%get_par(val, grid, i, j, k)) / grid%get_hy(ind)
+      res%y = (grad_get_par(val, grid, i, j + 1, k) - grad_get_par(val, grid, i, j, k)) / grid%get_hy(ind)
     else
-      res%y = (- 1.d0 * grad%get_par(val, grid, i, j + 2, k) + 4.d0 * grad%get_par(val, grid, i, j + 1, k) &
-               - 3.d0 * grad%get_par(val, grid, i, j, k)) / grid%get_hy(ind) / 2.d0
+      res%y = (- 1.d0 * grad_get_par(val, grid, i, j + 2, k) + 4.d0 * grad_get_par(val, grid, i, j + 1, k) &
+               - 3.d0 * grad_get_par(val, grid, i, j, k)) / grid%get_hy(ind) / 2.d0
     endif
 
     if (k >= grid%nz - 1) then
-      res%z = (grad%get_par(val, grid, i, j, k + 1) - grad%get_par(val, grid, i, j, k)) / grid%get_hz(ind)
+      res%z = (grad_get_par(val, grid, i, j, k + 1) - grad_get_par(val, grid, i, j, k)) / grid%get_hz(ind)
     else
-      res%z = (- 1.d0 * grad%get_par(val, grid, i, j, k + 2) + 4.d0 * grad%get_par(val, grid, i, j, k + 1) &
-               - 3.d0 * grad%get_par(val, grid, i, j, k)) / grid%get_hz(ind) / 2.d0
+      res%z = (- 1.d0 * grad_get_par(val, grid, i, j, k + 2) + 4.d0 * grad_get_par(val, grid, i, j, k + 1) &
+               - 3.d0 * grad_get_par(val, grid, i, j, k)) / grid%get_hz(ind) / 2.d0
     endif
 
   else if (der_type == FWD3_TYPE) then
@@ -164,9 +154,9 @@ recursive function gradient_get_grad(val, grid, i, j, k, der_type) result(res)
     do p = 1, 4
       t = 3 - p ! = 2, 1, 0, -1
 
-      if (do_x) res%x = res%x + c(p) * grad%get_par(val, grid, i + t, j, k)
-      if (do_y) res%y = res%y + c(p) * grad%get_par(val, grid, i, j + t, k)
-      if (do_z) res%z = res%z + c(p) * grad%get_par(val, grid, i, j, k + t)
+      if (do_x) res%x = res%x + c(p) * grad_get_par(val, grid, i + t, j, k)
+      if (do_y) res%y = res%y + c(p) * grad_get_par(val, grid, i, j + t, k)
+      if (do_z) res%z = res%z + c(p) * grad_get_par(val, grid, i, j, k + t)
     enddo
 
     if (do_x) res%x = res%x / 24.d0 / grid%get_hx(ind)
@@ -174,7 +164,7 @@ recursive function gradient_get_grad(val, grid, i, j, k, der_type) result(res)
     if (do_z) res%z = res%z / 24.d0 / grid%get_hz(ind)
 
     ! When we are close to the boundary then use low order finite difference.
-    res_low = grad%get_grad(val, grid, i, j, k, FWD_TYPE)
+    res_low = get_grad(val, grid, i, j, k, FWD_TYPE)
 
     if (.not. do_x) res%x = res_low%x
     if (.not. do_y) res%y = res_low%y
@@ -185,12 +175,12 @@ recursive function gradient_get_grad(val, grid, i, j, k, der_type) result(res)
     stop
   endif
 
-end function gradient_get_grad
+end function get_grad
 
 !==================================================================================
 ! Returns a parameter value by its 3D index, applying the boundary conditions.
 !==================================================================================
-function gradient_get_par(val, grid, i, j, k) result(res)
+function grad_get_par(val, grid, i, j, k) result(res)
   real(kind=CUSTOM_REAL), intent(in) :: val(:)
   type(t_grid), intent(in) :: grid
   integer, intent(in) :: i, j, k
@@ -235,6 +225,6 @@ function gradient_get_par(val, grid, i, j, k) result(res)
 
   res = val(index)
 
-end function gradient_get_par
+end function grad_get_par
 
 end module gradient
