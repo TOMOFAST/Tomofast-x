@@ -109,13 +109,13 @@ subroutine graviprism_full(nelements, ncomponents, grid, Xdata, Ydata, Zdata, Li
           arg6 = Rs + ZZ(M)
 
           if (arg4 <= 0.) then
-            call exit_MPI("Bad point field (arg4).", myrank, 0)
+            call exit_MPI("Data coordinate coincides with model grid boundary (YZ). Adjust the model grid!", myrank, 0)
           endif
           if (arg5 <= 0.) then
-            call exit_MPI("Bad point field (arg5).", myrank, 0)
+            call exit_MPI("Data coordinate coincides with model grid boundary (XZ). Adjust the model grid!", myrank, 0)
           endif
           if (arg6 <= 0.) then
-            call exit_MPI("Bad point field (arg6).", myrank, 0)
+            call exit_MPI("Data coordinate coincides with model grid boundary (XY). Adjust the model grid!", myrank, 0)
           endif
 
           arg4 = log(arg4)
