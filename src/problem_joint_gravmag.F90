@@ -100,9 +100,9 @@ end subroutine problem_joint_gravmag_initialize
 !===================================================================================
 subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   class(t_problem_joint_gravmag), intent(inout) :: this
-  type(t_parameters_grav), intent(in) :: gpar
-  type(t_parameters_mag), intent(in) :: mpar
-  type(t_parameters_inversion), intent(in) :: ipar
+  type(t_parameters_grav), intent(inout) :: gpar
+  type(t_parameters_mag), intent(inout) :: mpar
+  type(t_parameters_inversion), intent(inout) :: ipar
   integer, intent(in) :: myrank, nbproc
 
   type(t_joint_inversion) :: joint_inversion
@@ -134,9 +134,6 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   nnz = 0
   cost_data = 0._CUSTOM_REAL
   cost_model = 0._CUSTOM_REAL
-
-  ! Calculate parameters for calculating the data using the big (joint inversion) parallel sparse matrix.
-  call joint_inversion%calculate_matrix_partitioning(ipar, line_start, line_end, param_shift)
 
   ! (I) MODEL ALLOCATION.  ---------------------------------------------------------------
 
@@ -207,10 +204,41 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
 
     ! Calculate and write the sensitivity kernel to files.
-    if (SOLVE_PROBLEM(1)) &
+    if (SOLVE_PROBLEM(1)) then
       call calculate_and_write_sensit(gpar, iarr(1)%model%grid_full, data(1), iarr(1)%column_weight, nnz(1), myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) &
+
+      ! TODO: pass nelements outside calculate_and_write_sensit(), instead of modifying gpar inside.
+      ipar%nelements = gpar%nelements
+    endif
+
+    if (SOLVE_PROBLEM(2)) then
       call calculate_and_write_sensit(mpar, iarr(2)%model%grid_full, data(2), iarr(2)%column_weight, nnz(2), myrank, nbproc)
+
+      ! TODO: pass nelements outside calculate_and_write_sensit(), instead of modifying mpar inside.
+      ipar%nelements = mpar%nelements
+    endif
+
+    !--------------------------------------------------------------
+    ! Reallocate the arrays for the nnz load balancing.
+    !--------------------------------------------------------------
+    do i = 1, 2
+      if (SOLVE_PROBLEM(i)) then
+        deallocate(iarr(i)%column_weight)
+        deallocate(iarr(i)%damping_weight)
+
+        allocate(iarr(i)%column_weight(ipar%nelements), source=0._CUSTOM_REAL)
+        ! TODO: remove it from calculate_cost_model, and then remove its allocation here.
+        allocate(iarr(i)%damping_weight(ipar%nelements), source=1._CUSTOM_REAL)
+
+        iarr(i)%model%nelements = ipar%nelements
+
+        deallocate(iarr(i)%model%val)
+        deallocate(iarr(i)%model%cov)
+
+        allocate(iarr(i)%model%val(ipar%nelements), source=0._CUSTOM_REAL)
+        allocate(iarr(i)%model%cov(ipar%nelements), source=1._CUSTOM_REAL)
+      endif
+    enddo
 
   else
     ! Read the sensitivity metadata file to define the nnz.
@@ -242,6 +270,10 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     call read_sensitivity_kernel(gpar, joint_inversion%matrix, iarr(1)%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) &
     call read_sensitivity_kernel(mpar, joint_inversion%matrix, iarr(2)%column_weight, ipar%problem_weight(2), 2, myrank, nbproc)
+
+  !-------------------------------------------------------------------------------------------------------
+  ! Calculate parameters for calculating the data using the big (joint inversion) parallel sparse matrix.
+  call joint_inversion%calculate_matrix_partitioning(ipar, line_start, line_end, param_shift)
 
   !-------------------------------------------------------------------------------------------------------
   ! Calculate the data from the read model.
