@@ -52,8 +52,6 @@ program program_tomofast3D
   type(t_parameters_inversion) :: ipar
   ! Type of problem (ECT/Grav/Mag).
   integer :: problem_type
-  ! Joint problem of gravity and magnetism.
-  type(t_problem_joint_gravmag) :: prj
 
   !----------------------------------------------------------------------------
   ! These initializations will work for both serial (no MPI) and parallel runs,
@@ -81,7 +79,6 @@ program program_tomofast3D
   call initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, nbproc)
 
   ! Create output directory. If it already exists there is no problem.
-  ! TODO: replace with a proper use of execute_command_line().
   call system('mkdir -p '//path_output)
 
   !----------------------------------------------------------------------------
@@ -96,8 +93,7 @@ program program_tomofast3D
 
   else if (problem_type == 4) then
   ! Joint Gravity and Magnetism problem.
-
-    call prj%solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
+    call solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   endif
 

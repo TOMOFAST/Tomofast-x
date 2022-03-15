@@ -50,32 +50,17 @@ module problem_joint_gravmag
 
   private
 
-  ! Unit number for cost file handle.
-  integer, parameter :: FILE_COSTS = 1234567
+  public :: solve_problem_joint_gravmag
 
-  type, public :: t_problem_joint_gravmag
-    private
-
-    ! Model change (update) at inversion iteration.
-    real(kind=CUSTOM_REAL), allocatable :: delta_model(:)
-
-  contains
-    private
-
-    procedure, public, pass :: solve_problem_joint_gravmag
-
-    procedure, private, nopass :: calculate_model_costs
-    procedure, private, nopass :: read_model
-
-  end type t_problem_joint_gravmag
+  private :: calculate_model_costs
+  private :: read_model
 
 contains
 
 !===================================================================================
 ! Solves gravity AND magnetism joint problem (forward + inversion).
 !===================================================================================
-subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
-  class(t_problem_joint_gravmag), intent(inout) :: this
+subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   type(t_parameters_grav), intent(inout) :: gpar
   type(t_parameters_mag), intent(inout) :: mpar
   type(t_parameters_inversion), intent(inout) :: ipar
@@ -99,6 +84,12 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   logical :: SOLVE_PROBLEM(2)
   integer(kind=8) :: nnz(2)
   logical :: file_exists
+
+  ! Unit number for cost file handle.
+  integer, parameter :: FILE_COSTS = 1234567
+
+  ! Model change (update) at inversion iteration.
+  real(kind=CUSTOM_REAL), allocatable :: delta_model(:)
 
   if (myrank == 0) print *, "Solving problem joint grav/mag."
 
@@ -280,7 +271,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   number_prior_models = gpar%number_prior_models
   path_output_parfile = path_output
 
-  allocate(this%delta_model(2 * ipar%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(delta_model(2 * ipar%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
   !******************************************************************************************
   ! Loop over different prior models.
@@ -402,11 +393,11 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       if (it > 1) call joint_inversion%reset()
 
       ! Solve joint inverse problem.
-      call joint_inversion%solve(ipar, iarr, this%delta_model, myrank, nbproc)
+      call joint_inversion%solve(ipar, iarr, delta_model, myrank, nbproc)
 
       ! Update the local models.
-      if (SOLVE_PROBLEM(1)) call iarr(1)%model%update(this%delta_model(1:ipar%nelements))
-      if (SOLVE_PROBLEM(2)) call iarr(2)%model%update(this%delta_model(ipar%nelements + 1:))
+      if (SOLVE_PROBLEM(1)) call iarr(1)%model%update(delta_model(1:ipar%nelements))
+      if (SOLVE_PROBLEM(2)) call iarr(2)%model%update(delta_model(ipar%nelements + 1:))
 
       ! Update the full models (needed e.g. for cross-gradient right-hand-side).
       do i = 1, 2
@@ -507,6 +498,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
 
   enddo ! loop over prior models
   !******************************
+
+  deallocate(delta_model)
 
 end subroutine solve_problem_joint_gravmag
 
