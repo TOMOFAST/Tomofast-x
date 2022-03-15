@@ -389,8 +389,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   endif
 
   if (myrank == 0) then
-    print *, 'nnz_at_cpu_new: ', myrank, nnz_at_cpu_new
-    print *, 'nelements_at_cpu_new: ', myrank, nelements_at_cpu_new
+    print *, 'nnz_at_cpu_new: ', nnz_at_cpu_new
+    print *, 'nelements_at_cpu_new: ', nelements_at_cpu_new
   endif
 
   par%nelements = nelements_at_cpu_new(myrank + 1)

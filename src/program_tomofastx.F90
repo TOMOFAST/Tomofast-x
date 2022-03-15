@@ -97,8 +97,6 @@ program program_tomofast3D
   else if (problem_type == 4) then
   ! Joint Gravity and Magnetism problem.
 
-    call prj%initialize(ipar%nelements, myrank)
-
     call prj%solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   endif

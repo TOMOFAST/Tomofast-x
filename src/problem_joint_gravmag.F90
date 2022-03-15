@@ -56,16 +56,12 @@ module problem_joint_gravmag
   type, public :: t_problem_joint_gravmag
     private
 
-    ! Local number of elements of one problem.
-    integer :: nelements
-
     ! Model change (update) at inversion iteration.
     real(kind=CUSTOM_REAL), allocatable :: delta_model(:)
 
   contains
     private
 
-    procedure, public, pass :: initialize => problem_joint_gravmag_initialize
     procedure, public, pass :: solve_problem_joint_gravmag
 
     procedure, private, nopass :: calculate_model_costs
@@ -74,26 +70,6 @@ module problem_joint_gravmag
   end type t_problem_joint_gravmag
 
 contains
-
-!================================================================================================
-! Initialization.
-!================================================================================================
-subroutine problem_joint_gravmag_initialize(this, nelements, myrank)
-  class(t_problem_joint_gravmag), intent(inout) :: this
-  integer, intent(in) :: nelements, myrank
-
-  integer :: ierr
-
-  this%nelements = nelements
-
-  ierr = 0
-
-  if (.not. allocated(this%delta_model)) &
-    allocate(this%delta_model(2 * this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in problem_joint_gravmag_initialize!", myrank, ierr)
-
-end subroutine problem_joint_gravmag_initialize
 
 !===================================================================================
 ! Solves gravity AND magnetism joint problem (forward + inversion).
@@ -157,22 +133,6 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call model_write(iarr(2)%model, 'mag_read_', .false., myrank, nbproc)
 #endif
 
-  ! Distribute the model among CPUs.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%model%distribute(myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%model%distribute(myrank, nbproc)
-
-  ! (I2) SETTING ADMM BOUNDS --------------------------------------------------------------
-
-  if (ipar%admm_type > 0) then
-    do i = 1, 2
-      if (SOLVE_PROBLEM(i)) then
-        ! Reading min/max ADMM bounds from file.
-        call iarr(i)%model%allocate_bound_arrays(ipar%nlithos, myrank)
-        call model_read_bound_constraints(iarr(i)%model, ipar%bounds_ADMM_file(i), myrank, nbproc)
-      endif
-    enddo
-  endif
-
   ! (II) DATA ALLOCATION. -----------------------------------------------------------------
 
   if (myrank == 0) print *, "(II) DATA ALLOCATION."
@@ -219,7 +179,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     endif
 
     !--------------------------------------------------------------
-    ! Reallocate the arrays for the nnz load balancing.
+    ! Reallocate the arrays for the nnz load balancing among CPUs.
     !--------------------------------------------------------------
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) then
@@ -227,7 +187,7 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
         deallocate(iarr(i)%damping_weight)
 
         allocate(iarr(i)%column_weight(ipar%nelements), source=0._CUSTOM_REAL)
-        ! TODO: remove it from calculate_cost_model, and then remove its allocation here.
+        ! TODO: remove it from calculate_cost_model (replace with column_weight), and then remove its allocation here.
         allocate(iarr(i)%damping_weight(ipar%nelements), source=1._CUSTOM_REAL)
 
         iarr(i)%model%nelements = ipar%nelements
@@ -244,6 +204,23 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
     ! Read the sensitivity metadata file to define the nnz.
     if (SOLVE_PROBLEM(1)) call read_sensitivity_metadata(gpar, nnz(1), 1, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call read_sensitivity_metadata(mpar, nnz(2), 2, myrank, nbproc)
+  endif
+
+  !-------------------------------------------------------------------------------------------------------
+  ! Distribute the (read) model among CPUs according to the updated nelements at CPUs (with load balancing).
+  if (SOLVE_PROBLEM(1)) call iarr(1)%model%distribute(myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%model%distribute(myrank, nbproc)
+
+  ! SETTING ADMM BOUNDS --------------------------------------------------------------
+
+  if (ipar%admm_type > 0) then
+    do i = 1, 2
+      if (SOLVE_PROBLEM(i)) then
+        ! Reading min/max ADMM bounds from file.
+        call iarr(i)%model%allocate_bound_arrays(ipar%nlithos, myrank)
+        call model_read_bound_constraints(iarr(i)%model, ipar%bounds_ADMM_file(i), myrank, nbproc)
+      endif
+    enddo
   endif
 
   !-------------------------------------------------------------------------------------------------------
@@ -302,6 +279,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
   !-----------------------------------------------------------------------------------------
   number_prior_models = gpar%number_prior_models
   path_output_parfile = path_output
+
+  allocate(this%delta_model(2 * ipar%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
   !******************************************************************************************
   ! Loop over different prior models.
@@ -426,8 +405,8 @@ subroutine solve_problem_joint_gravmag(this, gpar, mpar, ipar, myrank, nbproc)
       call joint_inversion%solve(ipar, iarr, this%delta_model, myrank, nbproc)
 
       ! Update the local models.
-      if (SOLVE_PROBLEM(1)) call iarr(1)%model%update(this%delta_model(1:this%nelements))
-      if (SOLVE_PROBLEM(2)) call iarr(2)%model%update(this%delta_model(this%nelements + 1:))
+      if (SOLVE_PROBLEM(1)) call iarr(1)%model%update(this%delta_model(1:ipar%nelements))
+      if (SOLVE_PROBLEM(2)) call iarr(2)%model%update(this%delta_model(ipar%nelements + 1:))
 
       ! Update the full models (needed e.g. for cross-gradient right-hand-side).
       do i = 1, 2
