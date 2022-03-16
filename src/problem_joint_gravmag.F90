@@ -114,15 +114,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call iarr(1)%init_model(myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call iarr(2)%init_model(myrank, nbproc)
 
-  ! Reading the full grid and model.
-  if (SOLVE_PROBLEM(1)) call model_read(iarr(1)%model, gpar%model_files(1), .true., myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call model_read(iarr(2)%model, mpar%model_files(1), .true., myrank, nbproc)
-
-#ifndef SUPPRESS_OUTPUT
-  ! Write the model read to a file for Paraview visualization.
-  if (SOLVE_PROBLEM(1)) call model_write(iarr(1)%model, 'grav_read_', .false., myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call model_write(iarr(2)%model, 'mag_read_', .false., myrank, nbproc)
-#endif
+  ! Reading the full grid.
+  if (SOLVE_PROBLEM(1)) call model_read_grid(iarr(1)%model, gpar%model_files(1), myrank)
+  if (SOLVE_PROBLEM(2)) call model_read_grid(iarr(2)%model, mpar%model_files(1), myrank)
 
   ! (II) DATA ALLOCATION. -----------------------------------------------------------------
 
@@ -197,8 +191,19 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call read_sensitivity_metadata(mpar, nnz(2), 2, myrank, nbproc)
   endif
 
-  !-------------------------------------------------------------------------------------------------------
-  ! Distribute the (read) model among CPUs according to the updated nelements at CPUs (with load balancing).
+  ! READING THE READ MODEL (SYNTHETIC) --------------------------------------------------------------
+
+  ! Reading the read model - that is stored in the model grid file.
+  if (SOLVE_PROBLEM(1)) call model_read(iarr(1)%model, gpar%model_files(1), .false., myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call model_read(iarr(2)%model, mpar%model_files(1), .false., myrank, nbproc)
+
+#ifndef SUPPRESS_OUTPUT
+  ! Write the model read to a file for Paraview visualization.
+  if (SOLVE_PROBLEM(1)) call model_write(iarr(1)%model, 'grav_read_', .false., myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call model_write(iarr(2)%model, 'mag_read_', .false., myrank, nbproc)
+#endif
+
+  ! Distribute the read model among CPUs according to the updated nelements at CPUs (with load balancing).
   if (SOLVE_PROBLEM(1)) call iarr(1)%model%distribute(myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call iarr(2)%model%distribute(myrank, nbproc)
 
@@ -297,7 +302,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     if (m > 1) call joint_inversion%reset()
 
-    ! SETTING PRIOR MODEL FOR INVERSION  -----------------------------------------------------
+    ! SETTING PRIOR MODEL FOR INVERSION -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) &
       call read_model(iarr(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) &
@@ -327,7 +332,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_prior_', 2, myrank)
 #endif
 
-    ! SETTING STARTING MODEL FOR INVERSION  -----------------------------------------------------
+    ! SETTING STARTING MODEL FOR INVERSION -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) call read_model(iarr(1), gpar%start_model_type, gpar%start_model_val, gpar%model_files(3), myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call read_model(iarr(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), myrank, nbproc)
 

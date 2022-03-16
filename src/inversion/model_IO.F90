@@ -32,6 +32,7 @@ module model_IO
   private
 
   public :: model_read
+  public :: model_read_grid
   public :: model_write
   public :: model_read_bound_constraints
 
@@ -54,20 +55,10 @@ subroutine model_read(model, file_name, read_grid, myrank, nbproc)
 
   call model_read_voxels_format(model, file_name, read_grid, myrank, nbproc)
 
-  if (read_grid) then
-    ! Broadcast full grid to all CPUs.
-    call model%grid_full%broadcast(myrank)
-  endif
-
   ! Broadcast full model to all CPUs.
   call MPI_Bcast(model%val_full, model%nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("Error in MPI_Bcast in model_read!", myrank, ierr)
-
-  if (myrank == 0) then
-    print *, 'Xmin, Xmax =', model%get_Xmin(), model%get_Xmax()
-    print *, 'Ymin, Ymax =', model%get_Ymin(), model%get_Ymax()
-  endif
 
 end subroutine model_read
 
@@ -128,6 +119,83 @@ subroutine model_read_bound_constraints(model, file_name, myrank, nbproc)
   close(10)
 
 end subroutine model_read_bound_constraints
+
+!================================================================================================
+! Read the full model grid in voxels format.
+!================================================================================================
+subroutine model_read_grid(model, file_name, myrank)
+  class(t_model), intent(inout) :: model
+  character(len=*), intent(in) :: file_name
+  integer, intent(in) :: myrank
+
+  integer :: i, nelements_read
+  integer :: ierr
+  character(len=256) :: msg
+  real(kind=CUSTOM_REAL) :: val, cov
+
+  if (myrank == 0) then
+  ! Reading the full grid by master CPU only.
+    print *, 'Reading model grid from file ', trim(file_name)
+
+    open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
+    if (ierr /= 0) call exit_MPI("Error in opening the model grid file! path=" &
+                               //file_name//" iomsg="//msg, myrank, ierr)
+
+    read(10, *, iostat=ierr) nelements_read
+    if (ierr /= 0) call exit_MPI("Problem while reading the model grid file!", myrank, ierr)
+
+    ! Sanity check.
+    if (model%nelements_total /= nelements_read) &
+      call exit_MPI("The grid is not correctly defined!"//new_line('a') &
+                    //"nelements="//str(model%nelements)//new_line('a') &
+                    //"nelements_read="//str(nelements_read)//new_line('a') &
+                    //"nelements_total="//str(model%nelements_total), myrank, 0)
+
+    ! Reading the full grid.
+    do i = 1, model%nelements_total
+      read(10, *, iostat=ierr) model%grid_full%X1(i), model%grid_full%X2(i), &
+                               model%grid_full%Y1(i), model%grid_full%Y2(i), &
+                               model%grid_full%Z1(i), model%grid_full%Z2(i), &
+                               val, &
+                               model%grid_full%i_(i), model%grid_full%j_(i), model%grid_full%k_(i), &
+                               cov
+
+      if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_grid!", myrank, ierr)
+
+      ! Sanity check.
+      if (model%grid_full%i_(i) < 1 .or. &
+          model%grid_full%j_(i) < 1 .or. &
+          model%grid_full%k_(i) < 1 .or. &
+          model%grid_full%i_(i) > model%grid_full%nx .or. &
+          model%grid_full%j_(i) > model%grid_full%ny .or. &
+          model%grid_full%k_(i) > model%grid_full%nz) then
+
+        call exit_MPI("The model grid dimensions in the Parfile are inconsistent with the model 3D indexes!"//new_line('a') &
+                  //"i="//str(model%grid_full%i_(i))//new_line('a') &
+                  //"j="//str(model%grid_full%j_(i))//new_line('a') &
+                  //"k="//str(model%grid_full%k_(i)), myrank, 0)
+      endif
+
+      ! Store 1D grid index of the model parameter.
+      model%grid_full%ind(model%grid_full%i_(i), model%grid_full%j_(i), model%grid_full%k_(i)) = i
+
+      ! Sanity check.
+      if (model%grid_full%X1(i) > model%grid_full%X2(i) .or. &
+          model%grid_full%Y1(i) > model%grid_full%Y2(i) .or. &
+          model%grid_full%Z1(i) > model%grid_full%Z2(i)) then
+        call exit_MPI("The grid is not correctly defined (X1>X2 or Y1>Y2 or Z1>Z2)!", myrank, 0)
+      endif
+    enddo
+    close(10)
+
+    print *, 'Xmin, Xmax =', model%get_Xmin(), model%get_Xmax()
+    print *, 'Ymin, Ymax =', model%get_Ymin(), model%get_Ymax()
+  endif ! myrank == 0
+
+  ! Broadcast full grid to all CPUs.
+  call model%grid_full%broadcast(myrank)
+
+end subroutine model_read_grid
 
 !================================================================================================
 ! Read the full model and grid in voxels format.
@@ -227,7 +295,7 @@ subroutine model_read_voxels_format(model, file_name, read_grid, myrank, nbproc)
   endif
 
   !------------------------------------------------------------------------------
-  ! Distribute the covarianve values among CPUS.
+  ! Distribute the covarianve values among CPUs.
   !------------------------------------------------------------------------------
   ! Partitioning for MPI_Scatterv.
   call pt%get_mpi_partitioning(model%nelements, displs, nelements_at_cpu, myrank, nbproc)
