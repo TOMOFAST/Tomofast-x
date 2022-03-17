@@ -174,10 +174,10 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
   endif
 
   call model1%initialize(nelements_total, myrank, nbproc)
-  call model1%init_grid(nx, ny, nz, myrank)
+  call model1%grid_full%allocate(nx, ny, nz, myrank)
 
   call model2%initialize(nelements_total, myrank, nbproc)
-  call model2%init_grid(nx, ny, nz, myrank)
+  call model2%grid_full%allocate(nx, ny, nz, myrank)
 
   allocate(b_RHS(3 * nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(column_weight1(nelements), source=1._CUSTOM_REAL, stat=ierr)

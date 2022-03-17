@@ -65,7 +65,6 @@ module model
     private
 
     procedure, public, pass :: initialize => model_initialize
-    procedure, public, pass :: init_grid => model_init_grid
     procedure, public, pass :: allocate_bound_arrays => model_allocate_bound_arrays
 
     procedure, public, pass :: distribute => model_distribute
@@ -94,13 +93,18 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
   integer :: ierr
   type(t_parallel_tools) :: pt
 
+  ! Sanity check.
+  if (nelements <= 0) then
+    call exit_MPI("Bad nelements value in model_initialize!", myrank, nelements)
+  endif
+
   this%nelements = nelements
   this%nelements_total = pt%get_total_number_elements(nelements, myrank, nbproc)
 
   ierr = 0
 
-  allocate(this%val(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%val_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%cov(this%nelements), source=1._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_initialize!", myrank, ierr)
@@ -126,18 +130,6 @@ subroutine model_allocate_bound_arrays(this, nlithos, myrank)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_allocate_bound_arrays!", myrank, ierr)
 
 end subroutine model_allocate_bound_arrays
-
-!================================================================================================
-! Initialization of the model grid.
-!================================================================================================
-subroutine model_init_grid(this, nx, ny, nz, myrank)
-  class(t_model), intent(inout) :: this
-  integer, intent(in) :: nx, ny, nz
-  integer, intent(in) :: myrank
-
-  call this%grid_full%initialize(nx, ny, nz, myrank)
-
-end subroutine model_init_grid
 
 !=================================================================================
 ! Distribute the grid and the prior model among CPUs.

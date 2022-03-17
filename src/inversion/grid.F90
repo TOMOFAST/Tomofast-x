@@ -44,7 +44,7 @@ module grid
   contains
     private
 
-    procedure, public, pass :: initialize => grid_initialize
+    procedure, public, pass :: allocate => grid_allocate
     procedure, public, pass :: deallocate => grid_deallocate
     procedure, public, pass :: broadcast => grid_broadcast
 
@@ -67,7 +67,7 @@ contains
 !=======================================================================================
 ! Allocate grid arrays.
 !=======================================================================================
-subroutine grid_initialize(this, nx, ny, nz, myrank)
+subroutine grid_allocate(this, nx, ny, nz, myrank)
   class(t_grid), intent(inout) :: this
   integer, intent(in) :: nx, ny, nz, myrank
 
@@ -97,7 +97,7 @@ subroutine grid_initialize(this, nx, ny, nz, myrank)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in grid_initialize!", myrank, ierr)
 
-end subroutine grid_initialize
+end subroutine grid_allocate
 
 !=======================================================================================
 ! Dealocate grid arrays.

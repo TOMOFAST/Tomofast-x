@@ -40,7 +40,6 @@ module inversion_arrays
 
     ! Required parameters to allocate arrays.
     integer :: nelements, ndata
-    integer :: nx, ny, nz
 
     ! Difference between data measured and data calculated.
     real(kind=CUSTOM_REAL), allocatable :: residuals(:)
@@ -51,7 +50,7 @@ module inversion_arrays
     ! Weights to scale the damping.
     real(kind=CUSTOM_REAL), allocatable :: damping_weight(:)
 
-    ! Sensitivity kernel computed in forward problem.
+    ! (Legacy, used for the ECT problem) Sensitivity kernel computed in forward problem.
     real(kind=CUSTOM_REAL), allocatable :: sensitivity(:, :)
 
     ! Solution model (with grid).
@@ -72,15 +71,12 @@ contains
 !============================================================================================
 ! Initialize parameters needed to allocate the inversion arrays.
 !============================================================================================
-subroutine inversion_arrays_initialize(this, nelements, ndata, nx, ny, nz)
+subroutine inversion_arrays_initialize(this, nelements, ndata)
   class(t_inversion_arrays), intent(inout) :: this
-  integer, intent(in) :: nelements, ndata, nx, ny, nz
+  integer, intent(in) :: nelements, ndata
 
   this%nelements = nelements
   this%ndata = ndata
-  this%nx = nx
-  this%ny = ny
-  this%nz = nz
 
 end subroutine inversion_arrays_initialize
 
@@ -154,14 +150,7 @@ subroutine inversion_arrays_init_model(this, myrank, nbproc)
   class(t_inversion_arrays), intent(inout) :: this
   integer, intent(in) :: myrank, nbproc
 
-  if (this%nelements <= 0) &
-    call exit_MPI("Wrong dimensions in inversion_arrays_init_model!", myrank, 0)
-
   call this%model%initialize(this%nelements, myrank, nbproc)
-  if (myrank == 0) print *, "model done."
-
-  call this%model%init_grid(this%nx, this%ny, this%nz, myrank)
-  if (myrank == 0) print *, "grid done."
 
 end subroutine inversion_arrays_init_model
 

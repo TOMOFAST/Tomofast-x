@@ -70,11 +70,11 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
   real(kind=CUSTOM_REAL) :: cost_model
 
   ! Memory allocation.
-  call iarr%initialize(ipar%nelements, ipar%ndata(1), ipar%nx, ipar%ny, ipar%nz)
+  call iarr%initialize(ipar%nelements, ipar%ndata(1))
   call iarr%allocate_aux(myrank)
   call iarr%allocate_sensit(.true., myrank)
 
-  ! Allocate memory for model (with grid) objects.
+  ! Allocate memory for model object.
   call iarr%init_model(myrank, nbproc)
 
   allocate(data_measured(ipar%ndata(1)), source=0._CUSTOM_REAL, stat=ierr)
