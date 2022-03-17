@@ -135,7 +135,7 @@ subroutine model_init_grid(this, nx, ny, nz, myrank)
   integer, intent(in) :: nx, ny, nz
   integer, intent(in) :: myrank
 
-  call this%grid_full%initialize(this%nelements_total, nx, ny, nz, myrank)
+  call this%grid_full%initialize(nx, ny, nz, myrank)
 
 end subroutine model_init_grid
 

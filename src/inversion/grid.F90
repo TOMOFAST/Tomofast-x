@@ -35,9 +35,6 @@ module grid
     ! 3D index of the grid element.
     integer, dimension(:), allocatable :: i_, j_, k_
 
-    ! Grid size (local).
-    integer :: nelements
-
     ! 1D index of the grid element (makes sense only for the full grid).
     integer, allocatable :: ind(:, :, :)
 
@@ -71,29 +68,31 @@ contains
 !=======================================================================================
 ! Allocate grid arrays.
 !=======================================================================================
-subroutine grid_initialize(this, nelements, nx, ny, nz, myrank)
+subroutine grid_initialize(this, nx, ny, nz, myrank)
   class(t_grid), intent(inout) :: this
-  integer, intent(in) :: nelements, nx, ny, nz, myrank
+  integer, intent(in) :: nx, ny, nz, myrank
+
+  integer :: nelements_total
   integer :: ierr
 
   this%nx = nx
   this%ny = ny
   this%nz = nz
 
-  this%nelements  = nelements
+  nelements_total = nx * ny * nz
 
   ierr = 0
 
-  allocate(this%X1(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%X2(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%Y1(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%Y2(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%Z1(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%Z2(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%X1(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%X2(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Y1(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Y2(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Z1(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Z2(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
-  allocate(this%i_(this%nelements), source=0, stat=ierr)
-  allocate(this%j_(this%nelements), source=0, stat=ierr)
-  allocate(this%k_(this%nelements), source=0, stat=ierr)
+  allocate(this%i_(nelements_total), source=0, stat=ierr)
+  allocate(this%j_(nelements_total), source=0, stat=ierr)
+  allocate(this%k_(nelements_total), source=0, stat=ierr)
 
   allocate(this%ind(nx, ny, nz), source=0, stat=ierr)
 
@@ -128,22 +127,26 @@ end subroutine grid_deallocate
 subroutine grid_broadcast(this, myrank)
   class(t_grid), intent(inout) :: this
   integer, intent(in) :: myrank
+
+  integer :: nelements_total
   integer :: ierr
+
+  nelements_total = this%nx * this%ny * this%nz
 
   ierr = 0
 
-  call MPI_Bcast(this%X1, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%X2, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%Y1, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%Y2, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%Z1, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%Z2, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%X1, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%X2, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%Y1, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%Y2, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%Z1, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%Z2, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
-  call MPI_Bcast(this%i_, this%nelements, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%j_, this%nelements, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%k_, this%nelements, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%i_, nelements_total, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%j_, nelements_total, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%k_, nelements_total, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
-  call MPI_Bcast(this%ind, this%nx * this%ny * this%nz, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%ind, nelements_total, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("Error in MPI_Bcast in grid_broadcast!", myrank, ierr)
 
