@@ -49,7 +49,6 @@ module grid
     procedure, public, pass :: broadcast => grid_broadcast
 
     procedure, public, pass :: get_ind => grid_get_ind
-    procedure, public, pass :: get_k_top => grid_get_k_top
 
     procedure, public, pass :: get_hx => grid_get_hx
     procedure, public, pass :: get_hy => grid_get_hy
@@ -174,36 +173,6 @@ pure function grid_get_ind(this, i, j, k) result(index)
   index = this%ind(i, j, k)
 
 end function grid_get_ind
-
-!=======================================================================================
-! Returns k-index that corresponds to the top layer.
-! Assume z-axis directs from top to bottom, i.e., smallest z-coordinate at the top.
-!=======================================================================================
-function grid_get_k_top(this) result(res)
-  class(t_grid), intent(in) :: this
-  integer :: res
-
-  integer, save :: k_calculated = - 1
-  integer :: k, k_top, ind_top
-
-  if (k_calculated == - 1) then
-    ! Find a k-index corresponding to the top layer.
-    k_top = 1
-    ind_top = this%ind(1, 1, k_top)
-    do k = 2, this%nz
-      if (this%Z1(this%ind(1, 1, k)) < this%Z1(ind_top)) then
-        k_top = k
-        ind_top = this%ind(1, 1, k)
-      endif
-    enddo
-
-    k_calculated = k_top
-    res = k_top
-  else
-    res = k_calculated
-  end if
-
-end function grid_get_k_top
 
 !===================================================================================
 ! Returns grid step hx.
