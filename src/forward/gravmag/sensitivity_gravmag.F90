@@ -375,7 +375,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     nnz_new = nnz_new + sensit_nnz(p)
     nelements_new = nelements_new + 1
 
-    if (nnz_new >= nnz_at_cpu_new(cpu) .or. p == nelements_total) then
+    if (nnz_new > nnz_at_cpu_new(cpu) .or. p == nelements_total) then
       nnz_at_cpu_new(cpu) = nnz_new
       nelements_at_cpu_new(cpu) = nelements_new
       nnz_new = 0
