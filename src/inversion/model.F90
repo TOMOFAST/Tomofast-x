@@ -37,6 +37,9 @@ module model
     ! Local model parameters.
     real(kind=CUSTOM_REAL), allocatable :: val(:)
 
+    ! Prior model (local).
+    real(kind=CUSTOM_REAL), allocatable :: val_prior(:)
+
     ! Full model parameters.
     ! (Read initial model here, write final model from here, and use also for cross-gradient.)
     real(kind=CUSTOM_REAL), allocatable :: val_full(:)
@@ -105,6 +108,7 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
 
   allocate(this%val_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%val(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val_prior(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%cov(this%nelements), source=1._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_initialize!", myrank, ierr)

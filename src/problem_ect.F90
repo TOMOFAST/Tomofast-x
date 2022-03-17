@@ -117,7 +117,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
   epar%permit_matrix = epar%permit_oil
 
   ! Solve forward problem, and also generate the initial prior model and weights needed for inversion.
-  call solve_forward_problem_ect(epar, iarr%sensitivity, data_calculated, iarr%model_prior, &
+  call solve_forward_problem_ect(epar, iarr%sensitivity, data_calculated, iarr%model%val_prior, &
                                  iarr%column_weight, iarr%damping_weight, myrank, nbproc)
 
   if (myrank == 0) then
@@ -132,7 +132,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
   epar%read_model_from_inversion = 1
 
   ! Initial model for inversion model[0] = prior model (sets the damping).
-  iarr%model%val = iarr%model_prior
+  iarr%model%val = iarr%model%val_prior
 
   ! Initialize inversion.
   call inversion%initialize(ipar, myrank)
@@ -153,7 +153,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
     iarr%model%val = iarr%model%val + inversion%get_model_change()
 
     ! Compute norm Lp of the difference between inverted and prior model.
-    call calculate_cost_model(ipar%nelements, ipar%norm_power, iarr%model%val, iarr%model_prior, &
+    call calculate_cost_model(ipar%nelements, ipar%norm_power, iarr%model%val, iarr%model%val_prior, &
                               iarr%damping_weight, cost_model, nbproc)
 
     ! Reset the inversion object.

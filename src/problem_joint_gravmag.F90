@@ -312,9 +312,10 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) &
       call read_model(iarr(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, myrank, nbproc)
 
+    ! TODO: Read values directly to val_prior in read_model(), by setting the flag for the model type.
     ! Set the prior model.
-    if (SOLVE_PROBLEM(1)) iarr(1)%model_prior = iarr(1)%model%val
-    if (SOLVE_PROBLEM(2)) iarr(2)%model_prior = iarr(2)%model%val
+    if (SOLVE_PROBLEM(1)) iarr(1)%model%val_prior = iarr(1)%model%val
+    if (SOLVE_PROBLEM(2)) iarr(2)%model%val_prior = iarr(2)%model%val
 
 #ifndef SUPPRESS_OUTPUT
     ! Write the prior model to a file for visualization.
@@ -528,7 +529,7 @@ subroutine calculate_model_costs(ipar, iarr, cost_model, solve_problem, myrank, 
 
   do i = 1, 2
     if (solve_problem(i)) then
-      call calculate_cost_model(ipar%nelements, ipar%norm_power, iarr(i)%model%val, iarr(i)%model_prior, &
+      call calculate_cost_model(ipar%nelements, ipar%norm_power, iarr(i)%model%val, iarr(i)%model%val_prior, &
                                 iarr(i)%damping_weight, cost_model(i), nbproc)
 
       if (myrank == 0) print *, 'model cost =', cost_model(i)

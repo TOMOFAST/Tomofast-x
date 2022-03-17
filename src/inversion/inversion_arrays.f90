@@ -43,8 +43,6 @@ module inversion_arrays
 
     ! Difference between data measured and data calculated.
     real(kind=CUSTOM_REAL), allocatable :: residuals(:)
-    ! Prior model values - first initial guess for inversion.
-    real(kind=CUSTOM_REAL), allocatable :: model_prior(:)
     ! Weights to scale the sensitivity matrix columns.
     real(kind=CUSTOM_REAL), allocatable :: column_weight(:)
     ! Weights to scale the damping.
@@ -105,9 +103,6 @@ subroutine inversion_arrays_allocate_aux(this, myrank)
 
   if (.not. allocated(this%damping_weight)) allocate(this%damping_weight(this%nelements), source=1._CUSTOM_REAL, stat=ierr)
   if (myrank == 0) print *, "damping_weight done."
-
-  if (.not. allocated(this%model_prior)) allocate(this%model_prior(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  if (myrank == 0) print *, "model_prior done."
 
 end subroutine inversion_arrays_allocate_aux
 

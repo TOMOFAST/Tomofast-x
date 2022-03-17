@@ -76,7 +76,6 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
 
   call arr%model%initialize(par%nelements, myrank, nbproc)
 
-  allocate(arr%model_prior(par%nelements), source=0._CUSTOM_REAL)
   allocate(arr%column_weight(par%nelements), source=0._CUSTOM_REAL)
   allocate(arr%damping_weight(par%nelements), source=0._CUSTOM_REAL)
 
@@ -102,7 +101,7 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
 
   ! Create an identity matrix.
   call damping%add(isensit, b_RHS, arr%column_weight, arr%damping_weight, &
-                   arr%model, arr%model_prior, 0, myrank, nbproc)
+                   arr%model, arr%model%val_prior, 0, myrank, nbproc)
 
   ! Store the index of last element.
   call isensit%finalize(par%nelements, myrank)
@@ -126,7 +125,6 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
 
   deallocate(arr%column_weight)
   deallocate(arr%damping_weight)
-  deallocate(arr%model_prior)
 
 end subroutine test_add_damping_identity_matrix
 
