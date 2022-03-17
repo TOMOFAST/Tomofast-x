@@ -13,7 +13,7 @@
 !========================================================================
 
 !===========================================================================================
-! A class to add (inversion) damping contribution to the matrix and right hand side.
+! A class to add (model) damping contribution to the matrix and right hand side.
 !
 ! Vitaliy Ogarko, UWA, CET, Australia.
 !===========================================================================================
@@ -23,8 +23,6 @@ module damping
   use mpi_tools, only: exit_MPI
   use sparse_matrix
   use parallel_tools
-  use model
-  use grid
   use wavelet_transform
 
   implicit none
@@ -98,7 +96,7 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, local_weight, &
   class(t_damping), intent(inout) :: this
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   real(kind=CUSTOM_REAL), intent(in) :: local_weight(:)
-  type(t_model), intent(in) :: model
+  real(kind=CUSTOM_REAL), intent(in) :: model(:)
   real(kind=CUSTOM_REAL), intent(in) :: model_ref(:)
   integer, intent(in) :: param_shift
   integer, intent(in) :: myrank, nbproc
@@ -119,7 +117,7 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, local_weight, &
 
   allocate(model_diff(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
-  model_diff = model%val - model_ref
+  model_diff = model - model_ref
 
   ! Apply the depth-weighting.
   do i = 1, this%nelements

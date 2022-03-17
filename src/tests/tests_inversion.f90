@@ -101,7 +101,7 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
 
   ! Create an identity matrix.
   call damping%add(isensit, b_RHS, arr%column_weight, arr%damping_weight, &
-                   arr%model, arr%model%val_prior, 0, myrank, nbproc)
+                   arr%model%val, arr%model%val_prior, 0, myrank, nbproc)
 
   ! Store the index of last element.
   call isensit%finalize(par%nelements, myrank)
