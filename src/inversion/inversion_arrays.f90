@@ -60,7 +60,6 @@ module inversion_arrays
     procedure, public, pass :: initialize => inversion_arrays_initialize
     procedure, public, pass :: allocate_aux => inversion_arrays_allocate_aux
     procedure, public, pass :: allocate_sensit => inversion_arrays_allocate_sensit
-    procedure, public, pass :: init_model => inversion_arrays_init_model
 
   end type t_inversion_arrays
 
@@ -80,7 +79,6 @@ end subroutine inversion_arrays_initialize
 
 !============================================================================================
 ! Allocates the auxiliarily inversion arrays.
-! NOTE: model objects are allocated separately in init_models().
 !============================================================================================
 subroutine inversion_arrays_allocate_aux(this, myrank)
   class(t_inversion_arrays), intent(inout) :: this
@@ -137,16 +135,5 @@ subroutine inversion_arrays_allocate_sensit(this, USE_LEGACY_SENSIT_MATRIX, myra
   if (myrank == 0) print *, "Sensitivity kernel allocated!"
 
 end subroutine inversion_arrays_allocate_sensit
-
-!==================================================================================
-! Allocates memory for the model (and its grid).
-!==================================================================================
-subroutine inversion_arrays_init_model(this, myrank, nbproc)
-  class(t_inversion_arrays), intent(inout) :: this
-  integer, intent(in) :: myrank, nbproc
-
-  call this%model%initialize(this%nelements, myrank, nbproc)
-
-end subroutine inversion_arrays_init_model
 
 end module inversion_arrays

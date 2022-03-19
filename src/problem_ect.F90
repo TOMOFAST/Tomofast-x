@@ -16,7 +16,7 @@
 !===============================================================================================
 ! Electrical capacitance tomography (ECT) problem.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================================
 module problem_ect
 
@@ -75,7 +75,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
   call iarr%allocate_sensit(.true., myrank)
 
   ! Allocate memory for model object.
-  call iarr%init_model(myrank, nbproc)
+  call iarr%model%initialize(ipar%nelements, myrank, nbproc)
 
   allocate(data_measured(ipar%ndata(1)), source=0._CUSTOM_REAL, stat=ierr)
   allocate(data_calculated(ipar%ndata(1)), source=0._CUSTOM_REAL, stat=ierr)

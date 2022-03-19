@@ -110,9 +110,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call iarr(1)%initialize(ipar%nelements, ipar%ndata(1))
   if (SOLVE_PROBLEM(2)) call iarr(2)%initialize(ipar%nelements, ipar%ndata(2))
 
-  ! Allocate memory for model (with grid) objects.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%init_model(myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%init_model(myrank, nbproc)
+  ! Allocate memory for the model.
+  if (SOLVE_PROBLEM(1)) call iarr(1)%model%initialize(ipar%nelements, myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%model%initialize(ipar%nelements, myrank, nbproc)
 
   ! Allocate the model grid.
   if (SOLVE_PROBLEM(1)) call iarr(1)%model%grid_full%allocate(ipar%nx, ipar%ny, ipar%nz, myrank)
