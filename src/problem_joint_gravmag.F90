@@ -102,17 +102,13 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   cost_data = 0._CUSTOM_REAL
   cost_model = 0._CUSTOM_REAL
 
-  ! (I) MODEL ALLOCATION.  ---------------------------------------------------------------
+  ! (I) MODEL GRID ALLOCATION.  -----------------------------------------------------------
 
-  if (myrank == 0) print *, "(I) MODEL ALLOCATION."
+  if (myrank == 0) print *, "(I) MODEL GRID ALLOCATION."
 
   ! Initialize inversion arrays dimensions.
   if (SOLVE_PROBLEM(1)) call iarr(1)%initialize(ipar%nelements, ipar%ndata(1))
   if (SOLVE_PROBLEM(2)) call iarr(2)%initialize(ipar%nelements, ipar%ndata(2))
-
-  ! Allocate memory for the model.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%model%initialize(ipar%nelements, myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%model%initialize(ipar%nelements, myrank, nbproc)
 
   ! Allocate the model grid.
   if (SOLVE_PROBLEM(1)) call iarr(1)%model%grid_full%allocate(ipar%nx, ipar%ny, ipar%nz, myrank)
@@ -167,25 +163,16 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       ipar%nelements = mpar%nelements
     endif
 
-    !--------------------------------------------------------------
-    ! Reallocate the arrays for the nnz load balancing among CPUs.
-    !--------------------------------------------------------------
+    !--------------------------------------------------------------------------------------------------
+    ! Reallocate the arrays for the nnz load balancing among CPUs, using the updated nelements value.
+    !--------------------------------------------------------------------------------------------------
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) then
         deallocate(iarr(i)%column_weight)
         deallocate(iarr(i)%damping_weight)
 
         allocate(iarr(i)%column_weight(ipar%nelements), source=0._CUSTOM_REAL)
-        ! TODO: remove it from calculate_cost_model (replace with column_weight), and then remove its allocation here.
         allocate(iarr(i)%damping_weight(ipar%nelements), source=1._CUSTOM_REAL)
-
-        iarr(i)%model%nelements = ipar%nelements
-
-        deallocate(iarr(i)%model%val)
-        deallocate(iarr(i)%model%cov)
-
-        allocate(iarr(i)%model%val(ipar%nelements), source=0._CUSTOM_REAL)
-        allocate(iarr(i)%model%cov(ipar%nelements), source=1._CUSTOM_REAL)
       endif
     enddo
 
@@ -195,7 +182,13 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call read_sensitivity_metadata(mpar, nnz(2), 2, myrank, nbproc)
   endif
 
-  ! READING THE READ MODEL (SYNTHETIC) --------------------------------------------------------------
+  ! MODEL ALLOCATION -----------------------------------------------------------------------------------
+
+  ! Allocate memory for the model.
+  if (SOLVE_PROBLEM(1)) call iarr(1)%model%initialize(ipar%nelements, myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%model%initialize(ipar%nelements, myrank, nbproc)
+
+  ! READING THE READ MODEL (SYNTHETIC) -----------------------------------------------------------------
 
   ! Reading the read model - that is stored in the model grid file.
   if (SOLVE_PROBLEM(1)) call model_read(iarr(1)%model, gpar%model_files(1), myrank, nbproc)
@@ -211,7 +204,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call iarr(1)%model%distribute(myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call iarr(2)%model%distribute(myrank, nbproc)
 
-  ! SETTING ADMM BOUNDS --------------------------------------------------------------
+  ! SETTING THE ADMM BOUNDS -----------------------------------------------------------------------------
 
   if (ipar%admm_type > 0) then
     do i = 1, 2
@@ -227,6 +220,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Deallocate the model grid.
   ! Keep the grid only on rank 0 for writing the models.
   ! Keep the grid on all ranks if we use gradient-based constraints (cross-gradient or damping gradient).
+  !-------------------------------------------------------------------------------------------------------
   if (myrank /= 0) then
     if (ipar%cross_grad_weight == 0.d0) then
       do i = 1, 2
@@ -237,11 +231,13 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     endif
   endif
 
-  !-------------------------------------------------------------------------------------------------------
+  ! SENSITIVITY KERNEL ALLOCATION ------------------------------------------------------------------------
+
   ! Allocate the sensitivity kernel.
   call joint_inversion%initialize(ipar, nnz(1) + nnz(2), myrank)
 
-  !-------------------------------------------------------------------------------------------------------
+  ! READING THE SENSITIVITY KERNEL -----------------------------------------------------------------------
+
   ! Reading the sensitivity kernel and depth weight from files.
   if (SOLVE_PROBLEM(1)) &
     call read_sensitivity_kernel(gpar, joint_inversion%matrix, iarr(1)%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)

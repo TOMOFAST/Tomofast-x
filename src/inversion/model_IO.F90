@@ -69,8 +69,9 @@ subroutine model_read(model, file_name, myrank, nbproc)
     print *, 'Reading model from file ', trim(file_name)
 
     open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
+
     if (ierr /= 0) call exit_MPI("Error in opening the model file! path=" &
-                               //file_name//" iomsg="//msg, myrank, ierr)
+                                 //file_name//" iomsg="//msg, myrank, ierr)
 
     read(10, *, iostat=ierr) nelements_read
     if (ierr /= 0) call exit_MPI("Problem while reading the model file!", myrank, ierr)
@@ -126,6 +127,7 @@ subroutine model_read_grid(model, file_name, myrank)
   integer, intent(in) :: myrank
 
   integer :: i, nelements_read
+  integer :: nelements_total
   integer :: ierr
   character(len=256) :: msg
   real(kind=CUSTOM_REAL) :: val, cov
@@ -135,21 +137,23 @@ subroutine model_read_grid(model, file_name, myrank)
     print *, 'Reading model grid from file ', trim(file_name)
 
     open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
+
     if (ierr /= 0) call exit_MPI("Error in opening the model grid file! path=" &
-                               //file_name//" iomsg="//msg, myrank, ierr)
+                                 //file_name//" iomsg="//msg, myrank, ierr)
 
     read(10, *, iostat=ierr) nelements_read
     if (ierr /= 0) call exit_MPI("Problem while reading the model grid file!", myrank, ierr)
 
+    nelements_total = model%grid_full%nx * model%grid_full%ny * model%grid_full%nz
+
     ! Sanity check.
-    if (model%nelements_total /= nelements_read) &
+    if (nelements_total /= nelements_read) &
       call exit_MPI("The grid is not correctly defined!"//new_line('a') &
-                    //"nelements="//str(model%nelements)//new_line('a') &
                     //"nelements_read="//str(nelements_read)//new_line('a') &
-                    //"nelements_total="//str(model%nelements_total), myrank, 0)
+                    //"nelements_total="//str(nelements_total), myrank, 0)
 
     ! Reading the full grid.
-    do i = 1, model%nelements_total
+    do i = 1, nelements_total
       read(10, *, iostat=ierr) model%grid_full%X1(i), model%grid_full%X2(i), &
                                model%grid_full%Y1(i), model%grid_full%Y2(i), &
                                model%grid_full%Z1(i), model%grid_full%Z2(i), &
