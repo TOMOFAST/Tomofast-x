@@ -53,7 +53,7 @@ module problem_joint_gravmag
   public :: solve_problem_joint_gravmag
 
   private :: calculate_model_costs
-  private :: read_model
+  private :: set_model
 
 contains
 
@@ -198,8 +198,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! READING THE READ MODEL (SYNTHETIC) --------------------------------------------------------------
 
   ! Reading the read model - that is stored in the model grid file.
-  if (SOLVE_PROBLEM(1)) call model_read(iarr(1)%model, gpar%model_files(1), .false., myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call model_read(iarr(2)%model, mpar%model_files(1), .false., myrank, nbproc)
+  if (SOLVE_PROBLEM(1)) call model_read(iarr(1)%model, gpar%model_files(1), myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call model_read(iarr(2)%model, mpar%model_files(1), myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
   ! Write the model read to a file for Paraview visualization.
@@ -308,11 +308,11 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     ! SETTING PRIOR MODEL FOR INVERSION -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) &
-      call read_model(iarr(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank, nbproc)
+      call set_model(iarr(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) &
-      call read_model(iarr(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, myrank, nbproc)
+      call set_model(iarr(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, myrank, nbproc)
 
-    ! TODO: Read values directly to val_prior in read_model(), by setting the flag for the model type.
+    ! TODO: Read values directly to val_prior in set_model(), by setting the flag for the model type.
     ! Set the prior model.
     if (SOLVE_PROBLEM(1)) iarr(1)%model%val_prior = iarr(1)%model%val
     if (SOLVE_PROBLEM(2)) iarr(2)%model%val_prior = iarr(2)%model%val
@@ -338,8 +338,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 #endif
 
     ! SETTING STARTING MODEL FOR INVERSION -----------------------------------------------------
-    if (SOLVE_PROBLEM(1)) call read_model(iarr(1), gpar%start_model_type, gpar%start_model_val, gpar%model_files(3), myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call read_model(iarr(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) call set_model(iarr(1), gpar%start_model_type, gpar%start_model_val, gpar%model_files(3), myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call set_model(iarr(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
     ! Write the starting model to a file for visualization.
@@ -538,9 +538,9 @@ subroutine calculate_model_costs(ipar, iarr, cost_model, solve_problem, myrank, 
 end subroutine calculate_model_costs
 
 !========================================================================================
-! Reads the model.
+! Sets the model values: via constant from Parfile or via reading it from a file.
 !========================================================================================
-subroutine read_model(iarr, model_type, model_val, model_file, myrank, nbproc)
+subroutine set_model(iarr, model_type, model_val, model_file, myrank, nbproc)
   integer, intent(in) :: model_type, myrank, nbproc
   real(kind=CUSTOM_REAL), intent(in) :: model_val
   character(len=256), intent(in) :: model_file
@@ -552,7 +552,7 @@ subroutine read_model(iarr, model_type, model_val, model_file, myrank, nbproc)
 
   else if (model_type == 2) then
     ! Reading from file.
-    call model_read(iarr%model, model_file, .false., myrank, nbproc)
+    call model_read(iarr%model, model_file, myrank, nbproc)
 
   else
     print *, "Unknown model type!"
@@ -561,6 +561,6 @@ subroutine read_model(iarr, model_type, model_val, model_file, myrank, nbproc)
 
   ! Distribute the model among CPUs.
   call iarr%model%distribute(myrank, nbproc)
-end subroutine read_model
+end subroutine set_model
 
 end module problem_joint_gravmag

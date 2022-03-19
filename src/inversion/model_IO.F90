@@ -36,92 +36,89 @@ module model_IO
   public :: model_write
   public :: model_read_bound_constraints
 
-  private :: model_read_voxels_format
   private :: model_write_voxels_format
   private :: model_write_paraview
 
 contains
 
-!==========================================================================================================
-! Read the full model and grid, and then broadcast to all CPUs.
-!==========================================================================================================
-subroutine model_read(model, file_name, read_grid, myrank, nbproc)
+!================================================================================================
+! Read the model from a file.
+!================================================================================================
+subroutine model_read(model, file_name, myrank, nbproc)
   class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank, nbproc
-  logical, intent(in) :: read_grid
 
+  integer :: i, nelements_read
   integer :: ierr
+  character(len=256) :: msg
+  real(kind=CUSTOM_REAL) :: dummy, val, cov
+  integer :: i_, j_, k_
 
-  call model_read_voxels_format(model, file_name, read_grid, myrank, nbproc)
+  ! Displacement for mpi_scatterv.
+  integer :: displs(nbproc)
+  ! The number of elements on every CPU for mpi_scatterv.
+  integer :: nelements_at_cpu(nbproc)
+  type(t_parallel_tools) :: pt
+  real(kind=CUSTOM_REAL), allocatable :: cov_full(:)
 
-  ! Broadcast full model to all CPUs.
+  if (myrank == 0) then
+  ! Reading the full model by master CPU only.
+    allocate(cov_full(model%nelements_total), stat=ierr)
+
+    print *, 'Reading model from file ', trim(file_name)
+
+    open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
+    if (ierr /= 0) call exit_MPI("Error in opening the model file! path=" &
+                               //file_name//" iomsg="//msg, myrank, ierr)
+
+    read(10, *, iostat=ierr) nelements_read
+    if (ierr /= 0) call exit_MPI("Problem while reading the model file!", myrank, ierr)
+
+    ! Sanity check.
+    if (model%nelements_total /= nelements_read) &
+      call exit_MPI("The grid is not correctly defined!"//new_line('a') &
+                    //"nelements="//str(model%nelements)//new_line('a') &
+                    //"nelements_read="//str(nelements_read)//new_line('a') &
+                    //"nelements_total="//str(model%nelements_total), myrank, 0)
+
+    ! Reading the model only (without grid).
+    do i = 1, model%nelements_total
+      read(10, *, iostat=ierr) dummy, dummy, dummy, dummy, dummy, dummy, val, i_, j_, k_, cov
+
+      ! Set the model value.
+      model%val_full(i) = val
+
+      ! Set the covariance value.
+      cov_full(i) = cov
+
+      if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_voxels!", myrank, ierr)
+    enddo
+    close(10)
+  endif
+
+  !------------------------------------------------------------------------------
+  ! Broadcast the full model to all CPUs.
+  !------------------------------------------------------------------------------
   call MPI_Bcast(model%val_full, model%nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("Error in MPI_Bcast in model_read!", myrank, ierr)
 
+  !------------------------------------------------------------------------------
+  ! Distribute the covarianve values among CPUs.
+  !------------------------------------------------------------------------------
+  ! Partitioning for MPI_Scatterv.
+  call pt%get_mpi_partitioning(model%nelements, displs, nelements_at_cpu, myrank, nbproc)
+
+  call MPI_Scatterv(cov_full, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
+                    model%cov, model%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
+  if (myrank == 0) deallocate(cov_full)
+
 end subroutine model_read
 
-!==========================================================================================================
-! Read the local bound constraints (for ADMM).
-!==========================================================================================================
-subroutine model_read_bound_constraints(model, file_name, myrank, nbproc)
-  class(t_model), intent(inout) :: model
-  character(len=*), intent(in) :: file_name
-  integer, intent(in) :: myrank, nbproc
-  
-  integer :: ierr, nsmaller, ind, i, nelements_read, nlithos_read
-  character(len=256) :: msg
-  type(t_parallel_tools) :: pt
-  character(len=200) :: dummy_line
-
-  if (myrank == 0) print *, 'Reading local bound constraints from file ', trim(file_name)
-
-  open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
-  if (ierr /= 0) call exit_MPI("Error in opening the bound constraints file! path=" &
-                 //file_name//" iomsg="//msg, myrank, ierr)
-
-  read(10, *, iostat=ierr) nelements_read, nlithos_read
-  if (ierr /= 0) call exit_MPI("Problem while reading the bound constraints file!", myrank, ierr)
-
-  ! Sanity check.
-  if (model%nelements_total /= nelements_read) &
-    call exit_MPI("The constraints are not correctly defined!"//new_line('a') &
-          //"nelements="//str(model%nelements)//new_line('a') &
-          //"nelements_read="//str(nelements_read)//new_line('a') &
-          //"nelements_total="//str(model%nelements_total), myrank, 0)
-
-  if (model%nlithos /= nlithos_read) &
-    call exit_MPI("The constraints are not correctly defined!"//new_line('a') &
-          //"nlithos="//str(model%nlithos)//new_line('a') &
-          //"nlithos_read="//str(nlithos_read), myrank, 0)
-
-  if (myrank == 0) print *, 'Read nelements, nlithos = ', nelements_read, nlithos_read
-
-  ! The number of elements on CPUs with rank smaller than myrank.
-  nsmaller = pt%get_nsmaller(model%nelements, myrank, nbproc)
-
-  ! Reading.
-  do i = 1, model%nelements_total
-    if (i > nsmaller .and. i <= nsmaller + model%nelements) then
-      ind = i - nsmaller
-      read(10, *, iostat=ierr) &
-        model%min_local_bound(ind, :), model%max_local_bound(ind, :), model%local_bound_constraints_weight(ind)
-    else
-      read(10, '(A)', iostat=ierr) dummy_line
-    endif
-
-    if (i > nsmaller + model%nelements) then
-      exit
-    endif
-  enddo
-
-  close(10)
-
-end subroutine model_read_bound_constraints
-
 !================================================================================================
-! Read the full model grid in voxels format.
+! Read the model grid from a file.
 !================================================================================================
 subroutine model_read_grid(model, file_name, myrank)
   class(t_model), intent(inout) :: model
@@ -197,115 +194,63 @@ subroutine model_read_grid(model, file_name, myrank)
 
 end subroutine model_read_grid
 
-!================================================================================================
-! Read the full model and grid in voxels format.
-!================================================================================================
-subroutine model_read_voxels_format(model, file_name, read_grid, myrank, nbproc)
+!==========================================================================================================
+! Read the local bound constraints (for ADMM).
+!==========================================================================================================
+subroutine model_read_bound_constraints(model, file_name, myrank, nbproc)
   class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: file_name
-  logical, intent(in) :: read_grid
   integer, intent(in) :: myrank, nbproc
 
-  integer :: i, nelements_read
-  integer :: ierr
+  integer :: ierr, nsmaller, ind, i, nelements_read, nlithos_read
   character(len=256) :: msg
-  real(kind=CUSTOM_REAL) :: dummy, val, cov
-  integer :: i_, j_, k_
-
-  ! Displacement for mpi_scatterv.
-  integer :: displs(nbproc)
-  ! The number of elements on every CPU for mpi_scatterv.
-  integer :: nelements_at_cpu(nbproc)
   type(t_parallel_tools) :: pt
-  real(kind=CUSTOM_REAL), allocatable :: cov_full(:)
+  character(len=200) :: dummy_line
 
-  if (myrank == 0) then
-  ! Reading the full model and grid by master CPU only.
-    allocate(cov_full(model%nelements_total), stat=ierr)
+  if (myrank == 0) print *, 'Reading local bound constraints from file ', trim(file_name)
 
-    print *, 'Reading model from file ', trim(file_name)
+  open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
+  if (ierr /= 0) call exit_MPI("Error in opening the bound constraints file! path=" &
+                 //file_name//" iomsg="//msg, myrank, ierr)
 
-    open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
-    if (ierr /= 0) call exit_MPI("Error in opening the model file! path=" &
-                               //file_name//" iomsg="//msg, myrank, ierr)
+  read(10, *, iostat=ierr) nelements_read, nlithos_read
+  if (ierr /= 0) call exit_MPI("Problem while reading the bound constraints file!", myrank, ierr)
 
-    read(10, *, iostat=ierr) nelements_read
-    if (ierr /= 0) call exit_MPI("Problem while reading the model file!", myrank, ierr)
+  ! Sanity check.
+  if (model%nelements_total /= nelements_read) &
+    call exit_MPI("The constraints are not correctly defined!"//new_line('a') &
+          //"nelements="//str(model%nelements)//new_line('a') &
+          //"nelements_read="//str(nelements_read)//new_line('a') &
+          //"nelements_total="//str(model%nelements_total), myrank, 0)
 
-    ! Sanity check.
-    if (model%nelements_total /= nelements_read) &
-      call exit_MPI("The grid is not correctly defined!"//new_line('a') &
-                    //"nelements="//str(model%nelements)//new_line('a') &
-                    //"nelements_read="//str(nelements_read)//new_line('a') &
-                    //"nelements_total="//str(model%nelements_total), myrank, 0)
+  if (model%nlithos /= nlithos_read) &
+    call exit_MPI("The constraints are not correctly defined!"//new_line('a') &
+          //"nlithos="//str(model%nlithos)//new_line('a') &
+          //"nlithos_read="//str(nlithos_read), myrank, 0)
 
-    if (read_grid) then
-    ! Reading the full grid and the model.
-      do i = 1, model%nelements_total
-        read(10, *, iostat=ierr) model%grid_full%X1(i), model%grid_full%X2(i), &
-                                 model%grid_full%Y1(i), model%grid_full%Y2(i), &
-                                 model%grid_full%Z1(i), model%grid_full%Z2(i), &
-                                 model%val_full(i), &
-                                 model%grid_full%i_(i), model%grid_full%j_(i), model%grid_full%k_(i), &
-                                 cov_full(i)
+  if (myrank == 0) print *, 'Read nelements, nlithos = ', nelements_read, nlithos_read
 
-        ! Sanity check.
-        if (model%grid_full%i_(i) < 1 .or. &
-            model%grid_full%j_(i) < 1 .or. &
-            model%grid_full%k_(i) < 1 .or. &
-            model%grid_full%i_(i) > model%grid_full%nx .or. &
-            model%grid_full%j_(i) > model%grid_full%ny .or. &
-            model%grid_full%k_(i) > model%grid_full%nz) then
+  ! The number of elements on CPUs with rank smaller than myrank.
+  nsmaller = pt%get_nsmaller(model%nelements, myrank, nbproc)
 
-          call exit_MPI("The model grid dimensions in the Parfile are inconsistent with the model 3D indexes!"//new_line('a') &
-                    //"i="//str(model%grid_full%i_(i))//new_line('a') &
-                    //"j="//str(model%grid_full%j_(i))//new_line('a') &
-                    //"k="//str(model%grid_full%k_(i)), myrank, 0)
-        endif
-
-        ! Store 1D grid index of the model parameter.
-        model%grid_full%ind(model%grid_full%i_(i), model%grid_full%j_(i), model%grid_full%k_(i)) = i
-
-        ! Sanity check.
-        if (model%grid_full%X1(i) > model%grid_full%X2(i) .or. &
-            model%grid_full%Y1(i) > model%grid_full%Y2(i) .or. &
-            model%grid_full%Z1(i) > model%grid_full%Z2(i)) then
-          call exit_MPI("The grid is not correctly defined (X1>X2 or Y1>Y2 or Z1>Z2)!", myrank, 0)
-        endif
-
-        if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_voxels!", myrank, ierr)
-      enddo
-
+  ! Reading.
+  do i = 1, model%nelements_total
+    if (i > nsmaller .and. i <= nsmaller + model%nelements) then
+      ind = i - nsmaller
+      read(10, *, iostat=ierr) &
+        model%min_local_bound(ind, :), model%max_local_bound(ind, :), model%local_bound_constraints_weight(ind)
     else
-    ! Reading the model only (without grid).
-      do i = 1, model%nelements_total
-        read(10, *, iostat=ierr) dummy, dummy, dummy, dummy, dummy, dummy, val, i_, j_, k_, cov
-
-        ! Set the model value.
-        model%val_full(i) = val
-
-        ! Set the covariance value.
-        cov_full(i) = cov
-
-        if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_voxels!", myrank, ierr)
-      enddo
+      read(10, '(A)', iostat=ierr) dummy_line
     endif
 
-    close(10)
-  endif
+    if (i > nsmaller + model%nelements) then
+      exit
+    endif
+  enddo
 
-  !------------------------------------------------------------------------------
-  ! Distribute the covarianve values among CPUs.
-  !------------------------------------------------------------------------------
-  ! Partitioning for MPI_Scatterv.
-  call pt%get_mpi_partitioning(model%nelements, displs, nelements_at_cpu, myrank, nbproc)
+  close(10)
 
-  call MPI_Scatterv(cov_full, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
-                    model%cov, model%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-  if (allocated(cov_full)) deallocate(cov_full)
-
-end subroutine model_read_voxels_format
+end subroutine model_read_bound_constraints
 
 !======================================================================================================
 ! Write the model snapshots for visualization.
