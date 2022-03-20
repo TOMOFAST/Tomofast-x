@@ -182,6 +182,34 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call read_sensitivity_metadata(mpar, nnz(2), 2, myrank, nbproc)
   endif
 
+  !-------------------------------------------------------------------------------------------------------
+  ! Deallocate the model grid.
+  ! Keep the grid only on rank 0 for writing the models.
+  ! Keep the grid on all ranks if we use gradient-based constraints (cross-gradient or damping gradient).
+  !-------------------------------------------------------------------------------------------------------
+  if (myrank /= 0) then
+    if (ipar%cross_grad_weight == 0.d0) then
+      do i = 1, 2
+        if (SOLVE_PROBLEM(i) .and. ipar%beta(i) == 0.d0) then ! beta is the damping gradient weight.
+          call iarr(i)%model%grid_full%deallocate()
+        endif
+      enddo
+    endif
+  endif
+
+  ! SENSITIVITY KERNEL ALLOCATION ------------------------------------------------------------------------
+
+  ! Allocate the sensitivity kernel.
+  call joint_inversion%initialize(ipar, nnz(1) + nnz(2), myrank)
+
+  ! READING THE SENSITIVITY KERNEL ----------------------------------------------------------------------
+
+  ! Reading the sensitivity kernel and depth weight from files.
+  if (SOLVE_PROBLEM(1)) &
+    call read_sensitivity_kernel(gpar, joint_inversion%matrix, iarr(1)%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) &
+    call read_sensitivity_kernel(mpar, joint_inversion%matrix, iarr(2)%column_weight, ipar%problem_weight(2), 2, myrank, nbproc)
+
   ! MODEL ALLOCATION -----------------------------------------------------------------------------------
 
   ! Allocate memory for the model.
@@ -215,34 +243,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
     enddo
   endif
-
-  !-------------------------------------------------------------------------------------------------------
-  ! Deallocate the model grid.
-  ! Keep the grid only on rank 0 for writing the models.
-  ! Keep the grid on all ranks if we use gradient-based constraints (cross-gradient or damping gradient).
-  !-------------------------------------------------------------------------------------------------------
-  if (myrank /= 0) then
-    if (ipar%cross_grad_weight == 0.d0) then
-      do i = 1, 2
-        if (SOLVE_PROBLEM(i) .and. ipar%beta(i) == 0.d0) then ! beta is the damping gradient weight.
-          call iarr(i)%model%grid_full%deallocate()
-        endif
-      enddo
-    endif
-  endif
-
-  ! SENSITIVITY KERNEL ALLOCATION ------------------------------------------------------------------------
-
-  ! Allocate the sensitivity kernel.
-  call joint_inversion%initialize(ipar, nnz(1) + nnz(2), myrank)
-
-  ! READING THE SENSITIVITY KERNEL -----------------------------------------------------------------------
-
-  ! Reading the sensitivity kernel and depth weight from files.
-  if (SOLVE_PROBLEM(1)) &
-    call read_sensitivity_kernel(gpar, joint_inversion%matrix, iarr(1)%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) &
-    call read_sensitivity_kernel(mpar, joint_inversion%matrix, iarr(2)%column_weight, ipar%problem_weight(2), 2, myrank, nbproc)
 
   !-------------------------------------------------------------------------------------------------------
   ! Calculate parameters for calculating the data using the big (joint inversion) parallel sparse matrix.
