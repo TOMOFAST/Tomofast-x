@@ -28,7 +28,6 @@ module inversion_arrays
 
   use global_typedefs
   use mpi_tools, only: exit_MPI
-  use model
 
   implicit none
 
@@ -46,9 +45,6 @@ module inversion_arrays
 
     ! (Legacy, used for the ECT problem) Sensitivity kernel computed in forward problem.
     real(kind=CUSTOM_REAL), allocatable :: sensitivity(:, :)
-
-    ! Solution model (with grid).
-    type(t_model) :: model
 
   contains
     private

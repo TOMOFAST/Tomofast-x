@@ -42,8 +42,9 @@ contains
 !===================================================================================
 ! Calculates the depth weight for sensitivity kernel.
 !===================================================================================
-subroutine calculate_depth_weight(par, iarr, data, myrank, nbproc)
+subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
+  type(t_grid), intent(in) :: grid_full
   integer, intent(in) :: myrank, nbproc
   type(t_data), intent(in) :: data
   type(t_inversion_arrays), intent(inout) :: iarr
@@ -73,7 +74,7 @@ subroutine calculate_depth_weight(par, iarr, data, myrank, nbproc)
     do i = 1, par%nelements
       ! Full grid index.
       p = nsmaller + i
-      iarr%damping_weight(i) = calc_depth_weight_pixel(iarr%model%grid_full, par%depth_weighting_power, par%Z0, p, myrank)
+      iarr%damping_weight(i) = calc_depth_weight_pixel(grid_full, par%depth_weighting_power, par%Z0, p, myrank)
     enddo
 
   else if (par%depth_weighting_type == 2) then
@@ -91,25 +92,25 @@ subroutine calculate_depth_weight(par, iarr, data, myrank, nbproc)
       p = nsmaller + i
 
       ! Cell colume.
-      dVj = iarr%model%grid_full%get_cell_volume(p)
+      dVj = grid_full%get_cell_volume(p)
 
       ! Shifts to make the integral points to lie inside the cell volume.
-      dhx = dfactor * abs(iarr%model%grid_full%X2(p) - iarr%model%grid_full%X1(p))
-      dhy = dfactor * abs(iarr%model%grid_full%Y2(p) - iarr%model%grid_full%Y1(p))
-      dhz = dfactor * abs(iarr%model%grid_full%Z2(p) - iarr%model%grid_full%Z1(p))
+      dhx = dfactor * abs(grid_full%X2(p) - grid_full%X1(p))
+      dhy = dfactor * abs(grid_full%Y2(p) - grid_full%Y1(p))
+      dhz = dfactor * abs(grid_full%Z2(p) - grid_full%Z1(p))
 
       wr = 0.d0
 
       do j = 1, par%ndata
 
         ! The squared 1D distances along each cell dimension.
-        distX_sq(1) = (iarr%model%grid_full%X1(p) + dhx - data%X(j))**2.d0
-        distY_sq(1) = (iarr%model%grid_full%Y1(p) + dhy - data%Y(j))**2.d0
-        distZ_sq(1) = (iarr%model%grid_full%Z1(p) + dhz - data%Z(j))**2.d0
+        distX_sq(1) = (grid_full%X1(p) + dhx - data%X(j))**2.d0
+        distY_sq(1) = (grid_full%Y1(p) + dhy - data%Y(j))**2.d0
+        distZ_sq(1) = (grid_full%Z1(p) + dhz - data%Z(j))**2.d0
 
-        distX_sq(2) = (iarr%model%grid_full%X2(p) - dhx - data%X(j))**2.d0
-        distY_sq(2) = (iarr%model%grid_full%Y2(p) - dhy - data%Y(j))**2.d0
-        distZ_sq(2) = (iarr%model%grid_full%Z2(p) - dhz - data%Z(j))**2.d0
+        distX_sq(2) = (grid_full%X2(p) - dhx - data%X(j))**2.d0
+        distY_sq(2) = (grid_full%Y2(p) - dhy - data%Y(j))**2.d0
+        distZ_sq(2) = (grid_full%Z2(p) - dhz - data%Z(j))**2.d0
 
         ! Calculate the distance from 8 points inside a cell to the data location.
         ind = 0

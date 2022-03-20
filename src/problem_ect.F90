@@ -25,6 +25,7 @@ module problem_ect
   use parameters_ect
   use parameters_inversion
   use inversion_arrays
+  use model
   use forward_problem_ect
   use data_ect
   use inverse_problem
@@ -51,6 +52,9 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
 
   ! Inversion allocatable arrays.
   type(t_inversion_arrays) :: iarr
+  ! Model.
+  type(t_model) :: model
+
   ! Measured data (or calculated using original model).
   real(kind=CUSTOM_REAL), allocatable :: data_measured(:)
   ! Predicted data using model from inversion.
@@ -74,7 +78,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
   call iarr%allocate_sensit(ipar%nelements, ipar%ndata(1), myrank)
 
   ! Allocate memory for model object.
-  call iarr%model%initialize(ipar%nelements, myrank, nbproc)
+  call model%initialize(ipar%nelements, myrank, nbproc)
 
   allocate(data_measured(ipar%ndata(1)), source=0._CUSTOM_REAL, stat=ierr)
   allocate(data_calculated(ipar%ndata(1)), source=0._CUSTOM_REAL, stat=ierr)
@@ -99,12 +103,12 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
 
   ! Calculated data using an empty tube (for normalization).
   epar%permit_matrix = epar%permit_air
-  call solve_forward_problem_ect(epar, iarr%sensitivity, data_low, iarr%model%val, &
+  call solve_forward_problem_ect(epar, iarr%sensitivity, data_low, model%val, &
                                  iarr%column_weight, iarr%damping_weight, myrank, nbproc)
 
   ! Calculated data using a full tube (for normalization).
   epar%permit_matrix = epar%permit_isolated_tube
-  call solve_forward_problem_ect(epar, iarr%sensitivity, data_high, iarr%model%val, &
+  call solve_forward_problem_ect(epar, iarr%sensitivity, data_high, model%val, &
                                  iarr%column_weight, iarr%damping_weight, myrank, nbproc)
 
   if (myrank == 0) then
@@ -116,7 +120,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
   epar%permit_matrix = epar%permit_oil
 
   ! Solve forward problem, and also generate the initial prior model and weights needed for inversion.
-  call solve_forward_problem_ect(epar, iarr%sensitivity, data_calculated, iarr%model%val_prior, &
+  call solve_forward_problem_ect(epar, iarr%sensitivity, data_calculated, model%val_prior, &
                                  iarr%column_weight, iarr%damping_weight, myrank, nbproc)
 
   if (myrank == 0) then
@@ -131,7 +135,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
   epar%read_model_from_inversion = 1
 
   ! Initial model for inversion model[0] = prior model (sets the damping).
-  iarr%model%val = iarr%model%val_prior
+  model%val = model%val_prior
 
   ! Initialize inversion.
   call inversion%initialize(ipar, myrank)
@@ -147,20 +151,20 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
     call ect_normalization(ipar%ndata(1), iarr%sensitivity, iarr%residuals, data_high, data_low)
 
     ! Solve inverse problem.
-    call inversion%solve(ipar, iarr, myrank, nbproc)
+    call inversion%solve(ipar, iarr, model, myrank, nbproc)
 
     ! Update the model.
-    iarr%model%val = iarr%model%val + inversion%get_model_change()
+    model%val = model%val + inversion%get_model_change()
 
     ! Compute norm Lp of the difference between inverted and prior model.
-    call calculate_cost_model(ipar%nelements, ipar%norm_power, iarr%model%val, iarr%model%val_prior, &
+    call calculate_cost_model(ipar%nelements, ipar%norm_power, model%val, model%val_prior, &
                               iarr%damping_weight, cost_model, nbproc)
 
     ! Reset the inversion object.
     call inversion%reset()
 
     ! Solve forward problem.
-    call solve_forward_problem_ect(epar, iarr%sensitivity, data_calculated, iarr%model%val, &
+    call solve_forward_problem_ect(epar, iarr%sensitivity, data_calculated, model%val, &
                                    iarr%column_weight, iarr%damping_weight, myrank, nbproc)
 
     if (myrank == 0) then

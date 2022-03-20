@@ -281,10 +281,11 @@ end subroutine joint_inversion_reset
 !=====================================================================================
 ! Joint inversion of two field.
 !=====================================================================================
-subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
+subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
   type(t_inversion_arrays), intent(inout) :: arr(2)
+  type(t_model) :: model(2)
   integer, intent(in) :: myrank, nbproc
 
   real(kind=CUSTOM_REAL), intent(out) :: delta_model(:)
@@ -347,8 +348,8 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
                               par%compression_type, par%nx, par%ny, par%nz)
 
       ! Note: we use model covariance now for the local damping weight, which is equivalent of having local alpha.
-      call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, arr(i)%model%cov, &
-                       arr(i)%model%val, arr(i)%model%val_prior, param_shift(i), myrank, nbproc)
+      call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, model(i)%cov, &
+                       model(i)%val, model(i)%val_prior, param_shift(i), myrank, nbproc)
 
       if (myrank == 0) print *, 'damping term cost = ', damping%get_cost()
       if (myrank == 0) print *, 'nel (with damping) = ', this%matrix%get_number_elements()
@@ -367,15 +368,15 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
         if (i == 2) k = 1
 
         ! Calculate here the local gradient weight.
-        if (maxval(arr(k)%model%val_full) /= minval(arr(k)%model%val_full)) then
+        if (maxval(model(k)%val_full) /= minval(model(k)%val_full)) then
           ! Normalization.
-          damping_gradient%grad_weight = (arr(k)%model%val_full - minval(arr(k)%model%val_full)) &
-                                         / (maxval(arr(k)%model%val_full) - minval(arr(k)%model%val_full))
+          damping_gradient%grad_weight = (model(k)%val_full - minval(model(k)%val_full)) &
+                                         / (maxval(model(k)%val_full) - minval(model(k)%val_full))
 
           damping_gradient%grad_weight = damping_gradient%grad_weight**2.d0
         else
 
-          damping_gradient%grad_weight = arr(k)%model%val_full
+          damping_gradient%grad_weight = model(k)%val_full
         endif
 
       else
@@ -383,7 +384,7 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
       endif
 
       do j = 1, 3 ! j is direction (1 = x, 2 = y, 3 = z).
-        call damping_gradient%add(arr(i)%model, damping_gradient%grad_weight, arr(i)%column_weight, &
+        call damping_gradient%add(model(i), damping_gradient%grad_weight, arr(i)%column_weight, &
                                   this%matrix, this%b_RHS, param_shift(i), j, myrank, nbproc)
         cost = cost + damping_gradient%get_cost()
 
@@ -415,14 +416,14 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
 
     if (solve_gravity_only) then
       i = 1
-      call this%admm_method_1%iterate_admm_arrays(arr(i)%model%nlithos, &
-                                                  arr(i)%model%min_local_bound, arr(i)%model%max_local_bound, &
-                                                  arr(i)%model%val, this%x0_ADMM, myrank)
+      call this%admm_method_1%iterate_admm_arrays(model(i)%nlithos, &
+                                                  model(i)%min_local_bound, model(i)%max_local_bound, &
+                                                  model(i)%val, this%x0_ADMM, myrank)
     else if (solve_mag_only) then
       i = 2
-      call this%admm_method_2%iterate_admm_arrays(arr(i)%model%nlithos, &
-                                                  arr(i)%model%min_local_bound, arr(i)%model%max_local_bound, &
-                                                  arr(i)%model%val, this%x0_ADMM, myrank)
+      call this%admm_method_2%iterate_admm_arrays(model(i)%nlithos, &
+                                                  model(i)%min_local_bound, model(i)%max_local_bound, &
+                                                  model(i)%val, this%x0_ADMM, myrank)
     endif
 
     if (solve_gravity_only .or. solve_mag_only) then
@@ -435,10 +436,10 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
                               par%compression_type, par%nx, par%ny, par%nz)
 
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, this%weight_ADMM, &
-                       arr(i)%model%val, this%x0_ADMM, param_shift(i), myrank, nbproc)
+                       model(i)%val, this%x0_ADMM, param_shift(i), myrank, nbproc)
 
       ! Calculate the ADMM cost.
-      call calculate_cost(arr(i)%model%val, this%x0_ADMM, cost, .true., nbproc)
+      call calculate_cost(model(i)%val, this%x0_ADMM, cost, .true., nbproc)
       if (myrank == 0) print *, "ADMM |x - x0| / |x| =", sqrt(cost)
       if (myrank == 0) print *, 'ADMM term cost = ', damping%get_cost()
       if (myrank == 0) print *, 'nel (with ADMM) = ', this%matrix%get_number_elements()
@@ -464,19 +465,19 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
         der_type = par%derivative_type
       endif
 
-      call this%add_cross_grad_constraints(par, arr, der_type, myrank, nbproc)
+      call this%add_cross_grad_constraints(par, arr, model, der_type, myrank, nbproc)
     else
     ! Adding two cross-grad terms with different derivatives.
-      call this%add_cross_grad_constraints(par, arr, 1, myrank, nbproc)
+      call this%add_cross_grad_constraints(par, arr, model, 1, myrank, nbproc)
       call this%matrix_B%reset()
-      call this%add_cross_grad_constraints(par, arr, 2, myrank, nbproc)
+      call this%add_cross_grad_constraints(par, arr, model, 2, myrank, nbproc)
     endif
   endif
 
   ! ***** Clustering *****
 
   if (this%add_clustering) then
-    call this%add_clustering_constraints(arr, myrank, nbproc)
+    call this%add_clustering_constraints(arr, model, myrank, nbproc)
   endif
 
   !-------------------------------------------------------------------------------------
@@ -535,19 +536,19 @@ subroutine joint_inversion_solve(this, par, arr, delta_model, myrank, nbproc)
       ! Note: use 'model%val_full' for storage here, as we overwrite it later anyway.
 
       if (SOLVE_PROBLEM(1)) then
-        call pt%get_full_array(delta_model(1:par%nelements), par%nelements, arr(1)%model%val_full, .true., myrank, nbproc)
-        call iHaar3D(arr(1)%model%val_full, par%nx, par%ny, par%nz)
+        call pt%get_full_array(delta_model(1:par%nelements), par%nelements, model(1)%val_full, .true., myrank, nbproc)
+        call iHaar3D(model(1)%val_full, par%nx, par%ny, par%nz)
 
         ! Extract the local model update.
-        delta_model(1:par%nelements) = arr(1)%model%val_full(nsmaller + 1 : nsmaller + par%nelements)
+        delta_model(1:par%nelements) = model(1)%val_full(nsmaller + 1 : nsmaller + par%nelements)
       endif
 
       if (SOLVE_PROBLEM(2)) then
-        call pt%get_full_array(delta_model(par%nelements + 1:), par%nelements, arr(2)%model%val_full, .true., myrank, nbproc)
-        call iHaar3D(arr(2)%model%val_full, par%nx, par%ny, par%nz)
+        call pt%get_full_array(delta_model(par%nelements + 1:), par%nelements, model(2)%val_full, .true., myrank, nbproc)
+        call iHaar3D(model(2)%val_full, par%nx, par%ny, par%nz)
 
         ! Extract the local model update.
-        delta_model(par%nelements + 1:) = arr(2)%model%val_full(nsmaller + 1 : nsmaller + par%nelements)
+        delta_model(par%nelements + 1:) = model(2)%val_full(nsmaller + 1 : nsmaller + par%nelements)
       endif
 
     else
@@ -659,10 +660,11 @@ end subroutine write_posterior_variance
 !=======================================================================================================
 ! Adds the cross-gradient constraints to the least square system.
 !=======================================================================================================
-subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, der_type, myrank, nbproc)
+subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, model, der_type, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
   type(t_inversion_arrays), intent(in) :: arr(2)
+  type(t_model), intent(in) :: model(2)
   integer, intent(in) :: der_type
   integer, intent(in) :: myrank, nbproc
 
@@ -671,7 +673,7 @@ subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, der_type, 
 
   if (myrank == 0) print *, 'Calculating cross gradients. der_type =', der_type
 
-  call this%cross_grad%calculate(arr(1)%model, arr(2)%model, arr(1)%column_weight, arr(2)%column_weight, &
+  call this%cross_grad%calculate(model(1), model(2), arr(1)%column_weight, arr(2)%column_weight, &
                                  this%matrix_B, this%d_RHS, this%add_cross_grad, der_type, myrank, nbproc)
 
   cost = this%cross_grad%get_cost()
@@ -699,15 +701,16 @@ end subroutine joint_inversion_add_cross_grad_constraints
 !=======================================================================================================
 ! Adds the clustering constraints to the least square system.
 !=======================================================================================================
-subroutine joint_inversion_add_clustering_constraints(this, arr, myrank, nbproc)
+subroutine joint_inversion_add_clustering_constraints(this, arr, model, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
   type(t_inversion_arrays), intent(in) :: arr(2)
+  type(t_model), intent(in) :: model(2)
   integer, intent(in) :: myrank, nbproc
 
   integer :: i
 
   do i = 1, 2
-    call this%clustering%add(arr(1)%model, arr(2)%model, arr(1)%column_weight, arr(2)%column_weight, &
+    call this%clustering%add(model(1), model(2), arr(1)%column_weight, arr(2)%column_weight, &
                              this%matrix, this%b_RHS, i, myrank, nbproc)
 
     if (myrank == 0) print *, 'clustering term', i, 'cost = ', this%clustering%get_cost(i)

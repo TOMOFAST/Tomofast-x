@@ -53,6 +53,7 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
   type(t_damping) :: damping
   type(t_parameters_inversion) :: par
   type(t_inversion_arrays) :: arr
+  type(t_model) :: model
   real(kind=CUSTOM_REAL), allocatable :: x(:)
   real(kind=CUSTOM_REAL), allocatable :: b_loc(:)
   real(kind=CUSTOM_REAL), allocatable :: b(:)
@@ -74,7 +75,7 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
     return
   endif
 
-  call arr%model%initialize(par%nelements, myrank, nbproc)
+  call model%initialize(par%nelements, myrank, nbproc)
 
   allocate(arr%column_weight(par%nelements), source=0._CUSTOM_REAL)
   allocate(arr%damping_weight(par%nelements), source=0._CUSTOM_REAL)
@@ -101,7 +102,7 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
 
   ! Create an identity matrix.
   call damping%add(isensit, b_RHS, arr%column_weight, arr%damping_weight, &
-                   arr%model%val, arr%model%val_prior, 0, myrank, nbproc)
+                   model%val, model%val_prior, 0, myrank, nbproc)
 
   ! Store the index of last element.
   call isensit%finalize(par%nelements, myrank)

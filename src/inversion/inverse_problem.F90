@@ -119,10 +119,11 @@ end function inversion_get_model_change
 ! Inversion of one data set.
 ! Use legacy sensitivity matrix format to support the ECT inversion.
 !========================================================================================
-subroutine inversion_solve(this, par, arr, myrank, nbproc)
+subroutine inversion_solve(this, par, arr, model, myrank, nbproc)
   class(t_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
   type(t_inversion_arrays), intent(in) :: arr
+  type(t_model) :: model
   integer, intent(in) :: myrank, nbproc
 
   type(t_sensitivity_matrix) :: sensit
@@ -144,8 +145,9 @@ subroutine inversion_solve(this, par, arr, myrank, nbproc)
   ! Add damping.
   call damping%initialize(par%nelements, par%alpha(1), problem_weight, par%norm_power, &
                           par%compression_type, par%nx, par%ny, par%nz)
+
   call damping%add(this%matrix, this%b_RHS, arr%column_weight, arr%damping_weight, &
-                   arr%model%val, arr%model%val_prior, 0, myrank, nbproc)
+                   model%val, model%val_prior, 0, myrank, nbproc)
 
   if (myrank == 0) print *, 'nel (with damping) = ', this%matrix%get_number_elements()
 
