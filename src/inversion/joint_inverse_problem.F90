@@ -26,7 +26,6 @@ module joint_inverse_problem
   use mpi_tools, only: exit_MPI
   use parameters_inversion
   use inversion_arrays
-  use inverse_problem
   use cross_gradient
   use sparse_matrix
   use vector
