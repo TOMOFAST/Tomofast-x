@@ -106,10 +106,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   if (myrank == 0) print *, "(I) MODEL GRID ALLOCATION."
 
-  ! Initialize inversion arrays dimensions.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%initialize(ipar%nelements, ipar%ndata(1))
-  if (SOLVE_PROBLEM(2)) call iarr(2)%initialize(ipar%nelements, ipar%ndata(2))
-
   ! Allocate the model grid.
   if (SOLVE_PROBLEM(1)) call iarr(1)%model%grid_full%allocate(ipar%nx, ipar%ny, ipar%nz, myrank)
   if (SOLVE_PROBLEM(2)) call iarr(2)%model%grid_full%allocate(ipar%nx, ipar%ny, ipar%nz, myrank)
@@ -135,8 +131,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (myrank == 0) print *, "(III) SENSITIVITY MATRIX ALLOCATION."
 
   ! Memory allocation for auxiliarily inversion arrays.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_aux(myrank)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_aux(myrank)
+  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_aux(ipar%nelements, ipar%ndata(1), myrank)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_aux(ipar%nelements, ipar%ndata(2), myrank)
 
   !-------------------------------------------------------------------------------------------------------
   if (gpar%sensit_read == 0) then

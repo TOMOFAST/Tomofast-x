@@ -70,9 +70,8 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
   real(kind=CUSTOM_REAL) :: cost_model
 
   ! Memory allocation.
-  call iarr%initialize(ipar%nelements, ipar%ndata(1))
-  call iarr%allocate_aux(myrank)
-  call iarr%allocate_sensit(.true., myrank)
+  call iarr%allocate_aux(ipar%nelements, ipar%ndata(1), myrank)
+  call iarr%allocate_sensit(ipar%nelements, ipar%ndata(1), myrank)
 
   ! Allocate memory for model object.
   call iarr%model%initialize(ipar%nelements, myrank, nbproc)
@@ -146,6 +145,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
 
     ! Apply normalization typical in ECT: data_new = (data - data_low) / (data_high - data_low),
     call ect_normalization(ipar%ndata(1), iarr%sensitivity, iarr%residuals, data_high, data_low)
+
     ! Solve inverse problem.
     call inversion%solve(ipar, iarr, myrank, nbproc)
 

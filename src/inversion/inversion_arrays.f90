@@ -29,7 +29,6 @@ module inversion_arrays
   use global_typedefs
   use mpi_tools, only: exit_MPI
   use model
-  use sparse_matrix
 
   implicit none
 
@@ -37,9 +36,6 @@ module inversion_arrays
 
   ! Contains allocatable arrays needed for inversion.
   type, public :: t_inversion_arrays
-
-    ! Required parameters to allocate arrays.
-    integer :: nelements, ndata
 
     ! Difference between data measured and data calculated.
     real(kind=CUSTOM_REAL), allocatable :: residuals(:)
@@ -57,7 +53,6 @@ module inversion_arrays
   contains
     private
 
-    procedure, public, pass :: initialize => inversion_arrays_initialize
     procedure, public, pass :: allocate_aux => inversion_arrays_allocate_aux
     procedure, public, pass :: allocate_sensit => inversion_arrays_allocate_sensit
 
@@ -66,73 +61,52 @@ module inversion_arrays
 contains
 
 !============================================================================================
-! Initialize parameters needed to allocate the inversion arrays.
-!============================================================================================
-subroutine inversion_arrays_initialize(this, nelements, ndata)
-  class(t_inversion_arrays), intent(inout) :: this
-  integer, intent(in) :: nelements, ndata
-
-  this%nelements = nelements
-  this%ndata = ndata
-
-end subroutine inversion_arrays_initialize
-
-!============================================================================================
 ! Allocates the auxiliarily inversion arrays.
 !============================================================================================
-subroutine inversion_arrays_allocate_aux(this, myrank)
+subroutine inversion_arrays_allocate_aux(this, nelements, ndata, myrank)
   class(t_inversion_arrays), intent(inout) :: this
+  integer, intent(in) :: nelements, ndata
   integer, intent(in) :: myrank
 
   integer :: ierr
 
   if (myrank == 0) print *, "Allocating auxiliarily inversion arrays..."
 
-  if (this%ndata <= 0 .or. this%nelements <= 0) &
+  if (ndata <= 0 .or. nelements <= 0) &
     call exit_MPI("Wrong dimensions in inversion_arrays_allocate_aux!", myrank, 0)
 
   ierr = 0
 
-  if (.not. allocated(this%residuals)) allocate(this%residuals(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (myrank == 0) print *, "residuals done."
+  allocate(this%residuals(ndata), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%column_weight(nelements), source=1._CUSTOM_REAL, stat=ierr)
+  allocate(this%damping_weight(nelements), source=1._CUSTOM_REAL, stat=ierr)
 
-  if (.not. allocated(this%column_weight)) allocate(this%column_weight(this%nelements), source=1._CUSTOM_REAL, stat=ierr)
-  if (myrank == 0) print *, "column_weight done."
-
-  if (.not. allocated(this%damping_weight)) allocate(this%damping_weight(this%nelements), source=1._CUSTOM_REAL, stat=ierr)
-  if (myrank == 0) print *, "damping_weight done."
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in inversion_arrays_allocate_aux!", myrank, ierr)
 
 end subroutine inversion_arrays_allocate_aux
 
-!==================================================================================
-! Allocates memory for the ECT ensitivity kernel (not used for grav/mag).
-! USE_LEGACY_SENSIT_MATRIX flag to support old sensitivity matrix allocation (non-sparse) for the ECT problem.
-!==================================================================================
-subroutine inversion_arrays_allocate_sensit(this, USE_LEGACY_SENSIT_MATRIX, myrank)
+!====================================================================================================
+! Allocates memory for the ECT sensitivity kernel (not used for grav/mag).
+!====================================================================================================
+subroutine inversion_arrays_allocate_sensit(this, nelements, ndata, myrank)
   class(t_inversion_arrays), intent(inout) :: this
-  logical, intent(in) :: USE_LEGACY_SENSIT_MATRIX
+  integer, intent(in) :: nelements, ndata
   integer, intent(in) :: myrank
 
   integer :: ierr
 
   if (myrank == 0) print *, "Allocating sensitivity kernel..."
 
-  if (this%ndata <= 0 .or. this%nelements <= 0) &
+  if (ndata <= 0 .or. nelements <= 0) &
     call exit_MPI("Wrong dimensions in inversion_arrays_allocate_sensit!", myrank, 0)
 
   ierr = 0
 
-  if (USE_LEGACY_SENSIT_MATRIX) then
+  allocate(this%sensitivity(nelements, ndata), source=0._CUSTOM_REAL, stat=ierr)
 
-    if (.not. allocated(this%sensitivity)) &
-      allocate(this%sensitivity(this%nelements, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in inversion_arrays_allocate_sensit!", myrank, ierr)
 
-    if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in inversion_arrays_allocate_sensit!", myrank, ierr)
-
-    if (myrank == 0) print *, "sensitivity done."
-  endif
-
-  if (myrank == 0) print *, "Sensitivity kernel allocated!"
+  if (myrank == 0) print *, "Sensitivity kernel allocated."
 
 end subroutine inversion_arrays_allocate_sensit
 
