@@ -294,7 +294,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
   type(t_damping_gradient) :: damping_gradient
   type(t_parameters_lsqr) :: par_lsqr
   type(t_parallel_tools) :: pt
-  integer :: i, j, k
+  integer :: i, j
   integer :: line_start(2), line_end(2), param_shift(2)
   real(kind=CUSTOM_REAL) :: cost
   logical :: solve_gravity_only
@@ -363,22 +363,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
       cost = 0.d0
 
       if (par%damp_grad_weight_type > 1) then
-      ! Adding gradient weight based on the second model.
-        if (i == 1) k = 2
-        if (i == 2) k = 1
-
-        ! Calculate here the local gradient weight.
-        if (maxval(model(k)%val_full) /= minval(model(k)%val_full)) then
-          ! Normalization.
-          damping_gradient%grad_weight = (model(k)%val_full - minval(model(k)%val_full)) &
-                                         / (maxval(model(k)%val_full) - minval(model(k)%val_full))
-
-          damping_gradient%grad_weight = damping_gradient%grad_weight**2.d0
-        else
-
-          damping_gradient%grad_weight = model(k)%val_full
-        endif
-
+      ! Local damping gradient weight.
+        ! TODO case.
       else
         damping_gradient%grad_weight = 1.d0
       endif

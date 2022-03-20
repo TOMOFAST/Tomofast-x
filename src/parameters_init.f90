@@ -294,7 +294,7 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
   endif
 
   if (ipar%beta(1) /= 0.d0 .or. ipar%beta(2) /= 0.d0) then
-    if (ipar%damp_grad_weight_type == 2) then
+    if (ipar%damp_grad_weight_type > 1) then
       call exit_MPI("Local damping gradient weight is currently not available! "// &
                     "Contact the code authors if you want to use it.", myrank, 0)
     endif
