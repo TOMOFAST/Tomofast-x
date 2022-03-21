@@ -164,18 +164,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       ipar%nelements = mpar%nelements
     endif
 
-    !--------------------------------------------------------------------------------------------------
-    ! Reallocate the arrays for the nnz load balancing among CPUs, using the updated nelements value.
-    !--------------------------------------------------------------------------------------------------
-    do i = 1, 2
-      if (SOLVE_PROBLEM(i)) then
-        deallocate(iarr(i)%column_weight)
-        deallocate(iarr(i)%damping_weight)
-
-        allocate(iarr(i)%column_weight(ipar%nelements), source=0._CUSTOM_REAL)
-        allocate(iarr(i)%damping_weight(ipar%nelements), source=1._CUSTOM_REAL)
-      endif
-    enddo
+    ! Reallocate the inversion arrays using the updated nelements value (for the nnz load balancing).
+    if (SOLVE_PROBLEM(1)) call iarr(1)%reallocate_aux(ipar%nelements, ipar%ndata(1), myrank)
+    if (SOLVE_PROBLEM(2)) call iarr(2)%reallocate_aux(ipar%nelements, ipar%ndata(2), myrank)
 
   else
     ! Read the sensitivity metadata file to define the nnz.
