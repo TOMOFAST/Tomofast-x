@@ -160,8 +160,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
                                       nnz(2), nelements_new, myrank, nbproc)
   else
     ! Read the sensitivity metadata file to define the nnz.
-    if (SOLVE_PROBLEM(1)) call read_sensitivity_metadata(gpar, nnz(1), 1, myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call read_sensitivity_metadata(mpar, nnz(2), 2, myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) call read_sensitivity_metadata(gpar, nnz(1), nelements_new, 1, myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call read_sensitivity_metadata(mpar, nnz(2), nelements_new, 2, myrank, nbproc)
   endif
 
   ! TODO: Need to do something about nelements_new for cross-gradient case, as there will be different values for grav and mag,
@@ -169,7 +169,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! 1. We can pass outside the sensit_nnz from 'calculate_and_write_sensit' for both problems, and then calculate the load balancing using both kernels.
   ! 2. Another much simpler possibility is to choose nelements_new from one of the problems, and adjust the nnz to max(nnz_grav, nnz_mag).
 
-  ! Update the nelements for nnz load balancing.
+  ! Update the nelements for the nnz load balancing.
   if (SOLVE_PROBLEM(1)) gpar%nelements = nelements_new
   if (SOLVE_PROBLEM(2)) mpar%nelements = nelements_new
   ipar%nelements = nelements_new

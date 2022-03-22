@@ -338,6 +338,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, MATRIX_PRECISION, cost
     write(77, *) nnz_at_cpu_new
+    write(77, *) nelements_at_cpu_new
 
     close(77)
   endif
@@ -575,8 +576,9 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
   ! Open the file.
   open(78, file=trim(filename_full), form='unformatted', status='unknown', action='read', iostat=ierr, iomsg=msg)
+
   if (ierr /= 0) call exit_MPI("Error in opening the sensitivity weight file! path=" &
-                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
+                                //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
   read(78) nx_read, ny_read, nz_read, ndata_read, weight_type_read
   read(78) column_weight_full
@@ -606,17 +608,19 @@ end subroutine read_sensitivity_kernel
 !=============================================================================================
 ! Reads the sensitivity kernel metadata and defines the nnz for re-reading the kernel.
 !=============================================================================================
-subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
+subroutine read_sensitivity_metadata(par, nnz, nelements_new, problem_type, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   integer, intent(in) :: problem_type
   integer, intent(in) :: myrank, nbproc
 
   integer(kind=8), intent(out) :: nnz
+  integer, intent(out) :: nelements_new
 
+  integer(kind=8) :: nnz_at_cpu(nbproc)
+  integer :: nelements_at_cpu_new(nbproc)
   integer :: ierr
   character(len=256) :: filename, filename_full
   character(len=256) :: msg
-  integer(kind=8) :: nnz_model(nbproc)
   integer :: nx_read, ny_read, nz_read, ndata_read, nbproc_read
   integer :: precision_read
   real(kind=CUSTOM_REAL) :: cost
@@ -629,8 +633,9 @@ subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
 
   ! Open the file.
   open(78, file=trim(filename_full), form='formatted', status='unknown', action='read', iostat=ierr, iomsg=msg)
+
   if (ierr /= 0) call exit_MPI("Error in opening the sensitivity metadata file! path=" &
-                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
+                                //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
   read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read, precision_read, cost
 
@@ -647,12 +652,14 @@ subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
     call exit_MPI("Matrix precision is not consistent!", myrank, 0)
   endif
 
-  read(78, *) nnz_model
+  read(78, *) nnz_at_cpu
+  read(78, *) nelements_at_cpu_new
 
   close(78)
 
-  ! Return the nnz for the current rank.
-  nnz = nnz_model(myrank + 1)
+  ! Return the parameters for the current rank.
+  nnz = nnz_at_cpu(myrank + 1)
+  nelements_new = nelements_at_cpu_new(myrank + 1)
 
 end subroutine read_sensitivity_metadata
 
