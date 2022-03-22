@@ -83,11 +83,11 @@ function test_grid_cell_order(par, grid) result(res)
   enddo
 end function test_grid_cell_order
 
-!=============================================================================================
+!===============================================================================================================
 ! Calculates the sensitivity kernel (parallelized by data) and writes it to files.
-!=============================================================================================
-subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, myrank, nbproc)
-  class(t_parameters_base), intent(inout) :: par
+!===============================================================================================================
+subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, nelements_new, myrank, nbproc)
+  class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid_full
   type(t_data), intent(in) :: data
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
@@ -97,6 +97,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! We need this number for reading the sensitivity later from files, for invere problem.
   ! As the inverse problem is parallelized by model, and calculations here are parallelized by data.
   integer(kind=8), intent(out) :: nnz
+  integer, intent(out) :: nelements_new
 
   type(t_magnetic_field) :: mag_field
   type(t_parallel_tools) :: pt
@@ -322,7 +323,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     print *, 'nelements_at_cpu_new: ', nelements_at_cpu_new
   endif
 
-  par%nelements = nelements_at_cpu_new(myrank + 1)
+  nelements_new = nelements_at_cpu_new(myrank + 1)
 
   !---------------------------------------------------------------------------------------------
   ! Write the metadata file, with nnz info for re-reading sensitivity from files.

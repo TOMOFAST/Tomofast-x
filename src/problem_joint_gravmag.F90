@@ -88,6 +88,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   logical :: SOLVE_PROBLEM(2)
   integer(kind=8) :: nnz(2)
+  integer :: nelements_new
   logical :: file_exists
 
   ! Unit number for cost file handle.
@@ -150,29 +151,32 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
 
     ! Calculate and write the sensitivity kernel to files.
-    if (SOLVE_PROBLEM(1)) then
-      call calculate_and_write_sensit(gpar, model(1)%grid_full, data(1), iarr(1)%column_weight, nnz(1), myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) &
+      call calculate_and_write_sensit(gpar, model(1)%grid_full, data(1), iarr(1)%column_weight, &
+                                      nnz(1), nelements_new, myrank, nbproc)
 
-      ! TODO: pass nelements outside calculate_and_write_sensit(), instead of modifying gpar inside.
-      ipar%nelements = gpar%nelements
-    endif
-
-    if (SOLVE_PROBLEM(2)) then
-      call calculate_and_write_sensit(mpar, model(2)%grid_full, data(2), iarr(2)%column_weight, nnz(2), myrank, nbproc)
-
-      ! TODO: pass nelements outside calculate_and_write_sensit(), instead of modifying mpar inside.
-      ipar%nelements = mpar%nelements
-    endif
-
-    ! Reallocate the inversion arrays using the updated nelements value (for the nnz load balancing).
-    if (SOLVE_PROBLEM(1)) call iarr(1)%reallocate_aux(ipar%nelements, ipar%ndata(1), myrank)
-    if (SOLVE_PROBLEM(2)) call iarr(2)%reallocate_aux(ipar%nelements, ipar%ndata(2), myrank)
-
+    if (SOLVE_PROBLEM(2)) &
+      call calculate_and_write_sensit(mpar, model(2)%grid_full, data(2), iarr(2)%column_weight, &
+                                      nnz(2), nelements_new, myrank, nbproc)
   else
     ! Read the sensitivity metadata file to define the nnz.
     if (SOLVE_PROBLEM(1)) call read_sensitivity_metadata(gpar, nnz(1), 1, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call read_sensitivity_metadata(mpar, nnz(2), 2, myrank, nbproc)
   endif
+
+  ! TODO: Need to do something about nelements_new for cross-gradient case, as there will be different values for grav and mag,
+  ! but the model should have the same partitioning for both grav and mag.
+  ! 1. We can pass outside the sensit_nnz from 'calculate_and_write_sensit' for both problems, and then calculate the load balancing using both kernels.
+  ! 2. Another much simpler possibility is to choose nelements_new from one of the problems, and adjust the nnz to max(nnz_grav, nnz_mag).
+
+  ! Update the nelements for nnz load balancing.
+  if (SOLVE_PROBLEM(1)) gpar%nelements = nelements_new
+  if (SOLVE_PROBLEM(2)) mpar%nelements = nelements_new
+  ipar%nelements = nelements_new
+
+  ! Reallocate the inversion arrays using the updated nelements value (for the nnz load balancing).
+  if (SOLVE_PROBLEM(1)) call iarr(1)%reallocate_aux(ipar%nelements, ipar%ndata(1), myrank)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%reallocate_aux(ipar%nelements, ipar%ndata(2), myrank)
 
   !-------------------------------------------------------------------------------------------------------
   ! Deallocate the model grid.
