@@ -107,15 +107,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   integer :: idata, ndata_loc, ndata_smaller
   character(len=256) :: filename, filename_full
   real(kind=CUSTOM_REAL) :: comp_rate
-  integer(kind=8) :: nnz_total, nnz_total2
+  integer(kind=8) :: nnz_total
   real(kind=CUSTOM_REAL) :: threshold
-
-  integer(kind=8) :: nnz_model_loc(nbproc)
-  integer(kind=8) :: nnz_model(nbproc)
-  ! The number of elements on every CPU.
-  integer :: nelements_at_cpu(nbproc)
-  integer :: nsmaller_at_cpu(nbproc)
-  integer :: cpu
 
   integer :: nelements_at_cpu_new(nbproc)
   integer(kind=8) :: nnz_at_cpu_new(nbproc)
@@ -203,17 +196,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! File header.
   write(77) ndata_loc, par%ndata, nelements_total, myrank, nbproc
 
-  ! Calculate the number of elements on every CPU.
-  nelements_at_cpu = pt%get_number_elements_on_other_cpus(par%nelements, myrank, nbproc)
-
-  ! Calculate the number of elements on ranks smaller than current.
-  do i = 1, nbproc
-    nsmaller_at_cpu(i) = sum(nelements_at_cpu(1:i-1))
-  enddo
-
   nnz_data = 0
-  nnz_model_loc = 0
-
   cost_full_loc = 0.d0
   cost_compressed_loc = 0.d0
 
@@ -252,23 +235,13 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
       threshold = abs(sensit_line_sorted(p))
 
       nel = 0
-      cpu = 1
-      do p = 1, nelements_total
-        ! Partitioning for parallelization by model.
-        if (cpu < nbproc) then
-          if (p > nsmaller_at_cpu(cpu + 1)) then
-            cpu = cpu + 1
-          endif
-        endif
 
+      do p = 1, nelements_total
         if (abs(sensit_line_full(p)) >= threshold) then
           ! Store sensitivity elements greater than the wavelet threshold.
           nel = nel + 1
           sensit_columns(nel) = p
           sensit_compressed(nel) = real(sensit_line_full(p), MATRIX_PRECISION)
-
-          ! Calculate the partitioning.
-          nnz_model_loc(cpu) = nnz_model_loc(cpu) + 1
 
           sensit_nnz(p) = sensit_nnz(p) + 1
 
@@ -288,7 +261,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
         sensit_columns(p) = p
         sensit_nnz(p) = sensit_nnz(p) + 1
       enddo
-      nnz_model_loc = nnz_model_loc + nelements_at_cpu
     endif
 
     ! The sensitivity kernel size (when parallelized by data).
@@ -340,26 +312,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   if (myrank == 0) print *, 'COMPRESSION COST = ', cost
 
   !---------------------------------------------------------------------------------------------
-  ! Calculate the nnz for the sensitivity kernel parallelized by model.
-  !---------------------------------------------------------------------------------------------
-  call mpi_allreduce(nnz_model_loc, nnz_model, nbproc, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
-
-  if (myrank == 0)  print *, 'nnz_model = ', nnz_model
-
-  ! Sanity check.
-  do i = 1, nbproc
-    if (nnz_model(i) < 0) then
-      call exit_MPI("Integer overflow in nnz_model! Reduce the compression rate or increase the number of CPUs.", myrank, 0)
-    endif
-  enddo
-
-  ! Sanity check.
-  nnz_total2 = sum(nnz_model)
-  if (nnz_total /= nnz_total2) then
-    call exit_MPI("Wrong nnz_model in calculate_and_write_sensit!", myrank, 0)
-  endif
-
-  !---------------------------------------------------------------------------------------------
   ! Perform the nnz load balancing among CPUs.
   !---------------------------------------------------------------------------------------------
   call get_load_balancing_nelements(sensit_nnz, nelements_total, nnz_total, &
@@ -371,8 +323,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   endif
 
   par%nelements = nelements_at_cpu_new(myrank + 1)
-  ! TODO: remove nnz_model and use directly nnz_at_cpu_new.
-  nnz_model = nnz_at_cpu_new
 
   !---------------------------------------------------------------------------------------------
   ! Write the metadata file, with nnz info for re-reading sensitivity from files.
@@ -386,7 +336,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     open(77, file=trim(filename_full), form='formatted', status='unknown', action='write')
 
     write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, MATRIX_PRECISION, cost
-    write(77, *) nnz_model
+    write(77, *) nnz_at_cpu_new
 
     close(77)
   endif
@@ -410,7 +360,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   !---------------------------------------------------------------------------------------------
   ! Return the nnz for the current CPU.
-  nnz = nnz_model(myrank + 1)
+  nnz = nnz_at_cpu_new(myrank + 1)
 
   !---------------------------------------------------------------------------------------------
   deallocate(sensit_line_full)
