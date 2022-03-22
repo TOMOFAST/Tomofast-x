@@ -45,6 +45,7 @@ module sensitivity_gravmag
 
   private :: apply_column_weight
   private :: test_grid_cell_order
+  private :: get_load_balancing_nelements
 
   character(len=4) :: SUFFIX(2) = ["grav", "magn"]
 
@@ -117,9 +118,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   integer :: cpu
 
   integer :: nelements_at_cpu_new(nbproc)
-  integer :: nelements_new
   integer(kind=8) :: nnz_at_cpu_new(nbproc)
-  integer(kind=8) :: nnz_new
 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full(:)
@@ -316,6 +315,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   close(77)
 
+  call mpi_allreduce(MPI_IN_PLACE, sensit_nnz, nelements_total, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+
   !---------------------------------------------------------------------------------------------
   ! Calculate the kernel compression rate.
   !---------------------------------------------------------------------------------------------
@@ -361,32 +362,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   ! Perform the nnz load balancing among CPUs.
   !---------------------------------------------------------------------------------------------
-  call mpi_allreduce(MPI_IN_PLACE, sensit_nnz, nelements_total, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
-
-  nnz_at_cpu_new(:) = nnz_total / int8(nbproc)
-  ! Last rank gets the remaining elements.
-  nnz_at_cpu_new(nbproc) = nnz_at_cpu_new(nbproc) + mod(nnz_total, int8(nbproc))
-
-  cpu = 1
-  nnz_new = 0
-  nelements_new = 0
-
-  do p = 1, nelements_total
-    nnz_new = nnz_new + sensit_nnz(p)
-    nelements_new = nelements_new + 1
-
-    if (nnz_new > nnz_at_cpu_new(cpu) .or. p == nelements_total) then
-      nnz_at_cpu_new(cpu) = nnz_new
-      nelements_at_cpu_new(cpu) = nelements_new
-      nnz_new = 0
-      nelements_new = 0
-      cpu = cpu + 1
-    endif
-  enddo
-
-  if (sum(nnz_at_cpu_new) /= nnz_total) then
-    call exit_MPI("Wrong nnz_at_cpu_new in calculate_and_write_sensit!", myrank, 0)
-  endif
+  call get_load_balancing_nelements(sensit_nnz, nelements_total, nnz_total, &
+                                    nnz_at_cpu_new, nelements_at_cpu_new, myrank, nbproc)
 
   if (myrank == 0) then
     print *, 'nnz_at_cpu_new: ', nnz_at_cpu_new
@@ -447,6 +424,50 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   if (myrank == 0) print *, 'Finished calculating the sensitivity kernel.'
 
 end subroutine calculate_and_write_sensit
+
+!=======================================================================================================================
+! Calculate new partitioning for the nnz and nelements at every CPU for the load balancing.
+! The load balancing aims to have the same number of nnz at every CPU, which require using different nelements at CPUs.
+!=======================================================================================================================
+subroutine get_load_balancing_nelements(sensit_nnz, nelements_total, nnz_total, &
+                                        nnz_at_cpu_new, nelements_at_cpu_new, myrank, nbproc)
+  integer(kind=8), intent(in) :: sensit_nnz(:)
+  integer, intent(in) :: nelements_total
+  integer(kind=8), intent(in) :: nnz_total
+  integer, intent(in) :: myrank, nbproc
+
+  integer, intent(out) :: nelements_at_cpu_new(nbproc)
+  integer(kind=8), intent(out) :: nnz_at_cpu_new(nbproc)
+
+  integer :: cpu, p
+  integer :: nelements_new
+  integer(kind=8) :: nnz_new
+
+  nnz_at_cpu_new(:) = nnz_total / int8(nbproc)
+  ! Last rank gets the remaining elements.
+  nnz_at_cpu_new(nbproc) = nnz_at_cpu_new(nbproc) + mod(nnz_total, int8(nbproc))
+
+  cpu = 1
+  nnz_new = 0
+  nelements_new = 0
+
+  do p = 1, nelements_total
+    nnz_new = nnz_new + sensit_nnz(p)
+    nelements_new = nelements_new + 1
+
+    if (nnz_new > nnz_at_cpu_new(cpu) .or. p == nelements_total) then
+      nnz_at_cpu_new(cpu) = nnz_new
+      nelements_at_cpu_new(cpu) = nelements_new
+      nnz_new = 0
+      nelements_new = 0
+      cpu = cpu + 1
+    endif
+  enddo
+
+  if (sum(nnz_at_cpu_new) /= nnz_total) then
+    call exit_MPI("Wrong nnz_at_cpu_new in calculate_and_write_sensit!", myrank, 0)
+  endif
+end subroutine get_load_balancing_nelements
 
 !==================================================================================================================
 ! Reads the sensitivity kernel from files,
