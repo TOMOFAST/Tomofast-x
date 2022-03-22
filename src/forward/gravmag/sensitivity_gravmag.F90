@@ -465,7 +465,7 @@ subroutine get_load_balancing_nelements(sensit_nnz, nelements_total, nnz_total, 
   enddo
 
   if (sum(nnz_at_cpu_new) /= nnz_total) then
-    call exit_MPI("Wrong nnz_at_cpu_new in calculate_and_write_sensit!", myrank, 0)
+    call exit_MPI("Wrong nnz_at_cpu_new in get_load_balancing_nelements!", myrank, 0)
   endif
 end subroutine get_load_balancing_nelements
 
