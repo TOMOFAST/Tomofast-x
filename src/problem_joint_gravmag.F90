@@ -224,10 +224,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_read_', .false., myrank, nbproc)
 #endif
 
-  ! Distribute the read model among CPUs according to the updated nelements at CPUs (with load balancing).
-  if (SOLVE_PROBLEM(1)) call model(1)%distribute(myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call model(2)%distribute(myrank, nbproc)
-
   ! SETTING THE ADMM BOUNDS -----------------------------------------------------------------------------
 
   if (ipar%admm_type > 0) then
@@ -542,18 +538,15 @@ subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
   if (model_type == 1) then
     ! Setting homogeneous starting value.
     model%val_full = model_val
+    model%val = model_val
 
   else if (model_type == 2) then
     ! Reading from file.
     call model_read(model, model_file, myrank, nbproc)
 
   else
-    print *, "Unknown model type!"
-    stop
+    call exit_MPI("Unknown model type in set_model!", myrank, model_type)
   endif
-
-  ! Distribute the model among CPUs.
-  call model%distribute(myrank, nbproc)
 end subroutine set_model
 
 end module problem_joint_gravmag

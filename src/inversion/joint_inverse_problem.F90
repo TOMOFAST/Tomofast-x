@@ -347,8 +347,9 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
       call damping%initialize(par%nelements, par%alpha(i), par%problem_weight(i), par%norm_power, &
                               par%compression_type, par%nx, par%ny, par%nz)
 
-      ! Note: we use model covariance now for the local damping weight, which is equivalent of having local alpha.
-      call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, model(i)%cov, &
+      arr(i)%damping_weight = 1.d0
+
+      call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, arr(i)%damping_weight, &
                        model(i)%val, model(i)%val_prior, param_shift(i), myrank, nbproc)
 
       if (myrank == 0) print *, 'damping term cost = ', damping%get_cost()

@@ -44,12 +44,6 @@ module model
     ! (Read initial model here, write final model from here, and use also for cross-gradient.)
     real(kind=CUSTOM_REAL), allocatable :: val_full(:)
 
-    ! TODO: Maybe move this to a separate module and combine with damping_weight?
-    ! Local model covariance (diagonal) matrix.
-    ! This is the weight that will be applied to the model damping term.
-    ! This is equivalent of having local alpha, i.e., changing with model cell.
-    real(kind=CUSTOM_REAL), allocatable :: cov(:) ! Local on one CPU.
-
     ! Data arrays for local ADMM constraints.
     integer :: nlithos
     real(kind=CUSTOM_REAL), allocatable :: min_local_bound(:, :)
@@ -109,7 +103,6 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
   allocate(this%val_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%val(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%val_prior(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%cov(this%nelements), source=1._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_initialize!", myrank, ierr)
 

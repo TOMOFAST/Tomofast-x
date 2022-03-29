@@ -52,20 +52,11 @@ subroutine model_read(model, file_name, myrank, nbproc)
   integer :: i, nelements_read
   integer :: ierr
   character(len=256) :: msg
-  real(kind=CUSTOM_REAL) :: dummy, val, cov
+  real(kind=CUSTOM_REAL) :: dummy, val
   integer :: i_, j_, k_
-
-  ! Displacement for mpi_scatterv.
-  integer :: displs(nbproc)
-  ! The number of elements on every CPU for mpi_scatterv.
-  integer :: nelements_at_cpu(nbproc)
-  type(t_parallel_tools) :: pt
-  real(kind=CUSTOM_REAL), allocatable :: cov_full(:)
 
   if (myrank == 0) then
   ! Reading the full model by master CPU only.
-    allocate(cov_full(model%nelements_total), stat=ierr)
-
     print *, 'Reading model from file ', trim(file_name)
 
     open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
@@ -85,36 +76,23 @@ subroutine model_read(model, file_name, myrank, nbproc)
 
     ! Reading the model only (without grid).
     do i = 1, model%nelements_total
-      read(10, *, iostat=ierr) dummy, dummy, dummy, dummy, dummy, dummy, val, i_, j_, k_, cov
+      read(10, *, iostat=ierr) dummy, dummy, dummy, dummy, dummy, dummy, val, i_, j_, k_
 
       ! Set the model value.
       model%val_full(i) = val
-
-      ! Set the covariance value.
-      cov_full(i) = cov
 
       if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_voxels!", myrank, ierr)
     enddo
     close(10)
   endif
 
-  !------------------------------------------------------------------------------
   ! Broadcast the full model to all CPUs.
-  !------------------------------------------------------------------------------
   call MPI_Bcast(model%val_full, model%nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("Error in MPI_Bcast in model_read!", myrank, ierr)
 
-  !------------------------------------------------------------------------------
-  ! Distribute the covarianve values among CPUs.
-  !------------------------------------------------------------------------------
-  ! Partitioning for MPI_Scatterv.
-  call pt%get_mpi_partitioning(model%nelements, displs, nelements_at_cpu, myrank, nbproc)
-
-  call MPI_Scatterv(cov_full, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
-                    model%cov, model%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-  if (myrank == 0) deallocate(cov_full)
+  ! Distribute the model values among CPUs.
+  call model%distribute(myrank, nbproc)
 
 end subroutine model_read
 
@@ -130,7 +108,7 @@ subroutine model_read_grid(model, file_name, myrank)
   integer :: nelements_total
   integer :: ierr
   character(len=256) :: msg
-  real(kind=CUSTOM_REAL) :: val, cov
+  real(kind=CUSTOM_REAL) :: val
 
   if (myrank == 0) then
   ! Reading the full grid by master CPU only.
@@ -158,8 +136,7 @@ subroutine model_read_grid(model, file_name, myrank)
                                model%grid_full%Y1(i), model%grid_full%Y2(i), &
                                model%grid_full%Z1(i), model%grid_full%Z2(i), &
                                val, &
-                               model%grid_full%i_(i), model%grid_full%j_(i), model%grid_full%k_(i), &
-                               cov
+                               model%grid_full%i_(i), model%grid_full%j_(i), model%grid_full%k_(i)
 
       if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_grid!", myrank, ierr)
 

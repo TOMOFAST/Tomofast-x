@@ -47,10 +47,9 @@ module sparse_matrix
     ! The list of 'sa' indexes where each row starts.
     integer(kind=8), allocatable, private :: ijl(:)
 
-    ! Auxilary array to calculate the solution variance (var = diag(D.D')).
-    ! [1] E. Kostina, M. A. Saunders, and I. Schierle, Computation of covariance matrices 
-    !     for constrained parameter estimation problems using lsqr, 2009.
+    ! Auxilary array to calculate the solution variance.
     real(kind=CUSTOM_REAL), allocatable, public :: lsqr_var(:)
+
     ! For passing some info.
     integer, public :: tag
 
