@@ -299,7 +299,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
   real(kind=CUSTOM_REAL) :: cost
   logical :: solve_gravity_only
   logical :: solve_mag_only
-  integer :: der_type
   integer :: nsmaller
 
   logical :: SOLVE_PROBLEM(2)
@@ -347,6 +346,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
       call damping%initialize(par%nelements, par%alpha(i), par%problem_weight(i), par%norm_power, &
                               par%compression_type, par%nx, par%ny, par%nz)
 
+      ! Note: with wavelet compression we currently cannot have local weight in the model damping term.
       arr(i)%damping_weight = 1.d0
 
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, arr(i)%damping_weight, &
@@ -416,8 +416,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
     if (solve_gravity_only .or. solve_mag_only) then
     ! Add ADMM constraints only in separate (single) inversions.
 
+      ! Note: with wavelet compression we currently cannot have local weight in the model damping term.
       this%weight_ADMM = 1.d0
-      !this%weight_ADMM = arr(i)%damping_weight
 
       call damping%initialize(par%nelements, par%rho_ADMM(i), par%problem_weight(i), par%norm_power, &
                               par%compression_type, par%nx, par%ny, par%nz)
@@ -440,25 +440,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
   ! ***** Cross-gradient *****
 
   if (this%add_cross_grad) then
-    if (par%derivative_type /= 4) then
-      if (par%derivative_type == 3) then
-      ! Mixed derivative - switch derivative type every iteration.
-        if (mod(ncalls, 2) == 0) then
-          der_type = 1
-        else
-          der_type = 2
-        endif
-      else
-        der_type = par%derivative_type
-      endif
-
-      call this%add_cross_grad_constraints(par, arr, model, der_type, myrank, nbproc)
-    else
-    ! Adding two cross-grad terms with different derivatives.
-      call this%add_cross_grad_constraints(par, arr, model, 1, myrank, nbproc)
-      call this%matrix_B%reset()
-      call this%add_cross_grad_constraints(par, arr, model, 2, myrank, nbproc)
-    endif
+    call this%add_cross_grad_constraints(par, arr, model, par%derivative_type, myrank, nbproc)
   endif
 
   ! ***** Clustering *****
