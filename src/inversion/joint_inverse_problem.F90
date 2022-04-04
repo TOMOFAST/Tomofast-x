@@ -300,6 +300,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
   logical :: solve_gravity_only
   logical :: solve_mag_only
   integer :: nsmaller
+  real(kind=CUSTOM_REAL) :: norm_power
 
   logical :: SOLVE_PROBLEM(2)
 
@@ -419,7 +420,10 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
       ! Note: with wavelet compression we currently cannot have local weight in the model damping term.
       this%weight_ADMM = 1.d0
 
-      call damping%initialize(par%nelements, par%rho_ADMM(i), par%problem_weight(i), par%norm_power, &
+      ! Use the L2 norm for the ADMM constraints.
+      norm_power = 2.0d0
+
+      call damping%initialize(par%nelements, par%rho_ADMM(i), par%problem_weight(i), norm_power, &
                               par%compression_type, par%nx, par%ny, par%nz)
 
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, this%weight_ADMM, &
