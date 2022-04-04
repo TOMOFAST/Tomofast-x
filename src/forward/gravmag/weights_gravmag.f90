@@ -140,6 +140,16 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
     call exit_MPI("Not known depth weight type!", myrank, par%depth_weighting_type)
   endif
 
+  !--------------------------------------------------------------------------------
+  ! Scale the sensitivity kernel with the cell volume.
+  !--------------------------------------------------------------------------------
+  do i = 1, par%nelements
+      ! Full grid index.
+      p = nsmaller + i
+
+      iarr%damping_weight(i) = iarr%damping_weight(i) * grid_full%get_cell_volume(p)
+  enddo
+
   ! Normalize the depth weight.
   call normalize_depth_weight(iarr%damping_weight, myrank, nbproc)
 
