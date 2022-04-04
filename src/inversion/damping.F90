@@ -156,6 +156,10 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, local_weight, &
       ! Transform to wavelet domain.
       call Haar3D(model_diff, this%nx, this%ny, this%nz)
     endif
+
+    if (this%norm_power /= 2.d0) then
+      call exit_MPI("Lp-norm with p /= 2 is not supported with matrix compression yet!", myrank, 0)
+    endif
   endif
   !---------------------------------------------------------------------
 
