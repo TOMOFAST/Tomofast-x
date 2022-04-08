@@ -291,7 +291,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     endif
 
     ! Print the progress.
-    if (myrank == 0 .and. mod(i, int(0.1d0 * ndata_loc)) == 0) then
+    if (myrank == 0 .and. mod(i, max(int(0.1d0 * ndata_loc), 1)) == 0) then
       print *, 'Percents completed: ', int(dble(i) / dble(ndata_loc) * 100.d0)
     endif
 
