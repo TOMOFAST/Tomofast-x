@@ -59,14 +59,19 @@ function test_grid_cell_order(par, grid) result(res)
   type(t_grid), intent(in) :: grid
   logical :: res
 
-  integer :: i, ind(4)
+  integer :: t, ind(4)
   integer :: i_res(4), j_res(4), k_res(4)
 
+  ! The very first voxel (expects: 1 1 1)
   ind(1) = 1
+  ! The immediate next voxel (expects: 2 1 1)
   ind(2) = 2
+  ! The immediate voxel after the X cycles once (expects: 1 2 1)
   ind(3) = par%nx + 1
+  !  The immediate voxel after both X and Y cycles once (expects: 1 1 2)
   ind(4) = par%nx * par%ny + 1
 
+  ! Expected results.
   i_res(1) = 1; j_res(1) = 1; k_res(1) = 1 ! 1 1 1
   i_res(2) = 2; j_res(2) = 1; k_res(2) = 1 ! 2 1 1
   i_res(3) = 1; j_res(3) = 2; k_res(3) = 1 ! 1 2 1
@@ -74,10 +79,16 @@ function test_grid_cell_order(par, grid) result(res)
 
   res = .true.
 
-  do i = 1, 4
-    if (grid%i_(ind(i)) /= i_res(i) .or. &
-        grid%j_(ind(i)) /= j_res(i) .or. &
-        grid%k_(ind(i)) /= k_res(i)) then
+  do t = 1, 4
+    ! Skip the test if the corresponding grid dimension is equal to 1, i.e., a 2D slice.
+    if (t == 2 .and. grid%nx == 1) cycle
+    if (t == 3 .and. grid%ny == 1) cycle
+    if (t == 4 .and. grid%nz == 1) cycle
+
+    ! Performing the test.
+    if (grid%i_(ind(t)) /= i_res(t) .or. &
+        grid%j_(ind(t)) /= j_res(t) .or. &
+        grid%k_(ind(t)) /= k_res(t)) then
       res = .false.
     endif
   enddo
