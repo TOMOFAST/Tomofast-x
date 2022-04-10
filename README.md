@@ -3,7 +3,7 @@
 Geophysical 3D potential field joint and constrained parallel inversion code.  
 Authors: Vitaliy Ogarko, Jeremie Giraud, Roland Martin.
 
-Tomofast-x is 3D parallel inversion platform to run single domain or joint inversion (gravity and magnetic data).
+Tomofast-x is a 3D parallel inversion platform to run single domain or joint inversion (gravity and magnetic data).
 It can use local weighting of gradient regularization function, global and local petrophysical constraints (Gaussian mixture model and multiple disjoint bound constraints).
 Tomofast-x can run in parallel on laptops and supercomputers, using distributed and shared memory systems.
 Tomofast-x supports the parallel wavelet compression of the sensitivity kernel for significant memory reduction and faster performance.
