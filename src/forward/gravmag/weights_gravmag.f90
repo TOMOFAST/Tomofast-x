@@ -143,12 +143,12 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   !--------------------------------------------------------------------------------
   ! Scale the sensitivity kernel with the cell volume.
   !--------------------------------------------------------------------------------
-!  do i = 1, par%nelements
-!      ! Full grid index.
-!      p = nsmaller + i
-!
-!      iarr%damping_weight(i) = iarr%damping_weight(i) * grid_full%get_cell_volume(p)
-!  enddo
+  do i = 1, par%nelements
+      ! Full grid index.
+      p = nsmaller + i
+
+      iarr%damping_weight(i) = iarr%damping_weight(i) * sqrt(grid_full%get_cell_volume(p))
+  enddo
 
   ! Normalize the depth weight.
   call normalize_depth_weight(iarr%damping_weight, myrank, nbproc)
