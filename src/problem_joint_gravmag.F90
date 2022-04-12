@@ -413,14 +413,16 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       enddo
 
       ! Write intermediate models to file.
-      if (ipar%write_model_niter > 0 .and. mod(it, ipar%write_model_niter) == 0) then
-        if (it < 10) then
-          filename = 'inter_it0'//trim(str(it))//'_'
-        else
-          filename = 'inter_it'//trim(str(it))//'_'
+      if (ipar%write_model_niter > 0) then
+        if (mod(it, ipar%write_model_niter) == 0) then
+          if (it < 10) then
+            filename = 'inter_it0'//trim(str(it))//'_'
+          else
+            filename = 'inter_it'//trim(str(it))//'_'
+          endif
+          if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_'//trim(filename), .false., myrank, nbproc)
+          if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_'//trim(filename), .false., myrank, nbproc)
         endif
-        if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_'//trim(filename), .false., myrank, nbproc)
-        if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_'//trim(filename), .false., myrank, nbproc)
       endif
 
       ! Calculate data based on the new model from inversion.
