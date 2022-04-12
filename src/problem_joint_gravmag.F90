@@ -67,7 +67,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   type(t_parameters_inversion), intent(inout) :: ipar
   integer, intent(in) :: myrank, nbproc
 
-  type(t_joint_inversion) :: joint_inversion
+  type(t_joint_inversion) :: jinv
   ! Data arrays for (1) gravity and (2) magnetism inversions.
   type(t_inversion_arrays) :: iarr(2)
   ! Data with its grid.
@@ -196,15 +196,15 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! SENSITIVITY KERNEL ALLOCATION ------------------------------------------------------------------------
 
   ! Allocate the sensitivity kernel.
-  call joint_inversion%initialize(ipar, nnz(1) + nnz(2), myrank)
+  call jinv%initialize(ipar, nnz(1) + nnz(2), myrank)
 
   ! READING THE SENSITIVITY KERNEL ----------------------------------------------------------------------
 
   ! Reading the sensitivity kernel and depth weight from files.
   if (SOLVE_PROBLEM(1)) &
-    call read_sensitivity_kernel(gpar, joint_inversion%matrix, iarr(1)%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
+    call read_sensitivity_kernel(gpar, jinv%matrix, iarr(1)%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) &
-    call read_sensitivity_kernel(mpar, joint_inversion%matrix, iarr(2)%column_weight, ipar%problem_weight(2), 2, myrank, nbproc)
+    call read_sensitivity_kernel(mpar, jinv%matrix, iarr(2)%column_weight, ipar%problem_weight(2), 2, myrank, nbproc)
 
   ! MODEL ALLOCATION -----------------------------------------------------------------------------------
 
@@ -247,12 +247,12 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   !-------------------------------------------------------------------------------------------------------
   ! Calculate parameters for calculating the data using the big (joint inversion) parallel sparse matrix.
-  call joint_inversion%calculate_matrix_partitioning(ipar, line_start, line_end, param_shift)
+  call jinv%calculate_matrix_partitioning(ipar, line_start, line_end, param_shift)
 
   !-------------------------------------------------------------------------------------------------------
   ! Calculate the data from the read model.
   do i = 1, 2
-    if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
+    if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
       ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
       line_start(i), line_end(i), param_shift(i), myrank, nbproc)
   enddo
@@ -301,7 +301,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       print *, '********************************************************************************'
     endif
 
-    if (m > 1) call joint_inversion%reset()
+    if (m > 1) call jinv%reset()
 
     ! SETTING PRIOR MODEL FOR INVERSION -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) &
@@ -323,7 +323,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the prior model.
     do i = 1, 2
-      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
+      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
         ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
         line_start(i), line_end(i), param_shift(i), myrank, nbproc)
     enddo
@@ -347,7 +347,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the starting model.
     do i = 1, 2
-      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
+      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
         ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
         line_start(i), line_end(i), param_shift(i), myrank, nbproc)
     enddo
@@ -363,7 +363,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) then
         call calculate_cost(data(i)%val_meas, data(i)%val_calc, cost_data(i), .false., nbproc)
-        if (myrank == 0) print *, 'cost =', cost_data(i)
+        if (myrank == 0) print *, 'data cost =', cost_data(i)
       endif
     enddo
 
@@ -397,10 +397,10 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       if (SOLVE_PROBLEM(2)) iarr(2)%residuals = data(2)%val_meas - data(2)%val_calc
 
       ! Resets the joint inversion.
-      if (it > 1) call joint_inversion%reset()
+      if (it > 1) call jinv%reset()
 
       ! Solve joint inverse problem.
-      call joint_inversion%solve(ipar, iarr, model, delta_model, myrank, nbproc)
+      call jinv%solve(ipar, iarr, model, delta_model, myrank, nbproc)
 
       ! Update the local models.
       if (SOLVE_PROBLEM(1)) call model(1)%update(delta_model(1:ipar%nelements))
@@ -412,8 +412,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
           call pt%get_full_array(model(i)%val, ipar%nelements, model(i)%val_full, .true., myrank, nbproc)
       enddo
 
+      ! Write intermediate models to file.
       if (ipar%write_model_niter > 0 .and. mod(it, ipar%write_model_niter) == 0) then
-      ! Write intermediate model to a file.
         if (it < 10) then
           filename = 'inter_it0'//trim(str(it))//'_'
         else
@@ -425,7 +425,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
       ! Calculate data based on the new model from inversion.
       do i = 1, 2
-        if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), joint_inversion%matrix, &
+        if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
           ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
           line_start(i), line_end(i), param_shift(i), myrank, nbproc)
       enddo
@@ -434,8 +434,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       ! Write costs (for the previous iteration).
       if (myrank == 0) then
         write(FILE_COSTS, *) it - 1, cost_data(1), cost_data(2), cost_model(1), cost_model(2), &
-                             joint_inversion%get_cross_grad_cost(), &
-                             joint_inversion%get_clustering_cost(1), joint_inversion%get_clustering_cost(2)
+                             jinv%get_admm_cost(), &
+                             jinv%get_cross_grad_cost(), &
+                             jinv%get_clustering_cost(1), jinv%get_clustering_cost(2)
         call flush(FILE_COSTS)
       endif
 #endif
@@ -444,7 +445,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) then
           call calculate_cost(data(i)%val_meas, data(i)%val_calc, cost_data(i), .false., nbproc)
-          if (myrank == 0) print *, 'cost =', cost_data(i)
+          if (myrank == 0) print *, 'data cost =', cost_data(i)
         endif
       enddo
 
@@ -454,7 +455,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     enddo ! Major inversion loop.
 
 #ifndef SUPPRESS_OUTPUT
-    ! Write final costs (excluding cross-gradient cost, as it is being calculated only during solution).
+    ! Write final costs.
     if (myrank == 0) write(FILE_COSTS, *) ipar%ninversions, cost_data(1), cost_data(2), cost_model(1), cost_model(2)
     if (myrank == 0) close(FILE_COSTS)
 #endif
@@ -482,22 +483,22 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 #endif
 
 #ifndef SUPPRESS_OUTPUT
-    if (joint_inversion%add_cross_grad) then
+    if (jinv%add_cross_grad) then
       ! Write final cross-gradient vector magnitude to a file.
-      model(1)%val_full = joint_inversion%get_cross_grad()
+      model(1)%val_full = jinv%get_cross_grad()
 
       call model_write(model(1), 'cross_grad_final_', .false., myrank, nbproc)
     endif
 #endif
 
 #ifndef SUPPRESS_OUTPUT
-    if (joint_inversion%add_clustering) then
+    if (jinv%add_clustering) then
       ! Write final clustering probabilities, i.e., P(m) per cell.
-      model(1)%val_full = joint_inversion%get_clustering()
+      model(1)%val_full = jinv%get_clustering()
 
       call model_write(model(1), 'clustering_final_', .false., myrank, nbproc)
 
-      call joint_inversion%clustering%write_data('clustering_data.txt', model(1)%grid_full, myrank)
+      call jinv%clustering%write_data('clustering_data.txt', model(1)%grid_full, myrank)
     endif
 #endif
 

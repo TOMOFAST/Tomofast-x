@@ -90,6 +90,9 @@ module joint_inverse_problem
     type(t_admm_method) :: admm_method_1
     type(t_admm_method) :: admm_method_2
 
+    ! The ADMM term cost.
+    real(kind=CUSTOM_REAL) :: admm_cost
+
     ! Clustering constraints.
     type(t_clustering), public :: clustering
 
@@ -106,6 +109,7 @@ module joint_inverse_problem
     procedure, public, pass :: get_clustering => joint_inversion_get_clustering
     procedure, public, pass :: get_cross_grad_cost => joint_inversion_get_cross_grad_cost
     procedure, public, pass :: get_clustering_cost => joint_inversion_get_clustering_cost
+    procedure, public, pass :: get_admm_cost => joint_inversion_get_admm_cost
 
     procedure, private, pass :: add_cross_grad_constraints => joint_inversion_add_cross_grad_constraints
     procedure, private, pass :: add_clustering_constraints => joint_inversion_add_clustering_constraints
@@ -179,6 +183,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
                                     par%nclusters, par%clustering_opt_type, par%clustering_constraints_type, myrank)
     call this%clustering%read_mixtures(par%mixture_file, par%cell_weights_file, myrank)
   endif
+
+  this%admm_cost = 0.d0
 
   !--------------------------------------------------------------------------------------
   ! Calculate number of matrix rows and (approx.) non-zero elements.
@@ -417,7 +423,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
     if (solve_gravity_only .or. solve_mag_only) then
     ! Add ADMM constraints only in separate (single) inversions.
 
-      ! Note: with wavelet compression we currently cannot have local weight in the model damping term.
+      ! Note: with wavelet compression we currently cannot have local weight in the damping term.
       this%weight_ADMM = 1.d0
 
       ! Use the L2 norm for the ADMM constraints.
@@ -429,10 +435,11 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, this%weight_ADMM, &
                        model(i)%val, this%x0_ADMM, param_shift(i), myrank, nbproc)
 
-      ! Calculate the ADMM cost.
+      ! Calculate the ADMM cost in parallel.
       call calculate_cost(model(i)%val, this%x0_ADMM, cost, .true., nbproc)
-      if (myrank == 0) print *, "ADMM |x - x0| / |x| =", sqrt(cost)
-      if (myrank == 0) print *, 'ADMM term cost = ', damping%get_cost()
+      this%admm_cost = sqrt(cost)
+
+      if (myrank == 0) print *, "ADMM cost |x - x0| / |x| =", this%admm_cost
       if (myrank == 0) print *, 'nel (with ADMM) = ', this%matrix%get_number_elements()
 
     else
@@ -746,6 +753,17 @@ pure function joint_inversion_get_clustering_cost(this, problem_type) result(res
   endif
 
 end function joint_inversion_get_clustering_cost
+
+!==================================================================================================
+! Returns the ADMM cost.
+!==================================================================================================
+pure function joint_inversion_get_admm_cost(this) result(res)
+  class(t_joint_inversion), intent(in) :: this
+  real(kind=CUSTOM_REAL) :: res
+
+  res = this%admm_cost
+
+end function joint_inversion_get_admm_cost
 
 !==================================================================================================
 ! Calculates the matrix pertitioning.
