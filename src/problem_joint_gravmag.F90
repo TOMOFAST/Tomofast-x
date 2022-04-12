@@ -212,6 +212,15 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call model(1)%initialize(ipar%nelements, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call model(2)%initialize(ipar%nelements, myrank, nbproc)
 
+  !-----------------------------------------------------------------------------------------------------
+  ! Writing the column weight for Paraview visualisation.
+  do i = 1, 2
+    if (SOLVE_PROBLEM(i)) then
+      model(i)%val = iarr(i)%column_weight
+      call model_write(model(i), 'grav_weight_', .true., myrank, nbproc)
+    endif
+  enddo
+
   ! READING THE READ MODEL (SYNTHETIC) -----------------------------------------------------------------
 
   ! Reading the read model - that is stored in the model grid file.
