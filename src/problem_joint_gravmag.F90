@@ -217,7 +217,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) then
       model(i)%val = iarr(i)%column_weight
-      call model_write(model(i), 'grav_weight_', .true., myrank, nbproc)
+      call model_write(model(i), merge('grav_weight_', 'magn_weight_', i == 1), .true., myrank, nbproc)
     endif
   enddo
 
