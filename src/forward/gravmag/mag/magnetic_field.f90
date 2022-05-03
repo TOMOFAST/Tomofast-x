@@ -281,25 +281,25 @@ subroutine sharmbox(y0, x0, z0, y1, x1, z1, y2, x2, z2, ts_y, ts_x, ts_z)
 
     ! Checking if point is inside the voxel.
     ! If so, use poisson's relation.
-    if (x0 > min(x1,x2) .and. x0 < max(x1,x2)) then
-        if (y0 > min(y1,y2) .and. y0 < max(y1,y2)) then
-            if (-z0 > min(-z1,-z2) .and. -z0 < max(-z1,-z2)) then
+    if (x0 >= x1 .and. x0 <= x2) then
+        if (y0 >= y1 .and. y0 <= y2) then
+            if (z0 >= z1 .and. z0 <= z2) then
                 l_inside = .true.
-            end if
-        end if
-    end if
+            endif
+        endif
+    endif
 
     ! Filling the rest of the tensor.
     ! ts_zz
     if (l_inside) then
         print *, "Observation point inside target voxel!"
-        print *, "obs:", x0,y0,z0
-        print *, "voxel:", x1, x2, y1, y2, z1, z2
+        print *, "Obs: ", x0, y0, z0
+        print *, "Voxel: ", x1, x2, y1, y2, z1, z2
 
         ts_z(3) = -1 * (ts_x(1) + ts_y(2) + four_pi) ! poisson
     else
         ts_z(3) = -1 * (ts_x(1) + ts_y(2)) ! gauss
-    end if
+    endif
 
     ! ts_zy
     ts_z(2) = ts_y(3)
