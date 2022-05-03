@@ -15,7 +15,7 @@
 !===========================================================================================
 ! A class for adding the ADMM method constraints.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !===========================================================================================
 module admm_method
 
@@ -30,8 +30,6 @@ module admm_method
     private
 
     integer :: nelements
-    ! Current iteration number.
-    integer :: iter
 
     real(kind=CUSTOM_REAL), allocatable :: z(:)
     real(kind=CUSTOM_REAL), allocatable :: u(:)
@@ -57,10 +55,10 @@ subroutine admm_method_initialize(this, nelements, myrank)
   integer :: ierr
 
   this%nelements = nelements
-  this%iter = 0
 
   ierr = 0
 
+  ! Set initial values for u[0] and z[0] to zero.
   if (.not. allocated(this%z)) &
     allocate(this%z(nelements), source=0._CUSTOM_REAL, stat=ierr)
 
@@ -80,73 +78,63 @@ subroutine admm_method_iterate_admm_arrays(this, nlithos, xmin, xmax, x, x0, myr
   real(kind=CUSTOM_REAL), intent(in) :: xmin(:, :), xmax(:, :)
   real(kind=CUSTOM_REAL), intent(in) :: x(:)
   integer, intent(in) :: myrank
+
   real(kind=CUSTOM_REAL), intent(out) :: x0(:)
 
   real(kind=CUSTOM_REAL) :: arg, mindist, val, closest_boundary
   integer :: i, j
   logical :: inside
 
-  this%iter = this%iter + 1
+  if (myrank == 0) print *, 'Calculating the ADMM arrays.'
 
-  if (myrank == 0) print *, 'Calculating ADMM arrays, iter =', this%iter
+  ! Calculate z[k + 1] = Pc(x[k + 1] + u[k]).
+  do i = 1, this%nelements
 
-  if (this%iter == 1) then
-  ! k = 0.
-    ! Set initial values for u[0] and z[0].
-    this%u = 0.d0
-    this%z = 0.d0
+    ! Calculate the indicator function.
+    arg = x(i) + this%u(i)
 
-  else
-  ! k > 0.
-    ! Calculate z[k + 1] = Pc(x[k + 1] + u[k]).
-    do i = 1, this%nelements
+    !if (arg < xmin(i)) then
+    !  this%z(i) = xmin(i)
+    !
+    !else if (arg > xmax(i)) then
+    !  this%z(i) = xmax(i)
+    !
+    !else
+    !  this%z(i) = arg
+    !endif
 
-      ! Calculate the indicator function.
-      arg = x(i) + this%u(i)
-
-      !if (arg < xmin(i)) then
-      !  this%z(i) = xmin(i)
-      !
-      !else if (arg > xmax(i)) then
-      !  this%z(i) = xmax(i)
-      !
-      !else
-      !  this%z(i) = arg
-      !endif
-      
-      inside = .false.
-      do j = 1, nlithos
-        ! Check if the value lies inside the bounds.
-        if (xmin(i, j) <= arg .and. arg <= xmax(i, j)) then
-          inside = .true.
-          this%z(i) = arg
-          exit
-        endif
-      enddo
-      if (.not. inside) then
-        ! The value lies outside boundaries, so finding the closest boundary.
-        mindist = 1.d30
-        do j = 1, nlithos
-          val = dabs(xmin(i, j) - arg)
-          if (val < mindist) then
-            mindist = val
-            closest_boundary = xmin(i, j)
-          endif
-          
-          val = dabs(xmax(i, j) - arg)
-          if (val < mindist) then
-            mindist = val
-            closest_boundary = xmax(i, j)
-          endif
-        enddo
-        this%z(i) = closest_boundary
+    inside = .false.
+    do j = 1, nlithos
+      ! Check if the value lies inside the bounds.
+      if (xmin(i, j) <= arg .and. arg <= xmax(i, j)) then
+        inside = .true.
+        this%z(i) = arg
+        exit
       endif
     enddo
 
-    ! Calculate u[k + 1] = u[k] + x[k + 1] - z[k + 1].
-    this%u = this%u + x - this%z
+    if (.not. inside) then
+    ! The value lies outside boundaries, so finding the closest boundary.
+      mindist = 1.d30
+      do j = 1, nlithos
+        val = dabs(xmin(i, j) - arg)
+        if (val < mindist) then
+          mindist = val
+          closest_boundary = xmin(i, j)
+        endif
 
-  endif
+        val = dabs(xmax(i, j) - arg)
+        if (val < mindist) then
+          mindist = val
+          closest_boundary = xmax(i, j)
+        endif
+      enddo
+      this%z(i) = closest_boundary
+    endif
+  enddo
+
+  ! Calculate u[k + 1] = u[k] + x[k + 1] - z[k + 1].
+  this%u = this%u + x - this%z
 
   x0 = this%z - this%u
 
