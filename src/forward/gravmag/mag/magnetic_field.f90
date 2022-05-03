@@ -175,7 +175,7 @@ subroutine sharmbox(y0, x0, z0, y1, x1, z1, y2, x2, z2, ts_y, ts_x, ts_z)
     real(kind=SENSIT_REAL) :: rx1sq, rx2sq, ry1sq, ry2sq, rz1sq, rz2sq
     real(kind=SENSIT_REAL) :: arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8
     real(kind=SENSIT_REAL) :: R1, R2, R3, R4
-    real(kind=SENSIT_REAL) :: dx, dy, dz, eps
+    real(kind=SENSIT_REAL) :: eps
     real(kind=SENSIT_REAL) :: four_pi
     logical :: l_inside
 
@@ -281,9 +281,6 @@ subroutine sharmbox(y0, x0, z0, y1, x1, z1, y2, x2, z2, ts_y, ts_x, ts_z)
 
     ! Checking if point is inside the voxel.
     ! If so, use poisson's relation.
-    dx = x2 - x1
-    dy = y2 - y1
-    dz = z2 - z1
     if (x0 > min(x1,x2) .and. x0 < max(x1,x2)) then
         if (y0 > min(y1,y2) .and. y0 < max(y1,y2)) then
             if (-z0 > min(-z1,-z2) .and. -z0 < max(-z1,-z2)) then
