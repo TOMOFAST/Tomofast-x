@@ -328,6 +328,15 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                        1, nx, 1, ny, 1, nz, &
                                        .true.)
 
+  ! Write the full model using structured grid.
+  filename = trim(name_prefix)//"model3D_full_sg.vtk"
+  call visualisation_paraview_struct_grid(filename, myrank, model%nelements_total, model%val_full, &
+                                       model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
+                                       model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
+                                       model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
+                                       1, nx, 1, ny, 1, nz, &
+                                       .true.)
+
   ! Write the x-profile of the model.
   filename = trim(name_prefix)//"model3D_half_x.vtk"
   call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val_full, &

@@ -29,6 +29,7 @@ module paraview
 
   public :: visualisation_paraview
   public :: visualisation_paraview_legogrid
+  public :: visualisation_paraview_struct_grid
 
   private :: index_included
 
@@ -58,7 +59,123 @@ end function index_included
 
 !============================================================================================================
 ! This subroutine writes the file in (legacy) VTK format used for Paraview visualization.
-! An arbitrary lego grid is considered.
+! A slice of the full model can be specified via i1, i2, j1, j2, k1, k2 grid indexes.
+! The Paraview structured grid datastructure is used, which allows additional analysis in Paraview (like contours).
+!============================================================================================================
+subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, X1, Y1, Z1, X2, Y2, Z2, &
+                                           i_index, j_index, k_index, &
+                                           i1, i2, j1, j2, k1, k2, &
+                                           INVERT_Z_AXIS)
+  ! MPI rank of this process.
+  integer, intent(in) :: myrank
+  ! Total number of cells.
+  integer, intent(in) :: nelements
+  ! Values for visualization.
+  real(kind=CUSTOM_REAL), intent(in) :: val(:)
+  ! Coordinates of points in the grid.
+  real(kind=CUSTOM_REAL), intent(in) :: X1(:), Y1(:), Z1(:)
+  real(kind=CUSTOM_REAL), intent(in) :: X2(:), Y2(:), Z2(:)
+  integer, intent(in) :: i_index(:), j_index(:), k_index(:)
+  integer, intent(in) :: i1, i2, j1, j2, k1, k2
+  logical, intent(in) :: INVERT_Z_AXIS
+  ! Output file name.
+  character(len=*), intent(in) :: filename
+
+  character(len=256) :: filename_full
+  character(len=256) :: msg
+  ! I/O error code.
+  integer :: ierr
+  integer :: npoints, nelements_slice
+  integer :: i, j, p
+
+  real(kind=4), allocatable :: cell_centers(:, :)
+  real(kind=4), allocatable :: cell_data(:)
+
+  character :: lf*1, str1*8, str2*8, str3*8
+  ! Line feed character.
+  lf = char(10)
+
+  ! Create a file.
+  call system('mkdir -p '//trim(path_output)//"/Paraview/")
+
+  filename_full = trim(path_output)//"/Paraview/"//filename
+
+  open(unit=333, file=filename_full, status='replace', access='stream', form='unformatted', &
+       iostat=ierr, iomsg=msg)
+
+  if (ierr /= 0) call exit_MPI("Error with writing the VTK file! path="&
+                               //trim(filename_full)//", iomsg="//msg, myrank, ierr)
+
+  ! ************* generate points ******************
+
+  write(333) '# vtk DataFile Version 3.0'//lf
+  write(333) 'Tomofast-x'//lf
+  write(333) 'BINARY'//lf
+  write(333) 'DATASET STRUCTURED_GRID'//lf
+
+  write(str1(1:8),'(i8)') (i2 - i1 + 1)
+  write(str2(1:8),'(i8)') (j2 - j1 + 1)
+  write(str3(1:8),'(i8)') (k2 - k1 + 1)
+
+  write(333) 'DIMENSIONS '//str1//' '//str2//' '//str3//lf
+
+  ! Number of elements in the requested slice.
+  nelements_slice = (i2 - i1 + 1) * (j2 - j1 + 1) * (k2 - k1 + 1)
+
+  npoints = nelements_slice
+
+  write(str1(1:8),'(i8)') npoints
+  write(333) lf//lf//'POINTS '//str1//' FLOAT'//lf
+
+  ! Allocate memory.
+  allocate(cell_centers(3, nelements_slice), stat=ierr)
+  allocate(cell_data(nelements_slice), stat=ierr)
+
+  !-------------------------------------------------------------------
+  ! Build the grid.
+  !-------------------------------------------------------------------
+  j = 0
+  do p = 1, nelements
+    if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
+      j = j + 1
+
+      cell_centers(1, j) = 0.5 * (X1(p) + X2(p))
+      cell_centers(2, j) = 0.5 * (Y1(p) + Y2(p))
+      cell_centers(3, j) = 0.5 * (Z1(p) + Z2(p))
+
+      cell_data(j) = real(val(p), 4)
+    endif
+  enddo
+
+  if (INVERT_Z_AXIS) then
+    cell_centers(3, :) = - cell_centers(3, :)
+  endif
+
+  ! Write the grid to a file.
+  write(333) ((cell_centers(i, j), i = 1, 3), j = 1, nelements_slice)
+
+  !-------------------------------------------------------------------
+  ! Generate element data values.
+  !-------------------------------------------------------------------
+  write(str1(1:8),'(i8)') nelements_slice
+
+  write(333) lf//lf//'POINT_DATA '//str1//lf
+  write(333) 'SCALARS F FLOAT'//lf
+  write(333) 'LOOKUP_TABLE default'//lf
+
+  write(333) (cell_data(p), p = 1, nelements_slice)
+
+  close(333)
+
+  deallocate(cell_centers)
+  deallocate(cell_data)
+
+end subroutine visualisation_paraview_struct_grid
+
+!============================================================================================================
+! This subroutine writes the file in (legacy) VTK format used for Paraview visualization.
+! A slice of the full model can be specified via i1, i2, j1, j2, k1, k2 grid indexes.
+! An arbitrary "lego" grid is considered.
 !
 ! VO: Converted the ASCII version to binary using logics of the code of Renato N. Elias:
 !     http://www.nacad.ufrj.br/~rnelias/paraview/VTKFormats.f90
