@@ -403,6 +403,18 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ipar%column_weight_multiplier(1) = 4.d+3
   ipar%column_weight_multiplier(2) = 1.d0
 
+  ! ADMM constraints.
+  ipar%admm_type = 0 ! 0-no admm, 1-enable admm
+  ipar%nlithos = 5
+  ipar%bounds_ADMM_file(1) = "NILL"
+  ipar%bounds_ADMM_file(2) = "NILL"
+  ipar%rho_ADMM(1) = 1.d-7
+  ipar%rho_ADMM(2) = 1.d+5
+
+  ipar%data_cost_threshold_ADMM = 1.e-4
+  ipar%weight_multiplier_ADMM = 1.d0
+  ipar%max_weight_ADMM = 1.e+10
+
   ! DAMPING-GRADIENT constraints.
   ipar%damp_grad_weight_type = 1 ! 1-global, 2-local
   ipar%beta(1) = 0.d0
@@ -421,14 +433,6 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ipar%cell_weights_file = "NILL"
   ipar%clustering_opt_type = 2 ! 1-normal, 2-log
   ipar%clustering_constraints_type = 2 ! 1-global, 2-local
-
-  ! ADMM constraints.
-  ipar%admm_type = 0 ! 0-no admm, 1-enable admm
-  ipar%nlithos = 5
-  ipar%bounds_ADMM_file(1) = "NILL"
-  ipar%bounds_ADMM_file(2) = "NILL"
-  ipar%rho_ADMM(1) = 1.d-7
-  ipar%rho_ADMM(2) = 1.d+5
 
   !***********************************************
   ! ECT parameters:
@@ -867,6 +871,45 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
         read(10, 1) ipar%column_weight_multiplier(2)
         call print_arg(myrank, parname, ipar%column_weight_multiplier(2))
 
+      ! ADMM constraints --------------------------------------------
+
+      case("inversion.admm.enableADMM")
+        read(10, 2) ipar%admm_type
+        call print_arg(myrank, parname, ipar%admm_type)
+
+      case("inversion.admm.nLithologies")
+        read(10, 2) ipar%nlithos
+        call print_arg(myrank, parname, ipar%nlithos)
+
+      case("inversion.admm.grav.boundsFile")
+        call read_filename(10, ipar%bounds_ADMM_file(1))
+        call print_arg(myrank, parname, ipar%bounds_ADMM_file(1))
+
+      case("inversion.admm.magn.boundsFile")
+        call read_filename(10, ipar%bounds_ADMM_file(2))
+        call print_arg(myrank, parname, ipar%bounds_ADMM_file(2))
+
+      case("inversion.admm.grav.weight")
+        read(10, 1) ipar%rho_ADMM(1)
+        call print_arg(myrank, parname, ipar%rho_ADMM(1))
+
+      case("inversion.admm.magn.weight")
+        read(10, 1) ipar%rho_ADMM(2)
+        call print_arg(myrank, parname, ipar%rho_ADMM(2))
+
+      case("inversion.admm.dataCostThreshold")
+        read(10, 1) ipar%data_cost_threshold_ADMM
+        call print_arg(myrank, parname, ipar%data_cost_threshold_ADMM)
+
+      case("inversion.admm.weightMultiplier")
+        read(10, 1) ipar%weight_multiplier_ADMM
+        call print_arg(myrank, parname, ipar%weight_multiplier_ADMM)
+
+      case("inversion.admm.maxWeight")
+        read(10, 1) ipar%max_weight_ADMM
+        call print_arg(myrank, parname, ipar%max_weight_ADMM)
+
+
       ! DAMPING-GRADIENT constraints -------------------------------
 
       case("inversion.dampingGradient.weightType")
@@ -924,32 +967,6 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
       case("inversion.clustering.constraintsType")
         read(10, 2) ipar%clustering_constraints_type
         call print_arg(myrank, parname, ipar%clustering_constraints_type)
-
-      ! ADMM constraints --------------------------------------------
-
-      case("inversion.admm.enableADMM")
-        read(10, 2) ipar%admm_type
-        call print_arg(myrank, parname, ipar%admm_type)
-
-      case("inversion.admm.nLithologies")
-        read(10, 2) ipar%nlithos
-        call print_arg(myrank, parname, ipar%nlithos)
-
-      case("inversion.admm.grav.boundsFile")
-        call read_filename(10, ipar%bounds_ADMM_file(1))
-        call print_arg(myrank, parname, ipar%bounds_ADMM_file(1))
-
-      case("inversion.admm.magn.boundsFile")
-        call read_filename(10, ipar%bounds_ADMM_file(2))
-        call print_arg(myrank, parname, ipar%bounds_ADMM_file(2))
-
-      case("inversion.admm.grav.weight")
-        read(10, 1) ipar%rho_ADMM(1)
-        call print_arg(myrank, parname, ipar%rho_ADMM(1))
-
-      case("inversion.admm.magn.weight")
-        read(10, 1) ipar%rho_ADMM(2)
-        call print_arg(myrank, parname, ipar%rho_ADMM(2))
 
       case default
         read(10, 3, iostat=ios) line

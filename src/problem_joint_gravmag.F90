@@ -55,6 +55,7 @@ module problem_joint_gravmag
 
   private :: calculate_model_costs
   private :: set_model
+  private :: adjust_admm_weight
 
 contains
 
@@ -454,6 +455,11 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       ! Calculate new costs for the models (damping term in the cost function).
       call calculate_model_costs(ipar, iarr, model, cost_model, SOLVE_PROBLEM, myrank, nbproc)
 
+      ! Adjust the ADMM weight dynamically.
+      if (ipar%admm_type > 0) then
+        call adjust_admm_weight(ipar, SOLVE_PROBLEM, cost_data, myrank)
+      endif
+
     enddo ! Major inversion loop.
 
 #ifndef SUPPRESS_OUTPUT
@@ -512,6 +518,31 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   deallocate(delta_model)
 
 end subroutine solve_problem_joint_gravmag
+
+!==============================================================================================
+! Adjusts the ADMM weight dynamically.
+!==============================================================================================
+subroutine adjust_admm_weight(ipar, SOLVE_PROBLEM, cost_data, myrank)
+  type(t_parameters_inversion), intent(inout) :: ipar
+  logical, intent(in) :: SOLVE_PROBLEM(2)
+  real(kind=CUSTOM_REAL), intent(in) :: cost_data(2)
+  integer, intent(in) :: myrank
+
+  integer :: i
+
+  do i = 1, 2
+    if (SOLVE_PROBLEM(i)) then
+      if (cost_data(i) < ipar%data_cost_threshold_ADMM &
+          .and. ipar%rho_ADMM(i) < ipar%max_weight_ADMM &
+          .and. ipar%weight_multiplier_ADMM /= 1.d0) then
+        ! Adjust the weight.
+        ipar%rho_ADMM(i) = ipar%weight_multiplier_ADMM * ipar%rho_ADMM(i)
+        if (myrank == 0) print *, 'Increased the ADMM weight to:', ipar%rho_ADMM(i)
+      endif
+    endif
+  enddo
+
+end subroutine adjust_admm_weight
 
 !==============================================================================================
 ! Computes and prints norm Lp of the difference between inverted and prior models.

@@ -15,7 +15,7 @@
 !==========================================================================================
 ! A class that stores input parameters needed for inversion.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !==========================================================================================
 module parameters_inversion
 
@@ -111,6 +111,11 @@ module parameters_inversion
     character(len=256) :: bounds_ADMM_file(2)
     real(kind=CUSTOM_REAL) :: rho_ADMM(2)
 
+    ! ADMM parameters for dynamic weight adjustment.
+    real(kind=CUSTOM_REAL) :: data_cost_threshold_ADMM
+    real(kind=CUSTOM_REAL) :: weight_multiplier_ADMM
+    real(kind=CUSTOM_REAL) :: max_weight_ADMM
+
   contains
     private
 
@@ -151,19 +156,27 @@ subroutine parameters_inversion_broadcast(this, myrank)
   call MPI_Bcast(this%problem_weight, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%column_weight_multiplier, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
+  ! Cross-gradient parameters.
   call MPI_Bcast(this%cross_grad_weight, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%method_of_weights_niter, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%derivative_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
+  ! Clustering parameters.
   call MPI_Bcast(this%clustering_weight_glob, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%nclusters, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%clustering_opt_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%clustering_constraints_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
+  ! ADMM parameters.
   call MPI_Bcast(this%admm_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%nlithos, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%bounds_ADMM_file, 512, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%rho_ADMM, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
+  ! ADMM parameters (for dynamic weight adjustment).
+  call MPI_Bcast(this%data_cost_threshold_ADMM, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%weight_multiplier_ADMM, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%max_weight_ADMM, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("MPI_Bcast error in parameters_inversion_broadcast!", myrank, ierr)
 
