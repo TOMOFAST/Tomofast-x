@@ -130,15 +130,16 @@ subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, s
                            real(grid%X2(i), SENSIT_REAL), &
                            real(grid%Y2(i), SENSIT_REAL), &
                            real(grid%Z2(i), SENSIT_REAL), &
-                           tx, ty, tz)
+                           ty, tx, tz)
 
         mx = sum(tx * this%magv)
         my = sum(ty * this%magv)
         mz = sum(tz * this%magv)
 
-        sensit_line(i) = my * this%magv(1) + mx * this%magv(2) + mz * this%magv(3)
+        sensit_line(i) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
     enddo
 
+    ! Convert to SI.
     weight = this%intensity / (4.d0 * PI)
     sensit_line = weight * sensit_line
 
