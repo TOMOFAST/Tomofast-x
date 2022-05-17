@@ -139,9 +139,9 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
     if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
       j = j + 1
 
-      cell_centers(1, j) = 0.5 * (X1(p) + X2(p))
-      cell_centers(2, j) = 0.5 * (Y1(p) + Y2(p))
-      cell_centers(3, j) = 0.5 * (Z1(p) + Z2(p))
+      cell_centers(1, j) = real(0.5 * (X1(p) + X2(p)))
+      cell_centers(2, j) = real(0.5 * (Y1(p) + Y2(p)))
+      cell_centers(3, j) = real(0.5 * (Z1(p) + Z2(p)))
 
       cell_data(j) = real(val(p), 4)
     endif
