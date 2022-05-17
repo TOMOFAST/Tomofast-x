@@ -1,0 +1,92 @@
+==================================================================================
+GLOBAL
+==================================================================================
+global.outputFolderPath         = ./output/magbubble_slice
+global.description              = Magnetic data (ASVI), a slice with topography, using dynamic ADMM bounds
+
+==================================================================================
+MODEL GRID parameters
+==================================================================================
+# nx ny nz
+modelGrid.size                        = 10 116 150
+modelGrid.magn.file                   = data/gravmag/magbubble_slice/meshgrid.txt
+
+==================================================================================
+DATA parameters
+==================================================================================
+forward.data.magn.nData                = 1160
+forward.data.magn.dataGridFile         = data/gravmag/magbubble_slice/mag.obs
+forward.data.magn.dataValuesFile       = data/gravmag/magbubble_slice/mag.obs
+
+==================================================================================
+MAGNETIC FIELD constants
+==================================================================================
+forward.magneticField.inclination              = 90.0
+forward.magneticField.declination              = 0.0
+forward.magneticField.intensity_nT             = 53829.
+forward.magneticField.XaxisDeclination         = 0.d0
+
+==================================================================================
+DEPTH WEIGHTING
+==================================================================================
+# 1-depth weight, 2-distance weight.
+forward.depthWeighting.type                    = 2
+
+==================================================================================
+SENSITIVITY KERNEL
+==================================================================================
+# 0-calculate the sensitivity, 1-read from files at the specified folder.
+sensit.readFromFiles                  = 0
+sensit.folderPath                     = ./SENSIT/
+
+==================================================================================
+MATRIX COMPRESSION
+==================================================================================
+# 0-none, 1-wavelet compression.
+forward.matrixCompression.type                        = 1
+# The minimum compressed sensitivity absolute value.
+forward.matrixCompression.rate                        = 0.03
+
+==================================================================================
+PRIOR MODEL
+==================================================================================
+# 1-set value, 2-read from file.
+inversion.priorModel.type                  = 1
+inversion.priorModel.magn.value            = 0.000000
+
+==================================================================================
+STARTING MODEL
+==================================================================================
+# 1-set value, 2-read from file.
+inversion.startingModel.type               = 1
+inversion.startingModel.magn.value         = 1.e-9
+
+==================================================================================
+INVERSION parameters
+==================================================================================
+inversion.nMajorIterations              = 50
+inversion.nMinorIterations              = 100
+
+==================================================================================
+MODEL DAMPING (m - m_prior)
+==================================================================================
+inversion.modelDamping.magn.weight      = 0.0
+
+==================================================================================
+JOINT INVERSION parameters
+==================================================================================
+inversion.joint.grav.problemWeight      = 0.00000000
+inversion.joint.magn.problemWeight      = 1.00000000
+
+==================================================================================
+DISJOINT INTERVAL BOUND constraints (ADMM)
+==================================================================================
+inversion.admm.enableADMM               = 1
+inversion.admm.nLithologies             = 1
+inversion.admm.magn.boundsFile          = data/gravmag/magbubble_slice/magbounds.txt
+inversion.admm.magn.weight              = 100.
+
+inversion.admm.dataCostThreshold        = 1.e-4
+inversion.admm.weightMultiplier         = 2.0
+inversion.admm.maxWeight                = 1.e+10
+
