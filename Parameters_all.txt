@@ -35,8 +35,8 @@ forward.data.magn.dataValuesFile    = None
 ===================================================================================
 MAGNETIC FIELD constants
 ===================================================================================
-forward.magneticField.inclination          = 75.d0
-forward.magneticField.declination          = 25.d0
+forward.magneticField.inclination          = 90.d0
+forward.magneticField.declination          = 0.d0
 forward.magneticField.intensity_nT         = 50000.d0
 forward.magneticField.XaxisDeclination     = 0.d0
 

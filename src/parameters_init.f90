@@ -341,8 +341,8 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   mpar%data_file = "NILL"
 
   ! MAGNETIC FIELD constants.
-  mpar%mi = 75.d0
-  mpar%md = 25.d0
+  mpar%mi = 90.d0
+  mpar%md = 0.d0
   mpar%intensity = 50000.d0
   mpar%theta = 0.d0
 
