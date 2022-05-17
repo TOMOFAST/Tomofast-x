@@ -374,7 +374,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 #ifndef SUPPRESS_OUTPUT
     ! Stores costs.
     if (myrank == 0) &
-      open(FILE_COSTS, file=trim(path_output)//'costs', access='stream', form='formatted', status='unknown', action='write')
+      open(FILE_COSTS, file=trim(path_output)//'/costs.txt', access='stream', form='formatted', status='unknown', action='write')
 #endif
 
     ! Major inversion loop.
