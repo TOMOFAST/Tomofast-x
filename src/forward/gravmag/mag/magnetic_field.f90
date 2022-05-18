@@ -61,9 +61,14 @@ subroutine magnetic_field_initialize(this, mi, md, theta, intensity)
     double precision, intent(in) :: mi, md, theta, intensity
 
     double precision :: ma, mb, mc
+    double precision :: mi_, md_
+
+    ! HARDCODED FOR THE SINGLE CELL TEST!
+    mi_ = -60.d0
+    md_ = 10.d0
 
     this%intensity = intensity
-    call this%dircos(mi, md, theta, ma, mb, mc)
+    call this%dircos(mi_, md_, theta, ma, mb, mc)
 
     this%magv = (/ ma, mb, mc /)
 
@@ -110,38 +115,90 @@ subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, s
 
     real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(:)
 
-    integer :: i
+    integer :: i, k
     real(kind=SENSIT_REAL) :: tx(3), ty(3), tz(3)
     double precision :: mx, my, mz
     double precision :: weight
 
-    do i = 1, nelements
+    real(kind=CUSTOM_REAL)      :: Xdata_, Ydata_, Zdata_
+    real(kind=CUSTOM_REAL)      :: X1, X2, Y1, Y2, Z1, Z2
+    real(kind=CUSTOM_REAL)      :: sensit_line_xyz(3)
+    real(kind=CUSTOM_REAL)      :: Magnet(3)
+    real(kind=CUSTOM_REAL)      :: d_TMI
+
+    ! Define the cell dimensions.
+    X1 = -50.d0
+    X2 = 50.d0
+
+    Y1 = 2350.d0
+    Y2 = 2450.d0
+
+    Z1 = 100.d0
+    Z2 = 200.d0
+
+    ! Cell magnetisation (Mx, My, Mz).
+    Magnet(1) = -295.4423d0
+    Magnet(2) = -52.09d0
+    Magnet(3) = 519.615d0
+
+    ! Define the data position.
+
+    ! Expected TMI = -21.96
+    Xdata_ = 0.d0
+    Ydata_ = 2450.d0
+    Zdata_ = 0.d0
+
+    ! Expected TMI = 3.23
+    Xdata_ = 0.d0
+    Ydata_ = 2300.d0
+    Zdata_ = 0.d0
+
+    ! Expected TMI = -1.33
+    Xdata_ = 0.d0
+    Ydata_ = 2700.d0
+    Zdata_ = 0.d0
+
+    !do i = 1, nelements
 !        call this%sharmbox(Xdata, Ydata, Zdata, &
 !                           grid%X1(i), grid%Y1(i), grid%Z1(i), &
 !                           grid%X2(i), grid%Y2(i), grid%Z2(i), &
 !                           tx, ty, tz)
 
-        call this%sharmbox(real(Xdata, SENSIT_REAL), &
-                           real(Ydata, SENSIT_REAL), &
-                           real(Zdata, SENSIT_REAL), &
-                           real(grid%X1(i), SENSIT_REAL), &
-                           real(grid%Y1(i), SENSIT_REAL), &
-                           real(grid%Z1(i), SENSIT_REAL), &
-                           real(grid%X2(i), SENSIT_REAL), &
-                           real(grid%Y2(i), SENSIT_REAL), &
-                           real(grid%Z2(i), SENSIT_REAL), &
+        call this%sharmbox(real(Xdata_, SENSIT_REAL), &
+                           real(Ydata_, SENSIT_REAL), &
+                           real(Zdata_, SENSIT_REAL), &
+                           real(X1, SENSIT_REAL), &
+                           real(Y1, SENSIT_REAL), &
+                           real(Z1, SENSIT_REAL), &
+                           real(X2, SENSIT_REAL), &
+                           real(Y2, SENSIT_REAL), &
+                           real(Z2, SENSIT_REAL), &
                            ty, tx, tz)
 
-        mx = sum(tx * this%magv)
-        my = sum(ty * this%magv)
-        mz = sum(tz * this%magv)
+        !mx = sum(tx * this%magv)
+        !my = sum(ty * this%magv)
+        !mz = sum(tz * this%magv)
 
-        sensit_line(i) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
-    enddo
+        !sensit_line(i) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
+
+        do k = 1, 3
+          sensit_line_xyz(k) = tx(k) * this%magv(1) + ty(k) * this%magv(2) + tz(k) * this%magv(3)
+        enddo
+
+        ! Calculate the TMI data.
+        d_TMI = sum(sensit_line_xyz * Magnet)
+
+        ! Convert to SI.
+        d_TMI = d_TMI / (4.d0 * PI)
+
+        print *, 'd_TMI =', d_TMI
+
+        stop
+    !enddo
 
     ! Convert to SI.
-    weight = this%intensity / (4.d0 * PI)
-    sensit_line = weight * sensit_line
+    !weight = this%intensity / (4.d0 * PI)
+    !sensit_line = weight * sensit_line
 
 end subroutine magnetic_field_magprism
 

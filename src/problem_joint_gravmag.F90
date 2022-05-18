@@ -144,8 +144,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   !-------------------------------------------------------------------------------------------------------
   if (gpar%sensit_read == 0) then
     ! Calculates the depth weights.
-    if (SOLVE_PROBLEM(1)) call calculate_depth_weight(gpar, iarr(1), model(1)%grid_full, data(1), myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call calculate_depth_weight(mpar, iarr(2), model(2)%grid_full, data(2), myrank, nbproc)
+    !if (SOLVE_PROBLEM(1)) call calculate_depth_weight(gpar, iarr(1), model(1)%grid_full, data(1), myrank, nbproc)
+    !if (SOLVE_PROBLEM(2)) call calculate_depth_weight(mpar, iarr(2), model(2)%grid_full, data(2), myrank, nbproc)
 
     ! Precondition the column weights (to balance the columns in joint inversion).
     if (SOLVE_PROBLEM(1)) iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight
