@@ -55,10 +55,6 @@ module global_typedefs
   ! Tolerance for comparing real numbers in unit tests.
   real(kind=CUSTOM_REAL), parameter :: tol = merge(1.e-12_CUSTOM_REAL, 1.e-6_CUSTOM_REAL, MATRIX_PRECISION == SIZE_DOUBLE)
 
-  ! Type of norm used for convergence control.
-  integer, parameter :: NORM_L2 = 1
-  integer, parameter :: NORM_MAX = 2
-
   ! To have arrays of pointers (which are not directly supported in Fortran),
   ! we need arrays of types which only contain pointers.
   type real_p

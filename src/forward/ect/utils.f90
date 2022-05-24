@@ -17,11 +17,11 @@
 ! Contains various helper functions used in the code, which are not dependent on other modules,
 ! do not logically belong to a particular module, and can be easily moved here.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !==============================================================================================================
 module utils
 
-  use global_typedefs, only: CUSTOM_REAL, NORM_L2
+  use global_typedefs, only: CUSTOM_REAL
 
   implicit none
 
@@ -33,6 +33,10 @@ module utils
   public :: avg2
   public :: avg4
   public :: getstep
+
+  ! Type of norm used for convergence control.
+  integer, parameter, public :: NORM_L2 = 1
+  integer, parameter, public :: NORM_MAX = 2
 
 contains
 
