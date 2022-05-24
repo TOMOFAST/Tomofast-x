@@ -55,18 +55,11 @@ OBJDIR = obj
 # Executable name.
 EXEC = tomofastx
 
-# Intel ifort with full checking options to debug (slow but very useful to check everything)
-# option "-assume buffered_io" is important especially on
-# parallel file systems like SFS 3. / Lustre 1.8. If omitted
-# I/O throughput lingers at .5 MB/s, with it it can increase to ~44 MB/s
-# However it does not make much of a difference on NFS mounted volumes or with SFS 3.1.1 / Lustre 1.6.7.1
-# DG DG the actual values strongly depend on the machine, only the relations matter here
+# Intel ifort with full checking options to debug (slow but very useful to check everything).
 #FFLAGS = -convert big_endian -vec-report0  -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn argument_checking -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check all -debug -g -O0 -fp-stack-check -traceback -ftrapuv -module $(OBJDIR)
 
-# Intel ifort optimized for speed for production runs (add -mcmodel=medium -shared-intel to use more than 2 GB of memory)
+# Intel ifort optimized for speed for production runs (add -mcmodel=medium -shared-intel to use more than 2 GB of memory).
 #FFLAGS = -convert big_endian -vec-report0 -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn argument_checking -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check nobounds -O3 -xHost -module $(OBJDIR)
-
-# VO: Added flag '-fconvert=big-endian' (GCC) / '-convert big_endian' (Intel) to write binary VTK files for Paraview (Jan 2022).
 
 # GNU gfortran pseudo-optimized.
 FFLAGS = -std=gnu -fimplicit-none -frange-check -fconvert=big-endian -O3 -fmax-errors=10 -pedantic -pedantic-errors -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -DUSE_FLUSH6 -J $(OBJDIR)
@@ -80,14 +73,6 @@ OPT_INFO = -ftree-vectorize -fopt-info-vec-optimized=vec.info
 
 # Comment this for non GNU compiler.
 #FFLAGS := $(OPT_INFO) $(FFLAGS)
-
-# IBM xlf (adjust -qtune and -qarch according to your machine)
-#FFLAGS = -O3 -qsave -qstrict -q64 -qtune=ppc970 -qarch=ppc64v -qcache=auto -qfree=f90 -qsuffix=f=f90 -qhalt=w -qlanglvl=95pure -qflttrap=overflow:zerodivide:invalid:enable -qfloat=nans -qinitauto=7FBFFFFF
-
-# Cray with full debugging on
-# We add -M 1438 to suppress this warning: ftn-1438 crayftn: This argument produces a possible copy in and out to a temporary variable.
-#FC = ftn
-#FFLAGS = -O0 -eC -eD -ec -en -eI -ea -g -G0 -M 1438 -p $(OBJDIR)
 
 CFLAGS =
 
