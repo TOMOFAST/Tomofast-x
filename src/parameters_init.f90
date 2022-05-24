@@ -89,31 +89,27 @@ subroutine read_filename(file_id, val)
 end subroutine read_filename
 
 !==========================================================================
-! Get problem type (ECT / Gravity).
+! Get problem type (ECT / Grav & Mag).
 !==========================================================================
 subroutine get_problem_type(problem_type, myrank)
   integer, intent(in) :: myrank
   integer, intent(out) :: problem_type
   character(len=256) :: arg
 
-  ! ECT problem is set by default.
-  arg = '-e'
-  problem_type = 1
+  ! Grav/mag problem is set by default.
+  arg = '-j'
+  problem_type = 2
 
   if (command_argument_count() > 0) call get_command_argument(1, arg)
 
   if (arg == '-e') then
     problem_type = 1
     if (myrank == 0) print *, '===== START ECT PROBLEM ====='
-  else if (arg == '-g') then
-    problem_type = 2
-    if (myrank == 0) print *, '===== START GRAVITY PROBLEM ====='
-  else if (arg == '-m') then
-    problem_type = 3
-    if (myrank == 0) print *, '===== START MAGNETISM PROBLEM ====='
+
   else if (arg == '-j') then
-    problem_type = 4
-    if (myrank == 0) print *, '===== START JOINT GRAV/MAG PROBLEM ====='
+    problem_type = 2
+    if (myrank == 0) print *, '===== START GRAV/MAG PROBLEM ====='
+
   else
     call exit_MPI("UNKNOWN PROBLEM TYPE! arg ="//arg, myrank, 0)
   endif
@@ -133,7 +129,6 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
   type(t_parameters_mag), intent(out) :: mpar
   type(t_parameters_inversion), intent(out) :: ipar
 
-  type(t_parameters_base) :: gmpar
   type(t_parallel_tools) :: pt
   integer :: nelements, ierr
 
@@ -175,12 +170,6 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
     call epar%broadcast()
 
   else if (problem_type == 2) then
-    call gpar%broadcast(myrank)
-
-  else if (problem_type == 3) then
-    call mpar%broadcast(myrank)
-
-  else if (problem_type == 4) then
     call gpar%broadcast(myrank)
     call mpar%broadcast(myrank)
   endif
@@ -236,29 +225,13 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
       if (myrank == 0) print *, 'ntheta_read0, ntheta(new)', epar%dims%ntheta0, epar%dims%ntheta
     endif
 
-  else if (problem_type == 2 .or. problem_type == 3 .or. problem_type == 4) then
+  else if (problem_type == 2) then
   ! Gravity and magnetism problems.
 
-    if (problem_type == 2 .or. problem_type == 4) then
-    ! Gravity.
-
-      gpar%ncomponents = 1
-
-      gmpar = gpar%t_parameters_base
-    endif
-
-    if (problem_type == 3 .or. problem_type == 4) then
-    ! Magnetism.
-
-      mpar%ncomponents = 1
-
-      gmpar = mpar%t_parameters_base
-    endif
-
-    ! Inverse problem parameters. -------------------------------
-    ipar%nx = gmpar%nx
-    ipar%ny = gmpar%ny
-    ipar%nz = gmpar%nz
+    ! Inverse problem parameters.
+    ipar%nx = gpar%nx
+    ipar%ny = gpar%ny
+    ipar%nz = gpar%nz
 
     ipar%ndata(1) = gpar%ndata
     ipar%ndata(2) = mpar%ndata
@@ -318,6 +291,9 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   !-----------------------------------------------
   ! Define here the DEFAULT parameter values:
   !-----------------------------------------------
+
+  gpar%ncomponents = 1
+  mpar%ncomponents = 1
 
   ! GLOBAL parameters.
   path_output = "output/test/"

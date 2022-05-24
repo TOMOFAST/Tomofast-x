@@ -72,7 +72,7 @@ program program_tomofast3D
 
   !----------------------------------------------------------------------------
   ! INITIALIZATION.
-  ! Get the problem type from the command line (ECT = 1, Gravity = 2, Magnetism = 3).
+  ! Get the problem type from the command line (ECT = 1, Grav/Mag = 2).
   call get_problem_type(problem_type, myrank)
 
   ! Read the Parfile and initialize forward and inverse problem parameters.
@@ -87,14 +87,9 @@ program program_tomofast3D
   ! ECT problem.
     call solve_problem_ect(epar, ipar, myrank, nbproc)
 
-  else if (problem_type == 2 .or. problem_type == 3) then
-  ! Gravity and Magnetism problems.
-    !call solve_problem_gravmag(gpar, mpar, ipar, problem_type, myrank, nbproc)
-
-  else if (problem_type == 4) then
-  ! Joint Gravity and Magnetism problem.
+  else if (problem_type == 2) then
+  ! Gravity and Magnetism problem.
     call solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
-
   endif
 
   if (myrank == 0) print *, 'THE END.'
