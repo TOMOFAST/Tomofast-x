@@ -73,8 +73,8 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   ! Values for visualization.
   real(kind=CUSTOM_REAL), intent(in) :: val(:)
   ! Coordinates of points in the grid.
-  real(kind=CUSTOM_REAL), intent(in) :: X1(:), Y1(:), Z1(:)
-  real(kind=CUSTOM_REAL), intent(in) :: X2(:), Y2(:), Z2(:)
+  real(kind=4), intent(in) :: X1(:), Y1(:), Z1(:)
+  real(kind=4), intent(in) :: X2(:), Y2(:), Z2(:)
   integer, intent(in) :: i_index(:), j_index(:), k_index(:)
   integer, intent(in) :: i1, i2, j1, j2, k1, k2
   logical, intent(in) :: INVERT_Z_AXIS
@@ -139,9 +139,9 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
     if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
       j = j + 1
 
-      cell_centers(1, j) = real(0.5 * (X1(p) + X2(p)))
-      cell_centers(2, j) = real(0.5 * (Y1(p) + Y2(p)))
-      cell_centers(3, j) = real(0.5 * (Z1(p) + Z2(p)))
+      cell_centers(1, j) = 0.5 * (X1(p) + X2(p))
+      cell_centers(2, j) = 0.5 * (Y1(p) + Y2(p))
+      cell_centers(3, j) = 0.5 * (Z1(p) + Z2(p))
 
       cell_data(j) = real(val(p), 4)
     endif
@@ -191,8 +191,8 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   ! Values for visualization.
   real(kind=CUSTOM_REAL), intent(in) :: val(:)
   ! Coordinates of points in the grid.
-  real(kind=CUSTOM_REAL), intent(in) :: X1(:), Y1(:), Z1(:)
-  real(kind=CUSTOM_REAL), intent(in) :: X2(:), Y2(:), Z2(:)
+  real(kind=4), intent(in) :: X1(:), Y1(:), Z1(:)
+  real(kind=4), intent(in) :: X2(:), Y2(:), Z2(:)
   integer, intent(in) :: i_index(:), j_index(:), k_index(:)
   integer, intent(in) :: i1, i2, j1, j2, k1, k2
   logical, intent(in) :: INVERT_Z_AXIS
@@ -205,9 +205,9 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   integer :: ierr
   integer :: npoints, nelements_slice
   integer :: i, j, p
-  real(kind=CUSTOM_REAL) :: xgrid(8)
-  real(kind=CUSTOM_REAL) :: ygrid(8)
-  real(kind=CUSTOM_REAL) :: zgrid(8)
+  real(kind=4) :: xgrid(8)
+  real(kind=4) :: ygrid(8)
+  real(kind=4) :: zgrid(8)
   integer :: cell_type
 
   real(kind=4), allocatable :: xgrid_all(:, :)
@@ -299,9 +299,9 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
       endif
 
       ! Store the values.
-      xgrid_all(:, j) = real(xgrid, 4)
-      ygrid_all(:, j) = real(ygrid, 4)
-      zgrid_all(:, j) = real(zgrid, 4)
+      xgrid_all(:, j) = xgrid
+      ygrid_all(:, j) = ygrid
+      zgrid_all(:, j) = zgrid
 
       cell_data(j) = real(val(p), 4)
 

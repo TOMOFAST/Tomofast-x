@@ -193,12 +193,12 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
         model1%val_full(p) = dble(i)
         model2%val_full(p) = dble(i + 1)
 
-        model1%grid_full%X1(p) = dble(i)
-        model1%grid_full%X2(p) = dble(i + 1)
-        model1%grid_full%Y1(p) = dble(j)
-        model1%grid_full%Y2(p) = dble(j + 1)
-        model1%grid_full%Z1(p) = dble(k)
-        model1%grid_full%Z2(p) = dble(k + 1)
+        model1%grid_full%X1(p) = real(i)
+        model1%grid_full%X2(p) = real(i + 1)
+        model1%grid_full%Y1(p) = real(j)
+        model1%grid_full%Y2(p) = real(j + 1)
+        model1%grid_full%Z1(p) = real(k)
+        model1%grid_full%Z2(p) = real(k + 1)
 
         model1%grid_full%i_(p) = i
         model1%grid_full%j_(p) = j
