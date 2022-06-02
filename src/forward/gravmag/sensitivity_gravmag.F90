@@ -127,7 +127,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full(:)
-  real(kind=CUSTOM_REAL), allocatable :: sensit_line_orig(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_sorted(:)
   real(kind=CUSTOM_REAL), allocatable :: dummy1(:), dummy2(:)
 
@@ -188,7 +187,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   nelements_total = par%nx * par%ny * par%nz
 
   allocate(sensit_line_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(sensit_line_orig(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(sensit_line_sorted(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(sensit_columns(nelements_total), source=0, stat=ierr)
@@ -232,8 +230,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     if (par%compression_type > 0) then
     ! Wavelet compression.
-      ! Store the original sensitivity (before applying the wavelet transform).
-      sensit_line_orig = sensit_line_full
+      ! The uncompressed line cost.
+      cost_full_loc = cost_full_loc + sum(sensit_line_full**2)
 
       ! Apply the wavelet transform.
       call Haar3D(sensit_line_full, par%nx, par%ny, par%nz)
@@ -256,14 +254,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
           sensit_compressed(nel) = real(sensit_line_full(p), MATRIX_PRECISION)
 
           sensit_nnz(p) = sensit_nnz(p) + 1
-
-          ! Update the compressed line cost.
-          cost_compressed_loc = cost_compressed_loc + sensit_line_orig(p)**2
         endif
-
-        ! Update the full line cost.
-        cost_full_loc = cost_full_loc + sensit_line_orig(p)**2
       enddo
+      cost_compressed_loc = cost_compressed_loc + sum(sensit_compressed(1:nel)**2)
 
     else
     ! No compression.
@@ -321,7 +314,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     cost = 1.d0
   endif
 
-  if (myrank == 0) print *, 'COMPRESSION COST = ', cost
+  if (myrank == 0) print *, 'COMPRESSION ERROR = ', 1.d0 - cost
 
   !---------------------------------------------------------------------------------------------
   ! Perform the nnz load balancing among CPUs.
@@ -377,7 +370,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   !---------------------------------------------------------------------------------------------
   deallocate(sensit_line_full)
-  deallocate(sensit_line_orig)
   deallocate(sensit_line_sorted)
   deallocate(column_weight_full)
   deallocate(sensit_columns)
