@@ -113,7 +113,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   type(t_magnetic_field) :: mag_field
   type(t_parallel_tools) :: pt
   integer :: i, p, nel, ierr
-  integer :: nelements_total
+  integer :: nelements_total, nel_compressed
   integer(kind=8) :: nnz_data
   integer :: problem_type
   integer :: idata, ndata_loc, ndata_smaller
@@ -186,11 +186,16 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   nelements_total = par%nx * par%ny * par%nz
 
+  nel_compressed = max(int(par%compression_rate * nelements_total), 1)
+  if (myrank == 0) print *, 'nel_compressed =', nel_compressed
+
   allocate(sensit_line_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(sensit_line_sorted(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(sensit_columns(nelements_total), source=0, stat=ierr)
-  allocate(sensit_compressed(nelements_total), source=0._MATRIX_PRECISION, stat=ierr)
+
+  allocate(sensit_columns(nel_compressed), source=0, stat=ierr)
+  allocate(sensit_compressed(nel_compressed), source=0._MATRIX_PRECISION, stat=ierr)
+
   allocate(sensit_nnz(nelements_total), source=int8(0), stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
@@ -241,13 +246,12 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
       call quicksort(sensit_line_sorted, 1, nelements_total)
 
       ! Calculate the wavelet threshold corresponding to the desired compression rate.
-      p = min(nelements_total, int((1.d0 - par%compression_rate) * nelements_total) + 1)
+      p = nelements_total - nel_compressed
       threshold = abs(sensit_line_sorted(p))
 
       nel = 0
-
       do p = 1, nelements_total
-        if (abs(sensit_line_full(p)) >= threshold) then
+        if (abs(sensit_line_full(p)) > threshold) then
           ! Store sensitivity elements greater than the wavelet threshold.
           nel = nel + 1
           sensit_columns(nel) = p
