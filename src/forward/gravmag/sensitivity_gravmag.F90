@@ -246,12 +246,18 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
       call quicksort(sensit_line_sorted, 1, nelements_total)
 
       ! Calculate the wavelet threshold corresponding to the desired compression rate.
-      p = nelements_total - nel_compressed
+      p = nelements_total - nel_compressed + 1
       threshold = abs(sensit_line_sorted(p))
+
+      if (threshold < 1.d-30) then
+        ! Keep small threshold to avoid extremely small values, because when MATRIX_PRECISION is 4 bytes real
+        ! they lead to SIGFPE: Floating-point exception - erroneous arithmetic operation.
+        threshold = 1.d-30
+      endif
 
       nel = 0
       do p = 1, nelements_total
-        if (abs(sensit_line_full(p)) > threshold) then
+        if (abs(sensit_line_full(p)) >= threshold) then
           ! Store sensitivity elements greater than the wavelet threshold.
           nel = nel + 1
           sensit_columns(nel) = p
@@ -260,6 +266,12 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
           sensit_nnz(p) = sensit_nnz(p) + 1
         endif
       enddo
+
+      ! Sanity check.
+      if (nel > nel_compressed) then
+        call exit_MPI("Wrong number of elements in calculate_and_write_sensit!", myrank, 0)
+      endif
+
       cost_compressed_loc = cost_compressed_loc + sum(sensit_compressed(1:nel)**2)
 
     else
