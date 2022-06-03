@@ -29,8 +29,8 @@ module grid
   type, public :: t_grid
 
     ! The beginning and the ending coordinates of a 3D prism for every model element.
-    real(kind=4), dimension(:), allocatable :: X1, Y1, Z1
-    real(kind=4), dimension(:), allocatable :: X2, Y2, Z2
+    real(kind=CUSTOM_REAL), dimension(:), allocatable :: X1, Y1, Z1
+    real(kind=CUSTOM_REAL), dimension(:), allocatable :: X2, Y2, Z2
 
     ! 3D index of the grid element.
     integer, dimension(:), allocatable :: i_, j_, k_
@@ -82,12 +82,12 @@ subroutine grid_allocate(this, nx, ny, nz, myrank)
 
   ierr = 0
 
-  allocate(this%X1(nelements_total), source=0., stat=ierr)
-  allocate(this%X2(nelements_total), source=0., stat=ierr)
-  allocate(this%Y1(nelements_total), source=0., stat=ierr)
-  allocate(this%Y2(nelements_total), source=0., stat=ierr)
-  allocate(this%Z1(nelements_total), source=0., stat=ierr)
-  allocate(this%Z2(nelements_total), source=0., stat=ierr)
+  allocate(this%X1(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%X2(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Y1(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Y2(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Z1(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Z2(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   allocate(this%i_(nelements_total), source=0, stat=ierr)
   allocate(this%j_(nelements_total), source=0, stat=ierr)
