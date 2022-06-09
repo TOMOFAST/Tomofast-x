@@ -363,7 +363,7 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ! INVERSION parameters.
   ipar%ninversions = 10
   ipar%niter = 100
-  ipar%write_model_niter = 5
+  ipar%write_model_niter = 0
   ipar%rmin = 1.d-13
   ipar%method = 1 ! LSQR = 1
   ipar%gamma = 0. ! soft threshold ("L1-norm", no=0.)

@@ -91,7 +91,7 @@ INVERSION parameters
 ===================================================================================
 inversion.nMajorIterations               = 10
 inversion.nMinorIterations               = 100
-inversion.writeModelEveryNiter           = 5
+inversion.writeModelEveryNiter           = 0
 inversion.minResidual                    = 1.d-13
 
 ===================================================================================
@@ -121,7 +121,7 @@ inversion.admm.magn.boundsFile         = None
 inversion.admm.grav.weight             = 1.d-7
 inversion.admm.magn.weight             = 1.d+5
 
-# Parameters for dynamic weight adjustment (to enable set weightMultiplier != 1).
+# Parameters for dynamic weight adjustment (to enable set weightMultiplier > 1).
 inversion.admm.dataCostThreshold       = 1.e-4
 inversion.admm.weightMultiplier        = 1.0
 inversion.admm.maxWeight               = 1.e+10
