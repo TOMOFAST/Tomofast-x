@@ -218,7 +218,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) then
       model(i)%val = iarr(i)%column_weight
-      call model_write(model(i), merge('grav_weight_', 'magn_weight_', i == 1), .true., myrank, nbproc)
+      call model_write(model(i), merge('grav_weight_', 'magn_weight_', i == 1), .true., .false., myrank, nbproc)
     endif
   enddo
 
@@ -230,8 +230,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
   ! Write the model read to a file for Paraview visualization.
-  if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_read_', .false., myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_read_', .false., myrank, nbproc)
+  if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_read_', .false., .false., myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_read_', .false., .false., myrank, nbproc)
 #endif
 
   ! SETTING THE ADMM BOUNDS -----------------------------------------------------------------------------
@@ -317,8 +317,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
     ! Write the prior model to a file for visualization.
-    if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_prior_', .false., myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_prior_', .false., myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_prior_', .false., .false., myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_prior_', .false., .false., myrank, nbproc)
 #endif
 
     !-----------------------------------------------------------------------------------------
@@ -341,8 +341,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
     ! Write the starting model to a file for visualization.
-    if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_starting_', .true., myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_starting_', .true., myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_starting_', .false., .false., myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_starting_', .false., .false., myrank, nbproc)
 #endif
 
     !-----------------------------------------------------------------------------------------
@@ -421,8 +421,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
           else
             filename = 'inter_it'//trim(str(it))//'_'
           endif
-          if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_'//trim(filename), .false., myrank, nbproc)
-          if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_'//trim(filename), .false., myrank, nbproc)
+          if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_'//trim(filename), .false., .false., myrank, nbproc)
+          if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_'//trim(filename), .false., .false., myrank, nbproc)
         endif
       endif
 
@@ -480,8 +480,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
     ! Write the final model to a file.
-    if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_final_', .false., myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_final_', .false., myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_final_', .false., .true., myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_final_', .false., .true., myrank, nbproc)
 #endif
 
 #ifndef SUPPRESS_OUTPUT
@@ -494,8 +494,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (jinv%add_cross_grad) then
       ! Write final cross-gradient vector magnitude to a file.
       model(1)%val_full = jinv%get_cross_grad()
-
-      call model_write(model(1), 'cross_grad_final_', .false., myrank, nbproc)
+      call model_write(model(1), 'cross_grad_final_', .false., .false., myrank, nbproc)
     endif
 #endif
 
@@ -503,8 +502,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (jinv%add_clustering) then
       ! Write final clustering probabilities, i.e., P(m) per cell.
       model(1)%val_full = jinv%get_clustering()
-
-      call model_write(model(1), 'clustering_final_', .false., myrank, nbproc)
+      call model_write(model(1), 'clustering_final_', .false., .false., myrank, nbproc)
 
       call jinv%clustering%write_data('clustering_data.txt', model(1)%grid_full, myrank)
     endif

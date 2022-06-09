@@ -241,10 +241,10 @@ end subroutine model_read_bound_constraints
 !======================================================================================================
 ! Write the model snapshots for visualization.
 !======================================================================================================
-subroutine model_write(model, name_prefix, gather_full_model, myrank, nbproc)
+subroutine model_write(model, name_prefix, gather_full_model, write_voxet, myrank, nbproc)
   class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: name_prefix
-  logical, intent(in) :: gather_full_model
+  logical, intent(in) :: gather_full_model, write_voxet
   integer, intent(in) :: myrank, nbproc
 
   type(t_parallel_tools) :: pt
@@ -258,8 +258,10 @@ subroutine model_write(model, name_prefix, gather_full_model, myrank, nbproc)
   ! Write the model in vtk format.
   call model_write_paraview(model, name_prefix, myrank)
 
-  ! Write the full model in voxels format.
-  call model_write_voxels_format(model, name_prefix//"voxet_full.txt", myrank)
+  if (write_voxet) then
+    ! Write the full model in voxels format.
+    call model_write_voxels_format(model, name_prefix//"voxet_full.txt", myrank)
+  endif
 
 end subroutine model_write
 
