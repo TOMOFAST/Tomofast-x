@@ -39,6 +39,8 @@ module model_IO
   private :: model_write_voxels_format
   private :: model_write_paraview
 
+  logical, parameter, private :: WRITE_UNSTRUCTURED_GRID_PARAVIEW_MODEL = .false.
+
 contains
 
 !================================================================================================
@@ -319,17 +321,21 @@ subroutine model_write_paraview(model, name_prefix, myrank)
   ny = model%grid_full%ny
   nz = model%grid_full%nz
 
-  ! Write the full model.
-  filename = trim(name_prefix)//"model3D_full.vtk"
-  call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val_full, &
-                                       model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
-                                       model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
-                                       model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
-                                       1, nx, 1, ny, 1, nz, &
-                                       .true.)
+  if (WRITE_UNSTRUCTURED_GRID_PARAVIEW_MODEL) then
+    ! Write the full model (using unstructured grid format).
+    ! In this format each cell has constant value, while in the structured grid case the values get smoothed between the cell centers.
+    ! But this format needs to allocate ~6 times more memory, and the output file has much bigger size.
+    filename = trim(name_prefix)//"model3D_full_lego.vtk"
+    call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val_full, &
+                                         model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
+                                         model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
+                                         model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
+                                         1, nx, 1, ny, 1, nz, &
+                                         .true.)
+  endif
 
   ! Write the full model using structured grid.
-  filename = trim(name_prefix)//"model3D_full_sg.vtk"
+  filename = trim(name_prefix)//"model3D_full.vtk"
   call visualisation_paraview_struct_grid(filename, myrank, model%nelements_total, model%val_full, &
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
