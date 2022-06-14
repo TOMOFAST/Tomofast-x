@@ -40,8 +40,6 @@ module inversion_arrays
     real(kind=CUSTOM_REAL), allocatable :: residuals(:)
     ! Weights to scale the sensitivity matrix columns.
     real(kind=CUSTOM_REAL), allocatable :: column_weight(:)
-    ! Weights to scale the damping.
-    real(kind=CUSTOM_REAL), allocatable :: damping_weight(:)
 
     ! (Legacy, used for the ECT problem) Sensitivity kernel computed in forward problem.
     real(kind=CUSTOM_REAL), allocatable :: sensitivity(:, :)
@@ -77,7 +75,6 @@ subroutine inversion_arrays_allocate_aux(this, nelements, ndata, myrank)
 
   allocate(this%residuals(ndata), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%column_weight(nelements), source=1._CUSTOM_REAL, stat=ierr)
-  allocate(this%damping_weight(nelements), source=1._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in inversion_arrays_allocate_aux!", myrank, ierr)
 
@@ -108,9 +105,7 @@ subroutine inversion_arrays_reallocate_aux(this, nelements, ndata, myrank)
 
   if (size(this%column_weight) /= nelements) then
     deallocate(this%column_weight)
-    deallocate(this%damping_weight)
     allocate(this%column_weight(nelements), source=1._CUSTOM_REAL, stat=ierr)
-    allocate(this%damping_weight(nelements), source=1._CUSTOM_REAL, stat=ierr)
   endif
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in inversion_arrays_reallocate_aux!", myrank, ierr)

@@ -154,7 +154,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
 
     ! Compute norm Lp of the difference between inverted and prior model.
     call calculate_cost_model(ipar%nelements, ipar%norm_power, model%val, model%val_prior, &
-                              iarr%damping_weight, cost_model, nbproc)
+                              iarr%column_weight, cost_model, nbproc)
 
     ! Reset the inversion object.
     call inversion%reset()
