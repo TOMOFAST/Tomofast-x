@@ -74,7 +74,7 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
     do i = 1, par%nelements
       ! Full grid index.
       p = nsmaller + i
-      iarr%damping_weight(i) = calc_depth_weight_pixel(grid_full, par%depth_weighting_power, par%Z0, p, myrank)
+      iarr%column_weight(i) = calc_depth_weight_pixel(grid_full, par%depth_weighting_power, par%Z0, p, myrank)
     enddo
 
   else if (par%depth_weighting_type == 2) then
@@ -133,7 +133,7 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
 
       enddo ! data loop
 
-      iarr%damping_weight(i) = (1.d0 / sqrt(dVj)) * wr**(1.d0 / 4.d0)
+      iarr%column_weight(i) = (1.d0 / sqrt(dVj)) * wr**(1.d0 / 4.d0)
     enddo ! cells loop
 
   else
@@ -147,11 +147,11 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
       ! Full grid index.
       p = nsmaller + i
 
-      iarr%damping_weight(i) = iarr%damping_weight(i) * sqrt(grid_full%get_cell_volume(p))
+      iarr%column_weight(i) = iarr%column_weight(i) * sqrt(grid_full%get_cell_volume(p))
   enddo
 
   ! Normalize the depth weight.
-  call normalize_depth_weight(iarr%damping_weight, myrank, nbproc)
+  call normalize_depth_weight(iarr%column_weight, myrank, nbproc)
 
   !--------------------------------------------------------------------------------
   ! Calculate the matrix column weight.
@@ -163,8 +163,8 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   ! |  alpha I |
   !
   do i = 1, par%nelements
-    if (iarr%damping_weight(i) /= 0.d0) then
-      iarr%column_weight(i) = 1.d0 / iarr%damping_weight(i)
+    if (iarr%column_weight(i) /= 0.d0) then
+      iarr%column_weight(i) = 1.d0 / iarr%column_weight(i)
     else
       call exit_MPI("Zero damping weight! Exiting.", myrank, 0)
     endif
