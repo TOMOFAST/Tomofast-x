@@ -560,7 +560,7 @@ subroutine calculate_model_costs(ipar, iarr, model, cost_model, solve_problem, m
   do i = 1, 2
     if (solve_problem(i)) then
       call calculate_cost_model(ipar%nelements, ipar%norm_power, model(i)%val, model(i)%val_prior, &
-                                iarr(i)%damping_weight, cost_model(i), nbproc)
+                                iarr(i)%column_weight, cost_model(i), nbproc)
 
       if (myrank == 0) print *, 'model cost =', cost_model(i)
     endif

@@ -15,7 +15,7 @@
 !===========================================================================================
 ! Routines to calculate the cost functions (e.g. data misfit).
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !===========================================================================================
 
 module costs
@@ -69,7 +69,7 @@ end subroutine calculate_cost
 !===============================================================================================
 ! Computes the Lp norm of the difference of two models, that are split between CPUs.
 !===============================================================================================
-subroutine calculate_cost_model(nelements, norm_power, model, model_prior, damping_weight, &
+subroutine calculate_cost_model(nelements, norm_power, model, model_prior, column_weight, &
                                 cost_model, nbproc)
   ! MPI variables.
   integer, intent(in) :: nbproc
@@ -81,20 +81,20 @@ subroutine calculate_cost_model(nelements, norm_power, model, model_prior, dampi
   real(kind=CUSTOM_REAL), intent(in) :: model(:)
   real(kind=CUSTOM_REAL), intent(in) :: model_prior(:)
   ! Inversion weights to scale damping.
-  real(kind=CUSTOM_REAL), intent(in) :: damping_weight(:)
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   real(kind=CUSTOM_REAL), intent(out) :: cost_model
 
   ! Local variables.
+  real(kind=CUSTOM_REAL) :: model_diff
   real(kind=CUSTOM_REAL) :: cost_model_glob
   integer :: i, ierr
 
   ! Compute local cost model.
   cost_model = 0._CUSTOM_REAL
   do i = 1, nelements
-    ! TODO: Do we need to use norm_power for damping_weight too? Then also need to do this in damping.F90,
-    !       and change the cell volume weight in capacitance.
-    cost_model = cost_model + abs(model(i) - model_prior(i))**norm_power &
-                 * (damping_weight(i))**2
+    ! Make calculations consistent with damping.F90 where we also scale the model difference.
+    model_diff = (model(i) - model_prior(i)) / column_weight(i)
+    cost_model = cost_model + (abs(model_diff))**norm_power
   enddo
 
   ! Compute global cost model.
