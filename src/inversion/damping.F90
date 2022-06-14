@@ -175,8 +175,10 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, &
 
     value = this%alpha * this%problem_weight
 
-    ! Apply the Lp norm.
-    value = value * this%get_norm_multiplier(model_diff(i))
+    if (this%norm_power /= 2.d0) then
+      ! Apply the Lp norm.
+      value = value * this%get_norm_multiplier(model_diff(i))
+    endif
 
     if (present(local_weight)) then
       ! Apply local weight, which is equivalent to having local alpha.
@@ -230,8 +232,10 @@ subroutine damping_add_RHS(this, b_RHS, model_diff, myrank, nbproc, local_weight
   do i = 1, this%nelements
     b_RHS(i) = - this%alpha * this%problem_weight * model_diff(i)
 
-    ! Apply the Lp norm.
-    b_RHS(i) = b_RHS(i) * this%get_norm_multiplier(model_diff(i))
+    if (this%norm_power /= 2.d0) then
+      ! Apply the Lp norm.
+      b_RHS(i) = b_RHS(i) * this%get_norm_multiplier(model_diff(i))
+    endif
 
     if (present(local_weight)) then
       ! Apply local weight, which is equivalent to having local alpha.
