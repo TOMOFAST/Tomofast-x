@@ -125,7 +125,7 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, &
   enddo
 
   ! The total number of elements.
-  nelements_total = pt%get_total_number_elements(this%nelements, myrank, nbproc)
+  nelements_total = this%nx * this%ny * this%nz
 
   ! The number of elements on CPUs with rank smaller than myrank.
   nsmaller = pt%get_nsmaller(this%nelements, myrank, nbproc)
