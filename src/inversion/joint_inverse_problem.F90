@@ -356,8 +356,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
       ! Note: with wavelet compression we currently cannot have local weight in the model damping term.
       arr(i)%damping_weight = 1.d0
 
-      call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, arr(i)%damping_weight, &
-                       model(i)%val, model(i)%val_prior, param_shift(i), myrank, nbproc)
+      call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, &
+                       model(i)%val, model(i)%val_prior, param_shift(i), myrank, nbproc, arr(i)%damping_weight)
 
       if (myrank == 0) print *, 'damping term cost = ', damping%get_cost()
       if (myrank == 0) print *, 'nel (with damping) = ', this%matrix%get_number_elements()
@@ -432,8 +432,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
       call damping%initialize(par%nelements, par%rho_ADMM(i), par%problem_weight(i), norm_power, &
                               par%compression_type, par%nx, par%ny, par%nz)
 
-      call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, this%weight_ADMM, &
-                       model(i)%val, this%x0_ADMM, param_shift(i), myrank, nbproc)
+      call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, &
+                       model(i)%val, this%x0_ADMM, param_shift(i), myrank, nbproc, this%weight_ADMM)
 
       ! Calculate the ADMM cost in parallel.
       call calculate_cost(model(i)%val, this%x0_ADMM, cost, .true., nbproc)

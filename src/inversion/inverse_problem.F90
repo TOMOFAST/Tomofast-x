@@ -146,8 +146,8 @@ subroutine inversion_solve(this, par, arr, model, myrank, nbproc)
   call damping%initialize(par%nelements, par%alpha(1), problem_weight, par%norm_power, &
                           par%compression_type, par%nx, par%ny, par%nz)
 
-  call damping%add(this%matrix, this%b_RHS, arr%column_weight, arr%damping_weight, &
-                   model%val, model%val_prior, 0, myrank, nbproc)
+  call damping%add(this%matrix, this%b_RHS, arr%column_weight, &
+                   model%val, model%val_prior, 0, myrank, nbproc, arr%damping_weight)
 
   if (myrank == 0) print *, 'nel (with damping) = ', this%matrix%get_number_elements()
 

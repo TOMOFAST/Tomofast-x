@@ -91,15 +91,15 @@ end subroutine damping_initialize
 !
 ! Tested in unit_tests.f90 in test_damping_identity_matrix().
 !===========================================================================================
-subroutine damping_add(this, matrix, b_RHS, column_weight, local_weight, &
-                       model, model_ref, param_shift, myrank, nbproc)
+subroutine damping_add(this, matrix, b_RHS, column_weight, &
+                       model, model_ref, param_shift, myrank, nbproc, local_weight)
   class(t_damping), intent(inout) :: this
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
-  real(kind=CUSTOM_REAL), intent(in) :: local_weight(:)
   real(kind=CUSTOM_REAL), intent(in) :: model(:)
   real(kind=CUSTOM_REAL), intent(in) :: model_ref(:)
   integer, intent(in) :: param_shift
   integer, intent(in) :: myrank, nbproc
+  real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(:)
 
   type(t_sparse_matrix), intent(inout) :: matrix
   real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(:)
@@ -178,8 +178,10 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, local_weight, &
     ! Apply the Lp norm.
     value = value * this%get_norm_multiplier(model_diff(i))
 
-    ! Apply local weight, which is equivalent to having local alpha.
-    value = value * local_weight(i)
+    if (present(local_weight)) then
+      ! Apply local weight, which is equivalent to having local alpha.
+      value = value * local_weight(i)
+    endif
 
     call matrix%add(value, param_shift + i, myrank)
 
@@ -197,7 +199,11 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, local_weight, &
 
   !---------------------------------------------------------------------
   ! Add the damping contribution to the right hand side.
-  call this%add_RHS(b_RHS(row_beg:row_end), model_diff, local_weight, myrank, nbproc)
+  if (present(local_weight)) then
+    call this%add_RHS(b_RHS(row_beg:row_end), model_diff, myrank, nbproc, local_weight)
+  else
+    call this%add_RHS(b_RHS(row_beg:row_end), model_diff, myrank, nbproc)
+  endif
 
   deallocate(model_diff)
 
@@ -210,11 +216,11 @@ end subroutine damping_add
 ! Adds damping contribution in the right hand side.
 ! model_diff - depth weighted (m - m_prior).
 !=============================================================================================
-subroutine damping_add_RHS(this, b_RHS, model_diff, local_weight, myrank, nbproc)
+subroutine damping_add_RHS(this, b_RHS, model_diff, myrank, nbproc, local_weight)
   class(t_damping), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: model_diff(:)
-  real(kind=CUSTOM_REAL), intent(in) :: local_weight(:)
   integer, intent(in) :: myrank, nbproc
+  real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(:)
 
   real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(:)
 
@@ -227,8 +233,10 @@ subroutine damping_add_RHS(this, b_RHS, model_diff, local_weight, myrank, nbproc
     ! Apply the Lp norm.
     b_RHS(i) = b_RHS(i) * this%get_norm_multiplier(model_diff(i))
 
-    ! Apply local weight, which is equivalent to having local alpha.
-    b_RHS(i) = b_RHS(i) * local_weight(i)
+    if (present(local_weight)) then
+      ! Apply local weight, which is equivalent to having local alpha.
+      b_RHS(i) = b_RHS(i) * local_weight(i)
+    endif
   enddo
 
   ! Gather full right hand side.
