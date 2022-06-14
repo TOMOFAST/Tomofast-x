@@ -95,21 +95,18 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
   epar%read_model_from_inversion = 0
 
   ! Use real model (with bubbles), and calculate the capacitance data used for inversion.
-  call solve_forward_problem_ect(epar, iarr%sensitivity, data_measured, model_real, &
-                                 iarr%column_weight, iarr%damping_weight, myrank, nbproc)
+  call solve_forward_problem_ect(epar, iarr%sensitivity, data_measured, model_real, iarr%column_weight, myrank, nbproc)
 
   ! Remove bubbles.
   epar%num_bubbles = 0
 
   ! Calculated data using an empty tube (for normalization).
   epar%permit_matrix = epar%permit_air
-  call solve_forward_problem_ect(epar, iarr%sensitivity, data_low, model%val, &
-                                 iarr%column_weight, iarr%damping_weight, myrank, nbproc)
+  call solve_forward_problem_ect(epar, iarr%sensitivity, data_low, model%val, iarr%column_weight, myrank, nbproc)
 
   ! Calculated data using a full tube (for normalization).
   epar%permit_matrix = epar%permit_isolated_tube
-  call solve_forward_problem_ect(epar, iarr%sensitivity, data_high, model%val, &
-                                 iarr%column_weight, iarr%damping_weight, myrank, nbproc)
+  call solve_forward_problem_ect(epar, iarr%sensitivity, data_high, model%val, iarr%column_weight, myrank, nbproc)
 
   if (myrank == 0) then
     ! Check that data_high > data_low.
@@ -120,8 +117,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
   epar%permit_matrix = epar%permit_oil
 
   ! Solve forward problem, and also generate the initial prior model and weights needed for inversion.
-  call solve_forward_problem_ect(epar, iarr%sensitivity, data_calculated, model%val_prior, &
-                                 iarr%column_weight, iarr%damping_weight, myrank, nbproc)
+  call solve_forward_problem_ect(epar, iarr%sensitivity, data_calculated, model%val_prior, iarr%column_weight, myrank, nbproc)
 
   if (myrank == 0) then
     ! Calculate initial misfit.
@@ -164,8 +160,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
     call inversion%reset()
 
     ! Solve forward problem.
-    call solve_forward_problem_ect(epar, iarr%sensitivity, data_calculated, model%val, &
-                                   iarr%column_weight, iarr%damping_weight, myrank, nbproc)
+    call solve_forward_problem_ect(epar, iarr%sensitivity, data_calculated, model%val, iarr%column_weight, myrank, nbproc)
 
     if (myrank == 0) then
       ! Calculate cost (misfit).

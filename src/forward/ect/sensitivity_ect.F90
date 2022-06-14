@@ -224,12 +224,11 @@ end subroutine calculate_sensitivity
 !===================================================================================================
 ! Calculates the column and damping weights, needed for inversion.
 !===================================================================================================
-pure subroutine calculate_weights(par, cell_volume, column_weight, damping_weight, myrank, nbproc)
+pure subroutine calculate_weights(par, cell_volume, column_weight, myrank, nbproc)
   type(t_parameters_ect), intent(in) :: par
   real(kind=CUSTOM_REAL), intent(in) :: cell_volume(:, :, :)
   integer, intent(in) :: myrank, nbproc
 
-  real(kind=CUSTOM_REAL), intent(out) :: damping_weight(:)
   real(kind=CUSTOM_REAL), intent(out) :: column_weight(:)
 
   integer :: i, j, k, k1, el
@@ -245,10 +244,9 @@ pure subroutine calculate_weights(par, cell_volume, column_weight, damping_weigh
         el = el + 1
 
         ! Scale sensitivity matrix with the cell volume.
+        ! TODO: Probably we need to use sqrt(cell_volume) here, as in grav/mag. The sqrt() decreases the artifacts near the origin,
+        ! TODO: and slightly moves the bubbles - need to confirm which case better resolves the centre positions.
         column_weight(el) = 1._CUSTOM_REAL / cell_volume(i, j, k)
-
-        ! Needed to have a proper norm of the model: Integral{|m|^p dv}.
-        damping_weight(el) = sqrt(cell_volume(i, j, k))
 
         ! Vitaliy tried to scale with cell_volume_avg to keep sens values of same order but results are the same.
         ! When doing it adjust cell_volume_avg calculation for parallel version in calculate_cell_volumes().

@@ -41,8 +41,7 @@ contains
 !=================================================================================================
 ! Main function to solve forward ECT problem.
 !=================================================================================================
-subroutine solve_forward_problem_ect(par, sensit, cdata, model, column_weight, damping_weight, &
-                                    myrank, nbproc)
+subroutine solve_forward_problem_ect(par, sensit, cdata, model, column_weight, myrank, nbproc)
   ! MPI variables.
   integer, intent(in) :: myrank, nbproc
   ! Input parameters
@@ -56,8 +55,6 @@ subroutine solve_forward_problem_ect(par, sensit, cdata, model, column_weight, d
   real(kind=CUSTOM_REAL), intent(out) :: cdata(:)
   ! Inversion weights to scale sensitivity matrix columns (the cell volume).
   real(kind=CUSTOM_REAL), intent(out) :: column_weight(:)
-  ! Inversion weights to scale damping.
-  real(kind=CUSTOM_REAL), intent(out) :: damping_weight(:)
 
   !----------------------------------------------------------------------
   ! Local variables.
@@ -635,7 +632,7 @@ subroutine solve_forward_problem_ect(par, sensit, cdata, model, column_weight, d
                              r(ilevel_fine)%p, theta(ilevel_fine)%p, z(ilevel_fine)%p, myrank, nbproc)
 
   ! Calculates weights needed for inversion.
-  call calculate_weights(par, cell_volume, column_weight, damping_weight, myrank, nbproc)
+  call calculate_weights(par, cell_volume, column_weight, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
   ! Calculate capacitance based on the sensitivity.
