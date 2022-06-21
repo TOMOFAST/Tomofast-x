@@ -97,6 +97,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   ! Model change (update) at inversion iteration.
   real(kind=CUSTOM_REAL), allocatable :: delta_model(:)
+  ! Data change (update) at inversion iteration.
+  real(kind=CUSTOM_REAL), allocatable :: delta_data(:)
 
   if (myrank == 0) print *, "Solving problem joint grav/mag."
 
@@ -279,6 +281,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   path_output_parfile = path_output
 
   allocate(delta_model(2 * ipar%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(delta_data(sum(ipar%ndata)), source=0._CUSTOM_REAL, stat=ierr)
 
   !******************************************************************************************
   ! Loop over different prior models.
@@ -401,7 +404,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       if (it > 1) call jinv%reset()
 
       ! Solve joint inverse problem.
-      call jinv%solve(ipar, iarr, model, delta_model, myrank, nbproc)
+      call jinv%solve(ipar, iarr, model, delta_model, delta_data, myrank, nbproc)
 
       ! Update the local models.
       if (SOLVE_PROBLEM(1)) call model(1)%update(delta_model(1:ipar%nelements))
@@ -426,12 +429,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
         endif
       endif
 
-      ! Calculate data based on the new model from inversion.
-      do i = 1, 2
-        if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
-          ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
-          line_start(i), line_end(i), param_shift(i), myrank, nbproc)
-      enddo
+      ! Calculate new data. Using the data update as the grav/mag problems are linear.
+      if (SOLVE_PROBLEM(1)) data(1)%val_calc = data(1)%val_calc + delta_data(1:ipar%ndata(1))
+      if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data((ipar%ndata(1) + 1):sum(ipar%ndata))
 
 #ifndef SUPPRESS_OUTPUT
       ! Write costs (for the previous iteration).
@@ -514,6 +514,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   !******************************
 
   deallocate(delta_model)
+  deallocate(delta_data)
 
 end subroutine solve_problem_joint_gravmag
 

@@ -284,10 +284,10 @@ subroutine joint_inversion_reset(this)
 
 end subroutine joint_inversion_reset
 
-!=====================================================================================
+!================================================================================================
 ! Joint inversion of two field.
-!=====================================================================================
-subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbproc)
+!================================================================================================
+subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
   type(t_inversion_arrays), intent(inout) :: arr(2)
@@ -295,6 +295,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
   integer, intent(in) :: myrank, nbproc
 
   real(kind=CUSTOM_REAL), intent(out) :: delta_model(:)
+  real(kind=CUSTOM_REAL), intent(out) :: delta_data(:)
 
   type(t_damping) :: damping
   type(t_damping_gradient) :: damping_gradient
@@ -307,6 +308,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
   logical :: solve_mag_only
   integer :: nsmaller
   real(kind=CUSTOM_REAL) :: norm_power
+  integer :: ierr
 
   logical :: SOLVE_PROBLEM(2)
 
@@ -502,6 +504,25 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
     call rescale_model(delta_model, this%column_norm, 2 * par%nelements)
   endif
 
+  !-------------------------------------------------------------------------------------
+  ! Calculate data update using unscaled (compressed) delta model.
+  ! As we have both the compressed kernel and delta model, and the problem is linear.
+  !-------------------------------------------------------------------------------------
+  call this%matrix%part_mult_vector(delta_model, delta_data, 1, sum(par%ndata), 0, myrank)
+
+  call MPI_Allreduce(MPI_IN_PLACE, delta_data, sum(par%ndata), CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(delta_data, sum(par%ndata), CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
+  if (par%problem_weight(1) /= 0.d0) then
+    forall (i = 1:par%ndata(1)) delta_data(i) = delta_data(i) / par%problem_weight(1)
+  endif
+  if (par%problem_weight(2) /= 0.d0) then
+    forall (i = (par%ndata(1) + 1):sum(par%ndata)) delta_data(i) = delta_data(i) / par%problem_weight(2)
+  endif
+
+  !-------------------------------------------------------------------------------------
+  ! Unscale (uncompress) the model update.
+  !-------------------------------------------------------------------------------------
   if (par%compression_type > 0) then
   ! Applying the Inverse Wavelet Transform.
     if (nbproc > 1) then
