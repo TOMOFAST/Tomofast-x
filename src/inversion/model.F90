@@ -271,7 +271,6 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
   deallocate(model_scaled)
 
   call MPI_Allreduce(MPI_IN_PLACE, data, ndata, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(data, ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("MPI error in model_calculate_data!", myrank, ierr)
 

@@ -511,7 +511,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   call this%matrix%part_mult_vector(delta_model, delta_data, 1, sum(par%ndata), 0, myrank)
 
   call MPI_Allreduce(MPI_IN_PLACE, delta_data, sum(par%ndata), CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(delta_data, sum(par%ndata), CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (par%problem_weight(1) /= 0.d0) then
     forall (i = 1:par%ndata(1)) delta_data(i) = delta_data(i) / par%problem_weight(1)
