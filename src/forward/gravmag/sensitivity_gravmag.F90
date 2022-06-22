@@ -186,7 +186,11 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   nelements_total = par%nx * par%ny * par%nz
 
-  nel_compressed = max(int(par%compression_rate * nelements_total), 1)
+  if (par%compression_type > 0) then
+    nel_compressed = max(int(par%compression_rate * nelements_total), 1)
+  else
+    nel_compressed = nelements_total
+  endif
   if (myrank == 0) print *, 'nel_compressed =', nel_compressed
 
   allocate(sensit_line_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
