@@ -83,7 +83,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   character(len=256) :: path_output_parfile
   character(len=256) :: grav_prior_model_filename
   character(len=256) :: mag_prior_model_filename
-  character(len=256) :: filename
 
   logical :: SOLVE_PROBLEM(2)
   integer(kind=8) :: nnz(2)
@@ -411,13 +410,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       ! Write intermediate models to file.
       if (ipar%write_model_niter > 0) then
         if (mod(it, ipar%write_model_niter) == 0) then
-          if (it < 10) then
-            filename = 'inter_it0'//trim(str(it))//'_'
-          else
-            filename = 'inter_it'//trim(str(it))//'_'
-          endif
-          if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_'//trim(filename), .false., .false., myrank, nbproc)
-          if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_'//trim(filename), .false., .false., myrank, nbproc)
+          if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_inter_'//trim(str(it))//'_', .true., .false., myrank, nbproc)
+          if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_inter_'//trim(str(it))//'_', .true., .false., myrank, nbproc)
         endif
       endif
 
@@ -472,8 +466,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
     ! Write the final model to a file.
-    if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_final_', .false., .true., myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_final_', .false., .true., myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_final_', .true., .true., myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_final_', .true., .true., myrank, nbproc)
 #endif
 
 #ifndef SUPPRESS_OUTPUT
