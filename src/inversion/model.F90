@@ -58,6 +58,9 @@ module model
     ! Local number of model parameters (on current CPU).
     integer :: nelements
 
+    ! Flag to check if the full model has been updated (to the state of the local model).
+    logical :: full_model_updated
+
   contains
     private
 
@@ -98,6 +101,8 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
 
   this%nelements = nelements
   this%nelements_total = pt%get_total_number_elements(nelements, myrank, nbproc)
+
+  this%full_model_updated = .true.
 
   ierr = 0
 
@@ -206,6 +211,8 @@ subroutine model_update(this, delta_model)
     this%val(i) = this%val(i) + delta_model(i)
   enddo
 
+  this%full_model_updated = .false.
+
 end subroutine model_update
 
 !======================================================================================================
@@ -218,6 +225,8 @@ subroutine model_update_full(this, myrank, nbproc)
   type(t_parallel_tools) :: pt
 
   call pt%get_full_array(this%val, this%nelements, this%val_full, .true., myrank, nbproc)
+
+  this%full_model_updated = .true.
 
 end subroutine model_update_full
 

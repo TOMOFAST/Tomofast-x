@@ -529,6 +529,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       nsmaller = pt%get_nsmaller(par%nelements, myrank, nbproc)
 
       ! Note: use 'model%val_full' for storage here, as we overwrite it later anyway.
+      model(1)%full_model_updated = .false.
+      model(2)%full_model_updated = .false.
 
       if (SOLVE_PROBLEM(1)) then
         call pt%get_full_array(delta_model(1:par%nelements), par%nelements, model(1)%val_full, .true., myrank, nbproc)
@@ -659,7 +661,7 @@ subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, model, der
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
   type(t_inversion_arrays), intent(in) :: arr(2)
-  type(t_model), intent(in) :: model(2)
+  type(t_model), intent(inout) :: model(2)
   integer, intent(in) :: der_type
   integer, intent(in) :: myrank, nbproc
 

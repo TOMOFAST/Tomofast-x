@@ -15,7 +15,7 @@
 !===========================================================================================
 ! A class to (vertical) gradient minimization to inversion.
 !
-! Vitaliy Ogarko and Jeremie Giraud, UWA, CET, Australia, 2016-2017.
+! Vitaliy Ogarko and Jeremie Giraud, UWA, CET, Australia.
 !===========================================================================================
 module damping_gradient
 
@@ -106,7 +106,7 @@ end function damping_gradient_get_cost
 !==================================================================================================================
 subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix, b_RHS, param_shift, direction, myrank, nbproc)
   class(t_damping_gradient), intent(inout) :: this
-  type(t_model), intent(in) :: model
+  type(t_model), intent(inout) :: model
   real(kind=CUSTOM_REAL), intent(in) :: grad_weight(:)
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   integer, intent(in) :: param_shift
@@ -123,6 +123,9 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
   type(t_parallel_tools) :: pt
   type(t_vector) :: gradient_fwd
   !type(t_vector) :: gradient_bwd
+
+  ! Update the full model (if required).
+  if (.not. model%full_model_updated) call model%update_full(myrank, nbproc)
 
   ! Number of parameters on ranks smaller than current one.
   nsmaller = pt%get_nsmaller(this%nelements, myrank, nbproc)

@@ -164,8 +164,8 @@ end function cross_gradient_get_num_deriv
 subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column_weight2, &
                                     matrix, b_RHS, add, der_type, myrank, nbproc)
   class(t_cross_gradient), intent(inout) :: this
-  type(t_model), intent(in) :: model1
-  type(t_model), intent(in) :: model2
+  type(t_model), intent(inout) :: model1
+  type(t_model), intent(inout) :: model2
   real(kind=CUSTOM_REAL), intent(in) :: column_weight1(:)
   real(kind=CUSTOM_REAL), intent(in) :: column_weight2(:)
   logical, intent(in) :: add
@@ -183,6 +183,10 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
   type(t_parallel_tools) :: pt
   real(kind=CUSTOM_REAL) :: val1, val2
   logical :: on_left_boundary, on_right_boundary
+
+  ! Update the full models (if required).
+  if (.not. model1%full_model_updated) call model1%update_full(myrank, nbproc)
+  if (.not. model2%full_model_updated) call model2%update_full(myrank, nbproc)
 
   ! Set the number of derivatives.
   nderiv = this%get_num_deriv(der_type)

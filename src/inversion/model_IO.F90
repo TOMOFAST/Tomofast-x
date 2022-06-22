@@ -96,6 +96,8 @@ subroutine model_read(model, file_name, myrank, nbproc)
   ! Distribute the model values among CPUs.
   call model%distribute(myrank, nbproc)
 
+  model%full_model_updated = .true.
+
 end subroutine model_read
 
 !================================================================================================
