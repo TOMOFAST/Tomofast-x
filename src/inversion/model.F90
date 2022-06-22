@@ -72,6 +72,7 @@ module model
     procedure, public, pass :: get_Ymax => model_get_Ymax
 
     procedure, public, pass :: update => model_update
+    procedure, public, pass :: update_full => model_update_full
     procedure, public, pass :: calculate_data => model_calculate_data
 
   end type t_model
@@ -193,7 +194,7 @@ pure function model_get_Ymax(this) result(res)
 end function model_get_Ymax
 
 !======================================================================================================
-! Update model after inversion.
+! Update the local model after inversion.
 !======================================================================================================
 subroutine model_update(this, delta_model)
   class(t_model), intent(inout) :: this
@@ -206,6 +207,19 @@ subroutine model_update(this, delta_model)
   enddo
 
 end subroutine model_update
+
+!======================================================================================================
+! Update the full model from its local parts (split between CPUs).
+!======================================================================================================
+subroutine model_update_full(this, myrank, nbproc)
+  class(t_model), intent(inout) :: this
+  integer, intent(in) :: myrank, nbproc
+
+  type(t_parallel_tools) :: pt
+
+  call pt%get_full_array(this%val, this%nelements, this%val_full, .true., myrank, nbproc)
+
+end subroutine model_update_full
 
 !======================================================================================================
 ! Calculate the linear data using the sensitivity kernel (S) and model (m) as d = S * m.

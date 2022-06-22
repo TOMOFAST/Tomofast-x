@@ -43,7 +43,6 @@ module problem_joint_gravmag
   use joint_inverse_problem
   use costs
   use data_gravmag
-  use parallel_tools
   use string, only: str
   use model_IO
 
@@ -76,7 +75,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Solution model (with grid).
   type(t_model) :: model(2)
 
-  type(t_parallel_tools) :: pt
   real(kind=CUSTOM_REAL) :: cost_data(2)
   real(kind=CUSTOM_REAL) :: cost_model(2)
   integer :: it, i, m, number_prior_models, ierr
@@ -410,11 +408,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       if (SOLVE_PROBLEM(1)) call model(1)%update(delta_model(1:ipar%nelements))
       if (SOLVE_PROBLEM(2)) call model(2)%update(delta_model(ipar%nelements + 1:))
 
-      ! Update the full models (needed e.g. for cross-gradient right-hand-side).
-      do i = 1, 2
-        if (SOLVE_PROBLEM(i)) &
-          call pt%get_full_array(model(i)%val, ipar%nelements, model(i)%val_full, .true., myrank, nbproc)
-      enddo
+      ! Update the full models (needed e.g. for cross-gradient and damping gradient).
+      if (SOLVE_PROBLEM(1)) call model(1)%update_full(myrank, nbproc)
+      if (SOLVE_PROBLEM(2)) call model(2)%update_full(myrank, nbproc)
 
       ! Write intermediate models to file.
       if (ipar%write_model_niter > 0) then
