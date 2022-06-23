@@ -81,6 +81,7 @@ module model
   end type t_model
 
   public :: rescale_model
+  public  :: calculate_data_unscaled
 
 contains
 
@@ -305,6 +306,42 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
   endif
 
 end subroutine model_calculate_data
+
+!======================================================================================================
+! Calculate the linear data using the sensitivity kernel (S) and model (m) as d = S * m.
+! Use line_start, line_end, param_shift to calculate the data using part of the big (joint) matrix.
+! This version uses unscaled model (in wavelet domain).
+!======================================================================================================
+subroutine calculate_data_unscaled(model, matrix_sensit, problem_weight, data, &
+                                   line_start, line_end, param_shift, myrank, nbproc)
+  real(kind=CUSTOM_REAL), intent(in) :: model(:)
+  integer, intent(in) :: line_start, line_end, param_shift
+  integer, intent(in) :: myrank, nbproc
+  real(kind=CUSTOM_REAL), intent(in) :: problem_weight
+  type(t_sparse_matrix), intent(in) :: matrix_sensit
+
+  real(kind=CUSTOM_REAL), intent(out) :: data(:)
+
+  integer :: ierr, ndata
+
+  ndata = size(data)
+
+  ! Calculate data: d = S' * m'
+  ! Assume that both the kernel and the model are unscaled (in wavelet domain).
+  call matrix_sensit%part_mult_vector(model, data, line_start, line_end, param_shift, myrank)
+
+  call MPI_Allreduce(MPI_IN_PLACE, data, ndata, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+  if (ierr /= 0) call exit_MPI("MPI error in model_calculate_data!", myrank, ierr)
+
+  ! Apply the problem weight.
+  if (problem_weight /= 0.d0) then
+    data = data / problem_weight
+  else
+    call exit_MPI("Zero problem weight in model_calculate_data!", myrank, 0)
+  endif
+
+end subroutine calculate_data_unscaled
 
 !================================================================================================
 ! Weights the model parameters.

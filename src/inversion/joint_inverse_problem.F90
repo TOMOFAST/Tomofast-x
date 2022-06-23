@@ -505,22 +505,19 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   endif
 
   !-------------------------------------------------------------------------------------
-  ! Calculate data update using unscaled (compressed) delta model.
+  ! Calculate data update using unscaled delta model (in wavelet domain).
   ! As we have both the compressed kernel and delta model, and the problem is linear.
   !-------------------------------------------------------------------------------------
-  call this%matrix%part_mult_vector(delta_model, delta_data, 1, sum(par%ndata), 0, myrank)
+  if (SOLVE_PROBLEM(1)) &
+    call calculate_data_unscaled(delta_model(1:par%nelements), this%matrix, par%problem_weight(1), &
+      delta_data(1:par%ndata(1)), 1, par%ndata(1), param_shift(1), myrank, nbproc)
 
-  call MPI_Allreduce(MPI_IN_PLACE, delta_data, sum(par%ndata), CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-
-  if (par%problem_weight(1) /= 0.d0) then
-    forall (i = 1:par%ndata(1)) delta_data(i) = delta_data(i) / par%problem_weight(1)
-  endif
-  if (par%problem_weight(2) /= 0.d0) then
-    forall (i = (par%ndata(1) + 1):sum(par%ndata)) delta_data(i) = delta_data(i) / par%problem_weight(2)
-  endif
+  if (SOLVE_PROBLEM(2)) &
+    call calculate_data_unscaled(delta_model(par%nelements + 1:), this%matrix, par%problem_weight(2), &
+      delta_data(par%ndata(1) + 1:sum(par%ndata)), par%ndata(1) + 1, sum(par%ndata), param_shift(2), myrank, nbproc)
 
   !-------------------------------------------------------------------------------------
-  ! Unscale (uncompress) the model update.
+  ! Unscale the model update.
   !-------------------------------------------------------------------------------------
   if (par%compression_type > 0) then
   ! Applying the Inverse Wavelet Transform.
