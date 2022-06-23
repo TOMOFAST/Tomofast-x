@@ -313,10 +313,10 @@ end subroutine model_calculate_data
 ! This version uses unscaled model (in wavelet domain).
 !======================================================================================================
 subroutine calculate_data_unscaled(model, matrix_sensit, problem_weight, data, &
-                                   line_start, line_end, param_shift, myrank, nbproc)
+                                   line_start, line_end, param_shift, myrank)
   real(kind=CUSTOM_REAL), intent(in) :: model(:)
   integer, intent(in) :: line_start, line_end, param_shift
-  integer, intent(in) :: myrank, nbproc
+  integer, intent(in) :: myrank
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
   type(t_sparse_matrix), intent(in) :: matrix_sensit
 

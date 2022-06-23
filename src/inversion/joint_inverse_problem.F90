@@ -308,7 +308,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   logical :: solve_mag_only
   integer :: nsmaller
   real(kind=CUSTOM_REAL) :: norm_power
-  integer :: ierr
 
   logical :: SOLVE_PROBLEM(2)
 
@@ -510,11 +509,11 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   !-------------------------------------------------------------------------------------
   if (SOLVE_PROBLEM(1)) &
     call calculate_data_unscaled(delta_model(1:par%nelements), this%matrix, par%problem_weight(1), &
-      delta_data(1:par%ndata(1)), 1, par%ndata(1), param_shift(1), myrank, nbproc)
+      delta_data(1:par%ndata(1)), 1, par%ndata(1), param_shift(1), myrank)
 
   if (SOLVE_PROBLEM(2)) &
     call calculate_data_unscaled(delta_model(par%nelements + 1:), this%matrix, par%problem_weight(2), &
-      delta_data(par%ndata(1) + 1:sum(par%ndata)), par%ndata(1) + 1, sum(par%ndata), param_shift(2), myrank, nbproc)
+      delta_data(par%ndata(1) + 1:sum(par%ndata)), par%ndata(1) + 1, sum(par%ndata), param_shift(2), myrank)
 
   !-------------------------------------------------------------------------------------
   ! Unscale the model update.
