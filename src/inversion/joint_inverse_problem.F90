@@ -45,8 +45,6 @@ module joint_inverse_problem
 
   private
 
-  logical, parameter :: NORMALIZE_MATRIX_COLUMNS = .false.
-
   !---------------------------------------------------------------------
   ! Main inversion class.
   type, public :: t_joint_inversion
@@ -61,9 +59,6 @@ module joint_inverse_problem
     type(t_sparse_matrix) :: matrix_B
     ! Right hand side for the cross-gradient part.
     real(kind=CUSTOM_REAL), allocatable :: d_RHS(:)
-
-    ! Matrix columns norm.
-    real(kind=CUSTOM_REAL), allocatable :: column_norm(:)
 
     ! Auxiliary arrays for the ADMM method.
     real(kind=CUSTOM_REAL), allocatable :: x0_ADMM(:)
@@ -255,10 +250,6 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     allocate(this%d_RHS(3 * par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   endif
 
-  if (NORMALIZE_MATRIX_COLUMNS) then
-    allocate(this%column_norm(2 * par%nelements), source=1._CUSTOM_REAL, stat=ierr)
-  endif
-
   if (par%admm_type > 0) then
     allocate(this%x0_ADMM(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
     allocate(this%weight_ADMM(par%nelements), source=1._CUSTOM_REAL, stat=ierr)
@@ -392,8 +383,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
 
   ! ***** ADMM method *****
 
-  ! TODO: Move to a separate function like joint_inversion_add_cross_grad_constraints()
-
   if (par%admm_type > 0) then
 
     solve_gravity_only = .false.
@@ -457,15 +446,10 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   endif
 
   !-------------------------------------------------------------------------------------
+  ! Parallel sparse inversion.
+  !-------------------------------------------------------------------------------------
   call this%matrix%finalize(2 * par%nelements, myrank)
 
-  if (NORMALIZE_MATRIX_COLUMNS) then
-    if (myrank == 0) print *, 'Normalizing the matrix columns.'
-
-    call this%matrix%normalize_columns(this%column_norm)
-  endif
-
-  ! Parallel sparse inversion.
   delta_model = 0._CUSTOM_REAL
   if (par%method == 1) then
     call lsqr_solve(par%niter, par%rmin, par%gamma, this%matrix, this%b_RHS, delta_model, myrank)
@@ -487,20 +471,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       call apply_method_of_weights(par_lsqr, par%method_of_weights_niter, this%matrix, this%matrix_B, &
                                    delta_model, this%b_RHS, this%d_RHS, par%cross_grad_weight, 3, myrank)
     endif
-  endif
-
-  !-------------------------------------------------------------------------------------
-  ! Scale models back to the unscaled variables.
-  if (NORMALIZE_MATRIX_COLUMNS) then
-    ! Calculate the column weight (which is the inverse column norm).
-    do i = 1, 2 * par%nelements
-      if (this%column_norm(i) /= 0.d0) then
-        this%column_norm(i) = 1.d0 / this%column_norm(i)
-      else
-        this%column_norm(i) = 1.d0
-      endif
-    enddo
-    call rescale_model(delta_model, this%column_norm, 2 * par%nelements)
   endif
 
   !-------------------------------------------------------------------------------------
@@ -585,9 +555,6 @@ subroutine write_posterior_variance(lsqr_var, par, column_weight, problem_type, 
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full(:)
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_scaled(:)
 
-  allocate(lsqr_var_full(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(lsqr_var_scaled(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
-
   if (par%compression_type > 0) then
   ! When using the wavelet compression the lsqr variance is very different from the non-compressed case,
   ! even for high compression rate of 0.99. Also, the variance numbers do not look correct with compression.
@@ -595,6 +562,9 @@ subroutine write_posterior_variance(lsqr_var, par, column_weight, problem_type, 
   ! Skip it for now.
     return
   endif
+
+  allocate(lsqr_var_full(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(lsqr_var_scaled(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
   if (par%compression_type > 0) then
   ! Applying the Inverse Wavelet Transform.
