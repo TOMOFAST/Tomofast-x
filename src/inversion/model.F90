@@ -332,13 +332,13 @@ subroutine calculate_data_unscaled(model, matrix_sensit, problem_weight, data, &
 
   call MPI_Allreduce(MPI_IN_PLACE, data, ndata, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
-  if (ierr /= 0) call exit_MPI("MPI error in model_calculate_data!", myrank, ierr)
+  if (ierr /= 0) call exit_MPI("MPI error in calculate_data_unscaled!", myrank, ierr)
 
   ! Apply the problem weight.
   if (problem_weight /= 0.d0) then
     data = data / problem_weight
   else
-    call exit_MPI("Zero problem weight in model_calculate_data!", myrank, 0)
+    call exit_MPI("Zero problem weight in calculate_data_unscaled!", myrank, 0)
   endif
 
 end subroutine calculate_data_unscaled
