@@ -111,7 +111,7 @@ module joint_inverse_problem
 
     procedure, public, nopass :: calculate_matrix_partitioning => joint_inversion_calculate_matrix_partitioning
 
-    procedure, private, nopass :: write_posterior_variance
+    procedure, private, nopass :: write_variance
 
   end type t_joint_inversion
 
@@ -242,7 +242,11 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   ierr = 0
 
   allocate(this%b_RHS(this%matrix%get_total_row_number()), source=0._CUSTOM_REAL, stat=ierr)
-  call this%matrix%allocate_variance_array(2 * par%nelements, myrank)
+
+  if (par%compression_type == 0) then
+    ! Calculate solution variance only for the non-compressed problem, as it does not work with wavelet compression.
+    call this%matrix%allocate_variance_array(2 * par%nelements, myrank)
+  endif
 
   if (this%add_cross_grad) then
     ! Memory allocation for the matrix and right-hand side for the cross-gradient constraints.
@@ -524,22 +528,28 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   if (SOLVE_PROBLEM(1)) call rescale_model(delta_model(1:par%nelements), arr(1)%column_weight, par%nelements)
   if (SOLVE_PROBLEM(2)) call rescale_model(delta_model(par%nelements + 1:), arr(2)%column_weight, par%nelements)
 
-  !--------------------------------------------------------------------------------
+  !----------------------------------------------------------------------------------------------------------
   ! Writing grav/mag prior and posterior variance.
-  !--------------------------------------------------------------------------------
-  if (ncalls == 1 .or. ncalls == par%ninversions) then
-    if (SOLVE_PROBLEM(1)) &
-      call write_posterior_variance(this%matrix%lsqr_var(1:par%nelements), par, arr(1)%column_weight, 1, ncalls, myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) &
-      call write_posterior_variance(this%matrix%lsqr_var(par%nelements + 1:), par, arr(2)%column_weight, 2, ncalls, myrank, nbproc)
+  !----------------------------------------------------------------------------------------------------------
+  if (par%compression_type == 0) then
+    ! Calculate solution variance only for the non-compressed problem, as it does not work with wavelet compression:
+    ! When using the wavelet compression the lsqr variance is very different from the non-compressed case,
+    ! even for high compression rate of 0.99. Also, the variance numbers do not look correct with compression.
+    ! Possibly, we cannot compute the variance this way with wavelet compression (by simply applying the inverse wavelet transform), not sure.
+    if (allocated(this%matrix%lsqr_var) .and. (ncalls == 1 .or. ncalls == par%ninversions)) then
+      if (SOLVE_PROBLEM(1)) &
+        call write_variance(this%matrix%lsqr_var(1:par%nelements), par, arr(1)%column_weight, 1, ncalls, myrank, nbproc)
+      if (SOLVE_PROBLEM(2)) &
+        call write_variance(this%matrix%lsqr_var(par%nelements + 1:), par, arr(2)%column_weight, 2, ncalls, myrank, nbproc)
+    endif
   endif
 
 end subroutine joint_inversion_solve
 
 !=======================================================================================================
-! Writing posterior variance to a file.
+! Writing solution variance to a file.
 !=======================================================================================================
-subroutine write_posterior_variance(lsqr_var, par, column_weight, problem_type, ncalls, myrank, nbproc)
+subroutine write_variance(lsqr_var, par, column_weight, problem_type, ncalls, myrank, nbproc)
   real(kind=CUSTOM_REAL), intent(in) :: lsqr_var(:)
   type(t_parameters_inversion), intent(in) :: par
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
@@ -554,14 +564,6 @@ subroutine write_posterior_variance(lsqr_var, par, column_weight, problem_type, 
 
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full(:)
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_scaled(:)
-
-  if (par%compression_type > 0) then
-  ! When using the wavelet compression the lsqr variance is very different from the non-compressed case,
-  ! even for high compression rate of 0.99. Also, the variance numbers do not look correct with compression.
-  ! Possibly, we cannot compute the variance this way with wavelet compression (by simply applying the inverse wavelet transform), not sure.
-  ! Skip it for now.
-    return
-  endif
 
   allocate(lsqr_var_full(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(lsqr_var_scaled(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
@@ -618,7 +620,7 @@ subroutine write_posterior_variance(lsqr_var, par, column_weight, problem_type, 
   deallocate(lsqr_var_full)
   deallocate(lsqr_var_scaled)
 
-end subroutine write_posterior_variance
+end subroutine write_variance
 
 !=======================================================================================================
 ! Adds the cross-gradient constraints to the least square system.
