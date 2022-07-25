@@ -121,6 +121,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   real(kind=CUSTOM_REAL) :: comp_rate, comp_error
   integer(kind=8) :: nnz_total
   real(kind=CUSTOM_REAL) :: threshold
+  character(len=256) :: msg
 
   integer :: nelements_at_cpu_new(nbproc)
   integer(kind=8) :: nnz_at_cpu_new(nbproc)
@@ -179,7 +180,11 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   print *, 'Writing the sensitivity to file ', trim(filename_full)
 
-  open(77, file=trim(filename_full), form='unformatted', status='unknown', action='write')
+  open(unit=77, file=trim(filename_full), status='replace', access='stream', form='unformatted', action='write', &
+       iostat=ierr, iomsg=msg)
+
+  if (ierr /= 0) call exit_MPI("Error in creating the sensitivity file! path=" &
+                               //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
   ! Allocate memory.
@@ -518,7 +523,9 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
     if (myrank == 0) print *, 'Reading the sensitivity file ', trim(filename_full)
 
-    open(78, file=trim(filename_full), form='unformatted', status='unknown', action='read', iostat=ierr, iomsg=msg)
+    open(unit=78, file=trim(filename_full), status='old', access='stream', form='unformatted', action='read', &
+         iostat=ierr, iomsg=msg)
+
     if (ierr /= 0) call exit_MPI("Error in opening the sensitivity file! path=" &
                                  //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
