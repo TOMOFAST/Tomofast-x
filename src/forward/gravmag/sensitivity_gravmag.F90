@@ -118,7 +118,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   integer :: problem_type
   integer :: idata, ndata_loc, ndata_smaller
   character(len=256) :: filename, filename_full
-  real(kind=CUSTOM_REAL) :: comp_rate
+  real(kind=CUSTOM_REAL) :: comp_rate, comp_error
   integer(kind=8) :: nnz_total
   real(kind=CUSTOM_REAL) :: threshold
 
@@ -137,7 +137,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! To calculate the partitioning for balanced memory loading among CPUs.
   integer(kind=8), allocatable :: sensit_nnz(:)
 
-  real(kind=CUSTOM_REAL) :: cost, cost_full, cost_compressed
+  real(kind=CUSTOM_REAL) :: cost_full, cost_compressed
   real(kind=CUSTOM_REAL) :: cost_full_loc, cost_compressed_loc
 
   ! The full column weight.
@@ -324,17 +324,17 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
 
   !---------------------------------------------------------------------------------------------
-  ! Calculate the kernel compression cost.
+  ! Calculate the kernel compression error.
   !---------------------------------------------------------------------------------------------
   if (par%compression_type > 0) then
     call mpi_allreduce(cost_full_loc, cost_full, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
     call mpi_allreduce(cost_compressed_loc, cost_compressed, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-    cost = sqrt(cost_compressed / cost_full)
+    comp_error = 1.d0 - sqrt(cost_compressed / cost_full)
   else
-    cost = 1.d0
+    comp_error = 0.d0
   endif
 
-  if (myrank == 0) print *, 'COMPRESSION ERROR = ', 1.d0 - cost
+  if (myrank == 0) print *, 'COMPRESSION ERROR = ', comp_error
 
   !---------------------------------------------------------------------------------------------
   ! Perform the nnz load balancing among CPUs.
@@ -360,7 +360,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     open(77, file=trim(filename_full), form='formatted', status='unknown', action='write')
 
-    write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, MATRIX_PRECISION, cost
+    write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, MATRIX_PRECISION, comp_error
     write(77, *) nnz_at_cpu_new
     write(77, *) nelements_at_cpu_new
 
@@ -646,7 +646,7 @@ subroutine read_sensitivity_metadata(par, nnz, nelements_new, problem_type, myra
   character(len=256) :: msg
   integer :: nx_read, ny_read, nz_read, ndata_read, nbproc_read
   integer :: precision_read
-  real(kind=CUSTOM_REAL) :: cost
+  real(kind=CUSTOM_REAL) :: comp_error
 
   ! Define the file name.
   filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_meta.dat"
@@ -660,9 +660,9 @@ subroutine read_sensitivity_metadata(par, nnz, nelements_new, problem_type, myra
   if (ierr /= 0) call exit_MPI("Error in opening the sensitivity metadata file! path=" &
                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
-  read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read, precision_read, cost
+  read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read, precision_read, comp_error
 
-  if (myrank == 0) print *, "COMPRESSION COST (read) =", cost
+  if (myrank == 0) print *, "COMPRESSION ERROR (read) =", comp_error
 
   ! Consistency check.
   if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
