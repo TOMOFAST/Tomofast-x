@@ -151,13 +151,11 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
 
     ! Calculate and write the sensitivity kernel to files.
-    if (SOLVE_PROBLEM(1)) &
-      call calculate_and_write_sensit(gpar, model(1)%grid_full, data(1), iarr(1)%column_weight, &
-                                      nnz(1), nelements_new, myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) call calculate_and_write_sensit(gpar, model(1)%grid_full, data(1), iarr(1)%column_weight, &
+                                                          nnz(1), nelements_new, myrank, nbproc)
 
-    if (SOLVE_PROBLEM(2)) &
-      call calculate_and_write_sensit(mpar, model(2)%grid_full, data(2), iarr(2)%column_weight, &
-                                      nnz(2), nelements_new, myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call calculate_and_write_sensit(mpar, model(2)%grid_full, data(2), iarr(2)%column_weight, &
+                                                          nnz(2), nelements_new, myrank, nbproc)
   else
     ! Read the sensitivity metadata file to define the nnz.
     if (SOLVE_PROBLEM(1)) call read_sensitivity_metadata(gpar, nnz(1), nelements_new, 1, myrank, nbproc)
