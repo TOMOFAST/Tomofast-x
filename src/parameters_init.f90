@@ -191,19 +191,21 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
     ! always divides evenly because of the previous sanity check.
     epar%dims%nzlocal = epar%dims%nz / nbproc
 
-    ! Initialize dimensions of the sensitivity matrix in inverse problem (nelements x ndata+nelements).
-    ipar%nelements_total = epar%dims%nr * epar%dims%ntheta * (epar%dims%nz + 1)
-
     ipar%nx = epar%dims%nr
     ipar%ny = epar%dims%ntheta
+    ipar%nz = epar%dims%nz + 1
+
+    ipar%nelements_total = ipar%nx * ipar%ny * ipar%nz
 
     ! We have nzlocal+1 k-elements in the last processor,
     ! since the model is defined in the middle of the potential (phi) grid nodes, which run from 0 to nz+1.
     ! So for nz=4, phi-nodes are:   0   1   2   3   4   5, and
     !              model-nodes are:   1   2   3   4   5, i.e., not even number.
-    ipar%nz = epar%dims%nzlocal + (myrank + 1) / nbproc
-
-    ipar%nelements = ipar%nx * ipar%ny * ipar%nz
+    if (myrank < nbproc - 1) then
+      ipar%nelements = ipar%nx * ipar%ny * epar%dims%nzlocal
+    else
+      ipar%nelements = ipar%nx * ipar%ny * (epar%dims%nzlocal + 1)
+    endif
 
     ipar%ndata = epar%get_ndata()
 
