@@ -16,7 +16,7 @@
 !===============================================================================================
 ! Unit tests for ECT (forward problem) part.
 !
-! Author: Vitaliy Ogarko, UWA, CET, Australia, 2015.
+! Author: Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================================
 module tests_ect
 
@@ -778,7 +778,6 @@ subroutine test_analytical_comparison(bc_type, size, ilevel_coarse, itmax, sens)
 
   integer :: nr, ntheta, nz, nzlocal
   integer :: i, j, k, imax, kmax
-  integer :: ierr
   !character(len=40) :: name
 
   ! For the multigrid method start from level=1.
@@ -976,7 +975,7 @@ subroutine test_analytical_comparison(bc_type, size, ilevel_coarse, itmax, sens)
   call solver_pcg(a(ilevel_fine)%p,b_RHS(ilevel_fine)%p,x2(ilevel_fine)%p,NORM_L2,par%iprecond,par%omega1,&
                   1.e-12_CUSTOM_REAL,itmax,iter_pcg,output_frequency,.false.,&
                   nr_at_level(ilevel_fine),ntheta_at_level(ilevel_fine),nzlocal_at_level(ilevel_fine),&
-                  ierr,myrank,nbproc,pcg_auxarrays)
+                  myrank,nbproc,pcg_auxarrays)
 
   ! Enforce periodic boundary conditions.
   call enforce_pb(nr_read, ntheta_read, nzlocal_read, x2(ilevel_fine)%p)

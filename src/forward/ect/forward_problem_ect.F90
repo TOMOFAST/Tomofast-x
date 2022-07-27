@@ -502,7 +502,7 @@ subroutine solve_forward_problem_ect(par, sensit, cdata, model, column_weight, m
                       par%itypenorm, par%iprecond, par%omega1, par%tol, par%itmax, iter_pcg, &
                       par%output_frequency, .true., &
                       dims_at_level(ilevel_fine)%nr, dims_at_level(ilevel_fine)%ntheta, dims_at_level(ilevel_fine)%nzlocal, &
-                      ierr, myrank, nbproc, pcg_auxarrays)
+                      myrank, nbproc, pcg_auxarrays)
     else
       ! Copy Dirichlet values into initial guess before solving.
       do k=0,dims_at_level(ilevel_fine)%nzlocal+1

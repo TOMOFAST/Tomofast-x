@@ -167,7 +167,7 @@ subroutine init_model_from_inversion(par,dims,permit,model,i1,i2,myrank,nbproc)
 
   real(kind=CUSTOM_REAL), intent(out) :: permit(0:,0:,0:)
 
-  integer :: i,j,k,l,ierr
+  integer :: i,j,k,l
   real(kind=CUSTOM_REAL) :: permit_avg
 
   ! NOTE: Use same loop as in calculate_sensitivity(), to match the dimensions!
@@ -226,7 +226,7 @@ subroutine init_model_from_inversion(par,dims,permit,model,i1,i2,myrank,nbproc)
   call enforce_pb(dims%nr, dims%ntheta, dims%nzlocal, permit)
 
   ! Initialize k=0, k=nzlocal+1 values.
-  if (nbproc > 1) call mpisendrecv(permit, dims%nr, dims%ntheta, dims%nzlocal, myrank, nbproc, ierr)
+  if (nbproc > 1) call mpisendrecv(permit, dims%nr, dims%ntheta, dims%nzlocal, myrank, nbproc)
 
 end subroutine init_model_from_inversion
 

@@ -53,7 +53,7 @@ contains
 !
 ! The data that needs to be send is always nr*ntheta values, stored contiguously in memory.
 !=========================================================================================================
-subroutine mpisendrecv(x, nr, ntheta, nz, myrank, nbproc, ierr)
+subroutine mpisendrecv(x, nr, ntheta, nz, myrank, nbproc)
   ! Problem dimensions.
   integer , intent(in):: nr, ntheta, nz
   ! Local part of the distributed vector to perform neighbour exchanges on.
@@ -61,7 +61,7 @@ subroutine mpisendrecv(x, nr, ntheta, nz, myrank, nbproc, ierr)
   ! MPI rank and total number of processes.
   integer, intent(in) :: myrank,nbproc
   ! MPI error code.
-  integer, intent(in) :: ierr
+  integer :: ierr
 
   integer :: nb_of_elems_to_send
   ! MPI status variable (needed for calls to mpi_recv).
@@ -119,7 +119,7 @@ subroutine calculate_precon_residual(auxarrays, A, iprecond, omega1, nr, ntheta,
   type (t_pcg_auxarrays), intent(inout) :: auxarrays
 
   integer :: i, j, k
-  integer :: itt, ierr
+  integer :: itt
 
   if (iprecond == 0) then
   ! No preconditioner: just divide by matrix diagonal.
@@ -149,7 +149,7 @@ subroutine calculate_precon_residual(auxarrays, A, iprecond, omega1, nr, ntheta,
     endif
     do itt = 1, 1
       ! Exchange halo values with neighbouring z-slices
-      if (nbproc > 1) call mpisendrecv(auxarrays%z, nr, ntheta, nz, myrank, nbproc, ierr)
+      if (nbproc > 1) call mpisendrecv(auxarrays%z, nr, ntheta, nz, myrank, nbproc)
       call periodic_and_matmul(A, auxarrays%z, auxarrays%tmp, nr, ntheta, nz)
 
       do k = 1, nz
@@ -170,7 +170,7 @@ end subroutine calculate_precon_residual
 !====================================================================================
 subroutine solver_pcg(A, b, x, itypenorm, iprecond, omega1, tol, itmax, iter, &
                       output_frequency, suppress_output, &
-                      nr, ntheta, nz, ierr, myrank, nbproc, auxarrays)
+                      nr, ntheta, nz, myrank, nbproc, auxarrays)
 
   ! Number of unknowns in each dimension.
   integer, intent(in) :: nr, ntheta, nz
@@ -193,7 +193,7 @@ subroutine solver_pcg(A, b, x, itypenorm, iprecond, omega1, tol, itmax, iter, &
   ! suppress output except in emergencies?
   logical, intent(in) :: suppress_output
   ! MPI variables
-  integer, intent(in) :: myrank, nbproc, ierr
+  integer, intent(in) :: myrank, nbproc
 
   ! auxiliary arrays
   type (t_pcg_auxarrays), intent(inout) :: auxarrays
@@ -205,7 +205,7 @@ subroutine solver_pcg(A, b, x, itypenorm, iprecond, omega1, tol, itmax, iter, &
   ! Local variables:
 
   ! some counters and misc variables
-  integer :: i, j, k
+  integer :: i, j, k, ierr
   ! result of norm computations (local part)
   real(kind=CUSTOM_REAL) :: err
   ! steplength parameter, dot(r,p), both locally (per process intermediate value)
@@ -231,7 +231,7 @@ subroutine solver_pcg(A, b, x, itypenorm, iprecond, omega1, tol, itmax, iter, &
   ! Compute initial residual: r = b - Ax.
   !
   ! exchange halo values with neighbouring z-slices
-  if (nbproc > 1) call mpisendrecv(x, nr, ntheta, nz, myrank, nbproc, ierr)
+  if (nbproc > 1) call mpisendrecv(x, nr, ntheta, nz, myrank, nbproc)
   ! r = Ax (temporary)
   call periodic_and_matmul(A, x, auxarrays%r, nr, ntheta, nz)
   ! r = b - Ax
@@ -327,7 +327,7 @@ subroutine solver_pcg(A, b, x, itypenorm, iprecond, omega1, tol, itmax, iter, &
 #ifdef USE_TIMERS_OLD
     call cpu_time(time_Ax_old)
 #endif
-    if (nbproc > 1) call mpisendrecv(auxarrays%p, nr, ntheta, nz, myrank, nbproc, ierr)
+    if (nbproc > 1) call mpisendrecv(auxarrays%p, nr, ntheta, nz, myrank, nbproc)
     call periodic_and_matmul(A, auxarrays%p, auxarrays%z, nr, ntheta, nz)
 #ifdef USE_TIMERS_OLD
     call cpu_time(time_Ax_new)
@@ -494,7 +494,7 @@ subroutine solver_pcg(A, b, x, itypenorm, iprecond, omega1, tol, itmax, iter, &
 
   ! Exchange halo values with neighbouring z-slices.
   ! Need them to calculate capacitance in sensitivity() function.
-  if (nbproc > 1) call mpisendrecv(x, nr, ntheta, nz, myrank, nbproc, ierr)
+  if (nbproc > 1) call mpisendrecv(x, nr, ntheta, nz, myrank, nbproc)
 
 end subroutine solver_pcg
 
