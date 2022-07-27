@@ -14,13 +14,12 @@
 
 module global_typedefs
 
-  !use mpi
-  ! Replaced "use mpi" back with "include 'mpif.h'" because of problems on two systems
-  ! (that have no 'module load' system, which is common).
+  use mpi
 
   implicit none
 
-  include 'mpif.h'
+  ! Try this if 'use mpi' does not work, e.g., there is no 'module load' system.
+  !include 'mpif.h'
 
   !-----------------------------------------------------------------------
   ! Choose between single and double precision for the whole code;
