@@ -67,7 +67,8 @@ end subroutine matvecmul
 !=============================================================================================
 ! Perform test the data calculation in the wavelet domain.
 !=============================================================================================
-subroutine test_wavelet_calculate_data()
+subroutine test_wavelet_calculate_data(myrank, nbproc)
+  integer, intent(in) :: myrank, nbproc
 
   real(kind=CUSTOM_REAL), allocatable :: A(:, :)
   real(kind=CUSTOM_REAL), allocatable :: x(:)
@@ -76,6 +77,9 @@ subroutine test_wavelet_calculate_data()
   integer :: nrows, ncolumns
   integer :: i, j
   integer :: nx, ny, nz
+
+  if (myrank > 0) continue
+  if (nbproc > 0) continue
 
   nx = 3
   ny = 4
@@ -133,12 +137,16 @@ end subroutine test_wavelet_calculate_data
 !=============================================================================================
 ! Testing the application of wavelet transform to diagonal matrix.
 !=============================================================================================
-subroutine test_wavelet_diagonal_matrix()
+subroutine test_wavelet_diagonal_matrix(myrank, nbproc)
+  integer, intent(in) :: myrank, nbproc
 
   real(kind=CUSTOM_REAL), allocatable :: A(:, :)
   integer :: nrows, ncolumns
   integer :: i, j
   integer :: nx, ny, nz, nnz
+
+  if (myrank > 0) continue
+  if (nbproc > 0) continue
 
   nx = 10
   ny = 10
@@ -177,7 +185,11 @@ end subroutine test_wavelet_diagonal_matrix
 !=============================================================================================
 ! Testing that the wavelet transform is L2 norm preserving.
 !=============================================================================================
-subroutine test_wavelet_norm_preserving()
+subroutine test_wavelet_norm_preserving(myrank, nbproc)
+  integer, intent(in) :: myrank, nbproc
+
+  if (myrank > 0) continue
+  if (nbproc > 0) continue
 
   ! Haar wavelet.
   call test_wavelet_norm_preserving_kind(1)
@@ -231,7 +243,11 @@ end subroutine test_wavelet_norm_preserving_kind
 !=============================================================================================
 ! Testing the inverse wavelet transform.
 !=============================================================================================
-subroutine test_wavelet_inverse()
+subroutine test_wavelet_inverse(myrank, nbproc)
+  integer, intent(in) :: myrank, nbproc
+
+  if (myrank > 0) continue
+  if (nbproc > 0) continue
 
   ! Haar wavelet.
   call test_wavelet_inverse_kind(1)

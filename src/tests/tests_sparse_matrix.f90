@@ -42,12 +42,14 @@ contains
 !=============================================================================================
 ! Perform test for a (ncolumns x nrows) matrix with some zero columns.
 !=============================================================================================
-subroutine test_get_value(myrank)
-  integer, intent(in) :: myrank
+subroutine test_get_value(myrank, nbproc)
+  integer, intent(in) :: myrank, nbproc
 
   type(t_sparse_matrix) :: matrix
   integer :: nrows, ncolumns
   integer :: i, j, counter
+
+  if (nbproc > 0) continue
 
   ! Set matrix size.
   ncolumns = 10
@@ -91,8 +93,8 @@ end subroutine test_get_value
 !=============================================================================================
 ! Perform test for a (ncolumns x nrows) matrix with some zero columns.
 !=============================================================================================
-subroutine test_normalize_columns(myrank)
-  integer, intent(in) :: myrank
+subroutine test_normalize_columns(myrank, nbproc)
+  integer, intent(in) :: myrank, nbproc
 
   type(t_sparse_matrix) :: matrix
   integer :: nrows, ncolumns
@@ -101,6 +103,8 @@ subroutine test_normalize_columns(myrank)
   real(kind=CUSTOM_REAL), allocatable :: A(:, :)
   real(kind=CUSTOM_REAL), allocatable :: column_norm(:)
   real(kind=CUSTOM_REAL), allocatable :: ej(:, :), A_ej(:, :)
+
+  if (nbproc > 0) continue
 
   ! Set matrix size.
   ncolumns = 10
@@ -174,8 +178,8 @@ end subroutine test_normalize_columns
 ! A = (3 4)
 !     (5 6)
 !=============================================================================================
-subroutine test_trans_mult_matrix(myrank)
-  integer, intent(in) :: myrank
+subroutine test_trans_mult_matrix(myrank, nbproc)
+  integer, intent(in) :: myrank, nbproc
 
   type(t_sparse_matrix) :: matrix
   integer :: nrows, ncolumns
@@ -186,6 +190,8 @@ subroutine test_trans_mult_matrix(myrank)
   real(kind=CUSTOM_REAL), allocatable :: Avi(:)
   real(kind=CUSTOM_REAL), allocatable :: Avj(:)
   real(kind=CUSTOM_REAL), allocatable :: H(:, :)
+
+  if (nbproc > 0) continue
 
   ! Set matrix size.
   ncolumns = 2

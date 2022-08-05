@@ -64,6 +64,13 @@ contains
 !     text          Text describing the test
 !
 subroutine test( proc, text, myrank, nbproc )
+    ! VO: Added interface.
+    interface
+        subroutine proc(myrank, nbproc)
+            integer, intent(in) :: myrank, nbproc
+        end subroutine proc
+    end interface
+
     external            :: proc
     character(len=*)    :: text
     integer, intent(in) :: myrank, nbproc
