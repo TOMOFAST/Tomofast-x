@@ -250,7 +250,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   if (this%add_cross_grad) then
     ! Memory allocation for the matrix and right-hand side for the cross-gradient constraints.
-    call this%matrix_B%initialize(3 * par%nelements_total, int8(this%cross_grad%get_num_elements(par%derivative_type)), myrank)
+    call this%matrix_B%initialize(3 * par%nelements_total, int(this%cross_grad%get_num_elements(par%derivative_type), 8), myrank)
     allocate(this%d_RHS(3 * par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   endif
 

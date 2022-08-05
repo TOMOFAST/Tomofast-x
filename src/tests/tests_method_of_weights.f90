@@ -84,8 +84,8 @@ subroutine test_method_of_weights_1(myrank, nbproc)
     return
   endif
 
-  call matrix_A%initialize(nrows_A, int8(ncols_loc * nrows_A), myrank)
-  call matrix_C%initialize(nrows_C, int8(ncols_loc * nrows_C), myrank)
+  call matrix_A%initialize(nrows_A, int(ncols_loc * nrows_A, 8), myrank)
+  call matrix_C%initialize(nrows_C, int(ncols_loc * nrows_C, 8), myrank)
 
   allocate(b(nrows_A), source=0._CUSTOM_REAL, stat=ierr)
   allocate(y(ncols_loc), source=0._CUSTOM_REAL, stat=ierr)
@@ -187,8 +187,8 @@ subroutine test_method_of_weights_2(myrank, nbproc)
     return
   endif
 
-  call matrix_A%initialize(nrows_A, int8(ncols_loc * nrows_A), myrank)
-  call matrix_C%initialize(nrows_C, int8(ncols_loc * nrows_C), myrank)
+  call matrix_A%initialize(nrows_A, int(ncols_loc * nrows_A, 8), myrank)
+  call matrix_C%initialize(nrows_C, int(ncols_loc * nrows_C, 8), myrank)
 
   allocate(b(nrows_A), source=0._CUSTOM_REAL, stat=ierr)
   allocate(y(ncols_loc), source=0._CUSTOM_REAL, stat=ierr)

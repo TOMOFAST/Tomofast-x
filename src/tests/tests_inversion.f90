@@ -92,7 +92,7 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
   enddo
 
   call isensit%initialize(par%ndata(1) + par%nelements_total, &
-                          int8(par%ndata(1) * par%nelements + par%nelements), myrank)
+                          int(par%ndata(1) * par%nelements + par%nelements, 8), myrank)
 
   call damping%initialize(par%nelements, par%alpha(1), par%problem_weight(1), par%norm_power, &
                           par%compression_type, par%nx, par%ny, par%nz)
@@ -207,7 +207,7 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
 
   call cross_grad%initialize(nx, ny, nz, nelements, myrank)
 
-  call matrix%initialize(3 * nelements_total, int8(cross_grad%get_num_elements(derivative_type)), myrank)
+  call matrix%initialize(3 * nelements_total, int(cross_grad%get_num_elements(derivative_type), 8), myrank)
 
   call cross_grad%calculate(model1, model2, column_weight1, column_weight2, &
                             matrix, b_RHS, .true., derivative_type, myrank, nbproc)

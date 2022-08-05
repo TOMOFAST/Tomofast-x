@@ -205,7 +205,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   allocate(sensit_columns(nel_compressed), source=0, stat=ierr)
   allocate(sensit_compressed(nel_compressed), source=0._MATRIX_PRECISION, stat=ierr)
 
-  allocate(sensit_nnz(nelements_total), source=int8(0), stat=ierr)
+  allocate(sensit_nnz(nelements_total), source=int(0, 8), stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
@@ -423,9 +423,9 @@ subroutine get_load_balancing_nelements(sensit_nnz, nelements_total, nnz_total, 
   integer :: nelements_new
   integer(kind=8) :: nnz_new
 
-  nnz_at_cpu_new(:) = nnz_total / int8(nbproc)
+  nnz_at_cpu_new(:) = nnz_total / int(nbproc, 8)
   ! Last rank gets the remaining elements.
-  nnz_at_cpu_new(nbproc) = nnz_at_cpu_new(nbproc) + mod(nnz_total, int8(nbproc))
+  nnz_at_cpu_new(nbproc) = nnz_at_cpu_new(nbproc) + mod(nnz_total, int(nbproc, 8))
 
   cpu = 1
   nnz_new = 0

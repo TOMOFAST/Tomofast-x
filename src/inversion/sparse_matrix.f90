@@ -591,7 +591,7 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
   ierr = 0
 
   if (.not. allocated(this%sa)) allocate(this%sa(this%nnz), source=0._MATRIX_PRECISION, stat=ierr)
-  if (.not. allocated(this%ijl)) allocate(this%ijl(this%nl + 1), source=int8(0), stat=ierr)
+  if (.not. allocated(this%ijl)) allocate(this%ijl(this%nl + 1), source=int(0, 8), stat=ierr)
   if (.not. allocated(this%ija)) allocate(this%ija(this%nnz), source=0, stat=ierr)
 
   if (ierr /= 0) &

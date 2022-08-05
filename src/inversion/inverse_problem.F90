@@ -76,7 +76,7 @@ subroutine inversion_initialize(this, par, myrank)
   this%nelements = par%nelements
 
   call this%matrix%initialize(par%ndata(1) + par%nelements_total, &
-                              int8(par%ndata(1) * par%nelements + par%nelements), myrank)
+                              int(par%ndata(1) * par%nelements + par%nelements, 8), myrank)
 
   ierr = 0
 
