@@ -104,10 +104,6 @@ subroutine capacitance_2d_surf(nr,ntheta,nz,nzlocal,phi,theta,r,z,&
 
     endif
 
-#ifdef USE_FLUSH6
-    call flush(6)
-#endif
-
   enddo ! loop on k
 
 end subroutine capacitance_2d_surf
@@ -194,10 +190,6 @@ subroutine capacitance_plane(nr, ntheta, nz, nzlocal, phi, theta, r, z, permit, 
       enddo ! loop on i
 
     endif
-
-#ifdef USE_FLUSH6
-    call flush(6)
-#endif
 
   enddo ! loop on k
 
@@ -375,7 +367,7 @@ subroutine capacitance_computed_directly(phi, theta,r, z, permit, i1, i2, &
             '  scaled by self-capa = ', capacity_sum / abs(capacity(ielectrode, ielectrode))
 
 #ifdef USE_FLUSH6
-    call flush(6)
+    flush(6)
 #endif
   endif
 #endif

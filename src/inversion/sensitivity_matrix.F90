@@ -143,10 +143,6 @@ subroutine sensitivity_matrix_add(this, matrix, b_RHS, param_shift, sensitivity,
   ! Calculate misfit function cost.
   this%cost = sum(b_RHS(row_beg:row_end)**2)
 
-#ifdef USE_FLUSH6
-  call flush(6)
-#endif
-
 end subroutine sensitivity_matrix_add
 
 !================================================================================

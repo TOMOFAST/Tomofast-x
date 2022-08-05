@@ -461,7 +461,7 @@ subroutine solver_pcg(A, b, x, itypenorm, iprecond, omega1, tol, itmax, iter, &
 #endif
 
 #ifdef USE_FLUSH6
-      call flush(6)
+      flush(6)
 #endif
 
       !
@@ -488,7 +488,7 @@ subroutine solver_pcg(A, b, x, itypenorm, iprecond, omega1, tol, itmax, iter, &
 #endif
 
 #ifdef USE_FLUSH6
-    call flush(6)
+    flush(6)
 #endif
   endif
 

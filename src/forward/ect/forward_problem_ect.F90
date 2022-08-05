@@ -367,7 +367,7 @@ subroutine solve_forward_problem_ect(par, sensit, cdata, model, column_weight, m
     if (.not. suppress_output .and. myrank == 0) print *,'GEOMETRY_INIT, level, index of R1 and R2, and izspace',ilevel,&
                             'i1=',i1(ilevel),'i2=',i2(ilevel),'izspace=',izspace(ilevel)
 #ifdef USE_FLUSH6
-    call flush(6)
+    flush(6)
 #endif
   enddo
 

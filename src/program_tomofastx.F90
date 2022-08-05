@@ -99,7 +99,7 @@ program program_tomofast3D
   !----------------------------------------------------------------------------
   ! ALL DONE.
 #ifdef USE_FLUSH6
-  call flush(6)
+  flush(6)
 #endif
 
   call MPI_Finalize(ierr)

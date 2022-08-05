@@ -156,7 +156,7 @@ subroutine sca_solve(niter, rmin, matrix, b, x, myrank, nbproc)
   if (myrank == 0) print *, 'End of subroutine sca_solve, r =', r, ' iter =', iter - 1
 
 #ifdef USE_FLUSH6
-  call flush(6)
+  flush(6)
 #endif
 
   deallocate(mu)

@@ -424,7 +424,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
                              jinv%get_admm_cost(), &
                              jinv%get_cross_grad_cost(), &
                              jinv%get_clustering_cost(1), jinv%get_clustering_cost(2)
-        call flush(FILE_COSTS)
+        flush(FILE_COSTS)
       endif
 #endif
 

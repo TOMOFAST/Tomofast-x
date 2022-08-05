@@ -46,7 +46,7 @@ subroutine exit_MPI(message, myrank, ierror_code_from_sender)
   print *
 
 #ifdef USE_FLUSH6
-  call flush(6)
+  flush(6)
 #endif
 
   call MPI_Abort(MPI_COMM_WORLD, ierror_code_from_sender, ierr)
