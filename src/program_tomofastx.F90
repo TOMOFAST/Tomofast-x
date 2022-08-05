@@ -72,7 +72,7 @@ program program_tomofast3D
 
   !----------------------------------------------------------------------------
   ! INITIALIZATION.
-  if (myrank == 0) print *, "Started Tomofast-x, version >= v.1.4"
+  if (myrank == 0) print *, "Started Tomofast-x, version >= v.1.4.1"
 
   ! Get the problem type from the command line (ECT = 1, Grav/Mag = 2).
   call get_problem_type(problem_type, myrank)
@@ -81,7 +81,7 @@ program program_tomofast3D
   call initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, nbproc)
 
   ! Create output directory. If it already exists there is no problem.
-  call system('mkdir -p '//path_output)
+  call execute_command_line('mkdir -p '//path_output)
 
   !----------------------------------------------------------------------------
   ! MAIN CALCULATIONS.

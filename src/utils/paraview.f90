@@ -95,8 +95,8 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   ! Line feed character.
   lf = char(10)
 
-  ! Create a file.
-  call system('mkdir -p '//trim(path_output)//"/Paraview/")
+  ! Create a directory.
+  call execute_command_line('mkdir -p '//trim(path_output)//"/Paraview/")
 
   filename_full = trim(path_output)//"/Paraview/"//filename
 
@@ -106,7 +106,7 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   if (ierr /= 0) call exit_MPI("Error with writing the VTK file! path="&
                                //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
-  ! ************* generate points ******************
+  ! ************* Generate points ******************
 
   write(333) '# vtk DataFile Version 3.0'//lf
   write(333) 'Tomofast-x'//lf
@@ -218,8 +218,8 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   character :: lf*1, str1*8, str2*8
   lf = char(10) ! line feed character
 
-  ! Create a file.
-  call system('mkdir -p '//trim(path_output)//"/Paraview/")
+  ! Create a directory.
+  call execute_command_line('mkdir -p '//trim(path_output)//"/Paraview/")
 
   filename_full = trim(path_output)//"/Paraview/"//filename
 
@@ -229,7 +229,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   if (ierr /= 0) call exit_MPI("Error with writing the VTK file! path="&
                                //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
-  ! ************* generate points ******************
+  ! ************* Generate points ******************
 
   write(333) '# vtk DataFile Version 3.0'//lf
   write(333) 'TOMOFAST-X'//lf
@@ -311,7 +311,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   ! Write the grid to a file.
   write(333) ((xgrid_all(i, j), ygrid_all(i, j), zgrid_all(i, j), i = 1, 8), j = 1, nelements_slice)
 
-  ! ************* generate elements ******************
+  ! ************* Generate elements ******************
 
   ! See documentation here http://dunne.uni-hd.de/VisuSimple/documents/vtkfileformat.html
 
@@ -331,7 +331,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
 
   write(333) (cell_type, p = 1, nelements_slice)
 
-  ! ************* generate element data values ******************
+  ! ************* Generate element data values ******************
 
   write(str1(1:8),'(i8)') nelements_slice
 
@@ -389,7 +389,6 @@ subroutine visualisation_paraview(filename, myrank, nx, ny, nz, val, xgrid, ygri
   integer :: ival(8)
   character(len=256) :: filename_full
   character(len=256) :: msg
-  !integer :: cmd_s
 
   ! The global index array.
   integer, allocatable :: ibool(:, :, :)
@@ -399,10 +398,9 @@ subroutine visualisation_paraview(filename, myrank, nx, ny, nz, val, xgrid, ygri
     stop
   endif
 
-  ! ************** create data file **********************
+  ! ************** Create data file **********************
   ! If a folder Paraview does not exist, then it will be created.
-  ! ifort 14.0 does not support execute_command_line()
-  call system('mkdir -p '//trim(path_output)//"/Paraview/")
+  call execute_command_line('mkdir -p '//trim(path_output)//"/Paraview/")
 
   filename_full = trim(path_output)//"/Paraview/"//filename
 
@@ -411,7 +409,7 @@ subroutine visualisation_paraview(filename, myrank, nx, ny, nz, val, xgrid, ygri
   if (ierr /= 0) call exit_MPI("Error with writing the VTK file! path="&
                                //filename_full//" iomsg="//msg, myrank, ierr)
 
-  ! ************* allocate memory ************************
+  ! ************* Allocate memory ************************
 
   ! TODO: reserve only memory needed for visualization, not for the whole model.
   ! TODO: and remove nx, ny, nz from the interface.
@@ -426,7 +424,7 @@ subroutine visualisation_paraview(filename, myrank, nx, ny, nz, val, xgrid, ygri
   npoints = xdim * ydim * zdim
   nelements = (xdim - 1) * (ydim - 1) * (zdim - 1)
 
-  ! ************* generate points ******************
+  ! ************* Generate points ******************
 
   write (333, '(''# vtk DataFile Version 3.1'')')
   write (333, '(''TOMOFAST3D'')')
@@ -464,7 +462,7 @@ subroutine visualisation_paraview(filename, myrank, nx, ny, nz, val, xgrid, ygri
 
   write (333, *)
 
-  ! ************* generate elements ******************
+  ! ************* Generate elements ******************
 
   if (data_type == 'POINT_DATA') then
 
@@ -525,8 +523,6 @@ subroutine visualisation_paraview(filename, myrank, nx, ny, nz, val, xgrid, ygri
 
     write (333, *)
 
-    !print *, 'counter1 = ', counter
-
     write (333, '(''CELL_TYPES '',2(i9,1x))') nelements
 
     do i = 1, nelements
@@ -541,7 +537,7 @@ subroutine visualisation_paraview(filename, myrank, nx, ny, nz, val, xgrid, ygri
 
   write (333, *)
 
-  ! ************* generate element data values ******************
+  ! ************* Generate element data values ******************
 
   if (data_type == 'POINT_DATA') then
 
@@ -577,8 +573,6 @@ subroutine visualisation_paraview(filename, myrank, nx, ny, nz, val, xgrid, ygri
   endif
 
   write (333, *)
-
-  !print *, 'counter2 = ', counter
 
   close(333)
 

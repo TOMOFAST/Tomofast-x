@@ -370,7 +370,7 @@ subroutine clustering_write_data(this, file_name, grid, myrank)
   if (myrank == 0) then
   ! Writing by master CPU only.
 
-    call system('mkdir -p '//trim(path_output)//"/Voxet/")
+    call execute_command_line('mkdir -p '//trim(path_output)//"/Voxet/")
 
     filename_full = trim(path_output)//"/Voxet/"//file_name
 
