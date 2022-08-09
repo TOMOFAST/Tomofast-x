@@ -235,10 +235,6 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
 
   if (myrank == 0) print *, 'End of subroutine lsqr_solve, r =', r, ' iter =', iter - 1
 
-#ifdef USE_FLUSH6
-  flush(6)
-#endif
-
   deallocate(u)
   deallocate(v)
   deallocate(w)
