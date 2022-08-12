@@ -180,7 +180,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   print *, 'Writing the sensitivity to file ', trim(filename_full)
 
-  open(unit=77, file=trim(filename_full), status='replace', access='stream', form='unformatted', action='write', &
+  open(77, file=trim(filename_full), status='replace', access='stream', form='unformatted', action='write', &
        iostat=ierr, iomsg=msg)
 
   if (ierr /= 0) call exit_MPI("Error in creating the sensitivity file! path=" &
@@ -381,7 +381,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     print *, 'Writing the depth weight to file ', trim(filename_full)
 
-    open(77, file=trim(filename_full), form='unformatted', status='replace', action='write')
+    open(77, file=trim(filename_full), form='unformatted', status='replace', action='write', access='stream')
 
     write(77) par%nx, par%ny, par%nz, par%ndata, par%depth_weighting_type
     write(77) column_weight_full
@@ -523,7 +523,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
     if (myrank == 0) print *, 'Reading the sensitivity file ', trim(filename_full)
 
-    open(unit=78, file=trim(filename_full), status='old', access='stream', form='unformatted', action='read', &
+    open(78, file=trim(filename_full), status='old', access='stream', form='unformatted', action='read', &
          iostat=ierr, iomsg=msg)
 
     if (ierr /= 0) call exit_MPI("Error in opening the sensitivity file! path=" &
@@ -602,12 +602,13 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
     filename_full = trim(path_output)//"/SENSIT/"//filename
   endif
 
-  if (myrank == 0) print *, "Reading the sensitivity weight file ", trim(filename_full)
+  if (myrank == 0) print *, "Reading the depth weight file ", trim(filename_full)
 
   ! Open the file.
-  open(78, file=trim(filename_full), form='unformatted', status='old', action='read', iostat=ierr, iomsg=msg)
+  open(78, file=trim(filename_full), form='unformatted', status='old', action='read', access='stream', &
+       iostat=ierr, iomsg=msg)
 
-  if (ierr /= 0) call exit_MPI("Error in opening the sensitivity weight file! path=" &
+  if (ierr /= 0) call exit_MPI("Error in opening the depth weight file! path=" &
                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
   read(78) nx_read, ny_read, nz_read, ndata_read, weight_type_read
