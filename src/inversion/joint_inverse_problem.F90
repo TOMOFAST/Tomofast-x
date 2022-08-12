@@ -556,7 +556,7 @@ subroutine write_variance(lsqr_var, par, column_weight, problem_type, ncalls, my
   integer, intent(in) :: problem_type, ncalls
   integer, intent(in) :: myrank, nbproc
 
-  integer :: i, ierr
+  integer :: ierr
   integer :: nsmaller
   character(len=32) :: filename
   character(len=128) :: filename_full
@@ -610,9 +610,8 @@ subroutine write_variance(lsqr_var, par, column_weight, problem_type, ncalls, my
 
     open(27, file=trim(filename_full), form='formatted', status='replace', action='write')
 
-    do i = 1, par%nelements_total
-      write (27, *) lsqr_var_full(i)
-    enddo
+    write(27, *) par%nelements_total
+    write(27, *) lsqr_var_full
 
     close(27)
   endif
