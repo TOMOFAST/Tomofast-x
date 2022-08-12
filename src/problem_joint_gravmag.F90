@@ -55,6 +55,7 @@ module problem_joint_gravmag
   private :: calculate_model_costs
   private :: set_model
   private :: adjust_admm_weight
+  private :: exit_loop
 
 contains
 
@@ -87,7 +88,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   logical :: SOLVE_PROBLEM(2)
   integer(kind=8) :: nnz(2)
   integer :: nelements_new
-  logical :: file_exists
 
   ! Unit number for cost file handle.
   integer, parameter :: FILE_COSTS = 1234567
@@ -295,9 +295,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     if (myrank == 0) then
       print *
-      print *, '********************************************************************************'
+      print *, '******************************************************************************'
       print *, 'Solve problem for prior model #', m, ', output folder = ', trim(path_output)
-      print *, '********************************************************************************'
+      print *, '******************************************************************************'
     endif
 
     if (m > 1) call jinv%reset()
@@ -378,9 +378,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     ! Major inversion loop.
     do it = 1, ipar%ninversions
 
-      ! Exiting the loop when a file 'stop' is found.
-      inquire(file="stop", exist=file_exists)
-      if (file_exists) then
+      ! Exiting the loop when a stop file is found.
+      if (exit_loop(myrank)) then
         if (myrank == 0) print *, 'Stop file found! Exiting the loop.'
         exit
       endif
@@ -576,5 +575,30 @@ subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
     call exit_MPI("Unknown model type in set_model!", myrank, model_type)
   endif
 end subroutine set_model
+
+!========================================================================================
+! Check if need to exit the inversion loop.
+!========================================================================================
+function exit_loop(myrank) result(res)
+  integer, intent(in) :: myrank
+  logical :: res, file_exists
+  integer :: exist_loc, exist_glob, ierr
+
+  exist_loc = 0
+
+  if (myrank == 0) then
+    inquire(file="stop", exist=file_exists)
+    if (file_exists) exist_loc = 1
+  endif
+
+  ! Communicate the result of inquire() to other ranks.
+  call mpi_allreduce(exist_loc, exist_glob, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+  if (exist_glob > 0) then
+    res = .true.
+  else
+    res = .false.
+  endif
+end function exit_loop
 
 end module problem_joint_gravmag
