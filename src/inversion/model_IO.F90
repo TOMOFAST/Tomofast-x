@@ -268,15 +268,13 @@ subroutine model_write(model, name_prefix, gather_full_model, write_voxet, myran
 end subroutine model_write
 
 !================================================================================================
-! Write the full model and grid in voxels format.
-! Using the same format as in model_read_voxels_format subroutine.
+! Write the full model (in voxels format) to file.
 !================================================================================================
 subroutine model_write_voxels_format(model, file_name, myrank)
   class(t_model), intent(in) :: model
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank
 
-  integer :: i
   character(len=256) :: filename_full
 
   if (myrank == 0) then
@@ -287,18 +285,12 @@ subroutine model_write_voxels_format(model, file_name, myrank)
 
     print *, 'Writing the full model to file ', trim(filename_full)
 
-    open(27, file=trim(filename_full), access='stream', form='formatted', status='unknown', action='write')
+    open(27, file=trim(filename_full), access='stream', form='formatted', status='replace', action='write')
 
-    write (27, *) model%nelements_total
+    write(27, *) model%nelements_total
 
-    ! Writing the full grid and the model.
-    do i = 1, model%nelements_total
-      write (27, *) model%grid_full%X1(i), model%grid_full%X2(i), &
-                    model%grid_full%Y1(i), model%grid_full%Y2(i), &
-                    model%grid_full%Z1(i), model%grid_full%Z2(i), &
-                    model%val_full(i), &
-                    model%grid_full%i_(i), model%grid_full%j_(i), model%grid_full%k_(i)
-    enddo
+    ! Write the full model array.
+    write(27, *) model%val_full
 
     close(27)
   endif
