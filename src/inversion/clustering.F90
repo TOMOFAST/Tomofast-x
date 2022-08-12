@@ -329,7 +329,7 @@ subroutine clustering_write_mixtures(this, file_name, myrank)
 
   if (myrank == 0) then
   ! Writing by master CPU only.
-    open(10, file=trim(file_name), access='stream', form='formatted', status='unknown', action='write')
+    open(10, file=trim(file_name), access='stream', form='formatted', status='replace', action='write')
 
     x = xmin
 
@@ -376,7 +376,7 @@ subroutine clustering_write_data(this, file_name, grid, myrank)
 
     print *, 'Writing the clustering data to file ', trim(filename_full)
 
-    open(37, file=trim(filename_full), access='stream', form='formatted', status='unknown', action='write')
+    open(37, file=trim(filename_full), access='stream', form='formatted', status='replace', action='write')
 
     write (37, *) this%nelements_total
 

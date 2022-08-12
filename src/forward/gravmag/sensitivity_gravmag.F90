@@ -363,7 +363,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     print *, 'Writing the sensitivity metadata to file ', trim(filename_full)
 
-    open(77, file=trim(filename_full), form='formatted', status='unknown', action='write')
+    open(77, file=trim(filename_full), form='formatted', status='replace', action='write')
 
     write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, MATRIX_PRECISION, comp_error
     write(77, *) nnz_at_cpu_new
@@ -381,7 +381,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     print *, 'Writing the depth weight to file ', trim(filename_full)
 
-    open(77, file=trim(filename_full), form='unformatted', status='unknown', action='write')
+    open(77, file=trim(filename_full), form='unformatted', status='replace', action='write')
 
     write(77) par%nx, par%ny, par%nz, par%ndata, par%depth_weighting_type
     write(77) column_weight_full
@@ -605,7 +605,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   if (myrank == 0) print *, "Reading the sensitivity weight file ", trim(filename_full)
 
   ! Open the file.
-  open(78, file=trim(filename_full), form='unformatted', status='unknown', action='read', iostat=ierr, iomsg=msg)
+  open(78, file=trim(filename_full), form='unformatted', status='old', action='read', iostat=ierr, iomsg=msg)
 
   if (ierr /= 0) call exit_MPI("Error in opening the sensitivity weight file! path=" &
                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
@@ -662,7 +662,7 @@ subroutine read_sensitivity_metadata(par, nnz, nelements_new, problem_type, myra
   if (myrank == 0) print *, "Reading the sensitivity metadata file ", trim(filename_full)
 
   ! Open the file.
-  open(78, file=trim(filename_full), form='formatted', status='unknown', action='read', iostat=ierr, iomsg=msg)
+  open(78, file=trim(filename_full), form='formatted', status='old', action='read', iostat=ierr, iomsg=msg)
 
   if (ierr /= 0) call exit_MPI("Error in opening the sensitivity metadata file! path=" &
                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)

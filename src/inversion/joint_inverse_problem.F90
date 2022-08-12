@@ -608,7 +608,7 @@ subroutine write_variance(lsqr_var, par, column_weight, problem_type, ncalls, my
       filename_full = trim(trim(path_output)//trim(filename)//"_mag.txt")
     endif
 
-    open(27, file=trim(filename_full), form='formatted', status='unknown', action='write')
+    open(27, file=trim(filename_full), form='formatted', status='replace', action='write')
 
     do i = 1, par%nelements_total
       write (27, *) lsqr_var_full(i)

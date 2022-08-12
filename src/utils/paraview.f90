@@ -404,7 +404,7 @@ subroutine visualisation_paraview(filename, myrank, nx, ny, nz, val, xgrid, ygri
 
   filename_full = trim(path_output)//"/Paraview/"//filename
 
-  open(unit=333, file=filename_full, status='unknown', action='write', iostat=ierr, iomsg=msg)
+  open(unit=333, file=filename_full, status='replace', action='write', iostat=ierr, iomsg=msg)
 
   if (ierr /= 0) call exit_MPI("Error with writing the VTK file! path="&
                                //filename_full//" iomsg="//msg, myrank, ierr)

@@ -15,7 +15,7 @@
 !===============================================================================================
 ! A class to work with data for parallel inversion.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================================
 module data_gravmag
 
@@ -174,10 +174,9 @@ subroutine data_write(this, name_prefix, which, myrank)
 
   print *, 'Writing data to file '//trim(file_name)
 
-  ! TODO: add error check for file writing.
-  open(10, file=trim(file_name), access='stream', form='formatted', status='unknown', action='write')
+  open(10, file=trim(file_name), access='stream', form='formatted', status='replace', action='write')
   ! For Paraview.
-  open(20, file=trim(file_name2), access='stream', form='formatted', status='unknown', action='write')
+  open(20, file=trim(file_name2), access='stream', form='formatted', status='replace', action='write')
 
   ! Writing a header line.
   write(10, *) this%ndata

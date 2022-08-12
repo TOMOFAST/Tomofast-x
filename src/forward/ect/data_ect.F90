@@ -103,7 +103,7 @@ subroutine write_data_to_file(par, capacity, file_name, myrank)
 
   if (myrank == 0) then
     file_name_full = trim(path_output)//file_name
-    open(16,file=trim(file_name_full), status='unknown', action='write', iostat=ierr)
+    open(16, file=trim(file_name_full), status='replace', action='write', iostat=ierr)
     if (ierr /= 0) call exit_MPI("Error in writing "//trim(file_name_full), myrank, ierr)
 
     l = 0

@@ -89,7 +89,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error, you probably ran out of memory; exiting...", myrank, ierr)
 
   ! Stores misfit.
-  if (myrank == 0) open(10,file=trim(path_output)//'misfit',status='unknown',action='write')
+  if (myrank == 0) open(10, file=trim(path_output)//'misfit', status='replace', action='write')
 
   ! Initially, the synthetic model with bubbles is used.
   epar%read_model_from_inversion = 0
