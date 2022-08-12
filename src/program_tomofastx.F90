@@ -80,8 +80,10 @@ program program_tomofast3D
   ! Read the Parfile and initialize forward and inverse problem parameters.
   call initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, nbproc)
 
-  ! Create output directory. If it already exists there is no problem.
-  call execute_command_line('mkdir -p '//path_output)
+  ! Create the output directory. If it already exists there is no problem.
+  if (myrank == 0) call execute_command_line('mkdir -p '//path_output)
+
+  call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
   !----------------------------------------------------------------------------
   ! MAIN CALCULATIONS.
