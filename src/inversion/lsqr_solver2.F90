@@ -129,11 +129,13 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
     !---------------------------------------------------------------
     ! Compute u = u + H.v parallel.
     !---------------------------------------------------------------
-    ! Adding the original vector 'u' on master CPU: u = u + Hv_loc.
-    if (myrank == 0) call matrix%mult_vector(v, u, .true.)
-
-    ! Store only the matrix-vector product on other CPUs: u = Hv_loc.
-    if (myrank > 0) call matrix%mult_vector(v, u, .false.)
+    if (myrank == 0) then
+      ! Adding the original vector 'u' on master CPU: u = u + Hv_loc.
+      call matrix%mult_vector(v, u, .true.)
+    else
+      ! Store only the matrix-vector product on other CPUs: u = Hv_loc.
+      call matrix%mult_vector(v, u, .false.)
+    endif
 
     ! Sum partial results from all CPUs: u = (u + Hv_loc1) + Hv_loc2 + ... + Hv_locN = u + Hv.
     call mpi_allreduce(MPI_IN_PLACE, u, N_lines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
