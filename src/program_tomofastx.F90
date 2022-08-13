@@ -72,7 +72,7 @@ program program_tomofast3D
 
   !----------------------------------------------------------------------------
   ! INITIALIZATION.
-  if (myrank == 0) print *, "Started Tomofast-x, version >= v.1.4.2"
+  if (myrank == 0) print *, "Started Tomofast-x, version >= v.1.4.3"
 
   ! Get the problem type from the command line (ECT = 1, Grav/Mag = 2).
   call get_problem_type(problem_type, myrank)
