@@ -32,8 +32,10 @@ module damping
   type, public :: t_damping
     private
 
-    ! Number of model parameters.
+    ! Number of model parameters (on current rank).
     integer :: nelements
+    ! Total number of elements.
+    integer :: nelements_total
     ! Weight of the damping.
     real(kind=CUSTOM_REAL) :: alpha
     ! Weight of the whole problem (damping + misfit) in joint inversion.
@@ -79,6 +81,7 @@ subroutine damping_initialize(this, nelements, alpha, problem_weight, norm_power
   this%nx = nx
   this%ny = ny
   this%nz = nz
+  this%nelements_total = this%nx * this%ny * this%nz
 end subroutine damping_initialize
 
 !===========================================================================================
@@ -102,9 +105,9 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, &
   real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(:)
 
   type(t_sparse_matrix), intent(inout) :: matrix
-  real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(matrix%get_total_row_number())
 
-  integer :: i, nsmaller, nelements_total
+  integer :: i, nsmaller
   integer :: row_beg, row_end
   integer :: ierr
   real(kind=CUSTOM_REAL) :: value
@@ -124,9 +127,6 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, &
     model_diff(i) = model_diff(i) / column_weight(i)
   enddo
 
-  ! The total number of elements.
-  nelements_total = this%nx * this%ny * this%nz
-
   ! The number of elements on CPUs with rank smaller than myrank.
   nsmaller = pt%get_nsmaller(this%nelements, myrank, nbproc)
 
@@ -137,7 +137,7 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, &
     ! Parallel version.
 
       ! Allocate memory for the full model.
-      allocate(model_diff_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+      allocate(model_diff_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
       if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in damping_add!", myrank, ierr)
 
       ! Gather the full model from all processors.
@@ -190,13 +190,13 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, &
   enddo
 
   ! Add empty lines.
-  call matrix%add_empty_rows(nelements_total - this%nelements - nsmaller, myrank)
+  call matrix%add_empty_rows(this%nelements_total - this%nelements - nsmaller, myrank)
 
   ! Last matrix row (in the big matrix) of the added damping matrix.
   row_end = matrix%get_current_row_number()
 
   ! Sanity check.
-  if (row_end - row_beg + 1 /= nelements_total) &
+  if (row_end - row_beg + 1 /= this%nelements_total) &
     call exit_MPI("Sanity check failed in damping_add!", myrank, 0)
 
   !---------------------------------------------------------------------
@@ -224,7 +224,7 @@ subroutine damping_add_RHS(this, b_RHS, model_diff, myrank, nbproc, local_weight
   integer, intent(in) :: myrank, nbproc
   real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(:)
 
-  real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(this%nelements_total)
 
   type(t_parallel_tools) :: pt
   integer :: i
