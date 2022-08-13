@@ -44,7 +44,9 @@ subroutine init_random_seed()
 
   call SYSTEM_CLOCK(COUNT=clock)
 
-  seed = clock + 37 * (/ (i - 1, i = 1, n) /)
+  do i = 1, n
+    seed(i) = clock + 37 * (i - 1)
+  enddo
   call RANDOM_SEED(PUT = seed)
 
   deallocate(seed)
