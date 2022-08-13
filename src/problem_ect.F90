@@ -150,7 +150,7 @@ subroutine solve_problem_ect(epar, ipar, myrank, nbproc)
     call inversion%solve(ipar, iarr, model, myrank, nbproc)
 
     ! Update the model.
-    model%val = model%val + inversion%get_model_change()
+    call inversion%update_model(model%val)
 
     ! Compute norm Lp of the difference between inverted and prior model.
     call calculate_cost_model(ipar%nelements, ipar%norm_power, model%val, model%val_prior, &

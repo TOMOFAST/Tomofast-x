@@ -56,7 +56,7 @@ module inverse_problem
     procedure, public, pass :: initialize => inversion_initialize
     procedure, public, pass :: reset => inversion_reset
     procedure, public, pass :: solve => inversion_solve
-    procedure, public, pass :: get_model_change => inversion_get_model_change
+    procedure, public, pass :: update_model => inversion_update_model
 
   end type t_inversion
 
@@ -105,15 +105,15 @@ pure subroutine inversion_reset(this)
 end subroutine inversion_reset
 
 !========================================================================
-! Returns model change, obtained in solve().
+! Updates the model.
 !========================================================================
-pure function inversion_get_model_change(this) result(res)
+pure subroutine inversion_update_model(this, model)
   class(t_inversion), intent(in) :: this
-  real(kind=CUSTOM_REAL) :: res(this%nelements)
+  real(kind=CUSTOM_REAL), intent(inout) :: model(this%nelements)
 
-  res = this%delta_model
+  model = model + this%delta_model
 
-end function inversion_get_model_change
+end subroutine inversion_update_model
 
 !========================================================================================
 ! Inversion of one data set.
