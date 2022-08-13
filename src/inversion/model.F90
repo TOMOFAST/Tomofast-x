@@ -245,7 +245,7 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
   type(t_sparse_matrix), intent(in) :: matrix_sensit
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
 
-  real(kind=CUSTOM_REAL), intent(out) :: data(:)
+  real(kind=CUSTOM_REAL), intent(out) :: data(ndata)
 
   real(kind=CUSTOM_REAL), allocatable :: model_scaled(:)
   real(kind=CUSTOM_REAL), allocatable :: model_scaled_full(:)
@@ -312,19 +312,17 @@ end subroutine model_calculate_data
 ! Use line_start, line_end, param_shift to calculate the data using part of the big (joint) matrix.
 ! This version uses unscaled model (in wavelet domain).
 !======================================================================================================
-subroutine calculate_data_unscaled(model, matrix_sensit, problem_weight, data, &
+subroutine calculate_data_unscaled(model, matrix_sensit, problem_weight, ndata, data, &
                                    line_start, line_end, param_shift, myrank)
   real(kind=CUSTOM_REAL), intent(in) :: model(:)
-  integer, intent(in) :: line_start, line_end, param_shift
-  integer, intent(in) :: myrank
-  real(kind=CUSTOM_REAL), intent(in) :: problem_weight
   type(t_sparse_matrix), intent(in) :: matrix_sensit
+  real(kind=CUSTOM_REAL), intent(in) :: problem_weight
+  integer, intent(in) :: ndata, line_start, line_end, param_shift
+  integer, intent(in) :: myrank
 
-  real(kind=CUSTOM_REAL), intent(out) :: data(:)
+  real(kind=CUSTOM_REAL), intent(out) :: data(ndata)
 
-  integer :: ierr, ndata
-
-  ndata = size(data)
+  integer :: ierr
 
   ! Calculate data: d = S' * m'
   ! Assume that both the kernel and the model are unscaled (in wavelet domain).
