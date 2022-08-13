@@ -15,7 +15,7 @@
 !===============================================================================
 ! Contains analytical solutions to 3D Laplace's equation in cylinder.
 !
-! Author: Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Author: Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================
 module laplace
 
@@ -46,6 +46,9 @@ subroutine solution1(nr,ntheta,nz,r,z,u,imax,kmax,type)
 
   integer :: i,j,k,n
   real(kind=CUSTOM_REAL) :: radius, Rmax, L, coef, An
+
+  if (nr > 0) continue
+  if (nz > 0) continue
 
   u(:,:,:) = 0.d0
 
@@ -123,6 +126,9 @@ subroutine solution2(nr,ntheta,nz,r,z,u,imax,kmax)
   integer, parameter :: NK = 50
   INTEGER IER(NK)
   REAL(KIND=8) JZERO(NK)
+
+  if (nr > 0) continue
+  if (nz > 0) continue
 
   u(:,:,:) = 0.d0
 
