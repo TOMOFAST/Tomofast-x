@@ -65,7 +65,9 @@ subroutine magnetic_field_initialize(this, mi, md, theta, intensity)
     this%intensity = intensity
     call this%dircos(mi, md, theta, ma, mb, mc)
 
-    this%magv = (/ ma, mb, mc /)
+    this%magv(1) = ma
+    this%magv(2) = mb
+    this%magv(3) = mc
 
 end subroutine magnetic_field_initialize
 
