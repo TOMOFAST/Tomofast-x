@@ -476,7 +476,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 #ifndef SUPPRESS_OUTPUT
     if (jinv%add_cross_grad) then
       ! Write final cross-gradient vector magnitude to a file.
-      model(1)%val_full = jinv%get_cross_grad()
+      call jinv%get_cross_grad(model(1)%val_full)
       call model_write(model(1), 'cross_grad_final_', .false., .false., myrank, nbproc)
     endif
 #endif
@@ -484,7 +484,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 #ifndef SUPPRESS_OUTPUT
     if (jinv%add_clustering) then
       ! Write final clustering probabilities, i.e., P(m) per cell.
-      model(1)%val_full = jinv%get_clustering()
+      call jinv%get_clustering(model(1)%val_full)
       call model_write(model(1), 'clustering_final_', .false., .false., myrank, nbproc)
 
       call jinv%clustering%write_data('clustering_data.txt', model(1)%grid_full, myrank)

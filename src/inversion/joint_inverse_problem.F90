@@ -687,24 +687,24 @@ end subroutine joint_inversion_add_clustering_constraints
 !==================================================================================================
 ! Returns the cross-gradient vector magnitude at every model pixel.
 !==================================================================================================
-pure function joint_inversion_get_cross_grad(this) result(res)
+pure subroutine joint_inversion_get_cross_grad(this, res)
   class(t_joint_inversion), intent(in) :: this
-  real(kind=CUSTOM_REAL) :: res(this%nelements_total)
+  real(kind=CUSTOM_REAL), intent(out) :: res(this%nelements_total)
 
   res = this%cross_grad%get_magnitude()
 
-end function joint_inversion_get_cross_grad
+end subroutine joint_inversion_get_cross_grad
 
 !==================================================================================================
 ! Returns the clustering probabilities for every model pixel.
 !==================================================================================================
-pure function joint_inversion_get_clustering(this) result(res)
+pure subroutine joint_inversion_get_clustering(this, res)
   class(t_joint_inversion), intent(in) :: this
-  real(kind=CUSTOM_REAL) :: res(this%nelements_total)
+  real(kind=CUSTOM_REAL), intent(out) :: res(this%nelements_total)
 
   res = this%clustering%get_probabilities()
 
-end function joint_inversion_get_clustering
+end subroutine joint_inversion_get_clustering
 
 !==================================================================================================
 ! Returns the cross-gradient cost.
