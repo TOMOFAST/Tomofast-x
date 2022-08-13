@@ -73,7 +73,7 @@ subroutine apply_method_of_weights(par, num_iter, matrix_A, matrix_C, y, b, g, t
   type(t_sparse_matrix), intent(inout) :: matrix_A
   type(t_sparse_matrix), intent(in) :: matrix_C
   real(kind=CUSTOM_REAL), intent(inout) :: y(:)
-  real(kind=CUSTOM_REAL), intent(inout) :: b(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: b(matrix_A%get_total_row_number())
   real(kind=CUSTOM_REAL), intent(in) :: g(:)
   real(kind=CUSTOM_REAL), intent(in) :: tau
   integer, intent(in) :: method, myrank
