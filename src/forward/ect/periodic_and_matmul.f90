@@ -46,11 +46,12 @@ contains
 !======================================================================================
 pure subroutine matmult(A, x, r, nr, ntheta, nzlocal)
   integer, intent(in) :: nr, ntheta, nzlocal
-  ! Vitaliy checked with callgrind and Allinea profilers that if we use assumed-shape arrays here,
-  ! then it slows down the performance.
-  real(kind=CUSTOM_REAL), intent(in) :: A(nr, ntheta, nzlocal, 7)
-  real(kind=CUSTOM_REAL), intent(in) :: x(0:nr+1, 0:ntheta+1, 0:nzlocal+1)
-  real(kind=CUSTOM_REAL), intent(out) :: r(0:nr+1, 0:ntheta+1, 0:nzlocal+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: A(nr, ntheta, nzlocal, 7)
+!  real(kind=CUSTOM_REAL), intent(in) :: x(0:nr+1, 0:ntheta+1, 0:nzlocal+1)
+!  real(kind=CUSTOM_REAL), intent(out) :: r(0:nr+1, 0:ntheta+1, 0:nzlocal+1)
+  real(kind=CUSTOM_REAL), intent(in) :: A(:, :, :, :)
+  real(kind=CUSTOM_REAL), intent(in) :: x(0:, 0:, 0:)
+  real(kind=CUSTOM_REAL), intent(out) :: r(0:, 0:, 0:)
 
   ! Loop variables.
   integer i, j, k
@@ -78,11 +79,12 @@ end subroutine matmult
 !======================================================================================
 pure subroutine periodic_and_matmul(A, x, r, nr, ntheta, nzlocal)
   integer, intent(in) :: nr, ntheta, nzlocal
-  ! Vitaliy checked with callgrind and Allinea profilers that if we use assumed-shape arrays here,
-  ! then it slows down the performance.
-  real(kind=CUSTOM_REAL), intent(in) :: A(nr, ntheta, nzlocal, 7)
-  real(kind=CUSTOM_REAL), intent(inout) :: x(0:nr+1, 0:ntheta+1, 0:nzlocal+1)
-  real(kind=CUSTOM_REAL), intent(out) :: r(0:nr+1, 0:ntheta+1, 0:nzlocal+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: A(nr, ntheta, nzlocal, 7)
+!  real(kind=CUSTOM_REAL), intent(inout) :: x(0:nr+1, 0:ntheta+1, 0:nzlocal+1)
+!  real(kind=CUSTOM_REAL), intent(out) :: r(0:nr+1, 0:ntheta+1, 0:nzlocal+1)
+  real(kind=CUSTOM_REAL), intent(in) :: A(:, :, :, :)
+  real(kind=CUSTOM_REAL), intent(inout) :: x(0:, 0:, 0:)
+  real(kind=CUSTOM_REAL), intent(out) :: r(0:, 0:, 0:)
 
   ! Enforce periodic condition in theta on the x vector.
   call enforce_pb(nr, ntheta, nzlocal, x)

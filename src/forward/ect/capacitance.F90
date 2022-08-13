@@ -45,10 +45,14 @@ subroutine capacitance_2d_surf(nr,ntheta,nz,nzlocal,phi,theta,r,z,&
                                itheta_start,itheta_end,iz_start,iz_end,myrank,capacity)
 
   integer, intent(in) :: nr,ntheta,nz,nzlocal
-  real(kind=CUSTOM_REAL), intent(in) :: phi(0:nr+1,0:ntheta+1,0:nzlocal+1)
-  real(kind=CUSTOM_REAL), intent(in) :: theta(0:ntheta+1)
-  real(kind=CUSTOM_REAL), intent(in) :: r(0:2*nr+1)
-  real(kind=CUSTOM_REAL), intent(in) :: z(0:nz+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: phi(0:nr+1,0:ntheta+1,0:nzlocal+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: theta(0:ntheta+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: r(0:2*nr+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: z(0:nz+1)
+  real(kind=CUSTOM_REAL), intent(in) :: phi(0:,0:,0:)
+  real(kind=CUSTOM_REAL), intent(in) :: theta(0:)
+  real(kind=CUSTOM_REAL), intent(in) :: r(0:)
+  real(kind=CUSTOM_REAL), intent(in) :: z(0:)
 
   real(kind=CUSTOM_REAL), intent(in) :: permit0,permit_air,permit_isolated_tube
   integer, intent(in) :: ir
@@ -117,10 +121,14 @@ subroutine capacitance_plane(nr, ntheta, nz, nzlocal, phi, theta, r, z, permit, 
                              myrank, capacity, plane_type)
 
   integer, intent(in) :: nr, ntheta, nz, nzlocal
-  real(kind=CUSTOM_REAL), intent(in) :: phi(0:nr+1, 0:ntheta+1, 0:nzlocal+1)
-  real(kind=CUSTOM_REAL), intent(in) :: theta(0:ntheta+1)
-  real(kind=CUSTOM_REAL), intent(in) :: r(0:2*nr+1)
-  real(kind=CUSTOM_REAL), intent(in) :: z(0:nz+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: phi(0:nr+1, 0:ntheta+1, 0:nzlocal+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: theta(0:ntheta+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: r(0:2*nr+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: z(0:nz+1)
+  real(kind=CUSTOM_REAL), intent(in) :: phi(0:, 0:, 0:)
+  real(kind=CUSTOM_REAL), intent(in) :: theta(0:)
+  real(kind=CUSTOM_REAL), intent(in) :: r(0:)
+  real(kind=CUSTOM_REAL), intent(in) :: z(0:)
   real(kind=CUSTOM_REAL), intent(in) :: permit(0:, 0:, 0:)
 
   real(kind=CUSTOM_REAL), intent(in) :: permit0, permit_air, permit_isolated_tube

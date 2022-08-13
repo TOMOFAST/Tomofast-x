@@ -37,10 +37,12 @@ contains
 !===============================================================================
 subroutine solution1(nr,ntheta,nz,r,z,u,imax,kmax,type)
   integer, intent(in) :: nr,ntheta,nz,imax,kmax,type
-  real(kind=CUSTOM_REAL), intent(in) :: r(0:2*nr+1)
-  real(kind=CUSTOM_REAL), intent(in) :: z(0:nz+1)
-
-  real(kind=CUSTOM_REAL), intent(out) :: u(0:nr+1,0:ntheta+1,0:nz+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: r(0:2*nr+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: z(0:nz+1)
+!  real(kind=CUSTOM_REAL), intent(out) :: u(0:nr+1,0:ntheta+1,0:nz+1)
+  real(kind=CUSTOM_REAL), intent(in) :: r(0:)
+  real(kind=CUSTOM_REAL), intent(in) :: z(0:)
+  real(kind=CUSTOM_REAL), intent(out) :: u(0:,0:,0:)
 
   integer :: i,j,k,n
   real(kind=CUSTOM_REAL) :: radius, Rmax, L, coef, An
@@ -108,10 +110,12 @@ end subroutine solution1
 !======================================================================================
 subroutine solution2(nr,ntheta,nz,r,z,u,imax,kmax)
   integer, intent(in) :: nr,ntheta,nz,imax,kmax
-  real(kind=CUSTOM_REAL), intent(in) :: r(0:2*nr+1)
-  real(kind=CUSTOM_REAL), intent(in) :: z(0:nz+1)
-
-  real(kind=CUSTOM_REAL), intent(out) :: u(0:nr+1,0:ntheta+1,0:nz+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: r(0:2*nr+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: z(0:nz+1)
+!  real(kind=CUSTOM_REAL), intent(out) :: u(0:nr+1,0:ntheta+1,0:nz+1)
+  real(kind=CUSTOM_REAL), intent(in) :: r(0:)
+  real(kind=CUSTOM_REAL), intent(in) :: z(0:)
+  real(kind=CUSTOM_REAL), intent(out) :: u(0:,0:,0:)
 
   integer :: i,j,k,n
   real(kind=CUSTOM_REAL) :: radius, Rmax, L

@@ -102,7 +102,8 @@ end subroutine compute_snrm
 !==========================================================================
 pure subroutine enforce_pb(nr, ntheta, nz, x)
   integer, intent(in) :: nr, ntheta, nz
-  real(kind=CUSTOM_REAL), intent(inout) :: x(0:nr+1, 0:ntheta+1, 0:nz+1)
+!  real(kind=CUSTOM_REAL), intent(inout) :: x(0:nr+1, 0:ntheta+1, 0:nz+1)
+  real(kind=CUSTOM_REAL), intent(inout) :: x(0:, 0:, 0:)
 
   integer :: i, k
 
@@ -178,7 +179,8 @@ end function avg4
 !=================================================================================
 function getstep(i,di,istart,iend,n,a)
   integer, intent(in) :: i,di,istart,iend,n
-  real(kind=CUSTOM_REAL), intent(in) :: a(0:n)
+!  real(kind=CUSTOM_REAL), intent(in) :: a(0:n)
+  real(kind=CUSTOM_REAL), intent(in) :: a(0:)
   real(kind=CUSTOM_REAL) :: getstep
 
   ! Sanity check.

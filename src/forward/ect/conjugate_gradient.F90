@@ -57,7 +57,8 @@ subroutine mpisendrecv(x, nr, ntheta, nz, myrank, nbproc)
   ! Problem dimensions.
   integer , intent(in):: nr, ntheta, nz
   ! Local part of the distributed vector to perform neighbour exchanges on.
-  real(kind=CUSTOM_REAL), intent(inout) :: x(0:nr+1, 0:ntheta+1, 0:nz+1)
+!  real(kind=CUSTOM_REAL), intent(inout) :: x(0:nr+1, 0:ntheta+1, 0:nz+1)
+  real(kind=CUSTOM_REAL), intent(inout) :: x(0:, 0:, 0:)
   ! MPI rank and total number of processes.
   integer, intent(in) :: myrank,nbproc
   ! MPI error code.
@@ -111,7 +112,8 @@ end subroutine mpisendrecv
 !======================================================================================================
 subroutine calculate_precon_residual(auxarrays, A, iprecond, omega1, nr, ntheta, nz, myrank, nbproc)
   integer, intent(in) :: nr, ntheta, nz
-  real(kind=CUSTOM_REAL), intent(in) :: A(nr, ntheta, nz, 7)
+!  real(kind=CUSTOM_REAL), intent(in) :: A(nr, ntheta, nz, 7)
+  real(kind=CUSTOM_REAL), intent(in) :: A(:, :, :, :)
   real(kind=CUSTOM_REAL), intent(in) :: omega1
   integer, intent(in) :: iprecond
   integer, intent(in) :: myrank, nbproc
@@ -175,9 +177,11 @@ subroutine solver_pcg(A, b, x, itypenorm, iprecond, omega1, tol, itmax, iter, &
   ! Number of unknowns in each dimension.
   integer, intent(in) :: nr, ntheta, nz
   ! Matrix (7-diagonal).
-  real(kind=CUSTOM_REAL), intent(in) :: A(nr, ntheta, nz, 7)
+!  real(kind=CUSTOM_REAL), intent(in) :: A(nr, ntheta, nz, 7)
+  real(kind=CUSTOM_REAL), intent(in) :: A(:, :, :, :)
   ! RHS (right-hand side).
-  real(kind=CUSTOM_REAL), intent(in) :: b(0:nr+1, 0:ntheta+1, 0:nz+1)
+!  real(kind=CUSTOM_REAL), intent(in) :: b(0:nr+1, 0:ntheta+1, 0:nz+1)
+  real(kind=CUSTOM_REAL), intent(in) :: b(0:, 0:, 0:)
   ! Type of norm to use (1=L2, 2=max)
   integer, intent(in) :: itypenorm
   ! Preconditioning (1 = Jacobi, 0 = diagonal division = no preconditioning).
@@ -198,7 +202,8 @@ subroutine solver_pcg(A, b, x, itypenorm, iprecond, omega1, tol, itmax, iter, &
   ! auxiliary arrays
   type (t_pcg_auxarrays), intent(inout) :: auxarrays
   ! iteration (solution) vector
-  real(kind=CUSTOM_REAL), intent(inout) :: x(0:nr+1, 0:ntheta+1, 0:nz+1)
+!  real(kind=CUSTOM_REAL), intent(inout) :: x(0:nr+1, 0:ntheta+1, 0:nz+1)
+  real(kind=CUSTOM_REAL), intent(inout) :: x(0:, 0:, 0:)
   ! actual number of iterations (reported back to calling routine)
   integer, intent(out) :: iter
 
