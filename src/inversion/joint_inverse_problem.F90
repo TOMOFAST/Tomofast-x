@@ -289,7 +289,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   type(t_model) :: model(2)
   integer, intent(in) :: myrank, nbproc
 
-  real(kind=CUSTOM_REAL), intent(out) :: delta_model(par%nelements)
+  real(kind=CUSTOM_REAL), intent(out) :: delta_model(2 * par%nelements)
   real(kind=CUSTOM_REAL), intent(out) :: delta_data(sum(par%ndata))
 
   type(t_damping) :: damping
