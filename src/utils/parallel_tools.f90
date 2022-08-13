@@ -144,11 +144,11 @@ end subroutine get_mpi_partitioning
 ! This function is unit tested in tests_inversion.f90 in test_get_full_array().
 !======================================================================================================
 subroutine get_full_array(val, nelements, array, bcast, myrank, nbproc)
-  real(kind=CUSTOM_REAL), intent(in) :: val(:)
+  real(kind=CUSTOM_REAL), intent(in) :: val(*)
   integer, intent(in) :: nelements
   logical, intent(in) :: bcast
   integer, intent(in) :: myrank, nbproc
-  real(kind=CUSTOM_REAL), intent(out) :: array(:)
+  real(kind=CUSTOM_REAL), intent(out) :: array(*)
 
   ! Displacement for MPI_Gatherv.
   integer :: displs(nbproc)
@@ -158,7 +158,7 @@ subroutine get_full_array(val, nelements, array, bcast, myrank, nbproc)
   integer :: ierr
 
   if (nbproc == 1) then
-    array = val
+    array(1:nelements) = val(1:nelements)
 
   else
     ! Get partitioning for MPI_Gatherv.
@@ -188,7 +188,7 @@ subroutine get_full_array_in_place(nelements, array, bcast, myrank, nbproc)
   integer, intent(in) :: nelements
   logical, intent(in) :: bcast
   integer, intent(in) :: myrank, nbproc
-  real(kind=CUSTOM_REAL), intent(inout) :: array(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: array(*)
 
   ! Displacement for MPI_Gatherv.
   integer :: displs(nbproc)
@@ -225,7 +225,7 @@ end subroutine get_full_array_in_place
 subroutine get_full_array_in_place2(nelements, array, myrank, nbproc)
   integer, intent(in) :: nelements
   integer, intent(in) :: myrank, nbproc
-  real(kind=CUSTOM_REAL), intent(inout) :: array(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: array(*)
 
   ! Displacement for MPI_Gatherv.
   integer :: displs(nbproc)
