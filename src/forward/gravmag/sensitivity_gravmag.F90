@@ -101,7 +101,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid_full
   type(t_data), intent(in) :: data
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(par%nelements)
   integer, intent(in) :: myrank, nbproc
 
   ! The number of non-zero elements (on current CPU) in the sensitivity kernel parallelized by model.
