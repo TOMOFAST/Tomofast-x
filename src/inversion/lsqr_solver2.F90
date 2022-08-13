@@ -42,24 +42,23 @@ contains
 ! LSQR solver for a sparse matrix.
 ! Solve min||Ax - b||, where A is stored in sparse format in 'matrix' variable.
 !
+! nlines - number of matrix rows.
+! nelements - local (at current CPU) number of parameters.
 ! Niter - maximum number of iterations.
 ! rmin - stopping criterion (relative residual).
 ! gamma - soft thresholding parameter (see ISTA, proximate L1 norm). Use gamma=0 for pure L2 norm.
 !================================================================================
-subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
-  integer, intent(in) :: myrank
-  integer, intent(in) :: niter
+subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myrank)
+  integer, intent(in) :: nlines, nelements, niter
   real(kind=CUSTOM_REAL), intent(in) :: rmin, gamma
-  real(kind=CUSTOM_REAL), intent(in) :: b(:)
+  real(kind=CUSTOM_REAL), intent(in) :: b(nlines)
+  integer, intent(in) :: myrank
 
   type(t_sparse_matrix), intent(inout) :: matrix
-  real(kind=CUSTOM_REAL), intent(inout) :: x(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: x(nelements)
 
   ! Local variables.
   integer :: iter, ierr
-  integer :: N_lines
-  ! Local (at current CPU) number of parameters.
-  integer :: nelements
   real(kind=CUSTOM_REAL) :: alpha, beta, rho, rhobar, phi, phibar, theta
   real(kind=CUSTOM_REAL) :: b1, c, r, s, t1, t2
   real(kind=CUSTOM_REAL) :: rho_inv
@@ -70,8 +69,10 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
 
   if (myrank == 0) print *, 'Entered subroutine lsqr_solve, gamma =', gamma
 
-  N_lines = matrix%get_total_row_number()
-  nelements = size(x)
+  ! Sanity check.
+  if (matrix%get_total_row_number() /= nlines) then
+    call exit_MPI("Wrong matrix size in lsqr_solve! Exiting.", myrank, 0)
+  endif
 
   if (allocated(matrix%lsqr_var) .and. size(matrix%lsqr_var) == nelements) then
     calculateVariance = .true.
@@ -83,7 +84,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   endif
 
   ! Allocate memory.
-  allocate(u(N_lines))
+  allocate(u(nlines))
   allocate(v(nelements))
   allocate(w(nelements))
 
@@ -96,7 +97,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   u = b
 
   ! Normalize u and initialize beta.
-  if (.not. normalize(u, beta, .false.)) then
+  if (.not. normalize(nlines, u, beta, .false.)) then
     call exit_MPI("Could not normalize initial u, zero denominator!", myrank, 0)
   endif
 
@@ -109,7 +110,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
   call matrix%trans_mult_vector(u, v)
 
   ! Normalize v and initialize alpha.
-  if (.not. normalize(v, alpha, .true.)) then
+  if (.not. normalize(nelements, v, alpha, .true.)) then
     call exit_MPI("Could not normalize initial v, zero denominator!", myrank, 0)
   endif
 
@@ -138,11 +139,11 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
     endif
 
     ! Sum partial results from all CPUs: u = (u + Hv_loc1) + Hv_loc2 + ... + Hv_locN = u + Hv.
-    call mpi_allreduce(MPI_IN_PLACE, u, N_lines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    call mpi_allreduce(MPI_IN_PLACE, u, nlines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
     !---------------------------------------------------------------
 
     ! Normalize u and update beta.
-    if (.not. normalize(u, beta, .false.)) then
+    if (.not. normalize(nlines, u, beta, .false.)) then
       ! Achieved an exact solution. Happens in the unit test test_lsqr_underdetermined_2.
       if (myrank == 0) print *, 'WARNING: u = 0. Possibly found an exact solution in the LSQR solver!'
     endif
@@ -154,7 +155,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
     call matrix%trans_mult_vector(u, v, .true.)
 
     ! Normalize v and update alpha.
-    if (.not. normalize(v, alpha, .true.)) then
+    if (.not. normalize(nelements, v, alpha, .true.)) then
       ! Achieved an exact solution. Happens in the unit test test_method_of_weights_1.
       if (myrank == 0) print *, 'WARNING: v = 0. Possibly found an exact solution in the LSQR solver!'
     endif
@@ -195,7 +196,7 @@ subroutine lsqr_solve(niter, rmin, gamma, matrix, b, x, myrank)
 
       ! Calculate the residual for thresholded solution.
       !call matrix%mult_vector(x, Hv)
-      !call mpi_allreduce(MPI_IN_PLACE, Hv, N_lines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+      !call mpi_allreduce(MPI_IN_PLACE, Hv, nlines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
       ! Norm of the relative residual.
       !r = norm2(Hv - b) / b1
@@ -267,8 +268,9 @@ end subroutine apply_soft_thresholding
 !============================================================================
 ! Returns L2 norm of a vector x that is split between CPUs.
 !============================================================================
-function get_norm_parallel(x) result(s)
-  real(kind=CUSTOM_REAL), intent(in) :: x(:)
+function get_norm_parallel(n, x) result(s)
+  integer, intent(in) :: n
+  real(kind=CUSTOM_REAL), intent(in) :: x(n)
   real(kind=CUSTOM_REAL) :: s
 
   integer :: ierr
@@ -286,10 +288,11 @@ end function get_norm_parallel
 ! Set in_parallel=true, if x is split between CPUs.
 ! Also returns the norm (s).
 !============================================================================
-function normalize(x, s, in_parallel) result(res)
+function normalize(n, x, s, in_parallel) result(res)
+  integer, intent(in) :: n
   logical, intent(in) :: in_parallel
   real(kind=CUSTOM_REAL), intent(out) :: s
-  real(kind=CUSTOM_REAL), intent(inout) :: x(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: x(n)
   logical :: res
 
   real(kind=CUSTOM_REAL) :: ss
@@ -297,7 +300,7 @@ function normalize(x, s, in_parallel) result(res)
   res = .true.
 
   if (in_parallel) then
-    s = get_norm_parallel(x)
+    s = get_norm_parallel(n, x)
   else
     s = norm2(x)
   endif

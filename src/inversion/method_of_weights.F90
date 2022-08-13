@@ -173,7 +173,7 @@ subroutine apply_method_of_weights(par, num_iter, matrix_A, matrix_C, y, b, g, t
 
     ! Solve for new delta_y.
     delta_y = 0._CUSTOM_REAL
-    call lsqr_solve(par%niter, par%rmin, par%gamma, matrix_A, b, delta_y, myrank)
+    call lsqr_solve(size(b), size(delta_y), par%niter, par%rmin, par%gamma, matrix_A, b, delta_y, myrank)
 
     ! Update solution.
     y = y + delta_y
