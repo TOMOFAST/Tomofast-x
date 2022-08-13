@@ -539,9 +539,9 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
     ! Possibly, we cannot compute the variance this way with wavelet compression (by simply applying the inverse wavelet transform), not sure.
     if (allocated(this%matrix%lsqr_var) .and. (ncalls == 1 .or. ncalls == par%ninversions)) then
       if (SOLVE_PROBLEM(1)) &
-        call write_variance(this%matrix%lsqr_var(1:par%nelements), par, arr(1)%column_weight, 1, ncalls, myrank, nbproc)
+        call write_variance(par, this%matrix%lsqr_var(1:par%nelements), arr(1)%column_weight, 1, ncalls, myrank, nbproc)
       if (SOLVE_PROBLEM(2)) &
-        call write_variance(this%matrix%lsqr_var(par%nelements + 1:), par, arr(2)%column_weight, 2, ncalls, myrank, nbproc)
+        call write_variance(par, this%matrix%lsqr_var(par%nelements + 1:), arr(2)%column_weight, 2, ncalls, myrank, nbproc)
     endif
   endif
 
@@ -550,10 +550,10 @@ end subroutine joint_inversion_solve
 !=======================================================================================================
 ! Writing solution variance to a file.
 !=======================================================================================================
-subroutine write_variance(lsqr_var, par, column_weight, problem_type, ncalls, myrank, nbproc)
-  real(kind=CUSTOM_REAL), intent(in) :: lsqr_var(:)
+subroutine write_variance(par, lsqr_var, column_weight, problem_type, ncalls, myrank, nbproc)
   type(t_parameters_inversion), intent(in) :: par
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
+  real(kind=CUSTOM_REAL), intent(in) :: lsqr_var(par%nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(par%nelements)
   integer, intent(in) :: problem_type, ncalls
   integer, intent(in) :: myrank, nbproc
 
