@@ -57,12 +57,11 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   real(kind=CUSTOM_REAL) :: dVj
   real(kind=CUSTOM_REAL) :: integral, wr
   integer :: nsmaller, p
-  type(t_parallel_tools) :: pt
 
   if (myrank == 0) print *, 'Calculating the depth weight, type = ', par%depth_weighting_type
 
   ! The number of elements on CPUs with rank smaller than myrank.
-  nsmaller = pt%get_nsmaller(par%nelements, myrank, nbproc)
+  nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
 
   !--------------------------------------------------------------------------------
   ! Calculate the normalized depth weight.

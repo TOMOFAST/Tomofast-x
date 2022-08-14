@@ -120,7 +120,6 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
   integer :: i, j, k, p
   integer :: ind(2)
   real(kind=CUSTOM_REAL) :: val(2), delta, gradient_val
-  type(t_parallel_tools) :: pt
   type(t_vector) :: gradient_fwd
   !type(t_vector) :: gradient_bwd
 
@@ -128,7 +127,7 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
   if (.not. model%full_model_updated) call model%update_full(myrank, nbproc)
 
   ! Number of parameters on ranks smaller than current one.
-  nsmaller = pt%get_nsmaller(this%nelements, myrank, nbproc)
+  nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
 
   ! First matrix row (in the big matrix).
   row_beg = matrix%get_current_row_number() + 1

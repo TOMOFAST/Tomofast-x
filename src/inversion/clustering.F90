@@ -415,7 +415,6 @@ subroutine clustering_add(this, model1, model2, column_weight1, column_weight2, 
   real(kind=CUSTOM_REAL) :: func_val
   integer :: row_beg, row_end, nsmaller
   integer :: i, p, ind
-  type(t_parallel_tools) :: pt
 
   ! Calculate 'Cp-weights'.
   do i = 1, 2
@@ -429,7 +428,7 @@ subroutine clustering_add(this, model1, model2, column_weight1, column_weight2, 
   enddo
 
   ! Number of parameters on ranks smaller than current one.
-  nsmaller = pt%get_nsmaller(this%nelements, myrank, nbproc)
+  nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
 
   ! First matrix row (in the big matrix).
   row_beg = matrix%get_current_row_number() + 1

@@ -180,7 +180,6 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
   integer :: i, j, k, l, p
   integer :: ind1, ind2, nderiv
   integer :: nsmaller
-  type(t_parallel_tools) :: pt
   real(kind=CUSTOM_REAL) :: val1, val2
   logical :: on_left_boundary, on_right_boundary
 
@@ -194,7 +193,7 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
   this%cost = 0._CUSTOM_REAL
 
   ! Number of parameters on ranks smaller than current one.
-  nsmaller = pt%get_nsmaller(this%nparams_loc, myrank, nbproc)
+  nsmaller = get_nsmaller(this%nparams_loc, myrank, nbproc)
 
   do p = 1, this%nparams
 

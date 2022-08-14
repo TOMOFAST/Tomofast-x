@@ -111,7 +111,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   integer, intent(out) :: nelements_new
 
   type(t_magnetic_field) :: mag_field
-  type(t_parallel_tools) :: pt
   integer :: i, p, nel, ierr
   integer :: nelements_total, nel_compressed
   integer(kind=8) :: nnz_data
@@ -212,10 +211,10 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   ! Calculate sensitivity lines.
   !---------------------------------------------------------------------------------------------
-  call pt%get_full_array(column_weight, par%nelements, column_weight_full, .true., myrank, nbproc)
+  call get_full_array(column_weight, par%nelements, column_weight_full, .true., myrank, nbproc)
 
-  ndata_loc = pt%calculate_nelements_at_cpu(par%ndata, myrank, nbproc)
-  ndata_smaller = pt%get_nsmaller(ndata_loc, myrank, nbproc)
+  ndata_loc = calculate_nelements_at_cpu(par%ndata, myrank, nbproc)
+  ndata_smaller = get_nsmaller(ndata_loc, myrank, nbproc)
 
   ! File header.
   write(77) ndata_loc, par%ndata, nelements_total, myrank, nbproc
@@ -463,8 +462,6 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   type(t_sparse_matrix), intent(inout) :: sensit_matrix
   real(kind=CUSTOM_REAL), intent(out) :: column_weight(:)
 
-  type(t_parallel_tools) :: pt
-
   ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
   real(kind=MATRIX_PRECISION), allocatable :: sensit_compressed(:)
@@ -505,7 +502,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   !---------------------------------------------------------------------------------------------
 
   ! The number of elements on CPUs with rank smaller than myrank.
-  nsmaller = pt%get_nsmaller(par%nelements, myrank, nbproc)
+  nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
 
   idata_glob = 0
   nnz = 0

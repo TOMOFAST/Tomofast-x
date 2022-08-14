@@ -13,7 +13,7 @@
 !========================================================================
 
 !================================================================================================
-! Static functions (i.e., no object passed) to work with parallel arrays and scalars.
+! Functions to work with parallel arrays and scalars.
 !
 ! Vitaliy Ogarko, UWA, CET, Australia.
 !================================================================================================
@@ -26,22 +26,15 @@ module parallel_tools
 
   private
 
-  type, public :: t_parallel_tools
-    private
+  public :: calculate_nelements_at_cpu
+  public :: get_number_elements_on_other_cpus
+  public :: get_nsmaller
+  public :: get_total_number_elements
+  public :: get_mpi_partitioning
 
-  contains
-    private
-
-    procedure, public, nopass :: calculate_nelements_at_cpu
-    procedure, public, nopass :: get_nsmaller
-    procedure, public, nopass :: get_number_elements_on_other_cpus
-    procedure, public, nopass :: get_total_number_elements
-    procedure, public, nopass :: get_mpi_partitioning
-    procedure, public, nopass :: get_full_array
-    procedure, public, nopass :: get_full_array_in_place
-    procedure, public, nopass :: get_full_array_in_place2
-
-  end type t_parallel_tools
+  public :: get_full_array
+  public :: get_full_array_in_place
+  public :: get_full_array_in_place2
 
 contains
 

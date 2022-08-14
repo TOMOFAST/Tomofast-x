@@ -15,7 +15,7 @@
 !===============================================================================================
 ! Unit tests for parallel (MPI) tools.
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================================
 module tests_parallel_tools
 
@@ -41,13 +41,12 @@ contains
 subroutine test_get_number_elements_on_other_cpus(myrank, nbproc)
   integer, intent(in) :: myrank, nbproc
 
-  type(t_parallel_tools) :: pt
   integer :: nelements_at_cpu(nbproc)
   integer :: i, nelements
 
   nelements = 5 * (myrank + 1) + 3
 
-  nelements_at_cpu = pt%get_number_elements_on_other_cpus(nelements, myrank, nbproc)
+  nelements_at_cpu = get_number_elements_on_other_cpus(nelements, myrank, nbproc)
 
   do i = 1, nbproc
     call assert_equal_int(nelements_at_cpu(i), 5 * i + 3, "test_get_number_elements_on_other_cpus failed.")
@@ -61,7 +60,6 @@ end subroutine test_get_number_elements_on_other_cpus
 subroutine test_get_total_number_elements(myrank, nbproc)
   integer, intent(in) :: myrank, nbproc
 
-  type(t_parallel_tools) :: pt
   integer :: nelements, nelements_total
 
   ! Set different number of elements on every CPU, as:
@@ -70,7 +68,7 @@ subroutine test_get_total_number_elements(myrank, nbproc)
   ! CPU 3: 3 elements, etc.
   nelements = myrank + 1
 
-  nelements_total = pt%get_total_number_elements(nelements, myrank, nbproc)
+  nelements_total = get_total_number_elements(nelements, myrank, nbproc)
 
   call assert_equal_int(nelements_total, (nbproc + 1) * nbproc / 2, "Wrong nelements_total in test_get_total_number_elements.")
 
@@ -85,7 +83,6 @@ subroutine test_get_full_array(myrank, nbproc)
   integer :: nelements, nelements_total
   real(kind=CUSTOM_REAL), allocatable :: model(:)
   real(kind=CUSTOM_REAL), allocatable :: model_all(:)
-  type(t_parallel_tools) :: pt
   integer :: i
 
   ! Set different number of elements on every CPU, as:
@@ -94,7 +91,7 @@ subroutine test_get_full_array(myrank, nbproc)
   ! CPU 3: 3 elements, etc.
   nelements = myrank + 1
 
-  nelements_total = pt%get_total_number_elements(nelements, myrank, nbproc)
+  nelements_total = get_total_number_elements(nelements, myrank, nbproc)
 
   allocate(model(nelements))
   allocate(model_all(nelements_total))
@@ -106,7 +103,7 @@ subroutine test_get_full_array(myrank, nbproc)
     model(i) = dble((myrank + 1) * myrank / 2 + i)
   enddo
 
-  call pt%get_full_array(model, nelements, model_all, .true., myrank, nbproc)
+  call get_full_array(model, nelements, model_all, .true., myrank, nbproc)
 
   ! Check the result.
   do i = 1, nelements_total
@@ -126,7 +123,6 @@ subroutine test_get_full_array_in_place(myrank, nbproc)
 
   integer :: nelements, nelements_total
   real(kind=CUSTOM_REAL), allocatable :: model_all(:)
-  type(t_parallel_tools) :: pt
   integer :: i
 
   ! Set different number of elements on every CPU, as:
@@ -135,7 +131,7 @@ subroutine test_get_full_array_in_place(myrank, nbproc)
   ! CPU 3: 3 elements, etc.
   nelements = myrank + 1
 
-  nelements_total = pt%get_total_number_elements(nelements, myrank, nbproc)
+  nelements_total = get_total_number_elements(nelements, myrank, nbproc)
 
   allocate(model_all(nelements_total))
 
@@ -146,7 +142,7 @@ subroutine test_get_full_array_in_place(myrank, nbproc)
     model_all(i) = dble((myrank + 1) * myrank / 2 + i)
   enddo
 
-  call pt%get_full_array_in_place(nelements, model_all, .true., myrank, nbproc)
+  call get_full_array_in_place(nelements, model_all, .true., myrank, nbproc)
 
   ! Check the result.
   do i = 1, nelements_total

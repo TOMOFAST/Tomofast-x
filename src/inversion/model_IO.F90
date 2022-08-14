@@ -189,7 +189,6 @@ subroutine model_read_bound_constraints(model, file_name, myrank, nbproc)
 
   integer :: ierr, nsmaller, ind, i, nelements_read, nlithos_read
   character(len=256) :: msg
-  type(t_parallel_tools) :: pt
   character(len=200) :: dummy_line
 
   if (myrank == 0) print *, 'Reading local bound constraints from file ', trim(file_name)
@@ -216,7 +215,7 @@ subroutine model_read_bound_constraints(model, file_name, myrank, nbproc)
   if (myrank == 0) print *, 'Read nelements, nlithos = ', nelements_read, nlithos_read
 
   ! The number of elements on CPUs with rank smaller than myrank.
-  nsmaller = pt%get_nsmaller(model%nelements, myrank, nbproc)
+  nsmaller = get_nsmaller(model%nelements, myrank, nbproc)
 
   ! Reading.
   do i = 1, model%nelements_total
@@ -249,12 +248,10 @@ subroutine model_write(model, name_prefix, gather_full_model, write_voxet, myran
   logical, intent(in) :: gather_full_model, write_voxet
   integer, intent(in) :: myrank, nbproc
 
-  type(t_parallel_tools) :: pt
-
   ! Note: model_write function uses values from val_full array.
 
   if (gather_full_model) then
-    call pt%get_full_array(model%val, model%nelements, model%val_full, .false., myrank, nbproc)
+    call get_full_array(model%val, model%nelements, model%val_full, .false., myrank, nbproc)
   endif
 
   ! Write the model in vtk format.

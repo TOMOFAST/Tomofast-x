@@ -93,7 +93,6 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
   integer, intent(in) :: nelements, myrank, nbproc
 
   integer :: ierr
-  type(t_parallel_tools) :: pt
 
   ! Sanity check.
   if (nelements <= 0) then
@@ -101,7 +100,7 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
   endif
 
   this%nelements = nelements
-  this%nelements_total = pt%get_total_number_elements(nelements, myrank, nbproc)
+  this%nelements_total = get_total_number_elements(nelements, myrank, nbproc)
 
   this%full_model_updated = .true.
 
@@ -147,10 +146,9 @@ subroutine model_distribute(this, myrank, nbproc)
   ! The number of elements on every CPU for mpi_scatterv.
   integer :: nelements_at_cpu(nbproc)
   integer :: ierr
-  type(t_parallel_tools) :: pt
 
   ! Partitioning for MPI_Scatterv.
-  call pt%get_mpi_partitioning(this%nelements, displs, nelements_at_cpu, myrank, nbproc)
+  call get_mpi_partitioning(this%nelements, displs, nelements_at_cpu, myrank, nbproc)
 
   call MPI_Scatterv(this%val_full, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
                     this%val, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
@@ -223,9 +221,7 @@ subroutine model_update_full(this, myrank, nbproc)
   class(t_model), intent(inout) :: this
   integer, intent(in) :: myrank, nbproc
 
-  type(t_parallel_tools) :: pt
-
-  call pt%get_full_array(this%val, this%nelements, this%val_full, .true., myrank, nbproc)
+  call get_full_array(this%val, this%nelements, this%val_full, .true., myrank, nbproc)
 
   this%full_model_updated = .true.
 
@@ -251,7 +247,6 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
   real(kind=CUSTOM_REAL), allocatable :: model_scaled_full(:)
   integer :: i, ierr
   integer :: nsmaller
-  type(t_parallel_tools) :: pt
 
   allocate(model_scaled(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_calculate_data!", myrank, ierr)
@@ -272,13 +267,13 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
       if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_calculate_data!", myrank, ierr)
 
       ! Gather the full model from all processors.
-      call pt%get_full_array(model_scaled, this%nelements, model_scaled_full, .true., myrank, nbproc)
+      call get_full_array(model_scaled, this%nelements, model_scaled_full, .true., myrank, nbproc)
 
       ! Compress the full model.
       call Haar3D(model_scaled_full, this%grid_full%nx, this%grid_full%ny, this%grid_full%nz)
 
       ! Extract the local model part.
-      nsmaller = pt%get_nsmaller(this%nelements, myrank, nbproc)
+      nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
       model_scaled = model_scaled_full(nsmaller + 1 : nsmaller + this%nelements)
 
       deallocate(model_scaled_full)

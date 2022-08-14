@@ -129,7 +129,6 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
   type(t_parameters_mag), intent(out) :: mpar
   type(t_parameters_inversion), intent(out) :: ipar
 
-  type(t_parallel_tools) :: pt
   integer :: nelements, ierr
 
   if (myrank == 0) then
@@ -243,7 +242,7 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
     ipar%compression_type = gpar%compression_type
 
     ! Define model splitting for parallelization.
-    nelements = pt%calculate_nelements_at_cpu(ipar%nelements_total, myrank, nbproc)
+    nelements = calculate_nelements_at_cpu(ipar%nelements_total, myrank, nbproc)
 
     ipar%nelements = nelements
     gpar%nelements = nelements

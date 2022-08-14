@@ -295,7 +295,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   type(t_damping) :: damping
   type(t_damping_gradient) :: damping_gradient
   type(t_parameters_lsqr) :: par_lsqr
-  type(t_parallel_tools) :: pt
   integer :: i, j
   integer :: line_start(2), line_end(2), param_shift(2)
   real(kind=CUSTOM_REAL) :: cost
@@ -497,14 +496,14 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   ! Applying the Inverse Wavelet Transform.
     if (nbproc > 1) then
     ! Parallel version.
-      nsmaller = pt%get_nsmaller(par%nelements, myrank, nbproc)
+      nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
 
       ! Note: use 'model%val_full' for storage here, as we overwrite it later anyway.
       model(1)%full_model_updated = .false.
       model(2)%full_model_updated = .false.
 
       if (SOLVE_PROBLEM(1)) then
-        call pt%get_full_array(delta_model(1:par%nelements), par%nelements, model(1)%val_full, .true., myrank, nbproc)
+        call get_full_array(delta_model(1:par%nelements), par%nelements, model(1)%val_full, .true., myrank, nbproc)
         call iHaar3D(model(1)%val_full, par%nx, par%ny, par%nz)
 
         ! Extract the local model update.
@@ -512,7 +511,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       endif
 
       if (SOLVE_PROBLEM(2)) then
-        call pt%get_full_array(delta_model(par%nelements + 1:), par%nelements, model(2)%val_full, .true., myrank, nbproc)
+        call get_full_array(delta_model(par%nelements + 1:), par%nelements, model(2)%val_full, .true., myrank, nbproc)
         call iHaar3D(model(2)%val_full, par%nx, par%ny, par%nz)
 
         ! Extract the local model update.
@@ -561,7 +560,6 @@ subroutine write_variance(par, lsqr_var, column_weight, problem_type, ncalls, my
   integer :: nsmaller
   character(len=32) :: filename
   character(len=128) :: filename_full
-  type(t_parallel_tools) :: pt
 
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full(:)
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_scaled(:)
@@ -573,10 +571,10 @@ subroutine write_variance(par, lsqr_var, column_weight, problem_type, ncalls, my
   ! Applying the Inverse Wavelet Transform.
     if (nbproc > 1) then
       ! Gather full (parallel) vector on the master.
-      call pt%get_full_array(lsqr_var, par%nelements, lsqr_var_full, .true., myrank, nbproc)
+      call get_full_array(lsqr_var, par%nelements, lsqr_var_full, .true., myrank, nbproc)
       call iHaar3D(lsqr_var_full, par%nx, par%ny, par%nz)
 
-      nsmaller = pt%get_nsmaller(par%nelements, myrank, nbproc)
+      nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
       lsqr_var_scaled = lsqr_var_full(nsmaller + 1 : nsmaller + par%nelements)
     else
       lsqr_var_scaled = lsqr_var
@@ -590,7 +588,7 @@ subroutine write_variance(par, lsqr_var, column_weight, problem_type, ncalls, my
   call rescale_model(lsqr_var_scaled, column_weight, par%nelements)
 
   ! Gather full (parallel) vector on the master.
-  call pt%get_full_array(lsqr_var_scaled, par%nelements, lsqr_var_full, .false., myrank, nbproc)
+  call get_full_array(lsqr_var_scaled, par%nelements, lsqr_var_full, .false., myrank, nbproc)
 
   if (myrank == 0) then
   ! Writing variance by master CPU.

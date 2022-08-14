@@ -111,7 +111,6 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, &
   integer :: row_beg, row_end
   integer :: ierr
   real(kind=CUSTOM_REAL) :: value
-  type(t_parallel_tools) :: pt
 
   !---------------------------------------------------------------------
   ! Calculating the model difference: (m - m_ref), which is used in the right-hand side, and in the Lp norm multiplier.
@@ -128,7 +127,7 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, &
   enddo
 
   ! The number of elements on CPUs with rank smaller than myrank.
-  nsmaller = pt%get_nsmaller(this%nelements, myrank, nbproc)
+  nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
 
   if (this%compression_type > 0) then
   ! Transform the model difference to the wavelet domain.
@@ -141,7 +140,7 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, &
       if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in damping_add!", myrank, ierr)
 
       ! Gather the full model from all processors.
-      call pt%get_full_array(model_diff, this%nelements, model_diff_full, .true., myrank, nbproc)
+      call get_full_array(model_diff, this%nelements, model_diff_full, .true., myrank, nbproc)
 
       ! Transform to wavelet domain.
       call Haar3D(model_diff_full, this%nx, this%ny, this%nz)
@@ -226,7 +225,6 @@ subroutine damping_add_RHS(this, b_RHS, model_diff, myrank, nbproc, local_weight
 
   real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(this%nelements_total)
 
-  type(t_parallel_tools) :: pt
   integer :: i
 
   do i = 1, this%nelements
@@ -244,7 +242,7 @@ subroutine damping_add_RHS(this, b_RHS, model_diff, myrank, nbproc, local_weight
   enddo
 
   ! Gather full right hand side.
-  call pt%get_full_array_in_place(this%nelements, b_RHS, .true., myrank, nbproc)
+  call get_full_array_in_place(this%nelements, b_RHS, .true., myrank, nbproc)
 
 end subroutine damping_add_RHS
 
