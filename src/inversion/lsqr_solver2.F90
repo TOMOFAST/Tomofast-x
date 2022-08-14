@@ -32,7 +32,6 @@ module lsqr_solver
 
   public :: lsqr_solve
 
-  private :: get_norm_parallel
   private :: normalize
   private :: apply_soft_thresholding
 
@@ -139,7 +138,7 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
     endif
 
     ! Sum partial results from all CPUs: u = (u + Hv_loc1) + Hv_loc2 + ... + Hv_locN = u + Hv.
-    call mpi_allreduce(MPI_IN_PLACE, u, nlines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    call MPI_Allreduce(MPI_IN_PLACE, u, nlines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
     !---------------------------------------------------------------
 
     ! Normalize u and update beta.
@@ -196,7 +195,7 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
 
       ! Calculate the residual for thresholded solution.
       !call matrix%mult_vector(x, Hv)
-      !call mpi_allreduce(MPI_IN_PLACE, Hv, nlines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+      !call MPI_Allreduce(MPI_IN_PLACE, Hv, nlines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
       ! Norm of the relative residual.
       !r = norm2(Hv - b) / b1
@@ -266,24 +265,6 @@ pure subroutine apply_soft_thresholding(x, nelements, gamma)
 end subroutine apply_soft_thresholding
 
 !============================================================================
-! Returns L2 norm of a vector x that is split between CPUs.
-!============================================================================
-function get_norm_parallel(n, x) result(s)
-  integer, intent(in) :: n
-  real(kind=CUSTOM_REAL), intent(in) :: x(n)
-  real(kind=CUSTOM_REAL) :: s
-
-  integer :: ierr
-  real(kind=CUSTOM_REAL) :: s0
-
-  s = sum(x**2)
-
-  call mpi_allreduce(s, s0, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-  s = sqrt(s0)
-
-end function get_norm_parallel
-
-!============================================================================
 ! Normalizes vector x by its L2 norm.
 ! Set in_parallel=true, if x is split between CPUs.
 ! Also returns the norm (s).
@@ -291,16 +272,21 @@ end function get_norm_parallel
 function normalize(n, x, s, in_parallel) result(res)
   integer, intent(in) :: n
   logical, intent(in) :: in_parallel
+
   real(kind=CUSTOM_REAL), intent(out) :: s
   real(kind=CUSTOM_REAL), intent(inout) :: x(n)
   logical :: res
 
-  real(kind=CUSTOM_REAL) :: ss
+  real(kind=CUSTOM_REAL) :: ss, s_glob
+  integer :: ierr
 
   res = .true.
 
   if (in_parallel) then
-    s = get_norm_parallel(n, x)
+    ! Calculate the L2 norm of a vector x that is split between CPUs.
+    s = sum(x**2)
+    call MPI_Allreduce(s, s_glob, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    s = sqrt(s_glob)
   else
     s = norm2(x)
   endif
