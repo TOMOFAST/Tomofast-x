@@ -211,6 +211,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
 
   real(kind=4), allocatable :: xyzgrid_all(:, :, :)
   real(kind=4), allocatable :: cell_data(:)
+  integer, allocatable :: cell_indexes(:, :)
   integer, allocatable :: cell_type(:)
 
   character :: lf*1, str1*8, str2*8
@@ -247,6 +248,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   !=================================================================
   allocate(xyzgrid_all(3, 8, nelements_slice), stat=ierr)
   allocate(cell_data(nelements_slice), stat=ierr)
+  allocate(cell_indexes(9, nelements_slice), stat=ierr)
   allocate(cell_type(nelements_slice), stat=ierr)
 
   !====================================
@@ -301,7 +303,6 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
       xyzgrid_all(3, :, j) = real(zgrid, 4)
 
       cell_data(j) = real(val(p), 4)
-
     endif
   enddo
 
@@ -312,14 +313,20 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
 
   ! See documentation here http://dunne.uni-hd.de/VisuSimple/documents/vtkfileformat.html
 
+  do p = 1, nelements_slice
+    cell_indexes(1, p) = 8
+    do i = 1, 8
+      cell_indexes(i + 1, p) = 8 * (p - 1) + (i - 1)
+    enddo
+  enddo
+
   write(str1(1:8),'(i8)') nelements_slice
   write(str2(1:8),'(i8)') (8 + 1) * nelements_slice
   write(333) lf//lf//'CELLS '//str1//' '//str2//lf
 
-  write(333) (8, 8 * (p - 1) + 0, 8 * (p - 1) + 1, 8 * (p - 1) + 2, 8 * (p - 1) + 3, &
-                 8 * (p - 1) + 4, 8 * (p - 1) + 5, 8 * (p - 1) + 6, 8 * (p - 1) + 7, p = 1, nelements_slice)
+  write(333) cell_indexes
 
-
+  ! Write cell types --------------------------------------------
   write(str1(1:8),'(i8)') nelements_slice
   write(333) lf//lf//'CELL_TYPES '//str1//lf
 
@@ -342,6 +349,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
 
   deallocate(xyzgrid_all)
   deallocate(cell_data)
+  deallocate(cell_indexes)
   deallocate(cell_type)
 
 end subroutine visualisation_paraview_legogrid
