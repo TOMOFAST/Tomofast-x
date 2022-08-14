@@ -221,7 +221,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
 
   filename_full = trim(path_output)//"/Paraview/"//filename
 
-  open(unit=333, file=filename_full, status='replace', access='stream', form='unformatted', &
+  open(333, file=filename_full, status='replace', access='stream', form='unformatted', action='write', &
        iostat=ierr, iomsg=msg)
 
   if (ierr /= 0) call exit_MPI("Error with writing the VTK file! path="&
