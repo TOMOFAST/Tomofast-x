@@ -358,6 +358,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 #endif
 
     !-----------------------------------------------------------------------------------------
+    ! Calculate costs for the models (damping term in the cost function).
+    call calculate_model_costs(ipar, iarr, model, cost_model, SOLVE_PROBLEM, myrank, nbproc)
+
     ! Calculate initial cost (misfit).
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) then
@@ -365,9 +368,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
         if (myrank == 0) print *, 'data cost =', cost_data(i)
       endif
     enddo
-
-    ! Calculate costs for the models (damping term in the cost function).
-    call calculate_model_costs(ipar, iarr, model, cost_model, SOLVE_PROBLEM, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
     ! Stores costs.
@@ -427,6 +427,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
 #endif
 
+      ! Calculate new costs for the models (damping term in the cost function).
+      call calculate_model_costs(ipar, iarr, model, cost_model, SOLVE_PROBLEM, myrank, nbproc)
+
       ! Calculate new costs for data misfits.
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) then
@@ -434,9 +437,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
           if (myrank == 0) print *, 'data cost =', cost_data(i)
         endif
       enddo
-
-      ! Calculate new costs for the models (damping term in the cost function).
-      call calculate_model_costs(ipar, iarr, model, cost_model, SOLVE_PROBLEM, myrank, nbproc)
 
       ! Adjust the ADMM weight dynamically.
       if (ipar%admm_type > 0) then
