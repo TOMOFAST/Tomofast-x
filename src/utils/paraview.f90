@@ -100,7 +100,7 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
 
   filename_full = trim(path_output)//"/Paraview/"//filename
 
-  open(unit=333, file=filename_full, status='replace', access='stream', form='unformatted', &
+  open(333, file=filename_full, status='replace', access='stream', form='unformatted', action='write', &
        iostat=ierr, iomsg=msg)
 
   if (ierr /= 0) call exit_MPI("Error with writing the VTK file! path="&
@@ -152,7 +152,7 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   endif
 
   ! Write the grid to a file.
-  write(333) ((cell_centers(i, j), i = 1, 3), j = 1, nelements_slice)
+  write(333) cell_centers
 
   !-------------------------------------------------------------------
   ! Generate element data values.
@@ -163,7 +163,7 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   write(333) 'SCALARS F FLOAT'//lf
   write(333) 'LOOKUP_TABLE default'//lf
 
-  write(333) (cell_data(p), p = 1, nelements_slice)
+  write(333) cell_data
 
   close(333)
 
