@@ -86,7 +86,7 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   ! I/O error code.
   integer :: ierr
   integer :: npoints, nelements_slice
-  integer :: i, j, p
+  integer :: j, p
 
   real(kind=4), allocatable :: cell_centers(:, :)
   real(kind=4), allocatable :: cell_data(:)
@@ -189,11 +189,11 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   ! Total number of cells.
   integer, intent(in) :: nelements
   ! Values for visualization.
-  real(kind=CUSTOM_REAL), intent(in) :: val(:)
+  real(kind=CUSTOM_REAL), intent(in) :: val(nelements)
   ! Coordinates of points in the grid.
-  real(kind=CUSTOM_REAL), intent(in) :: X1(:), Y1(:), Z1(:)
-  real(kind=CUSTOM_REAL), intent(in) :: X2(:), Y2(:), Z2(:)
-  integer, intent(in) :: i_index(:), j_index(:), k_index(:)
+  real(kind=CUSTOM_REAL), intent(in) :: X1(nelements), Y1(nelements), Z1(nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: X2(nelements), Y2(nelements), Z2(nelements)
+  integer, intent(in) :: i_index(nelements), j_index(nelements), k_index(nelements)
   integer, intent(in) :: i1, i2, j1, j2, k1, k2
   logical, intent(in) :: INVERT_Z_AXIS
   ! Output file name.
@@ -208,12 +208,10 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   real(kind=CUSTOM_REAL) :: xgrid(8)
   real(kind=CUSTOM_REAL) :: ygrid(8)
   real(kind=CUSTOM_REAL) :: zgrid(8)
-  integer :: cell_type
 
-  real(kind=4), allocatable :: xgrid_all(:, :)
-  real(kind=4), allocatable :: ygrid_all(:, :)
-  real(kind=4), allocatable :: zgrid_all(:, :)
+  real(kind=4), allocatable :: xyzgrid_all(:, :, :)
   real(kind=4), allocatable :: cell_data(:)
+  integer, allocatable :: cell_type(:)
 
   character :: lf*1, str1*8, str2*8
   lf = char(10) ! line feed character
@@ -247,10 +245,9 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   !=================================================================
   ! Allocate memory.
   !=================================================================
-  allocate(xgrid_all(8, nelements_slice), stat=ierr)
-  allocate(ygrid_all(8, nelements_slice), stat=ierr)
-  allocate(zgrid_all(8, nelements_slice), stat=ierr)
+  allocate(xyzgrid_all(3, 8, nelements_slice), stat=ierr)
   allocate(cell_data(nelements_slice), stat=ierr)
+  allocate(cell_type(nelements_slice), stat=ierr)
 
   !====================================
   ! Build lego-grid.
@@ -299,9 +296,9 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
       endif
 
       ! Store the values.
-      xgrid_all(:, j) = real(xgrid, 4)
-      ygrid_all(:, j) = real(ygrid, 4)
-      zgrid_all(:, j) = real(zgrid, 4)
+      xyzgrid_all(1, :, j) = real(xgrid, 4)
+      xyzgrid_all(2, :, j) = real(ygrid, 4)
+      xyzgrid_all(3, :, j) = real(zgrid, 4)
 
       cell_data(j) = real(val(p), 4)
 
@@ -309,7 +306,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   enddo
 
   ! Write the grid to a file.
-  write(333) ((xgrid_all(i, j), ygrid_all(i, j), zgrid_all(i, j), i = 1, 8), j = 1, nelements_slice)
+  write(333) xyzgrid_all
 
   ! ************* Generate elements ******************
 
@@ -329,7 +326,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   ! VTK_VOXEL = 11
   cell_type = 11
 
-  write(333) (cell_type, p = 1, nelements_slice)
+  write(333) cell_type
 
   ! ************* Generate element data values ******************
 
@@ -339,18 +336,18 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   write(333) 'SCALARS F FLOAT'//lf
   write(333) 'LOOKUP_TABLE default'//lf
 
-  write(333) (cell_data(p), p = 1, nelements_slice)
+  write(333) cell_data
 
   close(333)
 
-  deallocate(xgrid_all)
-  deallocate(ygrid_all)
-  deallocate(zgrid_all)
+  deallocate(xyzgrid_all)
   deallocate(cell_data)
+  deallocate(cell_type)
 
 end subroutine visualisation_paraview_legogrid
 
 !============================================================================================================
+! LEGACY function used in the ECT problem.
 ! This subroutine writes the file in (legacy) VTK format used for Paraview visualization.
 ! data_type = 'POINT_DATA' or 'CELL_DATA', depending on whether we set the data
 ! at the grid vertex or at the cell center. In the 'POINT_DATA' case Paraview performs nice smoothing of the data.
@@ -472,14 +469,14 @@ subroutine visualisation_paraview(filename, myrank, nx, ny, nz, val, xgrid, ygri
       do j = 0, ydim - 2
         do i = 0, xdim - 2
           ! Define the corners of the 3D volume element.
-          ival(1) = ibool(i, j, k)        ! 000
-          ival(2) = ibool(i, j + 1, k)      ! 010
-          ival(3) = ibool(i + 1, j + 1, k)    ! 110
-          ival(4) = ibool(i + 1, j, k)      ! 100
-          ival(5) = ibool(i + 1, j, k + 1)    ! 101
+          ival(1) = ibool(i, j, k)              ! 000
+          ival(2) = ibool(i, j + 1, k)          ! 010
+          ival(3) = ibool(i + 1, j + 1, k)      ! 110
+          ival(4) = ibool(i + 1, j, k)          ! 100
+          ival(5) = ibool(i + 1, j, k + 1)      ! 101
           ival(6) = ibool(i + 1, j + 1, k + 1)  ! 111
-          ival(7) = ibool(i, j + 1, k + 1)    ! 011
-          ival(8) = ibool(i, j, k + 1)      ! 001
+          ival(7) = ibool(i, j + 1, k + 1)      ! 011
+          ival(8) = ibool(i, j, k + 1)          ! 001
 
           ! Define cells.
           write (333,"(i1,4(1x,i9))") 4, ival(1), ival(2), ival(3), ival(4) ! bottom
