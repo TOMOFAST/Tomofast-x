@@ -71,11 +71,11 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   ! Total number of cells.
   integer, intent(in) :: nelements
   ! Values for visualization.
-  real(kind=CUSTOM_REAL), intent(in) :: val(:)
+  real(kind=CUSTOM_REAL), intent(in) :: val(nelements)
   ! Coordinates of points in the grid.
-  real(kind=CUSTOM_REAL), intent(in) :: X1(:), Y1(:), Z1(:)
-  real(kind=CUSTOM_REAL), intent(in) :: X2(:), Y2(:), Z2(:)
-  integer, intent(in) :: i_index(:), j_index(:), k_index(:)
+  real(kind=CUSTOM_REAL), intent(in) :: X1(nelements), Y1(nelements), Z1(nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: X2(nelements), Y2(nelements), Z2(nelements)
+  integer, intent(in) :: i_index(nelements), j_index(nelements), k_index(nelements)
   integer, intent(in) :: i1, i2, j1, j2, k1, k2
   logical, intent(in) :: INVERT_Z_AXIS
   ! Output file name.
