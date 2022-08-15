@@ -89,8 +89,9 @@ all: clean default
 
 # EXECUTABLES:
 
-#LIBS_FULL =
-LIBS_FULL =-L/usr/local/lib -lipmf -lipm
+LIBS_FULL =
+# For the IPM linking.
+#LIBS_FULL =-L/usr/local/lib -lipmf -lipm
 
 # add paths to the search path for files
 vpath %.f90 ./src
