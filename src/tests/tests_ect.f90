@@ -48,13 +48,10 @@ module tests_ect
   private :: init_params
   private :: set_dimensions_multigrid
 
-  ! TODO: make them local.
-  integer :: myrank, nbproc
-
 contains
 
-subroutine test_geometry_all(myrank__,nbproc__)
-  integer, intent(in) :: myrank__,nbproc__
+subroutine test_geometry_all(myrank, nbproc)
+  integer, intent(in) :: myrank, nbproc
 
   ! Geometry of the cylinder.
   real(kind=CUSTOM_REAL), parameter :: radiusin     = 0.045
@@ -62,8 +59,8 @@ subroutine test_geometry_all(myrank__,nbproc__)
   real(kind=CUSTOM_REAL), parameter :: radiusoutout = 0.07
   real(kind=CUSTOM_REAL), parameter :: heicyl       = 0.2
 
-  myrank = myrank__
-  nbproc = nbproc__
+  if (myrank > 0) continue
+  if (nbproc > 0) continue
 
   ! Minimum problem size without multigrid.
   call test_geometry(12, 1, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.))
@@ -128,8 +125,8 @@ subroutine test_geometry_all(myrank__,nbproc__)
 end subroutine test_geometry_all
 
 !==============================================================================================
-subroutine test_boundary_conditions_all(myrank__,nbproc__)
-  integer, intent(in) :: myrank__,nbproc__
+subroutine test_boundary_conditions_all(myrank, nbproc)
+  integer, intent(in) :: myrank, nbproc
 
   ! Geometry of the cylinder.
   real(kind=CUSTOM_REAL), parameter :: radiusin     = 0.045
@@ -137,29 +134,26 @@ subroutine test_boundary_conditions_all(myrank__,nbproc__)
   real(kind=CUSTOM_REAL), parameter :: radiusoutout = 0.07
   real(kind=CUSTOM_REAL), parameter :: heicyl       = 0.2
 
-  myrank = myrank__
-  nbproc = nbproc__
+  call test_boundary_conditions(12, 1, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.), myrank, nbproc)
+  call test_boundary_conditions(12, 1, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.01), myrank, nbproc)
 
-  call test_boundary_conditions(12, 1, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.))
-  call test_boundary_conditions(12, 1, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.01))
+  call test_boundary_conditions(24, 2, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.), myrank, nbproc)
+  call test_boundary_conditions(24, 2, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.01), myrank, nbproc)
 
-  call test_boundary_conditions(24, 2, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.))
-  call test_boundary_conditions(24, 2, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.01))
-
-  call test_boundary_conditions(72, 2, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.))
-  call test_boundary_conditions(72, 2, 1, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.))
-  call test_boundary_conditions(72, 2, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,3.,0.))
-  call test_boundary_conditions(72, 2, 1, t_sensor(radiusin,radiusout,radiusoutout,heicyl,3.,0.))
-  call test_boundary_conditions(72, 2, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.01))
-  call test_boundary_conditions(72, 2, 1, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.01))
-  call test_boundary_conditions(72, 2, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,3.,0.01))
-  call test_boundary_conditions(72, 2, 1, t_sensor(radiusin,radiusout,radiusoutout,heicyl,3.,0.01))
+  call test_boundary_conditions(72, 2, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.), myrank, nbproc)
+  call test_boundary_conditions(72, 2, 1, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.), myrank, nbproc)
+  call test_boundary_conditions(72, 2, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,3.,0.), myrank, nbproc)
+  call test_boundary_conditions(72, 2, 1, t_sensor(radiusin,radiusout,radiusoutout,heicyl,3.,0.), myrank, nbproc)
+  call test_boundary_conditions(72, 2, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.01), myrank, nbproc)
+  call test_boundary_conditions(72, 2, 1, t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.01), myrank, nbproc)
+  call test_boundary_conditions(72, 2, 0, t_sensor(radiusin,radiusout,radiusoutout,heicyl,3.,0.01), myrank, nbproc)
+  call test_boundary_conditions(72, 2, 1, t_sensor(radiusin,radiusout,radiusoutout,heicyl,3.,0.01), myrank, nbproc)
 
 end subroutine test_boundary_conditions_all
 
 !==============================================================================================
-subroutine test_analytical_comparison_all(myrank__,nbproc__)
-  integer, intent(in) :: myrank__,nbproc__
+subroutine test_analytical_comparison_all(myrank, nbproc)
+  integer, intent(in) :: myrank, nbproc
 
   ! Geometry of the cylinder.
   real(kind=CUSTOM_REAL), parameter :: radiusin     = 0.045
@@ -170,28 +164,25 @@ subroutine test_analytical_comparison_all(myrank__,nbproc__)
   ! Analytical solutions are known only without gaps.
   type (t_sensor), parameter :: sensor = t_sensor(radiusin,radiusout,radiusoutout,heicyl,0.,0.)
 
-  myrank = myrank__
-  nbproc = nbproc__
+  !call test_analytical_comparison(1, 24, 1, 1000, sensor, myrank, nbproc)
+  call test_analytical_comparison(1, 36, 1, 1000, sensor, myrank, nbproc)
+  !call test_analytical_comparison(1, 72, 1, 1000, sensor, myrank, nbproc)
+  !call test_analytical_comparison(1, 144, 1, 3000, sensor, myrank, nbproc)
 
-  !call test_analytical_comparison(1, 24, 1, 1000, sensor)
-  call test_analytical_comparison(1, 36, 1, 1000, sensor)
-  !call test_analytical_comparison(1, 72, 1, 1000, sensor)
-  !call test_analytical_comparison(1, 144, 1, 3000, sensor)
+  !call test_analytical_comparison(2, 24, 1, 1000, sensor, myrank, nbproc)
+  !call test_analytical_comparison(2, 36, 1, 1000, sensor, myrank, nbproc)
+  !call test_analytical_comparison(2, 72, 1, 1000, sensor, myrank, nbproc)
+  !call test_analytical_comparison(2, 144, 1, 3000, sensor, myrank, nbproc)
 
-  !call test_analytical_comparison(2, 24, 1, 1000, sensor)
-  !call test_analytical_comparison(2, 36, 1, 1000, sensor)
-  !call test_analytical_comparison(2, 72, 1, 1000, sensor)
-  !call test_analytical_comparison(2, 144, 1, 3000, sensor)
+  !call test_analytical_comparison(3, 24, 1, 1000, sensor, myrank, nbproc)
+  !call test_analytical_comparison(3, 72, 1, 1000, sensor, myrank, nbproc)
+  !call test_analytical_comparison(3, 144, 1, 3000, sensor, myrank, nbproc)
 
-  !call test_analytical_comparison(3, 24, 1, 1000, sensor)
-  !call test_analytical_comparison(3, 72, 1, 1000, sensor)
-  !call test_analytical_comparison(3, 144, 1, 3000, sensor)
-
-  !call test_analytical_comparison(4, 24, 1, 1000, sensor)
-  !call test_analytical_comparison(4, 36, 1, 1000, sensor)
-  !call test_analytical_comparison(4, 72, 1, 1000, sensor)
-  !call test_analytical_comparison(4, 144, 1, 3000, sensor)
-  !call test_analytical_comparison(4, 288, 1, 10000, sensor)
+  !call test_analytical_comparison(4, 24, 1, 1000, sensor, myrank, nbproc)
+  !call test_analytical_comparison(4, 36, 1, 1000, sensor, myrank, nbproc)
+  !call test_analytical_comparison(4, 72, 1, 1000, sensor, myrank, nbproc)
+  !call test_analytical_comparison(4, 144, 1, 3000, sensor, myrank, nbproc)
+  !call test_analytical_comparison(4, 288, 1, 10000, sensor, myrank, nbproc)
 
 end subroutine test_analytical_comparison_all
 
@@ -530,11 +521,12 @@ end subroutine test_geometry
 !==============================================================================================
 ! Tests of the boundary conditions and right hand side.
 !==============================================================================================
-subroutine test_boundary_conditions(size, ilevel_coarse, ifixed_elecgeo, sens)
+subroutine test_boundary_conditions(size, ilevel_coarse, ifixed_elecgeo, sens, myrank, nbproc)
 
   integer, intent(in) :: size
   integer, intent(in) :: ilevel_coarse, ifixed_elecgeo
   type(t_sensor), intent(in) :: sens
+  integer, intent(in) :: myrank, nbproc
 
   type(t_parameters_ect) :: par
   integer :: ilevel
@@ -744,14 +736,14 @@ end subroutine test_boundary_conditions
 ! (1) u=1 on the side wall, and u=0 on the top and bottom walls [M. A. Pinsky, Example 3.5.1],
 ! (2) u=1 on the top wall, and u=0 on the bottom and side walls [M. A. Pinsky, Example 3.5.2].
 !==============================================================================================
-subroutine test_analytical_comparison(bc_type, size, ilevel_coarse, itmax, sens)
+subroutine test_analytical_comparison(bc_type, size, ilevel_coarse, itmax, sens, myrank, nbproc)
 
   ! The type boundary conditions -- to test different analytical solutions.
   integer, intent(in) :: bc_type
-
   integer, intent(in) :: size
   integer, intent(in) :: ilevel_coarse, itmax
   type(t_sensor), intent(in) :: sens
+  integer, intent(in) :: myrank, nbproc
 
   type(t_parameters_ect) :: par
   type(t_dimensions), allocatable :: dims_at_level(:)
