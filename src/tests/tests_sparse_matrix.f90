@@ -102,7 +102,7 @@ subroutine test_normalize_columns(myrank, nbproc)
 
   real(kind=CUSTOM_REAL), allocatable :: A(:, :)
   real(kind=CUSTOM_REAL), allocatable :: column_norm(:)
-  real(kind=CUSTOM_REAL), allocatable :: ej(:, :), A_ej(:, :)
+  real(kind=CUSTOM_REAL), allocatable :: A_column(:)
 
   if (nbproc > 0) continue
 
@@ -112,8 +112,7 @@ subroutine test_normalize_columns(myrank, nbproc)
 
   allocate(A(ncolumns, nrows))
   allocate(column_norm(ncolumns))
-  allocate(ej(ncolumns, ncolumns))
-  allocate(A_ej(ncolumns, nrows))
+  allocate(A_column(nrows))
 
   ! Building the matrix.
   counter = 0
@@ -144,31 +143,24 @@ subroutine test_normalize_columns(myrank, nbproc)
 
   call matrix%normalize_columns(column_norm)
 
-  ! Basis vectors.
-  do i = 1, ncolumns
-    ej(i, :) = 0.d0
-    ej(i, i) = 1.d0
-  enddo
-
   do i = 1, ncolumns
     ! Compare matrix norms.
     call assert_comparable_real(column_norm(i), norm2(A(i, :)), tol, "Wrong column_norm array in test_normalize_columns!")
 
-    ! Put the columns of (sparse) matrix into A_ej.
-    call matrix%mult_vector(ej(i, :), A_ej(i, :))
+    ! Extract the sparse matrix column.
+    call matrix%get_column(i, A_column)
 
-    ! Test the norm of the (sparse) matrix columns.
+    ! Test the norm of the sparse matrix column.
     if (norm2(A(i, :)) /= 0.d0) then
-      call assert_comparable_real(norm2(A_ej(i, :)), 1.d0, tol, "Wrong matrix column norm in test_normalize_columns!")
+      call assert_comparable_real(norm2(A_column), 1.d0, tol, "Wrong matrix column norm in test_normalize_columns!")
     else
-      call assert_comparable_real(norm2(A_ej(i, :)), 0.d0, tol, "Wrong matrix column norm in test_normalize_columns!")
+      call assert_comparable_real(norm2(A_column), 0.d0, tol, "Wrong matrix column norm in test_normalize_columns!")
     endif
   enddo
 
   deallocate(A)
   deallocate(column_norm)
-  deallocate(ej)
-  deallocate(A_ej)
+  deallocate(A_column)
 
 end subroutine test_normalize_columns
 
