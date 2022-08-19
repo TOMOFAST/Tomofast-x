@@ -75,7 +75,7 @@ subroutine inversion_initialize(this, par, myrank)
 
   this%nelements = par%nelements
 
-  call this%matrix%initialize(par%ndata(1) + par%nelements_total, &
+  call this%matrix%initialize(par%ndata(1) + par%nelements_total, par%nelements, &
                               int(par%ndata(1) * par%nelements + par%nelements, 8), myrank)
 
   ierr = 0
@@ -151,7 +151,7 @@ subroutine inversion_solve(this, par, arr, model, myrank, nbproc)
 
   if (myrank == 0) print *, 'nel (with damping) = ', this%matrix%get_number_elements()
 
-  call this%matrix%finalize(par%nelements, myrank)
+  call this%matrix%finalize(myrank)
 
   ! Parallel sparse inversion.
   if (par%method == 1) then

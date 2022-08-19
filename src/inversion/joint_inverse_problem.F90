@@ -237,7 +237,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   !-------------------------------------------------------------------------------------------
   ! MAIN MATRIX MEMORY ALLOCATION.
   !-------------------------------------------------------------------------------------------
-  call this%matrix%initialize(nl, nnz, myrank)
+  call this%matrix%initialize(nl, 2 * par%nelements, nnz, myrank)
 
   ierr = 0
 
@@ -250,7 +250,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   if (this%add_cross_grad) then
     ! Memory allocation for the matrix and right-hand side for the cross-gradient constraints.
-    call this%matrix_B%initialize(3 * par%nelements_total, int(this%cross_grad%get_num_elements(par%derivative_type), 8), myrank)
+    call this%matrix_B%initialize(3 * par%nelements_total, 2 * par%nelements, &
+                                  int(this%cross_grad%get_num_elements(par%derivative_type), 8), myrank)
     allocate(this%d_RHS(3 * par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   endif
 
@@ -451,7 +452,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   !-------------------------------------------------------------------------------------
   ! Parallel sparse inversion.
   !-------------------------------------------------------------------------------------
-  call this%matrix%finalize(2 * par%nelements, myrank)
+  call this%matrix%finalize(myrank)
 
   delta_model = 0._CUSTOM_REAL
   if (par%method == 1) then
@@ -645,7 +646,7 @@ subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, model, der
 
   if (this%add_cross_grad) then
     ! Adding the corresponding cross-gradient SLAE to the main system.
-    call this%matrix_B%finalize(2 * par%nelements, myrank)
+    call this%matrix_B%finalize(myrank)
 
     ibeg = this%matrix%get_current_row_number() + 1
 

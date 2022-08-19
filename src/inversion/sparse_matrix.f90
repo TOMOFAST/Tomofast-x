@@ -37,8 +37,10 @@ module sparse_matrix
     integer(kind=8), private :: nel
     ! Total number of rows in the matrix.
     integer, private :: nl
-    ! Current number of the added lines (rows) in the matrix.
+    ! Current number of the added rows in the matrix.
     integer, private :: nl_current
+    ! Total number of matrix columns.
+    integer, private :: ncolumns
 
     ! An array of the (left-to-right, then top-to-bottom) non-zero values of the matrix.
     real(kind=MATRIX_PRECISION), allocatable, private :: sa(:)
@@ -157,14 +159,15 @@ end function sparse_matrix_get_value
 !=========================================================================
 ! Initializes the sparse matrix.
 !=========================================================================
-subroutine sparse_matrix_initialize(this, nl, nnz, myrank)
+subroutine sparse_matrix_initialize(this, nl, ncolumns, nnz, myrank)
   class(t_sparse_matrix), intent(inout) :: this
-  integer, intent(in) :: nl, myrank
+  integer, intent(in) :: nl, ncolumns, myrank
   integer(kind=8), intent(in) :: nnz
 
   this%nl_current = 0
   this%nel = 0
   this%nl = nl
+  this%ncolumns = ncolumns
   this%nnz = nnz
 
   call this%allocate_arrays(myrank)
@@ -205,9 +208,9 @@ end subroutine sparse_matrix_remove_lines
 ! (1) Stores the index of last element.
 ! (2) Validates the matrix indexes.
 !=========================================================================
-subroutine sparse_matrix_finalize(this, ncolumns, myrank)
+subroutine sparse_matrix_finalize(this, myrank)
   class(t_sparse_matrix), intent(inout) :: this
-  integer, intent(in) :: ncolumns, myrank
+  integer, intent(in) :: myrank
 
   ! Sanity check.
   if (this%nl_current /= this%nl) &
@@ -217,7 +220,7 @@ subroutine sparse_matrix_finalize(this, ncolumns, myrank)
 
   this%ijl(this%nl + 1) = this%nel + 1
 
-  if (ncolumns > 0) call this%validate(ncolumns, myrank)
+  call this%validate(myrank)
 
 end subroutine sparse_matrix_finalize
 
@@ -235,9 +238,9 @@ end subroutine sparse_matrix_finalize_part
 !============================================================================
 ! Validates the boundaries of column indexes.
 !============================================================================
-subroutine sparse_matrix_validate(this, ncolumns, myrank)
+subroutine sparse_matrix_validate(this, myrank)
   class(t_sparse_matrix), intent(in) :: this
-  integer, intent(in) :: ncolumns, myrank
+  integer, intent(in) :: myrank
   integer :: i, j
   integer(kind=8) :: k
 
@@ -249,7 +252,7 @@ subroutine sparse_matrix_validate(this, ncolumns, myrank)
 
       j = this%ija(k)
 
-      if (j < 1 .or. j > ncolumns) &
+      if (j < 1 .or. j > this%ncolumns) &
         call exit_MPI("Sparse matrix validation failed (j)!", myrank, j)
     enddo
   enddo

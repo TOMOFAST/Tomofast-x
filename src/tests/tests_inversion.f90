@@ -91,7 +91,7 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
     x(i) = (par%nelements * myrank) + dble(i)
   enddo
 
-  call isensit%initialize(par%ndata(1) + par%nelements_total, &
+  call isensit%initialize(par%ndata(1) + par%nelements_total, par%nelements, &
                           int(par%ndata(1) * par%nelements + par%nelements, 8), myrank)
 
   call damping%initialize(par%nelements, par%alpha(1), par%problem_weight(1), par%norm_power, &
@@ -101,7 +101,7 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
   call damping%add(isensit, b_RHS, arr%column_weight, model%val, model%val_prior, 0, myrank, nbproc)
 
   ! Store the index of last element.
-  call isensit%finalize(par%nelements, myrank)
+  call isensit%finalize(myrank)
 
   ! Multiply the identity matrix by x.
   call isensit%mult_vector(x, b_loc)
@@ -207,10 +207,13 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
 
   call cross_grad%initialize(nx, ny, nz, nelements, myrank)
 
-  call matrix%initialize(3 * nelements_total, int(cross_grad%get_num_elements(derivative_type), 8), myrank)
+  call matrix%initialize(3 * nelements_total, 2 * nelements, &
+                         int(cross_grad%get_num_elements(derivative_type), 8), myrank)
 
   call cross_grad%calculate(model1, model2, column_weight1, column_weight2, &
                             matrix, b_RHS, .true., derivative_type, myrank, nbproc)
+
+  call matrix%finalize(myrank)
 
   matrix_nel_loc = int(matrix%get_number_elements())
 

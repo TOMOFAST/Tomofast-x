@@ -18,7 +18,7 @@
 !
 ! Note: The LSQR solver is also tested in tests_method_of_weights module.
 !
-! Author: Vitaliy Ogarko, UWA, CET, Australia, 2015-2016.
+! Author: Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================================
 module tests_lsqr
 
@@ -93,7 +93,7 @@ subroutine test_lsqr_determined(myrank, nbproc)
     return
   endif
 
-  call matrix%initialize(nelements_total, int(nelements * nrows, 8), myrank)
+  call matrix%initialize(nelements_total, nelements, int(nelements * nrows, 8), myrank)
 
   allocate(b_RHS(nrows), source=0._CUSTOM_REAL, stat=ierr)
   allocate(delta_model(nelements), source=0._CUSTOM_REAL, stat=ierr)
@@ -109,7 +109,7 @@ subroutine test_lsqr_determined(myrank, nbproc)
     b_RHS(j) = dble(j * nelements_total)
   enddo
 
-  call matrix%finalize(nelements, myrank)
+  call matrix%finalize(myrank)
 
   call lsqr_solve(size(b_RHS), size(delta_model), niter, rmin, gamma, matrix, b_RHS, delta_model, myrank)
 
@@ -169,7 +169,7 @@ subroutine test_lsqr_overdetermined_1(myrank, nbproc)
     return
   endif
 
-  call matrix%initialize(nrows, int(nelements * nrows, 8), myrank)
+  call matrix%initialize(nrows, nelements, int(nelements * nrows, 8), myrank)
 
   allocate(b_RHS(nrows), source=0._CUSTOM_REAL, stat=ierr)
   allocate(delta_model(nelements), source=0._CUSTOM_REAL, stat=ierr)
@@ -196,7 +196,7 @@ subroutine test_lsqr_overdetermined_1(myrank, nbproc)
     b_RHS(i) = b(1) + b(2) * xi + b(3) * xi**2
   enddo
 
-  call matrix%finalize(nelements, myrank)
+  call matrix%finalize(myrank)
 
   call lsqr_solve(size(b_RHS), size(delta_model), niter, rmin, gamma, matrix, b_RHS, delta_model, myrank)
 
@@ -255,7 +255,7 @@ subroutine test_lsqr_overdetermined_2(myrank, nbproc)
     return
   endif
 
-  call matrix%initialize(nrows, int(ncols_loc * nrows, 8), myrank)
+  call matrix%initialize(nrows, ncols_loc, int(ncols_loc * nrows, 8), myrank)
 
   allocate(b_RHS(nrows), source=0._CUSTOM_REAL, stat=ierr)
   allocate(x(ncols_loc), source=0._CUSTOM_REAL, stat=ierr)
@@ -302,7 +302,7 @@ subroutine test_lsqr_overdetermined_2(myrank, nbproc)
     endif
   enddo
 
-  call matrix%finalize(ncols_loc, myrank)
+  call matrix%finalize(myrank)
 
   ! Solve the least squares problem.
   call lsqr_solve(size(b_RHS), size(x), niter, rmin, gamma, matrix, b_RHS, x, myrank)
@@ -393,7 +393,7 @@ subroutine test_lsqr_underdetermined_1(myrank, nbproc)
     return
   endif
 
-  call matrix%initialize(nrows, int(ncols_loc * nrows, 8), myrank)
+  call matrix%initialize(nrows, ncols_loc, int(ncols_loc * nrows, 8), myrank)
 
   allocate(b_RHS(nrows), source=0._CUSTOM_REAL, stat=ierr)
   allocate(delta_model(ncols_loc), source=0._CUSTOM_REAL, stat=ierr)
@@ -424,7 +424,7 @@ subroutine test_lsqr_underdetermined_1(myrank, nbproc)
     endif
   enddo
 
-  call matrix%finalize(ncols_loc, myrank)
+  call matrix%finalize(myrank)
 
   !------------------------------------------------------------------
   ! Testing the LSQR solver.
@@ -501,7 +501,7 @@ subroutine test_lsqr_underdetermined_2(myrank, nbproc)
     return
   endif
 
-  call matrix%initialize(nrows, int(ncols_loc * nrows, 8), myrank)
+  call matrix%initialize(nrows, ncols_loc, int(ncols_loc * nrows, 8), myrank)
 
   allocate(b_RHS(nrows), source=0._CUSTOM_REAL, stat=ierr)
   allocate(x(ncols_loc), source=0._CUSTOM_REAL, stat=ierr)
@@ -516,7 +516,7 @@ subroutine test_lsqr_underdetermined_2(myrank, nbproc)
     enddo
   enddo
 
-  call matrix%finalize(ncols_loc, myrank)
+  call matrix%finalize(myrank)
 
   d1 = 1.d0
   b_RHS(1) = d1
@@ -587,7 +587,7 @@ subroutine test_lsqr_underdetermined_3(myrank, nbproc)
     return
   endif
 
-  call matrix%initialize(nrows, int(ncols_loc * nrows, 8), myrank)
+  call matrix%initialize(nrows, ncols_loc, int(ncols_loc * nrows, 8), myrank)
 
   allocate(b_RHS(nrows), source=0._CUSTOM_REAL, stat=ierr)
   allocate(x(ncols_loc), source=0._CUSTOM_REAL, stat=ierr)
@@ -608,7 +608,7 @@ subroutine test_lsqr_underdetermined_3(myrank, nbproc)
     enddo
   enddo
 
-  call matrix%finalize(ncols_loc, myrank)
+  call matrix%finalize(myrank)
 
   b_RHS(1) = 1
   b_RHS(2) = - 1

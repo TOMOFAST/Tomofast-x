@@ -84,8 +84,8 @@ subroutine test_method_of_weights_1(myrank, nbproc)
     return
   endif
 
-  call matrix_A%initialize(nrows_A, int(ncols_loc * nrows_A, 8), myrank)
-  call matrix_C%initialize(nrows_C, int(ncols_loc * nrows_C, 8), myrank)
+  call matrix_A%initialize(nrows_A, ncols_loc, int(ncols_loc * nrows_A, 8), myrank)
+  call matrix_C%initialize(nrows_C, ncols_loc, int(ncols_loc * nrows_C, 8), myrank)
 
   allocate(b(nrows_A), source=0._CUSTOM_REAL, stat=ierr)
   allocate(y(ncols_loc), source=0._CUSTOM_REAL, stat=ierr)
@@ -98,7 +98,7 @@ subroutine test_method_of_weights_1(myrank, nbproc)
   call matrix_C%add(1.d0, 1, myrank)
   call matrix_C%add(- 1.d0, 2, myrank)
 
-  call matrix_C%finalize(ncols_loc, myrank)
+  call matrix_C%finalize(myrank)
 
   ! Build matrix A. --------------
   call matrix_A%new_row(myrank)
@@ -113,7 +113,7 @@ subroutine test_method_of_weights_1(myrank, nbproc)
 
   call matrix_A%add_matrix(matrix_C, tau, myrank)
 
-  call matrix_A%finalize(ncols_loc, myrank)
+  call matrix_A%finalize(myrank)
 
   ! Build right-hand sides. ---------
   b(1) = 1.d0
@@ -187,8 +187,8 @@ subroutine test_method_of_weights_2(myrank, nbproc)
     return
   endif
 
-  call matrix_A%initialize(nrows_A, int(ncols_loc * nrows_A, 8), myrank)
-  call matrix_C%initialize(nrows_C, int(ncols_loc * nrows_C, 8), myrank)
+  call matrix_A%initialize(nrows_A, ncols_loc, int(ncols_loc * nrows_A, 8), myrank)
+  call matrix_C%initialize(nrows_C, ncols_loc, int(ncols_loc * nrows_C, 8), myrank)
 
   allocate(b(nrows_A), source=0._CUSTOM_REAL, stat=ierr)
   allocate(y(ncols_loc), source=0._CUSTOM_REAL, stat=ierr)
@@ -208,7 +208,7 @@ subroutine test_method_of_weights_2(myrank, nbproc)
   call matrix_C%add(1.d0, 2, myrank)
   call matrix_C%add(- 1.d0, 3, myrank)
 
-  call matrix_C%finalize(ncols_loc, myrank)
+  call matrix_C%finalize(myrank)
 
   ! Build matrix A. --------------
   call matrix_A%new_row(myrank)
@@ -237,7 +237,7 @@ subroutine test_method_of_weights_2(myrank, nbproc)
 
   call matrix_A%add_matrix(matrix_C, tau, myrank)
 
-  call matrix_A%finalize(ncols_loc, myrank)
+  call matrix_A%finalize(myrank)
 
   ! Build right-hand sides. ---------
   b(1) = 1.d0
