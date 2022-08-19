@@ -21,7 +21,7 @@
 ! Volume 3691 of the series Lecture Notes in Computer Science pp. 407-414.
 ! http://cmp.felk.cvut.cz/ftp/articles/franc/Franc-Hlavac-Navara-CAIP05.pdf
 !
-! Vitaliy Ogarko, UWA, CET, Australia, 2016.
+! Vitaliy Ogarko, UWA, CET, Australia.
 !=============================================================================
 module sca_solver
 
@@ -48,13 +48,13 @@ contains
 !
 !================================================================================
 subroutine sca_solve(niter, rmin, matrix, b, x, myrank, nbproc)
-  integer, intent(in) :: myrank, nbproc
   integer, intent(in) :: niter
   real(kind=CUSTOM_REAL), intent(in) :: rmin
-  real(kind=CUSTOM_REAL), intent(in) :: b(:)
   type(t_sparse_matrix), intent(in) :: matrix
+  real(kind=CUSTOM_REAL), intent(in) :: b(matrix%get_total_row_number())
+  integer, intent(in) :: myrank, nbproc
 
-  real(kind=CUSTOM_REAL), intent(out) :: x(:)
+  real(kind=CUSTOM_REAL), intent(out) :: x(matrix%get_ncolumns())
 
   ! Local variables.
   integer :: iter, k, j, ierr

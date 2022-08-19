@@ -78,6 +78,7 @@ module sparse_matrix
 
     procedure, public, pass :: get_total_row_number => sparse_matrix_get_total_row_number
     procedure, public, pass :: get_current_row_number => sparse_matrix_get_current_row_number
+    procedure, public, pass :: get_ncolumns => sparse_matrix_get_ncolumns
     procedure, public, pass :: get_number_elements => sparse_matrix_get_number_elements
     procedure, public, pass :: get_nnz => sparse_matrix_get_nnz
     procedure, public, pass :: get_value => sparse_matrix_get_value
@@ -114,6 +115,16 @@ pure function sparse_matrix_get_current_row_number(this) result(res)
 
   res = this%nl_current
 end function sparse_matrix_get_current_row_number
+
+!=========================================================================
+! Returns the total number of columnts in the matrix.
+!=========================================================================
+pure function sparse_matrix_get_ncolumns(this) result(res)
+  class(t_sparse_matrix), intent(in) :: this
+  integer :: res
+
+  res = this%ncolumns
+end function sparse_matrix_get_ncolumns
 
 !=========================================================================
 ! Returns the current number of elements stored in the matrix.
@@ -342,9 +353,9 @@ end subroutine sparse_matrix_add_matrix
 !=========================================================================
 pure subroutine sparse_matrix_mult_vector(this, x, b, add_result_arg)
   class(t_sparse_matrix), intent(in) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: x(:)
+  real(kind=CUSTOM_REAL), intent(in) :: x(this%ncolumns)
   logical, intent(in), optional :: add_result_arg
-  real(kind=CUSTOM_REAL), intent(out) :: b(:)
+  real(kind=CUSTOM_REAL), intent(out) :: b(this%nl)
 
   integer :: i
   integer(kind=8) :: k
@@ -407,7 +418,7 @@ end subroutine sparse_matrix_part_mult_vector
 pure subroutine sparse_matrix_get_line(this, j, b)
   class(t_sparse_matrix), intent(in) :: this
   integer, intent(in) :: j
-  real(kind=CUSTOM_REAL), intent(out) :: b(:)
+  real(kind=CUSTOM_REAL), intent(out) :: b(this%ncolumns)
   integer(kind=8) :: k
 
   b = 0._CUSTOM_REAL
@@ -424,9 +435,9 @@ end subroutine sparse_matrix_get_line
 !============================================================================
 pure subroutine sparse_matrix_trans_mult_vector(this, x, b, add_result_arg)
   class(t_sparse_matrix), intent(in) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: x(:)
+  real(kind=CUSTOM_REAL), intent(in) :: x(this%nl)
   logical, intent(in), optional :: add_result_arg
-  real(kind=CUSTOM_REAL), intent(out) :: b(:)
+  real(kind=CUSTOM_REAL), intent(out) :: b(this%ncolumns)
 
   integer :: i, j
   integer(kind=8) :: k
@@ -458,7 +469,7 @@ end subroutine sparse_matrix_trans_mult_vector
 !============================================================================
 pure subroutine sparse_matrix_get_column(this, column, b)
   class(t_sparse_matrix), intent(in) :: this
-  real(kind=CUSTOM_REAL), intent(out) :: b(:)
+  real(kind=CUSTOM_REAL), intent(out) :: b(this%nl)
   integer, intent(in) :: column
   integer :: i, j
   integer(kind=8) :: k
@@ -484,7 +495,7 @@ end subroutine sparse_matrix_get_column
 !============================================================================
 pure subroutine sparse_matrix_get_integrated_sensit(this, b)
   class(t_sparse_matrix), intent(in) :: this
-  real(kind=CUSTOM_REAL), intent(out) :: b(:)
+  real(kind=CUSTOM_REAL), intent(out) :: b(this%ncolumns)
   integer :: i, j
   integer(kind=8) :: k
 
@@ -516,9 +527,9 @@ function sparse_matrix_trans_mult_matrix(this, i, j, vec, Avi, Avj) result (Hij)
   class(t_sparse_matrix), intent(in) :: this
   integer, intent(in) :: i, j
   ! Use for storage only, to do not allocate memory here.
-  real(kind=CUSTOM_REAL), intent(inout) :: vec(:)
-  real(kind=CUSTOM_REAL), intent(inout) :: Avi(:)
-  real(kind=CUSTOM_REAL), intent(inout) :: Avj(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: vec(this%ncolumns)
+  real(kind=CUSTOM_REAL), intent(inout) :: Avi(this%nl)
+  real(kind=CUSTOM_REAL), intent(inout) :: Avj(this%nl)
   integer :: k
 
   real(kind=CUSTOM_REAL) :: Hij
@@ -551,7 +562,7 @@ end function sparse_matrix_trans_mult_matrix
 !================================================================================
 subroutine sparse_matrix_normalize_columns(this, column_norm)
   class(t_sparse_matrix), intent(inout) :: this
-  real(kind=CUSTOM_REAL), intent(out) :: column_norm(:)
+  real(kind=CUSTOM_REAL), intent(out) :: column_norm(this%ncolumns)
   integer :: i, j
   integer(kind=8) :: k
 
@@ -593,9 +604,9 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
 
   ierr = 0
 
-  if (.not. allocated(this%sa)) allocate(this%sa(this%nnz), source=0._MATRIX_PRECISION, stat=ierr)
-  if (.not. allocated(this%ijl)) allocate(this%ijl(this%nl + 1), source=int(0, 8), stat=ierr)
-  if (.not. allocated(this%ija)) allocate(this%ija(this%nnz), source=0, stat=ierr)
+  allocate(this%sa(this%nnz), source=0._MATRIX_PRECISION, stat=ierr)
+  allocate(this%ijl(this%nl + 1), source=int(0, 8), stat=ierr)
+  allocate(this%ija(this%nnz), source=0, stat=ierr)
 
   if (ierr /= 0) &
     call exit_MPI("Dynamic memory allocation error in sparse_matrix_allocate_arrays!", myrank, ierr)
@@ -612,7 +623,7 @@ subroutine sparse_matrix_allocate_variance_array(this, nelements, myrank)
 
   ierr = 0
 
-  if (.not. allocated(this%lsqr_var)) allocate(this%lsqr_var(nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%lsqr_var(nelements), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) &
     call exit_MPI("Dynamic memory allocation error in sparse_matrix_allocate_variance_array!", myrank, ierr)
