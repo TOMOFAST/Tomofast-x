@@ -96,7 +96,8 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
   u = b
 
   ! Normalize u and initialize beta.
-  if (.not. normalize(nlines, u, beta, .false.)) then
+  call normalize(nlines, u, beta, .false., ierr)
+  if (ierr /= 0) then
     call exit_MPI("Could not normalize initial u, zero denominator!", myrank, 0)
   endif
 
@@ -109,7 +110,8 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
   call matrix%trans_mult_vector(u, v)
 
   ! Normalize v and initialize alpha.
-  if (.not. normalize(nelements, v, alpha, .true.)) then
+  call normalize(nelements, v, alpha, .true., ierr)
+  if (ierr /= 0) then
     call exit_MPI("Could not normalize initial v, zero denominator!", myrank, 0)
   endif
 
@@ -142,8 +144,9 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
     !---------------------------------------------------------------
 
     ! Normalize u and update beta.
-    if (.not. normalize(nlines, u, beta, .false.)) then
-      ! Achieved an exact solution. Happens in the unit test test_lsqr_underdetermined_2.
+    call normalize(nlines, u, beta, .false., ierr)
+    if (ierr /= 0) then
+      ! Found an exact solution. Happens in the unit test test_lsqr_underdetermined_2.
       if (myrank == 0) print *, 'WARNING: u = 0. Possibly found an exact solution in the LSQR solver!'
     endif
 
@@ -154,8 +157,9 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
     call matrix%trans_mult_vector(u, v, .true.)
 
     ! Normalize v and update alpha.
-    if (.not. normalize(nelements, v, alpha, .true.)) then
-      ! Achieved an exact solution. Happens in the unit test test_method_of_weights_1.
+    call normalize(nelements, v, alpha, .true., ierr)
+    if (ierr /= 0) then
+      ! Found an exact solution. Happens in the unit test test_method_of_weights_1.
       if (myrank == 0) print *, 'WARNING: v = 0. Possibly found an exact solution in the LSQR solver!'
     endif
 
@@ -269,18 +273,15 @@ end subroutine apply_soft_thresholding
 ! Set in_parallel=true, if x is split between CPUs.
 ! Also returns the norm (s).
 !============================================================================
-function normalize(n, x, s, in_parallel) result(res)
+subroutine normalize(n, x, s, in_parallel, ierr)
   integer, intent(in) :: n
   logical, intent(in) :: in_parallel
 
   real(kind=CUSTOM_REAL), intent(out) :: s
   real(kind=CUSTOM_REAL), intent(inout) :: x(n)
-  logical :: res
+  integer, intent(out) :: ierr
 
   real(kind=CUSTOM_REAL) :: ss, s_glob
-  integer :: ierr
-
-  res = .true.
 
   if (in_parallel) then
     ! Calculate the L2 norm of a vector x that is split between CPUs.
@@ -291,15 +292,16 @@ function normalize(n, x, s, in_parallel) result(res)
     s = norm2(x)
   endif
 
+  ierr = 0
   if (s /= 0._CUSTOM_REAL) then
     ss = 1._CUSTOM_REAL / s
   else
-    res = .false.
+    ierr = -1
     return
   endif
 
   x = ss * x
 
-end function normalize
+end subroutine normalize
 
 end module lsqr_solver
