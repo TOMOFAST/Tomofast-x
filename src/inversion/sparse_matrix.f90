@@ -383,16 +383,19 @@ end subroutine sparse_matrix_mult_vector
 ! Computes the product between the part of sparse matrix and vector x.
 ! The required part of the matrix is specified via: line_start, line_end, param_shift.
 !===============================================================================================
-subroutine sparse_matrix_part_mult_vector(this, x, b, line_start, line_end, param_shift, myrank)
+subroutine sparse_matrix_part_mult_vector(this, nelements, x, ndata, b, line_start, param_shift, myrank)
   class(t_sparse_matrix), intent(in) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: x(:)
-  integer, intent(in) :: line_start, line_end, param_shift
+  integer, intent(in) :: nelements, ndata
+  real(kind=CUSTOM_REAL), intent(in) :: x(nelements)
+  integer, intent(in) :: line_start, param_shift
   integer, intent(in) :: myrank
 
-  real(kind=CUSTOM_REAL), intent(out) :: b(:)
+  real(kind=CUSTOM_REAL), intent(out) :: b(ndata)
 
-  integer :: i, l
+  integer :: i, l, line_end
   integer(kind=8) :: k
+
+  line_end = line_start + ndata - 1
 
   ! Sanity check.
   if (line_start < 1 .or. line_start > this%nl_current .or. &

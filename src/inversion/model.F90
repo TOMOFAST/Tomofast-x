@@ -232,10 +232,10 @@ end subroutine model_update_full
 ! Use line_start, line_end, param_shift to calculate the data using part of the big (joint) matrix.
 !======================================================================================================
 subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, column_weight, data, compression_type, &
-                                line_start, line_end, param_shift, myrank, nbproc)
+                                line_start, param_shift, myrank, nbproc)
   class(t_model), intent(in) :: this
   integer, intent(in) :: ndata, compression_type
-  integer, intent(in) :: line_start, line_end, param_shift
+  integer, intent(in) :: line_start, param_shift
   integer, intent(in) :: myrank, nbproc
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
   type(t_sparse_matrix), intent(in) :: matrix_sensit
@@ -285,7 +285,7 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
   endif
 
   ! Calculate data: d = S * m
-  call matrix_sensit%part_mult_vector(model_scaled, data, line_start, line_end, param_shift, myrank)
+  call matrix_sensit%part_mult_vector(this%nelements, model_scaled, ndata, data, line_start, param_shift, myrank)
 
   deallocate(model_scaled)
 
@@ -308,12 +308,12 @@ end subroutine model_calculate_data
 ! This version uses unscaled model (in wavelet domain).
 !======================================================================================================
 subroutine calculate_data_unscaled(nelements, model, matrix_sensit, problem_weight, ndata, data, &
-                                   line_start, line_end, param_shift, myrank)
+                                   line_start, param_shift, myrank)
   integer, intent(in) :: nelements
   real(kind=CUSTOM_REAL), intent(in) :: model(nelements)
   type(t_sparse_matrix), intent(in) :: matrix_sensit
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
-  integer, intent(in) :: ndata, line_start, line_end, param_shift
+  integer, intent(in) :: ndata, line_start, param_shift
   integer, intent(in) :: myrank
 
   real(kind=CUSTOM_REAL), intent(out) :: data(ndata)
@@ -322,7 +322,7 @@ subroutine calculate_data_unscaled(nelements, model, matrix_sensit, problem_weig
 
   ! Calculate data: d = S' * m'
   ! Assume that both the kernel and the model are unscaled (in wavelet domain).
-  call matrix_sensit%part_mult_vector(model, data, line_start, line_end, param_shift, myrank)
+  call matrix_sensit%part_mult_vector(nelements, model, ndata, data, line_start, param_shift, myrank)
 
   call MPI_Allreduce(MPI_IN_PLACE, data, ndata, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 

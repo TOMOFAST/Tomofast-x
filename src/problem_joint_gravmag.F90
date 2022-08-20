@@ -252,7 +252,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
       ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
-      line_start(i), line_end(i), param_shift(i), myrank, nbproc)
+      line_start(i), param_shift(i), myrank, nbproc)
   enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -324,7 +324,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
         ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
-        line_start(i), line_end(i), param_shift(i), myrank, nbproc)
+        line_start(i), param_shift(i), myrank, nbproc)
     enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -348,7 +348,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
         ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
-        line_start(i), line_end(i), param_shift(i), myrank, nbproc)
+        line_start(i), param_shift(i), myrank, nbproc)
     enddo
 
 #ifndef SUPPRESS_OUTPUT
