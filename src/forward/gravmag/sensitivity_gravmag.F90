@@ -128,7 +128,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full(:)
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_sorted(:)
-  real(kind=CUSTOM_REAL), allocatable :: dummy1(:), dummy2(:)
 
   ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
@@ -230,8 +229,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     if (problem_type == 1) then
     ! Gravity problem.
-      call graviprism_full(nelements_total, par%ncomponents, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
-                           dummy1, dummy2, sensit_line_full, myrank)
+      call graviprism_z(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
+                        sensit_line_full, myrank)
 
     else if (problem_type == 2) then
     ! Magnetic problem.
