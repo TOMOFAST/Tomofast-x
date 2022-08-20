@@ -70,8 +70,10 @@ module sparse_matrix
     procedure, public, pass :: add_matrix => sparse_matrix_add_matrix
 
     procedure, public, pass :: mult_vector => sparse_matrix_mult_vector
+    procedure, public, pass :: add_mult_vector => sparse_matrix_add_mult_vector
     procedure, public, pass :: part_mult_vector => sparse_matrix_part_mult_vector
     procedure, public, pass :: trans_mult_vector => sparse_matrix_trans_mult_vector
+    procedure, public, pass :: add_trans_mult_vector => sparse_matrix_add_trans_mult_vector
     procedure, public, pass :: trans_mult_matrix => sparse_matrix_trans_mult_matrix
 
     procedure, public, pass :: normalize_columns => sparse_matrix_normalize_columns
@@ -348,28 +350,18 @@ subroutine sparse_matrix_add_matrix(this, matrix_B, mu, myrank)
 end subroutine sparse_matrix_add_matrix
 
 !=========================================================================
-! Computes the product between the sparse matrix and vector x.
-! If add_result_arg=true: b = b + Ax, else b = Ax.
+! Computes the product between the sparse matrix and vector x: b = Ax.
 !=========================================================================
-pure subroutine sparse_matrix_mult_vector(this, x, b, add_result_arg)
+pure subroutine sparse_matrix_mult_vector(this, x, b)
   class(t_sparse_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: x(this%ncolumns)
-  logical, intent(in), optional :: add_result_arg
+
   real(kind=CUSTOM_REAL), intent(out) :: b(this%nl)
 
   integer :: i
   integer(kind=8) :: k
-  logical :: add_result
 
-  if (present(add_result_arg)) then
-    add_result = add_result_arg
-  else
-    add_result = .false.
-  endif
-
-  if (.not. add_result) then
-    b = 0._CUSTOM_REAL
-  endif
+  b = 0._CUSTOM_REAL
 
   do i = 1, this%nl
     do k = this%ijl(i), this%ijl(i + 1) - 1
@@ -378,6 +370,27 @@ pure subroutine sparse_matrix_mult_vector(this, x, b, add_result_arg)
   enddo
 
 end subroutine sparse_matrix_mult_vector
+
+!=========================================================================
+! Computes the product between the sparse matrix and vector x,
+! and adds the result as: b = b + Ax.
+!=========================================================================
+pure subroutine sparse_matrix_add_mult_vector(this, x, b)
+  class(t_sparse_matrix), intent(in) :: this
+  real(kind=CUSTOM_REAL), intent(in) :: x(this%ncolumns)
+
+  real(kind=CUSTOM_REAL), intent(inout) :: b(this%nl)
+
+  integer :: i
+  integer(kind=8) :: k
+
+  do i = 1, this%nl
+    do k = this%ijl(i), this%ijl(i + 1) - 1
+      b(i) = b(i) + this%sa(k) * x(this%ija(k))
+    enddo
+  enddo
+
+end subroutine sparse_matrix_add_mult_vector
 
 !===============================================================================================
 ! Computes the product between the part of sparse matrix and vector x.
@@ -433,28 +446,19 @@ pure subroutine sparse_matrix_get_line(this, j, b)
 end subroutine sparse_matrix_get_line
 
 !============================================================================
-! Computes the product between the transpose of sparse matrix and vector x.
-! If add_result_arg=true: b = b + A'x, else b = A'x.
+! Computes the product between the transpose of sparse matrix and vector x:
+! b = A'x.
 !============================================================================
-pure subroutine sparse_matrix_trans_mult_vector(this, x, b, add_result_arg)
+pure subroutine sparse_matrix_trans_mult_vector(this, x, b)
   class(t_sparse_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: x(this%nl)
-  logical, intent(in), optional :: add_result_arg
+
   real(kind=CUSTOM_REAL), intent(out) :: b(this%ncolumns)
 
   integer :: i, j
   integer(kind=8) :: k
-  logical :: add_result
 
-  if (present(add_result_arg)) then
-    add_result = add_result_arg
-  else
-    add_result = .false.
-  endif
-
-  if (.not. add_result) then
-    b = 0._CUSTOM_REAL
-  endif
+  b = 0._CUSTOM_REAL
 
   do i = 1, this%nl
 !IBM* ASSERT (NODEPS,ITERCNT(1000))
@@ -466,6 +470,30 @@ pure subroutine sparse_matrix_trans_mult_vector(this, x, b, add_result_arg)
   enddo
 
 end subroutine sparse_matrix_trans_mult_vector
+
+!============================================================================
+! Computes the product between the transpose of sparse matrix and vector x,
+! and adds the result as: b = b + A'x.
+!============================================================================
+pure subroutine sparse_matrix_add_trans_mult_vector(this, x, b)
+  class(t_sparse_matrix), intent(in) :: this
+  real(kind=CUSTOM_REAL), intent(in) :: x(this%nl)
+
+  real(kind=CUSTOM_REAL), intent(inout) :: b(this%ncolumns)
+
+  integer :: i, j
+  integer(kind=8) :: k
+
+  do i = 1, this%nl
+!IBM* ASSERT (NODEPS,ITERCNT(1000))
+!DIR$ IVDEP
+    do k = this%ijl(i), this%ijl(i + 1) - 1
+      j = this%ija(k)
+      b(j) = b(j) + this%sa(k) * x(i)
+    enddo
+  enddo
+
+end subroutine sparse_matrix_add_trans_mult_vector
 
 !============================================================================
 ! Extract a column from the matrix and stores in b-vector.

@@ -133,10 +133,10 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
     !---------------------------------------------------------------
     if (myrank == 0) then
       ! Adding the original vector 'u' on master CPU: u = u + Hv_loc.
-      call matrix%mult_vector(v, u, .true.)
+      call matrix%add_mult_vector(v, u)
     else
       ! Store only the matrix-vector product on other CPUs: u = Hv_loc.
-      call matrix%mult_vector(v, u, .false.)
+      call matrix%mult_vector(v, u)
     endif
 
     ! Sum partial results from all CPUs: u = (u + Hv_loc1) + Hv_loc2 + ... + Hv_locN = u + Hv.
@@ -154,7 +154,7 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
     v = - beta * v
 
     ! Compute v = v + Ht.u.
-    call matrix%trans_mult_vector(u, v, .true.)
+    call matrix%add_trans_mult_vector(u, v)
 
     ! Normalize v and update alpha.
     call normalize(nelements, v, alpha, .true., ierr)
