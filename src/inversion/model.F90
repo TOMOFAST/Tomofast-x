@@ -340,14 +340,14 @@ end subroutine calculate_data_unscaled
 !================================================================================================
 ! Weights the model parameters.
 !================================================================================================
-subroutine rescale_model(model, weight, nc)
-  real(kind=CUSTOM_REAL), intent(inout) :: model(:)
-  integer, intent(in) :: nc
-  real(kind=CUSTOM_REAL), intent(in) :: weight(:)
+subroutine rescale_model(nelements, model, weight)
+  integer, intent(in) :: nelements
+  real(kind=CUSTOM_REAL), intent(in) :: weight(nelements)
+  real(kind=CUSTOM_REAL), intent(inout) :: model(nelements)
 
   integer :: i
 
-  do i = 1, nc
+  do i = 1, nelements
     model(i) = model(i) * weight(i)
   enddo
 end subroutine rescale_model

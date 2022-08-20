@@ -164,7 +164,7 @@ subroutine inversion_solve(this, par, arr, model, myrank, nbproc)
   endif
 
   ! Scale model back to the original variables.
-  call rescale_model(this%delta_model, arr%column_weight, par%nelements)
+  call rescale_model(par%nelements, this%delta_model, arr%column_weight)
 
 end subroutine inversion_solve
 

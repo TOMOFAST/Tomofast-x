@@ -528,8 +528,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
     endif
   endif
 
-  if (SOLVE_PROBLEM(1)) call rescale_model(delta_model(1:par%nelements), arr(1)%column_weight, par%nelements)
-  if (SOLVE_PROBLEM(2)) call rescale_model(delta_model(par%nelements + 1:), arr(2)%column_weight, par%nelements)
+  if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements, delta_model(1:par%nelements), arr(1)%column_weight)
+  if (SOLVE_PROBLEM(2)) call rescale_model(par%nelements, delta_model(par%nelements + 1:), arr(2)%column_weight)
 
   !----------------------------------------------------------------------------------------------------------
   ! Writing grav/mag prior and posterior variance.
@@ -588,7 +588,7 @@ subroutine write_variance(par, lsqr_var, column_weight, problem_type, ncalls, my
   endif
 
   ! Rescale with depth weight.
-  call rescale_model(lsqr_var_scaled, column_weight, par%nelements)
+  call rescale_model(par%nelements, lsqr_var_scaled, column_weight)
 
   ! Gather full (parallel) vector on the master.
   call get_full_array(lsqr_var_scaled, par%nelements, lsqr_var_full, .false., myrank, nbproc)
