@@ -358,16 +358,8 @@ pure subroutine sparse_matrix_mult_vector(this, x, b)
 
   real(kind=CUSTOM_REAL), intent(out) :: b(this%nl)
 
-  integer :: i
-  integer(kind=8) :: k
-
   b = 0._CUSTOM_REAL
-
-  do i = 1, this%nl
-    do k = this%ijl(i), this%ijl(i + 1) - 1
-      b(i) = b(i) + this%sa(k) * x(this%ija(k))
-    enddo
-  enddo
+  call this%add_mult_vector(x, b)
 
 end subroutine sparse_matrix_mult_vector
 
@@ -455,19 +447,8 @@ pure subroutine sparse_matrix_trans_mult_vector(this, x, b)
 
   real(kind=CUSTOM_REAL), intent(out) :: b(this%ncolumns)
 
-  integer :: i, j
-  integer(kind=8) :: k
-
   b = 0._CUSTOM_REAL
-
-  do i = 1, this%nl
-!IBM* ASSERT (NODEPS,ITERCNT(1000))
-!DIR$ IVDEP
-    do k = this%ijl(i), this%ijl(i + 1) - 1
-      j = this%ija(k)
-      b(j) = b(j) + this%sa(k) * x(i)
-    enddo
-  enddo
+  call this%add_trans_mult_vector(x, b)
 
 end subroutine sparse_matrix_trans_mult_vector
 
