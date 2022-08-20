@@ -110,7 +110,7 @@ subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, s
     type(t_grid), intent(in)                :: grid
     real(kind=CUSTOM_REAL), intent(in)      :: Xdata, Ydata, Zdata
 
-    real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(:)
+    real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(nelements)
 
     integer :: i
     real(kind=SENSIT_REAL) :: tx(3), ty(3), tz(3)

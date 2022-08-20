@@ -343,7 +343,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   ! Perform the nnz load balancing among CPUs.
   !---------------------------------------------------------------------------------------------
-  call get_load_balancing_nelements(sensit_nnz, nelements_total, nnz_total, &
+  call get_load_balancing_nelements(nelements_total, sensit_nnz, nnz_total, &
                                     nnz_at_cpu_new, nelements_at_cpu_new, myrank, nbproc)
 
   if (myrank == 0) then
@@ -408,10 +408,10 @@ end subroutine calculate_and_write_sensit
 ! Calculate new partitioning for the nnz and nelements at every CPU for the load balancing.
 ! The load balancing aims to have the same number of nnz at every CPU, which require using different nelements at CPUs.
 !=======================================================================================================================
-subroutine get_load_balancing_nelements(sensit_nnz, nelements_total, nnz_total, &
+subroutine get_load_balancing_nelements(nelements_total, sensit_nnz, nnz_total, &
                                         nnz_at_cpu_new, nelements_at_cpu_new, myrank, nbproc)
-  integer(kind=8), intent(in) :: sensit_nnz(:)
   integer, intent(in) :: nelements_total
+  integer(kind=8), intent(in) :: sensit_nnz(nelements_total)
   integer(kind=8), intent(in) :: nnz_total
   integer, intent(in) :: myrank, nbproc
 
@@ -460,7 +460,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
   ! Sensitivity matrix.
   type(t_sparse_matrix), intent(inout) :: sensit_matrix
-  real(kind=CUSTOM_REAL), intent(out) :: column_weight(:)
+  real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements)
 
   ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
@@ -696,9 +696,9 @@ end subroutine read_sensitivity_metadata
 !==========================================================================================================
 subroutine apply_column_weight(nelements, sensit_line, column_weight)
   integer, intent(in) :: nelements
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(nelements)
 
-  real(kind=CUSTOM_REAL), intent(inout) :: sensit_line(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: sensit_line(nelements)
 
   integer :: i
 

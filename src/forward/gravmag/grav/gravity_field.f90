@@ -41,9 +41,9 @@ subroutine graviprism_full(nelements, ncomponents, grid, Xdata, Ydata, Zdata, Li
   real(kind=CUSTOM_REAL), intent(in) :: Xdata, Ydata, Zdata
   integer, intent(in) :: myrank
 
-  real(kind=CUSTOM_REAL), intent(out) :: LineX(:)
-  real(kind=CUSTOM_REAL), intent(out) :: LineY(:)
-  real(kind=CUSTOM_REAL), intent(out) :: LineZ(:)
+  real(kind=CUSTOM_REAL), intent(out) :: LineX(nelements)
+  real(kind=CUSTOM_REAL), intent(out) :: LineY(nelements)
+  real(kind=CUSTOM_REAL), intent(out) :: LineZ(nelements)
 
   ! Local variables.
   double precision, parameter :: twopi = 2.d0 * pi
