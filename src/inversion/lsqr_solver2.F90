@@ -125,21 +125,19 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
   ! Use an exit (threshold) criterion in case we can exit the loop before reaching the max iteration count.
   do while (iter <= niter .and. r > rmin)
 
-    ! Scale u.
-    u = - alpha * u
-
     !---------------------------------------------------------------
-    ! Compute u = u + H.v parallel.
+    ! Compute u = - alpha.u + H.v in parallel.
     !---------------------------------------------------------------
     if (myrank == 0) then
-      ! Adding the original vector 'u' on master CPU: u = u + Hv_loc.
-      call matrix%add_mult_vector(v, u)
+      u = - alpha * u
     else
-      ! Store only the matrix-vector product on other CPUs: u = Hv_loc.
-      call matrix%mult_vector(v, u)
+      u = 0._CUSTOM_REAL
     endif
 
-    ! Sum partial results from all CPUs: u = (u + Hv_loc1) + Hv_loc2 + ... + Hv_locN = u + Hv.
+    ! u = u + H_loc.v
+    call matrix%add_mult_vector(v, u)
+
+    ! Sum partial results from all ranks: u = (- alpha.u + Hv_loc1) + Hv_loc2 + ... + Hv_locN = - alpha.u + Hv.
     call MPI_Allreduce(MPI_IN_PLACE, u, nlines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
     !---------------------------------------------------------------
 
