@@ -210,9 +210,10 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
     endif
 
 #ifndef SUPPRESS_OUTPUT
-    if (mod(iter, 10) == 0) then
-      if (myrank == 0) print *, 'it, r =', iter, r
-    endif
+    ! Commented as this badly affects the performance.
+    !if (mod(iter, 10) == 0) then
+    !  if (myrank == 0) print *, 'it, r =', iter, r
+    !endif
 #endif
 
     ! To avoid floating point exception of denormal value.
