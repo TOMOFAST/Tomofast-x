@@ -239,7 +239,7 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
   integer, intent(in) :: myrank, nbproc
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
   type(t_sparse_matrix), intent(in) :: matrix_sensit
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(this%nelements)
 
   real(kind=CUSTOM_REAL), intent(out) :: data(ndata)
 
@@ -307,9 +307,10 @@ end subroutine model_calculate_data
 ! Use line_start, line_end, param_shift to calculate the data using part of the big (joint) matrix.
 ! This version uses unscaled model (in wavelet domain).
 !======================================================================================================
-subroutine calculate_data_unscaled(model, matrix_sensit, problem_weight, ndata, data, &
+subroutine calculate_data_unscaled(nelements, model, matrix_sensit, problem_weight, ndata, data, &
                                    line_start, line_end, param_shift, myrank)
-  real(kind=CUSTOM_REAL), intent(in) :: model(:)
+  integer, intent(in) :: nelements
+  real(kind=CUSTOM_REAL), intent(in) :: model(nelements)
   type(t_sparse_matrix), intent(in) :: matrix_sensit
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
   integer, intent(in) :: ndata, line_start, line_end, param_shift
