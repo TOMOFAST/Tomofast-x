@@ -202,7 +202,7 @@ end function model_get_Ymax
 !======================================================================================================
 subroutine model_update(this, delta_model)
   class(t_model), intent(inout) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: delta_model(:)
+  real(kind=CUSTOM_REAL), intent(in) :: delta_model(this%nelements)
 
   integer :: i
 
