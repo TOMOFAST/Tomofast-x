@@ -204,9 +204,8 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   integer :: ierr
   integer :: npoints, nelements_slice
   integer :: i, j, p
-  real(kind=CUSTOM_REAL) :: xgrid(8)
-  real(kind=CUSTOM_REAL) :: ygrid(8)
-  real(kind=CUSTOM_REAL) :: zgrid(8)
+  real(kind=CUSTOM_REAL) :: xyzgrid(3, 8)
+  real(kind=CUSTOM_REAL) :: Z1_p, Z2_p
 
   real(kind=4), allocatable :: xyzgrid_all(:, :, :)
   real(kind=4), allocatable :: cell_data(:)
@@ -258,48 +257,50 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
     if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
       j = j + 1
 
-      ! z = 1
-      xgrid(1) = X1(p)
-      ygrid(1) = Y1(p)
-      zgrid(1) = Z1(p)
-
-      xgrid(2) = X2(p)
-      ygrid(2) = Y1(p)
-      zgrid(2) = Z1(p)
-
-      xgrid(3) = X1(p)
-      ygrid(3) = Y2(p)
-      zgrid(3) = Z1(p)
-
-      xgrid(4) = X2(p)
-      ygrid(4) = Y2(p)
-      zgrid(4) = Z1(p)
-
-      ! z = 2
-      xgrid(5) = X1(p)
-      ygrid(5) = Y1(p)
-      zgrid(5) = Z2(p)
-
-      xgrid(6) = X2(p)
-      ygrid(6) = Y1(p)
-      zgrid(6) = Z2(p)
-
-      xgrid(7) = X1(p)
-      ygrid(7) = Y2(p)
-      zgrid(7) = Z2(p)
-
-      xgrid(8) = X2(p)
-      ygrid(8) = Y2(p)
-      zgrid(8) = Z2(p)
-
       if (INVERT_Z_AXIS) then
-        zgrid = -zgrid
+        Z1_p = - Z1(p)
+        Z2_p = - Z2(p)
+      else
+        Z1_p = Z1(p)
+        Z2_p = Z2(p)
       endif
 
+      ! z = 1
+      xyzgrid(1, 1) = X1(p)
+      xyzgrid(2, 1) = Y1(p)
+      xyzgrid(3, 1) = Z1_p
+
+      xyzgrid(1, 2) = X2(p)
+      xyzgrid(2, 2) = Y1(p)
+      xyzgrid(3, 2) = Z1_p
+
+      xyzgrid(1, 3) = X1(p)
+      xyzgrid(2, 3) = Y2(p)
+      xyzgrid(3, 3) = Z1_p
+
+      xyzgrid(1, 4) = X2(p)
+      xyzgrid(2, 4) = Y2(p)
+      xyzgrid(3, 4) = Z1_p
+
+      ! z = 2
+      xyzgrid(1, 5) = X1(p)
+      xyzgrid(2, 5) = Y1(p)
+      xyzgrid(3, 5) = Z2_p
+
+      xyzgrid(1, 6) = X2(p)
+      xyzgrid(2, 6) = Y1(p)
+      xyzgrid(3, 6) = Z2_p
+
+      xyzgrid(1, 7) = X1(p)
+      xyzgrid(2, 7) = Y2(p)
+      xyzgrid(3, 7) = Z2_p
+
+      xyzgrid(1, 8) = X2(p)
+      xyzgrid(2, 8) = Y2(p)
+      xyzgrid(3, 8) = Z2_p
+
       ! Store the values.
-      xyzgrid_all(1, :, j) = real(xgrid, 4)
-      xyzgrid_all(2, :, j) = real(ygrid, 4)
-      xyzgrid_all(3, :, j) = real(zgrid, 4)
+      xyzgrid_all(:, :, j) = real(xyzgrid, 4)
 
       cell_data(j) = real(val(p), 4)
     endif
