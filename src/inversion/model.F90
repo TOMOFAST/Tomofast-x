@@ -126,8 +126,8 @@ subroutine model_allocate_bound_arrays(this, nlithos, myrank)
 
   this%nlithos = nlithos
 
-  allocate(this%min_local_bound(this%nelements, this%nlithos), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%max_local_bound(this%nelements, this%nlithos), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%min_local_bound(this%nlithos, this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%max_local_bound(this%nlithos, this%nelements), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%local_bound_constraints_weight(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_allocate_bound_arrays!", myrank, ierr)

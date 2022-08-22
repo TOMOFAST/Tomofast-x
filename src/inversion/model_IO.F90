@@ -222,7 +222,7 @@ subroutine model_read_bound_constraints(model, file_name, myrank, nbproc)
     if (i > nsmaller .and. i <= nsmaller + model%nelements) then
       ind = i - nsmaller
       read(10, *, iostat=ierr) &
-        model%min_local_bound(ind, :), model%max_local_bound(ind, :), model%local_bound_constraints_weight(ind)
+        model%min_local_bound(:, ind), model%max_local_bound(:, ind), model%local_bound_constraints_weight(ind)
 
       if (ierr /= 0) &
         call exit_MPI("Problem with reading the bound constraints for pixel i = "//str(i), myrank, ierr)
