@@ -89,6 +89,7 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
 
   real(kind=4), allocatable :: cell_centers(:, :)
   real(kind=4), allocatable :: cell_data(:)
+  real(kind=4) :: z_sign
 
   character :: lf*1, str1*8, str2*8, str3*8
   ! Line feed character.
@@ -133,6 +134,12 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   !-------------------------------------------------------------------
   ! Build the grid.
   !-------------------------------------------------------------------
+  if (INVERT_Z_AXIS) then
+    z_sign = -1.0
+  else
+    z_sign = 1.0
+  endif
+
   j = 0
   do p = 1, nelements
     if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
@@ -142,13 +149,11 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
       cell_centers(2, j) = real(0.5 * (Y1(p) + Y2(p)))
       cell_centers(3, j) = real(0.5 * (Z1(p) + Z2(p)))
 
+      cell_centers(3, j) = z_sign * cell_centers(3, j)
+
       cell_data(j) = real(val(p), 4)
     endif
   enddo
-
-  if (INVERT_Z_AXIS) then
-    cell_centers(3, :) = - cell_centers(3, :)
-  endif
 
   ! Write the grid to a file.
   write(333) cell_centers
