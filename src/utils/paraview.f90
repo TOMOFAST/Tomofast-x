@@ -205,7 +205,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   integer :: npoints, nelements_slice
   integer :: i, j, p
   real(kind=CUSTOM_REAL) :: xyzgrid(3, 8)
-  real(kind=CUSTOM_REAL) :: Z1_p, Z2_p
+  real(kind=CUSTOM_REAL) :: Z1_p, Z2_p, z_sign
 
   real(kind=4), allocatable :: xyzgrid_all(:, :, :)
   real(kind=4), allocatable :: cell_data(:)
@@ -252,18 +252,19 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   !====================================
   ! Build lego-grid.
   !====================================
+  if (INVERT_Z_AXIS) then
+    z_sign = - 1._CUSTOM_REAL
+  else
+    z_sign = 1._CUSTOM_REAL
+  endif
+
   j = 0
   do p = 1, nelements
     if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
       j = j + 1
 
-      if (INVERT_Z_AXIS) then
-        Z1_p = - Z1(p)
-        Z2_p = - Z2(p)
-      else
-        Z1_p = Z1(p)
-        Z2_p = Z2(p)
-      endif
+      Z1_p = z_sign * Z1(p)
+      Z2_p = z_sign * Z2(p)
 
       ! z = 1
       xyzgrid(1, 1) = X1(p)
