@@ -1,4 +1,4 @@
-# Tomofast-x  v.1.4
+# Tomofast-x  v.1.5
 
 Geophysical 3D potential field joint and constrained parallel inversion code.  
 Authors: Vitaliy Ogarko, Jeremie Giraud, Roland Martin.
@@ -36,12 +36,7 @@ make
 
 To run the code with your parameter file:
 ```shell
-./tomofastx -j <Parfile path>
-```
-
-To run the code in parallel execute:
-```shell
-mpirun -np <Number of CPUs> ./tomofastx -j <Parfile path>
+mpirun -np <Number-of-cores> ./tomofastx -j <Parfile path>
 ```
 
 To run unit tests (serial and parallel):
