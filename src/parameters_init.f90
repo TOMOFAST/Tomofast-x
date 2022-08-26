@@ -129,7 +129,8 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
   type(t_parameters_mag), intent(out) :: mpar
   type(t_parameters_inversion), intent(out) :: ipar
 
-  integer :: nelements, ierr
+  integer :: nelements, ndata_loc(2)
+  integer :: ierr
 
   if (myrank == 0) then
     ! Setting default parameter values.
@@ -248,13 +249,22 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
     gpar%nelements = nelements
     mpar%nelements = nelements
 
+    ! Define data partitioning for parallelization.
+    ndata_loc(1) = calculate_nelements_at_cpu(gpar%ndata, myrank, nbproc)
+    ndata_loc(2) = calculate_nelements_at_cpu(mpar%ndata, myrank, nbproc)
+
+    ipar%ndata_loc = ndata_loc
+    gpar%ndata_loc = ndata_loc(1)
+    mpar%ndata_loc = ndata_loc(2)
+
   endif
 
   !---------------------------------------------------------------------------
   ! Print out some useful debug information.
-  if (myrank == 0 .or. myrank == nbproc - 1) &
+  if (myrank == 0 .or. myrank == nbproc - 1) then
     print *, 'myrank=', myrank, ' nbproc=', nbproc, ' nelements_total=', ipar%nelements_total, &
-             'nelements=', ipar%nelements, 'ndata=', ipar%ndata
+             'nelements=', ipar%nelements, 'ndata=', ipar%ndata, 'ndata_loc=', ipar%ndata_loc
+  endif
 
   if (ipar%compression_type > 0) then
   ! Currently non-supported constraints with wavelet compression.

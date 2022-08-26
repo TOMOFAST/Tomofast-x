@@ -38,6 +38,8 @@ module parameters_inversion
     integer :: nelements_total
     ! Number of data.
     integer :: ndata(2)
+    ! Local number of data.
+    integer :: ndata_loc(2)
     ! Number of iterations in inversion solver (e.g. LSQR).
     integer :: niter
     ! Number of inversions (outer inversion loop).

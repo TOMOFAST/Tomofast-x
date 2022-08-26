@@ -34,6 +34,8 @@ module parameters_gravmag
     integer :: nelements
     ! Number of data.
     integer :: ndata
+    ! Local number of data.
+    integer :: ndata_loc
     ! Number of data components (x, y, z, zz, yy, zz, etc).
     integer :: ncomponents
     ! File name for the data.
