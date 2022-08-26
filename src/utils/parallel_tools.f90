@@ -45,12 +45,31 @@ contains
 function calculate_nelements_at_cpu(nelements_total, myrank, nbproc) result(nelements)
   integer, intent(in) :: nelements_total, myrank, nbproc
   integer :: nelements
+  integer :: nelements1, nelements2
+  integer :: diff1, diff2
 
-  nelements = nelements_total / nbproc
+  ! Option 1: add remaining elements to the last rank.
+  nelements1 = nelements_total / nbproc
+  ! Extra elements on the last rank.
+  diff1 = nelements_total - nelements1 * nbproc
 
-  if (myrank == nbproc - 1 .and. mod(nelements_total, nbproc) /= 0) then
-    ! Last rank gets the remaining elements.
-    nelements = nelements + mod(nelements_total, nbproc)
+  ! Option 2: distribute remaining elements to other ranks.
+  nelements2 = nelements_total / nbproc + 1
+  ! Missing elements on the last rank.
+  diff2 =  nelements_total - nelements2 * nbproc
+
+  ! Choose the more balanced option.
+  if (abs(diff1) <= abs(diff2)) then
+    nelements = nelements1
+    if (myrank == nbproc - 1) nelements = nelements1 + diff1
+  else
+    nelements = nelements2
+    if (myrank == nbproc - 1) nelements = nelements2 + diff2
+  endif
+
+  ! Sanity check.
+  if (get_total_number_elements(nelements, myrank, nbproc) /= nelements_total) then
+    call exit_MPI("Wrong nelements in calculate_nelements_at_cpu!", myrank, 0)
   endif
 end function calculate_nelements_at_cpu
 
