@@ -22,6 +22,7 @@ module data_gravmag
   use global_typedefs
   use mpi_tools, only: exit_MPI
   use string
+  use parallel_tools
 
   implicit none
 
@@ -29,8 +30,10 @@ module data_gravmag
 
   type, public :: t_data
 
-    ! Number of data points.
+    ! Total number of data points.
     integer :: ndata
+    ! Local number of data points.
+    integer :: ndata_loc
 
     ! Data positions.
     real(kind=CUSTOM_REAL), dimension(:), allocatable :: X, Y, Z
@@ -46,7 +49,6 @@ module data_gravmag
     procedure, public, pass :: read => data_read
     procedure, public, pass :: write => data_write
 
-    procedure, pass :: broadcast => data_broadcast
     procedure, pass :: read_points_format => data_read_points_format
 
   end type t_data
@@ -56,87 +58,67 @@ contains
 !============================================================================================================
 ! Initialize data object.
 !============================================================================================================
-subroutine data_initialize(this, ndata, myrank)
+subroutine data_initialize(this, ndata, ndata_loc, myrank)
   class(t_data), intent(inout) :: this
-  integer, intent(in) :: ndata, myrank
+  integer, intent(in) :: ndata, ndata_loc, myrank
   integer :: ierr
 
   this%ndata = ndata
+  this%ndata_loc = ndata_loc
 
   ierr = 0
 
-  if (.not. allocated(this%X)) allocate(this%X(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%Y)) allocate(this%Y(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%Z)) allocate(this%Z(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%val_meas)) allocate(this%val_meas(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%val_calc)) allocate(this%val_calc(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%X(ndata_loc), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Y(ndata_loc), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Z(ndata_loc), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val_meas(ndata_loc), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val_calc(ndata_loc), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in data_initialize!", myrank, ierr)
 
 end subroutine data_initialize
 
 !============================================================================================================
-! Broadcasts data arrays.
-!============================================================================================================
-subroutine data_broadcast(this, myrank)
-  class(t_data), intent(inout) :: this
-  integer, intent(in) :: myrank
-  integer :: ierr
-
-  ierr = 0
-
-  call MPI_Bcast(this%X, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%Y, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%Z, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%val_meas, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-  if (ierr /= 0) call exit_MPI("MPI_Bcast error in data_broadcast!", myrank, ierr)
-
-end subroutine data_broadcast
-
-!============================================================================================================
 ! Read data (coordinates and values) in Universal Transverse Mercator (UTM)
 ! geographic map coordinate system.
 !============================================================================================================
-subroutine data_read(this, file_name, myrank)
+subroutine data_read(this, file_name, myrank, nbproc)
   class(t_data), intent(inout) :: this
   character(len=*), intent(in) :: file_name
-  integer, intent(in) :: myrank
+  integer, intent(in) :: myrank, nbproc
 
-  if (myrank == 0) then
-    print *, 'Reading data from file '//trim(file_name)
-    call this%read_points_format(file_name, myrank)
-  endif
+  if (myrank == 0) print *, 'Reading data from file '//trim(file_name)
 
-  ! MPI broadcast data arrays.
-  call this%broadcast(myrank)
+  call this%read_points_format(file_name, myrank, nbproc)
 
 end subroutine data_read
 
 !============================================================================================================
 ! Read data in points format.
 !============================================================================================================
-subroutine data_read_points_format(this, file_name, myrank)
+subroutine data_read_points_format(this, file_name, myrank, nbproc)
   class(t_data), intent(inout) :: this
   character(len=*), intent(in) :: file_name
-  integer, intent(in) :: myrank
+  integer, intent(in) :: myrank, nbproc
 
-  integer :: i, ierr
-  integer :: ndata_in_file
-
-  ! Reading my master CPU only.
-  if (myrank /= 0) return
+  integer :: i, i_loc, ierr
+  integer :: ndata_read, ndata_smaller
 
   open(unit=10, file=file_name, status='old', form='formatted', action='read', iostat=ierr)
   if (ierr /= 0) call exit_MPI("Error in opening the data file!", myrank, ierr)
 
-  read(10, *) ndata_in_file
+  read(10, *) ndata_read
 
-  if (ndata_in_file /= this%ndata) &
-    call exit_MPI("The number of data in Parfile differs from the number of data in data file!", myrank, ndata_in_file)
+  if (ndata_read /= this%ndata) &
+    call exit_MPI("The number of data in Parfile differs from the number of data in data file!", myrank, ndata_read)
+
+  ndata_smaller = get_nsmaller(this%ndata_loc, myrank, nbproc)
 
   do i = 1, this%ndata
-    read(10, *, end=20, err=11) this%X(i), this%Y(i), this%Z(i), this%val_meas(i)
+    if (i > ndata_smaller .and. i <= ndata_smaller + this%ndata_loc) then
+      i_loc = i - ndata_smaller
+      read(10, *, end=20, err=11) this%X(i_loc), this%Y(i_loc), this%Z(i_loc), this%val_meas(i_loc)
+    endif
   enddo
 
 20 close(unit=10)

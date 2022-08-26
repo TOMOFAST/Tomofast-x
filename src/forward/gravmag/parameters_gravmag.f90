@@ -119,6 +119,9 @@ subroutine parameters_base_broadcast(this, myrank)
   call MPI_Bcast(this%sensit_read, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%sensit_path, 256, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
 
+  call MPI_Bcast(this%data_file, 256, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%data_grid_file, 256, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
+
   if (ierr /= 0) call exit_MPI("MPI_Bcast error in parameters_base_broadcast!", myrank, ierr)
 
 end subroutine parameters_base_broadcast

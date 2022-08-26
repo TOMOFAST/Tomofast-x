@@ -159,7 +159,7 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
   endif
 
   ! Use barrier to do not mix the parameters output from the master CPU with other log messages.
-  call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+  call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
   ! All sanity checks passed so far, so we may broadcast the Parfile.
 
