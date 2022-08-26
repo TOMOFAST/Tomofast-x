@@ -195,7 +195,8 @@ subroutine data_write(this, name_prefix, which, myrank)
     endif
 
     write(10, *) X, Y, Z, val
-    write(20, *) X, ", ", Y, ", ", Z, ", ", val
+    ! Note: revert Z-axis for Paraview.
+    write(20, *) X, ", ", Y, ", ", -Z, ", ", val
   enddo
 
   close(10)
