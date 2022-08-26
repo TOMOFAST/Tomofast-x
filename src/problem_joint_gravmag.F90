@@ -452,6 +452,12 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 #endif
 
 #ifndef SUPPRESS_OUTPUT
+    ! Write the final model to a file.
+    if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_final_', .true., .true., myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_final_', .true., .true., myrank, nbproc)
+#endif
+
+#ifndef SUPPRESS_OUTPUT
     if (myrank == 0) then
       ! Print model value bounds.
       do i = 1, 2
@@ -459,12 +465,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
           print *, 'Model', i , 'min/max values =', minval(model(i)%val_full), maxval(model(i)%val_full)
       enddo
     endif
-#endif
-
-#ifndef SUPPRESS_OUTPUT
-    ! Write the final model to a file.
-    if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_final_', .true., .true., myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_final_', .true., .true., myrank, nbproc)
 #endif
 
 #ifndef SUPPRESS_OUTPUT
