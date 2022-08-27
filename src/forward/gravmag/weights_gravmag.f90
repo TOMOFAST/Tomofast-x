@@ -59,14 +59,14 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
 
   if (myrank == 0) print *, 'Calculating the depth weight, type = ', par%depth_weighting_type
 
+  ! The number of elements on CPUs with rank smaller than myrank.
+  nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
+
   !--------------------------------------------------------------------------------
   ! Calculate the normalized depth weight.
   !--------------------------------------------------------------------------------
   if (par%depth_weighting_type == 1) then
   ! Depth weighting.
-
-    ! The number of elements on CPUs with rank smaller than myrank.
-    nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
 
     ! Use empirical function 1/(z+z0)**(beta/2).
     do i = 1, par%nelements
