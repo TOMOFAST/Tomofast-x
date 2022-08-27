@@ -61,9 +61,7 @@ subroutine calculate_depth_weight(par, column_weight, grid_full, data, myrank, n
   ! The number of elements on CPUs with rank smaller than myrank.
   nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
 
-  !--------------------------------------------------------------------------------
-  ! Calculate the normalized depth weight.
-  !--------------------------------------------------------------------------------
+  ! Calculate the depth weight.
   if (par%depth_weighting_type == 1) then
   ! Depth weighting.
 
@@ -100,9 +98,7 @@ subroutine calculate_depth_weight(par, column_weight, grid_full, data, myrank, n
     call exit_MPI("Not known depth weight type!", myrank, par%depth_weighting_type)
   endif
 
-  !--------------------------------------------------------------------------------
   ! Scale the sensitivity kernel with the cell volume.
-  !--------------------------------------------------------------------------------
   do i = 1, par%nelements
       ! Full grid index.
       p = nsmaller + i
@@ -111,12 +107,9 @@ subroutine calculate_depth_weight(par, column_weight, grid_full, data, myrank, n
   enddo
 
   ! Normalize the depth weight.
-  call normalize_depth_weight(column_weight, myrank, nbproc)
+  call normalize_depth_weight(column_weight(1:par%nelements), myrank, nbproc)
 
-  !--------------------------------------------------------------------------------
   ! Calculate the matrix column weight.
-  !--------------------------------------------------------------------------------
-
   ! This condition essentially leads to the system:
   !
   ! | S W^{-1} | d(Wm)
@@ -130,9 +123,7 @@ subroutine calculate_depth_weight(par, column_weight, grid_full, data, myrank, n
     endif
   enddo
 
-  !-----------------------------------------------------------------------------------
   ! Gather the full array.
-  !-----------------------------------------------------------------------------------
   call get_full_array_in_place(par%nelements, column_weight, .true., myrank, nbproc)
 
   if (myrank == 0) print *, 'Finished calculating the depth weight.'
