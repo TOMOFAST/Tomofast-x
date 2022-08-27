@@ -769,12 +769,12 @@ subroutine joint_inversion_calculate_matrix_partitioning(par, line_start, line_e
 
   if (SOLVE_PROBLEM(1)) then
     line_start(1) = 1
-    line_end(1) = par%ndata(1)
+    line_end(1) = par%ndata_loc(1)
   endif
 
   if (SOLVE_PROBLEM(2)) then
     line_start(2) = line_end(1) + 1
-    line_end(2) = line_end(1) + par%ndata(2)
+    line_end(2) = line_end(1) + par%ndata_loc(2)
   endif
 
 end subroutine joint_inversion_calculate_matrix_partitioning
