@@ -49,7 +49,7 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   type(t_data), intent(in) :: data
   type(t_inversion_arrays), intent(inout) :: iarr
 
-  integer :: i, j
+  integer :: i, j, ierr
   integer :: ii, jj, kk, ind
   real(kind=CUSTOM_REAL) :: distX_sq(2), distY_sq(2), distZ_sq(2)
   real(kind=CUSTOM_REAL) :: dhx, dhy, dhz, dfactor
@@ -57,6 +57,10 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   real(kind=CUSTOM_REAL) :: dVj
   real(kind=CUSTOM_REAL) :: integral, wr
   integer :: nsmaller, p
+
+  real(kind=CUSTOM_REAL), allocatable :: dataX_full(:)
+  real(kind=CUSTOM_REAL), allocatable :: dataY_full(:)
+  real(kind=CUSTOM_REAL), allocatable :: dataZ_full(:)
 
   if (myrank == 0) print *, 'Calculating the depth weight, type = ', par%depth_weighting_type
 
@@ -80,6 +84,21 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   ! Distance weighting.
   ! The implementation is based on the Eq.(10) in https://www.eoas.ubc.ca/ubcgif/iag/sftwrdocs/grav3d/grav3d-manual.pdf
 
+    ! Allocate the full data grid.
+    allocate(dataX_full(par%ndata), source=0._CUSTOM_REAL, stat=ierr)
+    allocate(dataY_full(par%ndata), source=0._CUSTOM_REAL, stat=ierr)
+    allocate(dataZ_full(par%ndata), source=0._CUSTOM_REAL, stat=ierr)
+
+    if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_depth_weight!", myrank, ierr)
+
+    ! Gather the full data grid.
+    call get_full_array(data%X, par%ndata_loc, dataX_full, .true., myrank, nbproc)
+    call get_full_array(data%Y, par%ndata_loc, dataY_full, .true., myrank, nbproc)
+    call get_full_array(data%Z, par%ndata_loc, dataZ_full, .true., myrank, nbproc)
+
+    !------------------------------------------------------------------------------
+    ! Main calculations.
+    !------------------------------------------------------------------------------
     ! A small constant for integral validity.
     R0 = 0.1d0 ! 0.1 meter
 
@@ -103,13 +122,13 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
       do j = 1, par%ndata
 
         ! The squared 1D distances along each cell dimension.
-        distX_sq(1) = (grid_full%X1(p) + dhx - data%X(j))**2.d0
-        distY_sq(1) = (grid_full%Y1(p) + dhy - data%Y(j))**2.d0
-        distZ_sq(1) = (grid_full%Z1(p) + dhz - data%Z(j))**2.d0
+        distX_sq(1) = (grid_full%X1(p) + dhx - dataX_full(j))**2.d0
+        distY_sq(1) = (grid_full%Y1(p) + dhy - dataY_full(j))**2.d0
+        distZ_sq(1) = (grid_full%Z1(p) + dhz - dataZ_full(j))**2.d0
 
-        distX_sq(2) = (grid_full%X2(p) - dhx - data%X(j))**2.d0
-        distY_sq(2) = (grid_full%Y2(p) - dhy - data%Y(j))**2.d0
-        distZ_sq(2) = (grid_full%Z2(p) - dhz - data%Z(j))**2.d0
+        distX_sq(2) = (grid_full%X2(p) - dhx - dataX_full(j))**2.d0
+        distY_sq(2) = (grid_full%Y2(p) - dhy - dataY_full(j))**2.d0
+        distZ_sq(2) = (grid_full%Z2(p) - dhz - dataZ_full(j))**2.d0
 
         ! Calculate the distance from 8 points inside a cell to the data location.
         ind = 0
@@ -134,6 +153,11 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
 
       iarr%column_weight(i) = (1.d0 / sqrt(dVj)) * wr**(1.d0 / 4.d0)
     enddo ! cells loop
+    !------------------------------------------------------------------------------------
+
+    deallocate(dataX_full)
+    deallocate(dataY_full)
+    deallocate(dataZ_full)
 
   else
     call exit_MPI("Not known depth weight type!", myrank, par%depth_weighting_type)

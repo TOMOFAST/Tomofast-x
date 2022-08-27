@@ -132,22 +132,22 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call data(1)%read(gpar%data_grid_file, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call data(2)%read(mpar%data_grid_file, myrank, nbproc)
 
-  call MPI_Barrier(MPI_COMM_WORLD, ierr)
-  stop
- 
   ! (III) SENSITIVITY MATRIX ALLOCATION  ---------------------------------------------------
 
   if (myrank == 0) print *, "(III) SENSITIVITY MATRIX ALLOCATION."
 
   ! Memory allocation for auxiliarily inversion arrays.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_aux(ipar%nelements, ipar%ndata(1), myrank)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_aux(ipar%nelements, ipar%ndata(2), myrank)
+  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_aux(ipar%nelements, ipar%ndata_loc(1), myrank)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_aux(ipar%nelements, ipar%ndata_loc(2), myrank)
 
   !-------------------------------------------------------------------------------------------------------
   if (gpar%sensit_read == 0) then
     ! Calculates the depth weights.
     if (SOLVE_PROBLEM(1)) call calculate_depth_weight(gpar, iarr(1), model(1)%grid_full, data(1), myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call calculate_depth_weight(mpar, iarr(2), model(2)%grid_full, data(2), myrank, nbproc)
+
+    call MPI_Barrier(MPI_COMM_WORLD, ierr)
+    stop
 
     ! Precondition the column weights (to balance the columns in joint inversion).
     if (SOLVE_PROBLEM(1)) iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight
