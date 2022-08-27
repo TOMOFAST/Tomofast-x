@@ -216,9 +216,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_read_', .false., myrank)
 #endif
 
-  call MPI_Barrier(MPI_COMM_WORLD, ierr)
-  return
-
   ! SETTING THE ADMM BOUNDS -----------------------------------------------------------------------------
 
   if (ipar%admm_type > 0) then
@@ -230,6 +227,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
     enddo
   endif
+
+  call MPI_Barrier(MPI_COMM_WORLD, ierr)
+  return
 
   !-------------------------------------------------------------------------------------------------------
   ! Calculate parameters for calculating the data using the big (joint inversion) parallel sparse matrix.
