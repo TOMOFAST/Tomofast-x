@@ -39,7 +39,7 @@ module weights_gravmag
 contains
 
 !===================================================================================
-! Calculates the depth weight for sensitivity kernel.
+! Calculates in parallel the depth weight for sensitivity kernel.
 !===================================================================================
 subroutine calculate_depth_weight(par, column_weight, grid_full, data, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
@@ -47,7 +47,7 @@ subroutine calculate_depth_weight(par, column_weight, grid_full, data, myrank, n
   integer, intent(in) :: myrank, nbproc
   type(t_data), intent(in) :: data
 
-  real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements)
+  real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements_total)
 
   integer :: i, ierr
   integer :: nsmaller, p
@@ -130,6 +130,11 @@ subroutine calculate_depth_weight(par, column_weight, grid_full, data, myrank, n
     endif
   enddo
 
+  !-----------------------------------------------------------------------------------
+  ! Gather the full array.
+  !-----------------------------------------------------------------------------------
+  call get_full_array_in_place(par%nelements, column_weight, .true., myrank, nbproc)
+
   if (myrank == 0) print *, 'Finished calculating the depth weight.'
 
 end subroutine calculate_depth_weight
@@ -147,7 +152,7 @@ subroutine calc_distance_weight(par, grid_full, dataX, dataY, dataZ, column_weig
   real(kind=CUSTOM_REAL) :: dataZ(par%ndata)
   integer, intent(in) :: myrank, nbproc
 
-  real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements)
+  real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements_total)
 
   integer :: i, j
   integer :: ii, jj, kk, ind

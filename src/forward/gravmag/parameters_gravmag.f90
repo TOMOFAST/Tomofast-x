@@ -30,7 +30,9 @@ module parameters_gravmag
 
     ! Problem dimensions.
     integer :: nx, ny, nz
-    ! The number of elements (on current CPU).
+    ! The total number of elements.
+    integer :: nelements_total
+    ! The local number of elements.
     integer :: nelements
     ! Number of data.
     integer :: ndata

@@ -100,7 +100,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid_full
   type(t_data), intent(in) :: data
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(par%nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(par%nelements_total)
   integer, intent(in) :: myrank, nbproc
 
   integer(kind=8), intent(out) :: nnz
@@ -128,9 +128,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   real(kind=CUSTOM_REAL) :: cost_full, cost_compressed
   real(kind=CUSTOM_REAL) :: cost_full_loc, cost_compressed_loc
-
-  ! The full column weight.
-  real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
 
   ! Sanity check.
   if (par%compression_rate < 0 .or. par%compression_rate > 1) then
@@ -188,7 +185,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   allocate(sensit_line_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(sensit_line_sorted(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   allocate(sensit_columns(nel_compressed), source=0, stat=ierr)
   allocate(sensit_compressed(nel_compressed), source=0._MATRIX_PRECISION, stat=ierr)
@@ -198,7 +194,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   ! Calculate sensitivity lines.
   !---------------------------------------------------------------------------------------------
-  call get_full_array(column_weight, par%nelements, column_weight_full, .true., myrank, nbproc)
 
   ! File header.
   write(77) par%ndata_loc, par%ndata, nelements_total, myrank, nbproc
@@ -219,7 +214,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     endif
 
     ! Applying the depth weight.
-    call apply_column_weight(nelements_total, sensit_line_full, column_weight_full)
+    call apply_column_weight(nelements_total, sensit_line_full, column_weight)
 
     if (par%compression_type > 0) then
     ! Wavelet compression.
@@ -346,7 +341,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     open(77, file=trim(filename_full), form='unformatted', status='replace', action='write', access='stream')
 
     write(77) par%nx, par%ny, par%nz, par%ndata, par%depth_weighting_type
-    write(77) column_weight_full
+    write(77) column_weight
 
     close(77)
   endif
@@ -358,7 +353,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   deallocate(sensit_line_full)
   deallocate(sensit_line_sorted)
-  deallocate(column_weight_full)
   deallocate(sensit_columns)
   deallocate(sensit_compressed)
 
@@ -378,18 +372,15 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
   ! Sensitivity matrix.
   type(t_sparse_matrix), intent(inout) :: sensit_matrix
-  real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements)
+  real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements_total)
 
   ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
   real(kind=MATRIX_PRECISION), allocatable :: sensit_compressed(:)
 
-  ! The full column weight.
-  real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
-
   real(kind=CUSTOM_REAL) :: comp_rate
   integer(kind=8) :: nnz_total
-  integer :: i, j, nsmaller, ierr
+  integer :: i, j, ierr
   integer :: nelements_total
   character(len=256) :: filename, filename_full
   character(len=256) :: msg
@@ -414,8 +405,6 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   ! TODO: allocate the compressed number of elements.
   allocate(sensit_columns(nelements_total), source=0, stat=ierr)
   allocate(sensit_compressed(nelements_total), source=0._MATRIX_PRECISION, stat=ierr)
-
-  allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in read_sensitivity_kernel!", myrank, ierr)
 
@@ -514,7 +503,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
   read(78) nx_read, ny_read, nz_read, ndata_read, weight_type_read
-  read(78) column_weight_full
+  read(78) column_weight
 
   close(78)
 
@@ -526,16 +515,9 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
     call exit_MPI("Sensitivity weight file dimensions do not match the Parfile!", myrank, 0)
   endif
 
-  ! The number of elements on CPUs with rank smaller than myrank.
-  nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
-
-  ! Extract the column weight for the current rank.
-  column_weight = column_weight_full(nsmaller + 1 : nsmaller + par%nelements)
-
   !---------------------------------------------------------------------------------------------
   deallocate(sensit_columns)
   deallocate(sensit_compressed)
-  deallocate(column_weight_full)
 
   if (myrank == 0) print *, 'Finished reading the sensitivity kernel.'
 

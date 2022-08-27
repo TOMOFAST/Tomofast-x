@@ -239,6 +239,8 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
     ipar%ndata(2) = mpar%ndata
 
     ipar%nelements_total = ipar%nx * ipar%ny * ipar%nz
+    gpar%nelements_total = ipar%nelements_total
+    mpar%nelements_total = ipar%nelements_total
 
     ipar%compression_type = gpar%compression_type
 

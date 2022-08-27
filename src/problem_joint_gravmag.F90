@@ -136,8 +136,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (myrank == 0) print *, "(III) SENSITIVITY MATRIX ALLOCATION."
 
   ! Memory allocation for auxiliarily inversion arrays.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_aux(ipar%nelements, ipar%ndata_loc(1), myrank)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_aux(ipar%nelements, ipar%ndata_loc(2), myrank)
+  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_aux(ipar%nelements_total, ipar%ndata_loc(1), myrank)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_aux(ipar%nelements_total, ipar%ndata_loc(2), myrank)
 
   !-------------------------------------------------------------------------------------------------------
   if (gpar%sensit_read == 0) then
