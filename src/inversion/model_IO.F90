@@ -242,17 +242,11 @@ end subroutine model_read_bound_constraints
 !======================================================================================================
 ! Write the model snapshots for visualization.
 !======================================================================================================
-subroutine model_write(model, name_prefix, gather_full_model, write_voxet, myrank, nbproc)
+subroutine model_write(model, name_prefix, write_voxet, myrank)
   class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: name_prefix
-  logical, intent(in) :: gather_full_model, write_voxet
-  integer, intent(in) :: myrank, nbproc
-
-  ! Note: model_write function uses values from val_full array.
-
-  if (gather_full_model) then
-    call get_full_array(model%val, model%nelements, model%val_full, .false., myrank, nbproc)
-  endif
+  logical, intent(in) :: write_voxet
+  integer, intent(in) :: myrank
 
   ! Write the model in vtk format.
   call model_write_paraview(model, name_prefix, myrank)
@@ -287,7 +281,7 @@ subroutine model_write_voxels_format(model, file_name, myrank)
     write(27, *) model%nelements_total
 
     ! Write the full model array.
-    write(27, *) model%val_full
+    write(27, *) model%val
 
     close(27)
   endif
@@ -319,7 +313,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
     ! In this format each cell has constant value, while in the structured grid case the values get smoothed between the cell centers.
     ! But this format needs to allocate ~6 times more memory, and the output file has much bigger size.
     filename = trim(name_prefix)//"model3D_full_lego.vtk"
-    call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val_full, &
+    call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val, &
                                          model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                          model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                          model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
@@ -329,7 +323,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
 
   ! Write the full model using structured grid.
   filename = trim(name_prefix)//"model3D_full.vtk"
-  call visualisation_paraview_struct_grid(filename, myrank, model%nelements_total, model%val_full, &
+  call visualisation_paraview_struct_grid(filename, myrank, model%nelements_total, model%val, &
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
@@ -338,7 +332,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
 
   ! Write the x-profile of the model.
   filename = trim(name_prefix)//"model3D_half_x.vtk"
-  call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val_full, &
+  call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val, &
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
@@ -347,7 +341,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
 
   ! Write the y-profile of the model.
   filename = trim(name_prefix)//"model3D_half_y.vtk"
-  call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val_full, &
+  call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val, &
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
@@ -356,7 +350,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
 
   ! Write the z-profile of the model.
   filename = trim(name_prefix)//"model3D_half_z.vtk"
-  call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val_full, &
+  call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val, &
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &

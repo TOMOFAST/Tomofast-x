@@ -55,7 +55,7 @@ module model
 
     ! Total number of model parameters.
     integer :: nelements_total
-    ! Local number of model parameters (on current CPU).
+    ! Local number of model parameters.
     integer :: nelements
 
     ! Flag to check if the full model has been updated (to the state of the local model).
@@ -106,9 +106,11 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
 
   ierr = 0
 
+  ! TODO: remove val_full-array.
   allocate(this%val_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%val(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%val_prior(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+
+  allocate(this%val(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val_prior(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_initialize!", myrank, ierr)
 
