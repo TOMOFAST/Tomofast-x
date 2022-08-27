@@ -20,11 +20,9 @@
 module weights_gravmag
 
   use global_typedefs
-  use parameters_gravmag
-  use parameters_inversion
-  use inversion_arrays
-  use grid
   use mpi_tools, only: exit_MPI
+  use parameters_gravmag
+  use grid
   use data_gravmag
   use parallel_tools
 
@@ -43,12 +41,13 @@ contains
 !===================================================================================
 ! Calculates the depth weight for sensitivity kernel.
 !===================================================================================
-subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
+subroutine calculate_depth_weight(par, column_weight, grid_full, data, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid_full
   integer, intent(in) :: myrank, nbproc
   type(t_data), intent(in) :: data
-  type(t_inversion_arrays), intent(inout) :: iarr
+
+  real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements)
 
   integer :: i, ierr
   integer :: nsmaller, p
@@ -72,7 +71,7 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
     do i = 1, par%nelements
       ! Full grid index.
       p = nsmaller + i
-      iarr%column_weight(i) = calc_depth_weight_pixel(grid_full, par%depth_weighting_power, par%Z0, p, myrank)
+      column_weight(i) = calc_depth_weight_pixel(grid_full, par%depth_weighting_power, par%Z0, p, myrank)
     enddo
 
   else if (par%depth_weighting_type == 2) then
@@ -91,7 +90,7 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
     call get_full_array(data%Z, par%ndata_loc, dataZ_full, .true., myrank, nbproc)
 
     ! Calculate distance weight.
-    call calc_distance_weight(par, grid_full, dataX_full, dataY_full, dataZ_full, iarr%column_weight, myrank, nbproc)
+    call calc_distance_weight(par, grid_full, dataX_full, dataY_full, dataZ_full, column_weight, myrank, nbproc)
 
     deallocate(dataX_full)
     deallocate(dataY_full)
@@ -108,11 +107,11 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
       ! Full grid index.
       p = nsmaller + i
 
-      iarr%column_weight(i) = iarr%column_weight(i) * sqrt(grid_full%get_cell_volume(p))
+      column_weight(i) = column_weight(i) * sqrt(grid_full%get_cell_volume(p))
   enddo
 
   ! Normalize the depth weight.
-  call normalize_depth_weight(iarr%column_weight, myrank, nbproc)
+  call normalize_depth_weight(column_weight, myrank, nbproc)
 
   !--------------------------------------------------------------------------------
   ! Calculate the matrix column weight.
@@ -124,8 +123,8 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   ! |  alpha I |
   !
   do i = 1, par%nelements
-    if (iarr%column_weight(i) /= 0.d0) then
-      iarr%column_weight(i) = 1.d0 / iarr%column_weight(i)
+    if (column_weight(i) /= 0.d0) then
+      column_weight(i) = 1.d0 / column_weight(i)
     else
       call exit_MPI("Zero damping weight! Exiting.", myrank, 0)
     endif
@@ -137,7 +136,8 @@ end subroutine calculate_depth_weight
 
 !===================================================================================================
 ! Calculates the distance weight.
-! The implementation is based on the Eq.(10) in https://www.eoas.ubc.ca/ubcgif/iag/sftwrdocs/grav3d/grav3d-manual.pdf
+! The implementation is based on the Eq.(19) in [1].
+! [1] Li and Oldenburg, GEOPHYSICS, VOL. 65, NO. 2 (MARCH-APRIL 2000); P. 540–552.
 !===================================================================================================
 subroutine calc_distance_weight(par, grid_full, dataX, dataY, dataZ, column_weight, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
@@ -246,16 +246,16 @@ end function calc_depth_weight_pixel
 !===================================================================================
 ! Normalizes the depth weight.
 !===================================================================================
-subroutine normalize_depth_weight(damping_weight, myrank, nbproc)
+subroutine normalize_depth_weight(column_weight, myrank, nbproc)
   integer, intent(in) :: myrank, nbproc
 
-  real(kind=CUSTOM_REAL), intent(inout) :: damping_weight(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: column_weight(:)
 
   integer :: ierr
   real(kind=CUSTOM_REAL) :: norm, norm_glob
 
   ! Find the maximum value in the depth weight array.
-  norm = maxval(damping_weight)
+  norm = maxval(column_weight)
   if (nbproc > 1) then
     call mpi_allreduce(norm, norm_glob, 1, CUSTOM_MPI_TYPE, MPI_MAX, MPI_COMM_WORLD, ierr)
     norm = norm_glob
@@ -263,7 +263,7 @@ subroutine normalize_depth_weight(damping_weight, myrank, nbproc)
 
   if (norm /= 0) then
     ! Normalize.
-    damping_weight = damping_weight / norm
+    column_weight = column_weight / norm
   else
     call exit_MPI("Zero damping weight norm! Exiting.", myrank, 0)
   endif
