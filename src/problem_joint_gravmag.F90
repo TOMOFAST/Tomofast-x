@@ -228,9 +228,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     enddo
   endif
 
-  call MPI_Barrier(MPI_COMM_WORLD, ierr)
-  return
-
   !-------------------------------------------------------------------------------------------------------
   ! Calculate parameters for calculating the data using the big (joint inversion) parallel sparse matrix.
   call jinv%calculate_matrix_partitioning(ipar, line_start, line_end, param_shift)
@@ -238,10 +235,13 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   !-------------------------------------------------------------------------------------------------------
   ! Calculate the data from the read model.
   do i = 1, 2
-    if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
+    if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata_loc(i), jinv%matrix, &
       ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
-      line_start(i), param_shift(i), myrank, nbproc)
+      line_start(i), param_shift(i), myrank)
   enddo
+
+  call MPI_Barrier(MPI_COMM_WORLD, ierr)
+  return
 
 #ifndef SUPPRESS_OUTPUT
   ! Write data calculated from the model read.
@@ -310,9 +310,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the prior model.
     do i = 1, 2
-      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
+      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata_loc(i), jinv%matrix, &
         ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
-        line_start(i), param_shift(i), myrank, nbproc)
+        line_start(i), param_shift(i), myrank)
     enddo
 
 #ifndef SUPPRESS_OUTPUT
@@ -334,9 +334,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the starting model.
     do i = 1, 2
-      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
+      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata_loc(i), jinv%matrix, &
         ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
-        line_start(i), param_shift(i), myrank, nbproc)
+        line_start(i), param_shift(i), myrank)
     enddo
 
 #ifndef SUPPRESS_OUTPUT
