@@ -204,20 +204,20 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     endif
   enddo
 
-  call MPI_Barrier(MPI_COMM_WORLD, ierr)
-  stop
+  ! READING THE 'TRUE' MODEL (SYNTHETIC) -----------------------------------------------------------------
 
-  ! READING THE READ MODEL (SYNTHETIC) -----------------------------------------------------------------
-
-  ! Reading the read model - that is stored in the model grid file.
-  if (SOLVE_PROBLEM(1)) call model_read(model(1), gpar%model_files(1), myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call model_read(model(2), mpar%model_files(1), myrank, nbproc)
+  ! Reading the 'true' model - the one that is stored in the model grid file.
+  if (SOLVE_PROBLEM(1)) call model_read(model(1), gpar%model_files(1), myrank)
+  if (SOLVE_PROBLEM(2)) call model_read(model(2), mpar%model_files(1), myrank)
 
 #ifndef SUPPRESS_OUTPUT
   ! Write the model read to a file for Paraview visualization.
   if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_read_', .false., myrank)
   if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_read_', .false., myrank)
 #endif
+
+  call MPI_Barrier(MPI_COMM_WORLD, ierr)
+  return
 
   ! SETTING THE ADMM BOUNDS -----------------------------------------------------------------------------
 
@@ -292,9 +292,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     ! SETTING PRIOR MODEL FOR INVERSION -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) &
-      call set_model(model(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank, nbproc)
+      call set_model(model(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank)
     if (SOLVE_PROBLEM(2)) &
-      call set_model(model(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, myrank, nbproc)
+      call set_model(model(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, myrank)
 
     ! TODO: Read values directly to val_prior in set_model(), by setting the flag for the model type.
     ! Set the prior model.
@@ -322,8 +322,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 #endif
 
     ! SETTING STARTING MODEL FOR INVERSION -----------------------------------------------------
-    if (SOLVE_PROBLEM(1)) call set_model(model(1), gpar%start_model_type, gpar%start_model_val, gpar%model_files(3), myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call set_model(model(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) call set_model(model(1), gpar%start_model_type, gpar%start_model_val, gpar%model_files(3), myrank)
+    if (SOLVE_PROBLEM(2)) call set_model(model(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), myrank)
 
 #ifndef SUPPRESS_OUTPUT
     ! Write the starting model to a file for visualization.
@@ -542,8 +542,8 @@ end subroutine calculate_model_costs
 !========================================================================================
 ! Sets the model values: via constant from Parfile or via reading it from a file.
 !========================================================================================
-subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
-  integer, intent(in) :: model_type, myrank, nbproc
+subroutine set_model(model, model_type, model_val, model_file, myrank)
+  integer, intent(in) :: model_type, myrank
   real(kind=CUSTOM_REAL), intent(in) :: model_val
   character(len=256), intent(in) :: model_file
   type(t_model), intent(inout) :: model
@@ -553,11 +553,9 @@ subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
     model%val_full = model_val
     model%val = model_val
 
-    model%full_model_updated = .true.
-
   else if (model_type == 2) then
     ! Reading from file.
-    call model_read(model, model_file, myrank, nbproc)
+    call model_read(model, model_file, myrank)
 
   else
     call exit_MPI("Unknown model type in set_model!", myrank, model_type)

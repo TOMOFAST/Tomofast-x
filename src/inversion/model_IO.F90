@@ -46,10 +46,10 @@ contains
 !================================================================================================
 ! Read the model from a file.
 !================================================================================================
-subroutine model_read(model, file_name, myrank, nbproc)
+subroutine model_read(model, file_name, myrank)
   class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: file_name
-  integer, intent(in) :: myrank, nbproc
+  integer, intent(in) :: myrank
 
   integer :: i, nelements_read
   integer :: ierr
@@ -81,7 +81,7 @@ subroutine model_read(model, file_name, myrank, nbproc)
       read(10, *, iostat=ierr) dummy, dummy, dummy, dummy, dummy, dummy, val, i_, j_, k_
 
       ! Set the model value.
-      model%val_full(i) = val
+      model%val(i) = val
 
       if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_voxels!", myrank, ierr)
     enddo
@@ -89,14 +89,9 @@ subroutine model_read(model, file_name, myrank, nbproc)
   endif
 
   ! Broadcast the full model to all CPUs.
-  call MPI_Bcast(model%val_full, model%nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(model%val, model%nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("Error in MPI_Bcast in model_read!", myrank, ierr)
-
-  ! Distribute the model values among CPUs.
-  call model%distribute(myrank, nbproc)
-
-  model%full_model_updated = .true.
 
 end subroutine model_read
 

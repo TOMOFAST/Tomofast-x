@@ -123,9 +123,6 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
   type(t_vector) :: gradient_fwd
   !type(t_vector) :: gradient_bwd
 
-  ! Update the full model (if required).
-  if (.not. model%full_model_updated) call model%update_full(myrank, nbproc)
-
   ! Number of parameters on ranks smaller than current one.
   nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
 
@@ -216,8 +213,6 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
 
   ! Calculate the cost.
   this%cost = sum(b_RHS(row_beg:row_end)**2)
-
-  !if (myrank == 0) print *, 'Damping_gradient added lines: ', row_end - row_beg + 1
 
 end subroutine damping_gradient_add
 

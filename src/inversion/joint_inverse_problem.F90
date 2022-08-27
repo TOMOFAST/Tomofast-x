@@ -501,10 +501,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
     ! Parallel version.
       nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
 
-      ! Note: use 'model%val_full' for storage here, as we overwrite it later anyway.
-      model(1)%full_model_updated = .false.
-      model(2)%full_model_updated = .false.
-
       if (SOLVE_PROBLEM(1)) then
         call get_full_array(delta_model(1:par%nelements), par%nelements, model(1)%val_full, .true., myrank, nbproc)
         call iHaar3D(model(1)%val_full, par%nx, par%ny, par%nz)

@@ -58,16 +58,11 @@ module model
     ! Local number of model parameters.
     integer :: nelements
 
-    ! Flag to check if the full model has been updated (to the state of the local model).
-    logical :: full_model_updated
-
   contains
     private
 
     procedure, public, pass :: initialize => model_initialize
     procedure, public, pass :: allocate_bound_arrays => model_allocate_bound_arrays
-
-    procedure, public, pass :: distribute => model_distribute
 
     procedure, public, pass :: get_Xmin => model_get_Xmin
     procedure, public, pass :: get_Xmax => model_get_Xmax
@@ -75,7 +70,6 @@ module model
     procedure, public, pass :: get_Ymax => model_get_Ymax
 
     procedure, public, pass :: update => model_update
-    procedure, public, pass :: update_full => model_update_full
     procedure, public, pass :: calculate_data => model_calculate_data
 
   end type t_model
@@ -101,8 +95,6 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
 
   this%nelements = nelements
   this%nelements_total = get_total_number_elements(nelements, myrank, nbproc)
-
-  this%full_model_updated = .true.
 
   ierr = 0
 
@@ -135,29 +127,6 @@ subroutine model_allocate_bound_arrays(this, nlithos, myrank)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_allocate_bound_arrays!", myrank, ierr)
 
 end subroutine model_allocate_bound_arrays
-
-!=================================================================================
-! Distribute the grid and the prior model among CPUs.
-!=================================================================================
-subroutine model_distribute(this, myrank, nbproc)
-  class(t_model), intent(inout) :: this
-  integer, intent(in) :: myrank, nbproc
-
-  ! Displacement for mpi_scatterv.
-  integer :: displs(nbproc)
-  ! The number of elements on every CPU for mpi_scatterv.
-  integer :: nelements_at_cpu(nbproc)
-  integer :: ierr
-
-  ! Partitioning for MPI_Scatterv.
-  call get_mpi_partitioning(this%nelements, displs, nelements_at_cpu, myrank, nbproc)
-
-  call MPI_Scatterv(this%val_full, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
-                    this%val, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-  if (ierr /= 0) call exit_MPI("Error in MPI_Scatterv in model_distribute!", myrank, ierr)
-
-end subroutine model_distribute
 
 !================================================================================================
 ! Get the minimum X-coordinate of the model grid.
@@ -204,30 +173,11 @@ end function model_get_Ymax
 !======================================================================================================
 subroutine model_update(this, delta_model)
   class(t_model), intent(inout) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: delta_model(this%nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: delta_model(this%nelements_total)
 
-  integer :: i
-
-  do i = 1, this%nelements
-    this%val(i) = this%val(i) + delta_model(i)
-  enddo
-
-  this%full_model_updated = .false.
+  this%val = this%val + delta_model
 
 end subroutine model_update
-
-!======================================================================================================
-! Update the full model from its local parts (split between CPUs).
-!======================================================================================================
-subroutine model_update_full(this, myrank, nbproc)
-  class(t_model), intent(inout) :: this
-  integer, intent(in) :: myrank, nbproc
-
-  call get_full_array(this%val, this%nelements, this%val_full, .true., myrank, nbproc)
-
-  this%full_model_updated = .true.
-
-end subroutine model_update_full
 
 !======================================================================================================
 ! Calculate the linear data using the sensitivity kernel (S) and model (m) as d = S * m.
