@@ -470,7 +470,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
   close(78)
 
-  call sensit_matrix%finalize_part()
+  call sensit_matrix%finalize_part(myrank)
 
   !---------------------------------------------------------------------------------------------
   ! Calculate the read kernel compression rate.

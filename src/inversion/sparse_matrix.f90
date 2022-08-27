@@ -241,10 +241,13 @@ end subroutine sparse_matrix_finalize
 ! Stores the index of last element (for the not fully built sparse matrix).
 ! To be able to calculate the forward data using the big joint matrix.
 !============================================================================
-pure subroutine sparse_matrix_finalize_part(this)
+subroutine sparse_matrix_finalize_part(this, myrank)
   class(t_sparse_matrix), intent(inout) :: this
+  integer, intent(in) :: myrank
 
   this%ijl(this%nl_current + 1) = this%nel + 1
+
+  call this%validate(myrank)
 
 end subroutine sparse_matrix_finalize_part
 

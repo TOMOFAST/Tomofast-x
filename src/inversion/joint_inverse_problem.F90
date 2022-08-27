@@ -164,8 +164,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     print *, 'add_damping1 =', this%add_damping(1)
     print *, 'add_damping2 =', this%add_damping(2)
     print *, 'add_cross_grad, add_clustering =', this%add_cross_grad, this%add_clustering
-    print *, 'myrank, ndata1, nelements1 =', myrank, par%ndata(1), par%nelements
-    print *, 'myrank, ndata2, nelements2 =', myrank, par%ndata(2), par%nelements
+    print *, 'myrank, ndata1, nelements1 =', myrank, par%ndata_loc(1), par%nelements_total
+    print *, 'myrank, ndata2, nelements2 =', myrank, par%ndata_loc(2), par%nelements_total
   endif
 
   if (this%add_cross_grad) then
@@ -188,8 +188,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   this%ndata_lines = 0
   do i = 1, 2
     if (par%problem_weight(i) /= 0.d0) then
-      nl = nl + par%ndata(i)
-      this%ndata_lines = this%ndata_lines + par%ndata(i)
+      nl = nl + par%ndata_loc(i)
+      this%ndata_lines = this%ndata_lines + par%ndata_loc(i)
     endif
   enddo
 
@@ -237,7 +237,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   !-------------------------------------------------------------------------------------------
   ! MAIN MATRIX MEMORY ALLOCATION.
   !-------------------------------------------------------------------------------------------
-  call this%matrix%initialize(nl, 2 * par%nelements, nnz, myrank)
+  call this%matrix%initialize(nl, 2 * par%nelements_total, nnz, myrank)
 
   ierr = 0
 
