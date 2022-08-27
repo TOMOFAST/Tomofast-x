@@ -36,6 +36,7 @@ module weights_gravmag
 
   private :: normalize_depth_weight
   private :: calc_depth_weight_pixel
+  private :: calc_distance_weight
 
 contains
 
@@ -49,13 +50,7 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   type(t_data), intent(in) :: data
   type(t_inversion_arrays), intent(inout) :: iarr
 
-  integer :: i, j, ierr
-  integer :: ii, jj, kk, ind
-  real(kind=CUSTOM_REAL) :: distX_sq(2), distY_sq(2), distZ_sq(2)
-  real(kind=CUSTOM_REAL) :: dhx, dhy, dhz, dfactor
-  real(kind=CUSTOM_REAL) :: Rij(8), R0
-  real(kind=CUSTOM_REAL) :: dVj
-  real(kind=CUSTOM_REAL) :: integral, wr
+  integer :: i, ierr
   integer :: nsmaller, p
 
   real(kind=CUSTOM_REAL), allocatable :: dataX_full(:)
@@ -64,14 +59,14 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
 
   if (myrank == 0) print *, 'Calculating the depth weight, type = ', par%depth_weighting_type
 
-  ! The number of elements on CPUs with rank smaller than myrank.
-  nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
-
   !--------------------------------------------------------------------------------
   ! Calculate the normalized depth weight.
   !--------------------------------------------------------------------------------
   if (par%depth_weighting_type == 1) then
   ! Depth weighting.
+
+    ! The number of elements on CPUs with rank smaller than myrank.
+    nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
 
     ! Use empirical function 1/(z+z0)**(beta/2).
     do i = 1, par%nelements
@@ -82,7 +77,6 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
 
   else if (par%depth_weighting_type == 2) then
   ! Distance weighting.
-  ! The implementation is based on the Eq.(10) in https://www.eoas.ubc.ca/ubcgif/iag/sftwrdocs/grav3d/grav3d-manual.pdf
 
     ! Allocate the full data grid.
     allocate(dataX_full(par%ndata), source=0._CUSTOM_REAL, stat=ierr)
@@ -96,64 +90,8 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
     call get_full_array(data%Y, par%ndata_loc, dataY_full, .true., myrank, nbproc)
     call get_full_array(data%Z, par%ndata_loc, dataZ_full, .true., myrank, nbproc)
 
-    !------------------------------------------------------------------------------
-    ! Main calculations.
-    !------------------------------------------------------------------------------
-    ! A small constant for integral validity.
-    R0 = 0.1d0 ! 0.1 meter
-
-    ! A factor to move the cell corner points inside a cell.
-    dfactor = 0.25d0
-
-    do i = 1, par%nelements
-      ! Full grid index.
-      p = nsmaller + i
-
-      ! Cell colume.
-      dVj = grid_full%get_cell_volume(p)
-
-      ! Shifts to make the integral points to lie inside the cell volume.
-      dhx = dfactor * abs(grid_full%X2(p) - grid_full%X1(p))
-      dhy = dfactor * abs(grid_full%Y2(p) - grid_full%Y1(p))
-      dhz = dfactor * abs(grid_full%Z2(p) - grid_full%Z1(p))
-
-      wr = 0.d0
-
-      do j = 1, par%ndata
-
-        ! The squared 1D distances along each cell dimension.
-        distX_sq(1) = (grid_full%X1(p) + dhx - dataX_full(j))**2.d0
-        distY_sq(1) = (grid_full%Y1(p) + dhy - dataY_full(j))**2.d0
-        distZ_sq(1) = (grid_full%Z1(p) + dhz - dataZ_full(j))**2.d0
-
-        distX_sq(2) = (grid_full%X2(p) - dhx - dataX_full(j))**2.d0
-        distY_sq(2) = (grid_full%Y2(p) - dhy - dataY_full(j))**2.d0
-        distZ_sq(2) = (grid_full%Z2(p) - dhz - dataZ_full(j))**2.d0
-
-        ! Calculate the distance from 8 points inside a cell to the data location.
-        ind = 0
-        do ii = 1, 2
-          do jj = 1, 2
-            do kk = 1, 2
-              ind = ind + 1
-              Rij(ind) = sqrt(distX_sq(ii) + distY_sq(jj) + distZ_sq(kk))
-            enddo
-          enddo
-        enddo
-
-        integral = 0.d0
-        do ind = 1, 8
-          integral = integral + 1.d0 / (Rij(ind) + R0)**par%depth_weighting_power
-        enddo
-        integral = integral * dVj / 8.d0
-
-        wr = wr + integral**2.d0
-
-      enddo ! data loop
-
-      iarr%column_weight(i) = (1.d0 / sqrt(dVj)) * wr**(1.d0 / 4.d0)
-    enddo ! cells loop
-    !------------------------------------------------------------------------------------
+    ! Calculate distance weight.
+    call calc_distance_weight(par, grid_full, dataX_full, dataY_full, dataZ_full, iarr%column_weight, myrank, nbproc)
 
     deallocate(dataX_full)
     deallocate(dataY_full)
@@ -196,6 +134,89 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   if (myrank == 0) print *, 'Finished calculating the depth weight.'
 
 end subroutine calculate_depth_weight
+
+!===================================================================================================
+! Calculates the distance weight.
+! The implementation is based on the Eq.(10) in https://www.eoas.ubc.ca/ubcgif/iag/sftwrdocs/grav3d/grav3d-manual.pdf
+!===================================================================================================
+subroutine calc_distance_weight(par, grid_full, dataX, dataY, dataZ, column_weight, myrank, nbproc)
+  class(t_parameters_base), intent(in) :: par
+  type(t_grid), intent(in) :: grid_full
+  real(kind=CUSTOM_REAL) :: dataX(par%ndata)
+  real(kind=CUSTOM_REAL) :: dataY(par%ndata)
+  real(kind=CUSTOM_REAL) :: dataZ(par%ndata)
+  integer, intent(in) :: myrank, nbproc
+
+  real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements)
+
+  integer :: i, j
+  integer :: ii, jj, kk, ind
+  real(kind=CUSTOM_REAL) :: distX_sq(2), distY_sq(2), distZ_sq(2)
+  real(kind=CUSTOM_REAL) :: dhx, dhy, dhz, dfactor
+  real(kind=CUSTOM_REAL) :: Rij(8), R0
+  real(kind=CUSTOM_REAL) :: dVj
+  real(kind=CUSTOM_REAL) :: integral, wr
+  integer :: nsmaller, p
+
+  ! The number of elements on CPUs with rank smaller than myrank.
+  nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
+
+  ! A small constant for integral validity.
+  R0 = 0.1d0 ! 0.1 meter
+
+  ! A factor to move the cell corner points inside a cell.
+  dfactor = 0.25d0
+
+  do i = 1, par%nelements
+    ! Full grid index.
+    p = nsmaller + i
+
+    ! Cell colume.
+    dVj = grid_full%get_cell_volume(p)
+
+    ! Shifts to make the integral points to lie inside the cell volume.
+    dhx = dfactor * abs(grid_full%X2(p) - grid_full%X1(p))
+    dhy = dfactor * abs(grid_full%Y2(p) - grid_full%Y1(p))
+    dhz = dfactor * abs(grid_full%Z2(p) - grid_full%Z1(p))
+
+    wr = 0.d0
+
+    do j = 1, par%ndata
+
+      ! The squared 1D distances along each cell dimension.
+      distX_sq(1) = (grid_full%X1(p) + dhx - dataX(j))**2.d0
+      distY_sq(1) = (grid_full%Y1(p) + dhy - dataY(j))**2.d0
+      distZ_sq(1) = (grid_full%Z1(p) + dhz - dataZ(j))**2.d0
+
+      distX_sq(2) = (grid_full%X2(p) - dhx - dataX(j))**2.d0
+      distY_sq(2) = (grid_full%Y2(p) - dhy - dataY(j))**2.d0
+      distZ_sq(2) = (grid_full%Z2(p) - dhz - dataZ(j))**2.d0
+
+      ! Calculate the distance from 8 points inside a cell to the data location.
+      ind = 0
+      do ii = 1, 2
+        do jj = 1, 2
+          do kk = 1, 2
+            ind = ind + 1
+            Rij(ind) = sqrt(distX_sq(ii) + distY_sq(jj) + distZ_sq(kk))
+          enddo
+        enddo
+      enddo
+
+      integral = 0.d0
+      do ind = 1, 8
+        integral = integral + 1.d0 / (Rij(ind) + R0)**par%depth_weighting_power
+      enddo
+      integral = integral * dVj / 8.d0
+
+      wr = wr + integral**2.d0
+
+    enddo ! data loop
+
+    column_weight(i) = (1.d0 / sqrt(dVj)) * wr**(1.d0 / 4.d0)
+  enddo ! cells loop
+
+end subroutine calc_distance_weight
 
 !===================================================================================
 ! Calculates the depth weight for a pixel using empirical function.
