@@ -164,10 +164,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   call MPI_Barrier(MPI_COMM_WORLD, ierr)
   stop
 
-  ! Reallocate the inversion arrays using the updated nelements value (for the nnz load balancing).
-  if (SOLVE_PROBLEM(1)) call iarr(1)%reallocate_aux(ipar%nelements, ipar%ndata(1), myrank)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%reallocate_aux(ipar%nelements, ipar%ndata(2), myrank)
-
   !-------------------------------------------------------------------------------------------------------
   ! Deallocate the model grid.
   ! Keep the grid only on rank 0 for writing the models.

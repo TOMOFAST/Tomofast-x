@@ -48,7 +48,6 @@ module inversion_arrays
     private
 
     procedure, public, pass :: allocate_aux => inversion_arrays_allocate_aux
-    procedure, public, pass :: reallocate_aux => inversion_arrays_reallocate_aux
 
     procedure, public, pass :: allocate_sensit => inversion_arrays_allocate_sensit
 
@@ -79,38 +78,6 @@ subroutine inversion_arrays_allocate_aux(this, nelements, ndata, myrank)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in inversion_arrays_allocate_aux!", myrank, ierr)
 
 end subroutine inversion_arrays_allocate_aux
-
-!============================================================================================
-! Reallocates the auxiliarily inversion arrays using new dimensions.
-! Note: it reallocates only the arrays which dimenion has changed.
-!============================================================================================
-subroutine inversion_arrays_reallocate_aux(this, nelements, ndata, myrank)
-  class(t_inversion_arrays), intent(inout) :: this
-  integer, intent(in) :: nelements, ndata
-  integer, intent(in) :: myrank
-
-  integer :: ierr
-
-  if (myrank == 0) print *, "Reallocating auxiliarily inversion arrays..."
-
-  if (ndata <= 0 .or. nelements <= 0) &
-    call exit_MPI("Wrong dimensions in inversion_arrays_allocate_aux!", myrank, 0)
-
-  ierr = 0
-
-  if (size(this%residuals) /= ndata) then
-    deallocate(this%residuals)
-    allocate(this%residuals(ndata), source=0._CUSTOM_REAL, stat=ierr)
-  endif
-
-  if (size(this%column_weight) /= nelements) then
-    deallocate(this%column_weight)
-    allocate(this%column_weight(nelements), source=1._CUSTOM_REAL, stat=ierr)
-  endif
-
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in inversion_arrays_reallocate_aux!", myrank, ierr)
-
-end subroutine inversion_arrays_reallocate_aux
 
 !====================================================================================================
 ! Allocates memory for the ECT sensitivity kernel (not used for grav/mag).
