@@ -118,6 +118,9 @@ subroutine data_read_points_format(this, file_name, myrank, nbproc)
     if (i > ndata_smaller .and. i <= ndata_smaller + this%ndata_loc) then
       i_loc = i - ndata_smaller
       read(10, *, end=20, err=11) this%X(i_loc), this%Y(i_loc), this%Z(i_loc), this%val_meas(i_loc)
+    else
+      ! Skip this data on current rank.
+      read(10, *)
     endif
   enddo
 
