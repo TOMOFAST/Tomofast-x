@@ -146,9 +146,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(1)) call calculate_depth_weight(gpar, iarr(1)%column_weight, model(1)%grid_full, data(1), myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call calculate_depth_weight(mpar, iarr(2)%column_weight, model(2)%grid_full, data(2), myrank, nbproc)
 
-    call MPI_Barrier(MPI_COMM_WORLD, ierr)
-    stop
-
     ! Precondition the column weights (to balance the columns in joint inversion).
     if (SOLVE_PROBLEM(1)) iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight
     if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
@@ -164,6 +161,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(1)) call read_sensitivity_metadata(gpar, nnz(1), nelements_new, 1, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call read_sensitivity_metadata(mpar, nnz(2), nelements_new, 2, myrank, nbproc)
   endif
+
+  call MPI_Barrier(MPI_COMM_WORLD, ierr)
+  stop
 
   ! TODO: Need to do something about nelements_new for cross-gradient case, as there will be different values for grav and mag,
   ! but the model should have the same partitioning for both grav and mag.

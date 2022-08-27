@@ -104,9 +104,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(par%nelements)
   integer, intent(in) :: myrank, nbproc
 
-  ! The number of non-zero elements (on current CPU) in the sensitivity kernel parallelized by model.
-  ! We need this number for reading the sensitivity later from files, for invere problem.
-  ! As the inverse problem is parallelized by model, and calculations here are parallelized by data.
   integer(kind=8), intent(out) :: nnz
   integer, intent(out) :: nelements_new
 
@@ -115,7 +112,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   integer :: nelements_total, nel_compressed
   integer(kind=8) :: nnz_data
   integer :: problem_type
-  integer :: idata, ndata_loc, ndata_smaller
   character(len=256) :: filename, filename_full
   real(kind=CUSTOM_REAL) :: comp_rate, comp_error
   integer(kind=8) :: nnz_total
@@ -212,29 +208,22 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   call get_full_array(column_weight, par%nelements, column_weight_full, .true., myrank, nbproc)
 
-  ndata_loc = calculate_nelements_at_cpu(par%ndata, myrank, nbproc)
-  ndata_smaller = get_nsmaller(ndata_loc, myrank, nbproc)
-
   ! File header.
-  write(77) ndata_loc, par%ndata, nelements_total, myrank, nbproc
+  write(77) par%ndata_loc, par%ndata, nelements_total, myrank, nbproc
 
   nnz_data = 0
   cost_full_loc = 0.d0
   cost_compressed_loc = 0.d0
 
   ! Loop over the local data lines.
-  do i = 1, ndata_loc
-    ! Global data index.
-    idata = ndata_smaller + i
-
+  do i = 1, par%ndata_loc
     if (problem_type == 1) then
     ! Gravity problem.
-      call graviprism_z(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
-                        sensit_line_full, myrank)
+      call graviprism_z(nelements_total, grid_full, data%X(i), data%Y(i), data%Z(i), sensit_line_full, myrank)
 
     else if (problem_type == 2) then
     ! Magnetic problem.
-      call mag_field%magprism(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), sensit_line_full)
+      call mag_field%magprism(nelements_total, grid_full, data%X(i), data%Y(i), data%Z(i), sensit_line_full)
     endif
 
     ! Applying the depth weight.
@@ -300,15 +289,15 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     endif
 
     ! Write the sensitivity line to file.
-    write(77) idata, nel
+    write(77) i, nel
     if (nel > 0) then
       write(77) sensit_columns(1:nel)
       write(77) sensit_compressed(1:nel)
     endif
 
     ! Print the progress.
-    if (myrank == 0 .and. mod(i, max(int(0.1d0 * ndata_loc), 1)) == 0) then
-      print *, 'Percent completed: ', int(dble(i) / dble(ndata_loc) * 100.d0)
+    if (myrank == 0 .and. mod(i, max(int(0.1d0 * par%ndata_loc), 1)) == 0) then
+      print *, 'Percent completed: ', int(dble(i) / dble(par%ndata_loc) * 100.d0)
     endif
 
   enddo ! data loop
