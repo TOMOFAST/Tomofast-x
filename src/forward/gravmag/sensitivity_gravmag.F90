@@ -45,7 +45,6 @@ module sensitivity_gravmag
 
   private :: apply_column_weight
   private :: test_grid_cell_order
-  private :: get_load_balancing_nelements
 
   character(len=4) :: SUFFIX(2) = ["grav", "magn"]
 
@@ -97,7 +96,7 @@ end function test_grid_cell_order
 !===============================================================================================================
 ! Calculates the sensitivity kernel (parallelized by data) and writes it to files.
 !===============================================================================================================
-subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, nelements_new, myrank, nbproc)
+subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid_full
   type(t_data), intent(in) :: data
@@ -105,7 +104,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   integer, intent(in) :: myrank, nbproc
 
   integer(kind=8), intent(out) :: nnz
-  integer, intent(out) :: nelements_new
 
   type(t_magnetic_field) :: mag_field
   integer :: i, p, nel, ierr
@@ -118,8 +116,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   real(kind=CUSTOM_REAL) :: threshold
   character(len=256) :: msg
 
-  integer :: nelements_at_cpu_new(nbproc)
-  integer(kind=8) :: nnz_at_cpu_new(nbproc)
+  integer(kind=8) :: nnz_at_cpu(nbproc)
 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full(:)
@@ -128,9 +125,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
   real(kind=MATRIX_PRECISION), allocatable :: sensit_compressed(:)
-
-  ! To calculate the partitioning for balanced memory loading among CPUs.
-  integer(kind=8), allocatable :: sensit_nnz(:)
 
   real(kind=CUSTOM_REAL) :: cost_full, cost_compressed
   real(kind=CUSTOM_REAL) :: cost_full_loc, cost_compressed_loc
@@ -199,8 +193,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   allocate(sensit_columns(nel_compressed), source=0, stat=ierr)
   allocate(sensit_compressed(nel_compressed), source=0._MATRIX_PRECISION, stat=ierr)
 
-  allocate(sensit_nnz(nelements_total), source=int(0, 8), stat=ierr)
-
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
@@ -258,8 +250,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
           nel = nel + 1
           sensit_columns(nel) = p
           sensit_compressed(nel) = real(sensit_line_full(p), MATRIX_PRECISION)
-
-          sensit_nnz(p) = sensit_nnz(p) + 1
         endif
       enddo
 
@@ -276,7 +266,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
       sensit_compressed = real(sensit_line_full, MATRIX_PRECISION)
       do p = 1, nelements_total
         sensit_columns(p) = p
-        sensit_nnz(p) = sensit_nnz(p) + 1
       enddo
     endif
 
@@ -304,8 +293,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   close(77)
 
-  call mpi_allreduce(MPI_IN_PLACE, sensit_nnz, nelements_total, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
-
   !---------------------------------------------------------------------------------------------
   ! Calculate the kernel compression rate.
   !---------------------------------------------------------------------------------------------
@@ -329,21 +316,10 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   if (myrank == 0) print *, 'COMPRESSION ERROR = ', comp_error
 
   !---------------------------------------------------------------------------------------------
-  ! Perform the nnz load balancing among CPUs.
-  !---------------------------------------------------------------------------------------------
-  call get_load_balancing_nelements(nelements_total, sensit_nnz, nnz_total, &
-                                    nnz_at_cpu_new, nelements_at_cpu_new, myrank, nbproc)
-
-  if (myrank == 0) then
-    print *, 'nnz_at_cpu_new: ', nnz_at_cpu_new
-    print *, 'nelements_at_cpu_new: ', nelements_at_cpu_new
-  endif
-
-  nelements_new = nelements_at_cpu_new(myrank + 1)
-
-  !---------------------------------------------------------------------------------------------
   ! Write the metadata file, with nnz info for re-reading sensitivity from files.
   !---------------------------------------------------------------------------------------------
+  call MPI_Allgather(nnz_data, 1, MPI_INTEGER8, nnz_at_cpu, 1, MPI_INTEGER8, MPI_COMM_WORLD, ierr)
+
   if (myrank == 0) then
     filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_meta.dat"
     filename_full = trim(path_output)//"/SENSIT/"//filename
@@ -353,8 +329,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     open(77, file=trim(filename_full), form='formatted', status='replace', action='write')
 
     write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, MATRIX_PRECISION, comp_error
-    write(77, *) nnz_at_cpu_new
-    write(77, *) nelements_at_cpu_new
+    write(77, *) nnz_at_cpu
 
     close(77)
   endif
@@ -378,7 +353,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   !---------------------------------------------------------------------------------------------
   ! Return the nnz for the current CPU.
-  nnz = nnz_at_cpu_new(myrank + 1)
+  nnz = nnz_data
 
   !---------------------------------------------------------------------------------------------
   deallocate(sensit_line_full)
@@ -386,55 +361,10 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   deallocate(column_weight_full)
   deallocate(sensit_columns)
   deallocate(sensit_compressed)
-  deallocate(sensit_nnz)
 
   if (myrank == 0) print *, 'Finished calculating the sensitivity kernel.'
 
 end subroutine calculate_and_write_sensit
-
-!=======================================================================================================================
-! Calculate new partitioning for the nnz and nelements at every CPU for the load balancing.
-! The load balancing aims to have the same number of nnz at every CPU, which require using different nelements at CPUs.
-!=======================================================================================================================
-subroutine get_load_balancing_nelements(nelements_total, sensit_nnz, nnz_total, &
-                                        nnz_at_cpu_new, nelements_at_cpu_new, myrank, nbproc)
-  integer, intent(in) :: nelements_total
-  integer(kind=8), intent(in) :: sensit_nnz(nelements_total)
-  integer(kind=8), intent(in) :: nnz_total
-  integer, intent(in) :: myrank, nbproc
-
-  integer, intent(out) :: nelements_at_cpu_new(nbproc)
-  integer(kind=8), intent(out) :: nnz_at_cpu_new(nbproc)
-
-  integer :: cpu, p
-  integer :: nelements_new
-  integer(kind=8) :: nnz_new
-
-  nnz_at_cpu_new(:) = nnz_total / int(nbproc, 8)
-  ! Last rank gets the remaining elements.
-  nnz_at_cpu_new(nbproc) = nnz_at_cpu_new(nbproc) + mod(nnz_total, int(nbproc, 8))
-
-  cpu = 1
-  nnz_new = 0
-  nelements_new = 0
-
-  do p = 1, nelements_total
-    nnz_new = nnz_new + sensit_nnz(p)
-    nelements_new = nelements_new + 1
-
-    if (nnz_new > nnz_at_cpu_new(cpu) .or. p == nelements_total) then
-      nnz_at_cpu_new(cpu) = nnz_new
-      nelements_at_cpu_new(cpu) = nelements_new
-      nnz_new = 0
-      nelements_new = 0
-      cpu = cpu + 1
-    endif
-  enddo
-
-  if (sum(nnz_at_cpu_new) /= nnz_total) then
-    call exit_MPI("Wrong nnz_at_cpu_new in get_load_balancing_nelements!", myrank, 0)
-  endif
-end subroutine get_load_balancing_nelements
 
 !==================================================================================================================
 ! Reads the sensitivity kernel from files,
@@ -624,16 +554,14 @@ end subroutine read_sensitivity_kernel
 !=============================================================================================
 ! Reads the sensitivity kernel metadata and defines the nnz for re-reading the kernel.
 !=============================================================================================
-subroutine read_sensitivity_metadata(par, nnz, nelements_new, problem_type, myrank, nbproc)
+subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   integer, intent(in) :: problem_type
   integer, intent(in) :: myrank, nbproc
 
   integer(kind=8), intent(out) :: nnz
-  integer, intent(out) :: nelements_new
 
   integer(kind=8) :: nnz_at_cpu(nbproc)
-  integer :: nelements_at_cpu_new(nbproc)
   integer :: ierr
   character(len=256) :: filename, filename_full
   character(len=256) :: msg
@@ -669,13 +597,11 @@ subroutine read_sensitivity_metadata(par, nnz, nelements_new, problem_type, myra
   endif
 
   read(78, *) nnz_at_cpu
-  read(78, *) nelements_at_cpu_new
 
   close(78)
 
   ! Return the parameters for the current rank.
   nnz = nnz_at_cpu(myrank + 1)
-  nelements_new = nelements_at_cpu_new(myrank + 1)
 
 end subroutine read_sensitivity_metadata
 
