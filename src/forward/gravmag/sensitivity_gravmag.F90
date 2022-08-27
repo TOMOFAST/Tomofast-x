@@ -368,7 +368,7 @@ end subroutine calculate_and_write_sensit
 
 !==================================================================================================================
 ! Reads the sensitivity kernel from files,
-! and stores it in the sparse matrix parallelized by model.
+! and stores it in the sparse matrix.
 !==================================================================================================================
 subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_weight, problem_type, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
@@ -389,17 +389,19 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
   real(kind=CUSTOM_REAL) :: comp_rate
   integer(kind=8) :: nnz_total
-  integer :: i, j, p, nsmaller, ierr
-  integer :: rank, nelements_total
+  integer :: i, j, nsmaller, ierr
+  integer :: nelements_total
   character(len=256) :: filename, filename_full
   character(len=256) :: msg
 
-  integer :: ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
-  integer :: idata, nel, idata_glob
+  integer :: ndata_loc_read, ndata_read, nelements_total_read, myrank_read, nbproc_read
+  integer :: idata, nel
   integer(kind=8) :: nnz
   integer :: column
   integer :: param_shift(2)
   integer :: nx_read, ny_read, nz_read, weight_type_read
+
+  if (myrank == 0) print *, 'Reading the sensitivity kernel.'
 
   param_shift(1) = 0
   param_shift(2) = par%nelements
@@ -409,8 +411,10 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   !---------------------------------------------------------------------------------------------
   nelements_total = par%nx * par%ny * par%nz
 
+  ! TODO: allocate the compressed number of elements.
   allocate(sensit_columns(nelements_total), source=0, stat=ierr)
   allocate(sensit_compressed(nelements_total), source=0._MATRIX_PRECISION, stat=ierr)
+
   allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in read_sensitivity_kernel!", myrank, ierr)
@@ -419,80 +423,63 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   ! Reading the sensitivity kernel files.
   !---------------------------------------------------------------------------------------------
 
-  ! The number of elements on CPUs with rank smaller than myrank.
-  nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
+  ! Form the file name (containing the current MPI rank).
+  filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(myrank))
 
-  idata_glob = 0
+  if (par%sensit_read /= 0) then
+    filename_full = trim(par%sensit_path)//filename
+  else
+    filename_full = trim(path_output)//"/SENSIT/"//filename
+  endif
+
+  open(78, file=trim(filename_full), status='old', access='stream', form='unformatted', action='read', &
+       iostat=ierr, iomsg=msg)
+
+  if (ierr /= 0) call exit_MPI("Error in opening the sensitivity file! path=" &
+                               //trim(filename_full)//", iomsg="//msg, myrank, ierr)
+
+  ! Reading the file header.
+  read(78) ndata_loc_read, ndata_read, nelements_total_read, myrank_read, nbproc_read
+
+  ! Consistency check.
+  if (ndata_loc_read /= par%ndata_loc .or. ndata_read /= par%ndata .or. nelements_total_read /= nelements_total &
+      .or. myrank_read /= myrank .or. nbproc_read /= nbproc) then
+    call exit_MPI("Wrong file header in read_sensitivity_kernel!", myrank, 0)
+  endif
+
   nnz = 0
 
-  ! Loop over the MPI ranks (as the sensitivity kernel is stored parallelezied by data in a separate file for each rank).
-  do rank = 0, nbproc - 1
-    ! Form the file name (containing the MPI rank).
-    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(rank))
+  ! Loop over the local data chunk within a file.
+  do i = 1, par%ndata_loc
 
-    if (par%sensit_read /= 0) then
-      filename_full = trim(par%sensit_path)//filename
-    else
-      filename_full = trim(path_output)//"/SENSIT/"//filename
+    ! Reading the data descriptor.
+    read(78) idata, nel
+
+    if (i /= idata) then
+      call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, idata)
     endif
 
-    if (myrank == 0) print *, 'Reading the sensitivity file ', trim(filename_full)
-
-    open(78, file=trim(filename_full), status='old', access='stream', form='unformatted', action='read', &
-         iostat=ierr, iomsg=msg)
-
-    if (ierr /= 0) call exit_MPI("Error in opening the sensitivity file! path=" &
-                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
-
-    ! Reading the file header.
-    read(78) ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
-
-    ! Consistency check.
-    if (ndata_read /= par%ndata .or. nelements_total_read /= nelements_total &
-        .or. myrank_read /= rank .or. nbproc_read /= nbproc) then
-      call exit_MPI("Wrong file header in read_sensitivity_kernel!", myrank, 0)
+    if (nel > 0) then
+      ! Reading the data.
+      read(78) sensit_columns(1:nel)
+      read(78) sensit_compressed(1:nel)
     endif
 
-    ! Loop over the local data chunk within a file.
-    do i = 1, ndata_loc
-      idata_glob = idata_glob + 1
+    ! Adding the matrix line.
+    call sensit_matrix%new_row(myrank)
 
-      ! Reading the data descriptor.
-      read(78) idata, nel
+    do j = 1, nel
+      ! The column index in a big (joint) parallel sparse matrix.
+      column = sensit_columns(j) + param_shift(problem_type)
 
-      ! Make sure the data is stored in the correct order.
-      if (idata /= idata_glob) then
-        call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, 0)
-      endif
+      ! Add element to the sparse matrix.
+      call sensit_matrix%add(sensit_compressed(j) * problem_weight, column, myrank)
+      nnz = nnz + 1
+    enddo
 
-      if (nel > 0) then
-        ! Reading the data.
-        read(78) sensit_columns(1:nel)
-        read(78) sensit_compressed(1:nel)
-      endif
+  enddo ! data loop
 
-      ! Adding the matrix line.
-      call sensit_matrix%new_row(myrank)
-
-      do j = 1, nel
-        p = sensit_columns(j)
-        if (p > nsmaller .and. p <= nsmaller + par%nelements) then
-        ! The element belongs to this rank. Adding it to the matrix.
-          ! The column index in a big (joint) parallel sparse matrix.
-          column = p - nsmaller + param_shift(problem_type)
-
-          ! Add element to the sparse matrix.
-          call sensit_matrix%add(sensit_compressed(j) * problem_weight, column, myrank)
-          nnz = nnz + 1
-        else
-          if (p > nsmaller + par%nelements) exit
-        endif
-      enddo
-
-    enddo ! data loop
-
-    close(78)
-  enddo
+  close(78)
 
   call sensit_matrix%finalize_part()
 
@@ -538,6 +525,9 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
       ndata_read /= par%ndata) then
     call exit_MPI("Sensitivity weight file dimensions do not match the Parfile!", myrank, 0)
   endif
+
+  ! The number of elements on CPUs with rank smaller than myrank.
+  nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
 
   ! Extract the column weight for the current rank.
   column_weight = column_weight_full(nsmaller + 1 : nsmaller + par%nelements)

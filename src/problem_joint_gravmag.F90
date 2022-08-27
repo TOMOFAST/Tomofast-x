@@ -161,9 +161,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call read_sensitivity_metadata(mpar, nnz(2), 2, myrank, nbproc)
   endif
 
-  call MPI_Barrier(MPI_COMM_WORLD, ierr)
-  stop
-
   !-------------------------------------------------------------------------------------------------------
   ! Deallocate the model grid.
   ! Keep the grid only on rank 0 for writing the models.
@@ -191,6 +188,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     call read_sensitivity_kernel(gpar, jinv%matrix, iarr(1)%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) &
     call read_sensitivity_kernel(mpar, jinv%matrix, iarr(2)%column_weight, ipar%problem_weight(2), 2, myrank, nbproc)
+
+  call MPI_Barrier(MPI_COMM_WORLD, ierr)
+  stop
 
   ! MODEL ALLOCATION -----------------------------------------------------------------------------------
 
