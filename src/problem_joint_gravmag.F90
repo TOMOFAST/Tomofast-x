@@ -356,9 +356,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
     enddo
 
-    call MPI_Barrier(MPI_COMM_WORLD, ierr)
-    return
-
 #ifndef SUPPRESS_OUTPUT
     ! Stores costs.
     if (myrank == 0) &
@@ -390,9 +387,12 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       ! Solve joint inverse problem.
       call jinv%solve(ipar, iarr, model, delta_model, delta_data, myrank, nbproc)
 
+      call MPI_Barrier(MPI_COMM_WORLD, ierr)
+      return
+
       ! Update the local models.
-      if (SOLVE_PROBLEM(1)) call model(1)%update(delta_model(1:ipar%nelements))
-      if (SOLVE_PROBLEM(2)) call model(2)%update(delta_model(ipar%nelements + 1:))
+      if (SOLVE_PROBLEM(1)) call model(1)%update(delta_model(1:ipar%nelements_total))
+      if (SOLVE_PROBLEM(2)) call model(2)%update(delta_model(ipar%nelements_total + 1:))
 
       ! Write intermediate models to file.
       if (ipar%write_model_niter > 0) then

@@ -197,32 +197,26 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   do i = 1, 2
     if (this%add_damping(i)) then
-      nl = nl + par%nelements_total
+      nl = nl + par%nelements
       nnz = nnz + par%nelements
     endif
   enddo
 
   do i = 1, 2
     if (this%add_damping_gradient(i)) then
-      nl = nl + 3 * par%nelements_total
+      nl = nl + 3 * par%nelements
       nnz = nnz + 3 * 2 * par%nelements
     endif
   enddo
 
   if (this%add_cross_grad) then
-    if (par%derivative_type /= 4) then
-      nl = nl + 3 * par%nelements_total
-      nnz = nnz + this%cross_grad%get_num_elements(par%derivative_type)
-    else
-      nl = nl + 6 * par%nelements_total
-      nnz = nnz + this%cross_grad%get_num_elements(1)
-      nnz = nnz + this%cross_grad%get_num_elements(2)
-    endif
+    nl = nl + 3 * par%nelements
+    nnz = nnz + this%cross_grad%get_num_elements(par%derivative_type)
   endif
 
   if (par%admm_type > 0) then
     ! Add only one ADMM constraint at a time.
-    nl = nl + 1 * par%nelements_total
+    nl = nl + 1 * par%nelements
     nnz = nnz + 1 * par%nelements
 
     call this%admm_method_1%initialize(par%nelements, myrank)
@@ -230,7 +224,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   endif
 
   if (this%add_clustering) then
-    nl = nl + 2 * par%nelements_total
+    nl = nl + 2 * par%nelements
     nnz = nnz + 2 * par%nelements
   endif
 
@@ -245,14 +239,14 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   if (par%compression_type == 0) then
     ! Calculate solution variance only for the non-compressed problem, as it does not work with wavelet compression.
-    call this%matrix%allocate_variance_array(2 * par%nelements, myrank)
+    call this%matrix%allocate_variance_array(2 * par%nelements_total, myrank)
   endif
 
   if (this%add_cross_grad) then
     ! Memory allocation for the matrix and right-hand side for the cross-gradient constraints.
-    call this%matrix_B%initialize(3 * par%nelements_total, 2 * par%nelements, &
+    call this%matrix_B%initialize(3 * par%nelements, 2 * par%nelements, &
                                   int(this%cross_grad%get_num_elements(par%derivative_type), 8), myrank)
-    allocate(this%d_RHS(3 * par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+    allocate(this%d_RHS(3 * par%nelements), source=0._CUSTOM_REAL, stat=ierr)
   endif
 
   if (par%admm_type > 0) then
@@ -290,8 +284,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   type(t_model) :: model(2)
   integer, intent(in) :: myrank, nbproc
 
-  real(kind=CUSTOM_REAL), intent(out) :: delta_model(2 * par%nelements)
-  real(kind=CUSTOM_REAL), intent(out) :: delta_data(sum(par%ndata))
+  real(kind=CUSTOM_REAL), intent(out) :: delta_model(2 * par%nelements_total)
+  real(kind=CUSTOM_REAL), intent(out) :: delta_data(sum(par%ndata_loc))
 
   type(t_damping) :: damping
   type(t_damping_gradient) :: damping_gradient
@@ -453,6 +447,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   ! Parallel sparse inversion.
   !-------------------------------------------------------------------------------------
   call this%matrix%finalize(myrank)
+
+  return
 
   delta_model = 0._CUSTOM_REAL
   if (par%method == 1) then
