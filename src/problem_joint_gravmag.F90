@@ -350,7 +350,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       if (SOLVE_PROBLEM(i)) then
         call calculate_cost_model(ipar%nelements_total, ipar%norm_power, model(i)%val, model(i)%val_prior, &
                                   iarr(i)%column_weight, cost_model(i))
-        call calculate_cost(data(i)%val_meas, data(i)%val_calc, cost_data(i), .false., nbproc)
+        call calculate_cost(data(i)%val_meas, data(i)%val_calc, cost_data(i), .true., nbproc)
         if (myrank == 0) print *, 'model cost =', cost_model(i)
         if (myrank == 0) print *, 'data cost =', cost_data(i)
       endif
@@ -422,7 +422,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
         if (SOLVE_PROBLEM(i)) then
           call calculate_cost_model(ipar%nelements_total, ipar%norm_power, model(i)%val, model(i)%val_prior, &
                                     iarr(i)%column_weight, cost_model(i))
-          call calculate_cost(data(i)%val_meas, data(i)%val_calc, cost_data(i), .false., nbproc)
+          call calculate_cost(data(i)%val_meas, data(i)%val_calc, cost_data(i), .true., nbproc)
           if (myrank == 0) print *, 'model cost =', cost_model(i)
           if (myrank == 0) print *, 'data cost =', cost_data(i)
         endif
