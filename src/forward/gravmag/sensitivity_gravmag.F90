@@ -333,7 +333,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     open(77, file=trim(filename_full), form='formatted', status='replace', action='write')
 
-    write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, MATRIX_PRECISION, comp_error
+    write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, MATRIX_PRECISION, par%compression_rate, comp_error
     write(77, *) nnz_at_cpu
 
     close(77)
@@ -549,7 +549,7 @@ subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
   character(len=256) :: msg
   integer :: nx_read, ny_read, nz_read, ndata_read, nbproc_read
   integer :: precision_read
-  real(kind=CUSTOM_REAL) :: comp_error
+  real(kind=CUSTOM_REAL) :: comp_rate, comp_error
 
   ! Define the file name.
   filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_meta.dat"
@@ -563,8 +563,9 @@ subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
   if (ierr /= 0) call exit_MPI("Error in opening the sensitivity metadata file! path=" &
                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
-  read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read, precision_read, comp_error
+  read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read, precision_read, comp_rate, comp_error
 
+  if (myrank == 0) print *, "COMPRESSION RATE (read) =", comp_rate
   if (myrank == 0) print *, "COMPRESSION ERROR (read) =", comp_error
 
   ! Consistency check.
