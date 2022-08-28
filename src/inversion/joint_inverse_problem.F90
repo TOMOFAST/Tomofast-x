@@ -295,7 +295,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   real(kind=CUSTOM_REAL) :: cost
   logical :: solve_gravity_only
   logical :: solve_mag_only
-  integer :: nsmaller
   real(kind=CUSTOM_REAL) :: norm_power
 
   logical :: SOLVE_PROBLEM(2)
@@ -486,42 +485,17 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       par%problem_weight(2), par%ndata_loc(2), delta_data(par%ndata_loc(1) + 1:), par%ndata_loc(1) + 1, param_shift(2), myrank)
   endif
 
-  return
-
   !-------------------------------------------------------------------------------------
   ! Unscale the model update.
   !-------------------------------------------------------------------------------------
   if (par%compression_type > 0) then
-  ! Applying the Inverse Wavelet Transform.
-    if (nbproc > 1) then
-    ! Parallel version.
-      nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
-
-      if (SOLVE_PROBLEM(1)) then
-        call get_full_array(delta_model(1:par%nelements), par%nelements, model(1)%val_full, .true., myrank, nbproc)
-        call iHaar3D(model(1)%val_full, par%nx, par%ny, par%nz)
-
-        ! Extract the local model update.
-        delta_model(1:par%nelements) = model(1)%val_full(nsmaller + 1 : nsmaller + par%nelements)
-      endif
-
-      if (SOLVE_PROBLEM(2)) then
-        call get_full_array(delta_model(par%nelements + 1:), par%nelements, model(2)%val_full, .true., myrank, nbproc)
-        call iHaar3D(model(2)%val_full, par%nx, par%ny, par%nz)
-
-        ! Extract the local model update.
-        delta_model(par%nelements + 1:) = model(2)%val_full(nsmaller + 1 : nsmaller + par%nelements)
-      endif
-
-    else
-    ! Serial version.
-      if (SOLVE_PROBLEM(1)) call iHaar3D(delta_model(1:par%nelements), par%nx, par%ny, par%nz)
-      if (SOLVE_PROBLEM(2)) call iHaar3D(delta_model(par%nelements + 1:), par%nx, par%ny, par%nz)
-    endif
+    ! Applying the Inverse Wavelet Transform.
+    if (SOLVE_PROBLEM(1)) call iHaar3D(delta_model(1:par%nelements_total), par%nx, par%ny, par%nz)
+    if (SOLVE_PROBLEM(2)) call iHaar3D(delta_model(par%nelements_total + 1:), par%nx, par%ny, par%nz)
   endif
 
-  if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements, delta_model(1:par%nelements), arr(1)%column_weight)
-  if (SOLVE_PROBLEM(2)) call rescale_model(par%nelements, delta_model(par%nelements + 1:), arr(2)%column_weight)
+  if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements_total, delta_model(1:par%nelements_total), arr(1)%column_weight)
+  if (SOLVE_PROBLEM(2)) call rescale_model(par%nelements_total, delta_model(par%nelements_total + 1:), arr(2)%column_weight)
 
   !----------------------------------------------------------------------------------------------------------
   ! Writing grav/mag prior and posterior variance.

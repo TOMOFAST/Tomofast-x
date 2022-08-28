@@ -387,9 +387,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       ! Solve joint inverse problem.
       call jinv%solve(ipar, iarr, model, delta_model, delta_data, myrank, nbproc)
 
-      call MPI_Barrier(MPI_COMM_WORLD, ierr)
-      return
-
       ! Update the local models.
       if (SOLVE_PROBLEM(1)) call model(1)%update(delta_model(1:ipar%nelements_total))
       if (SOLVE_PROBLEM(2)) call model(2)%update(delta_model(ipar%nelements_total + 1:))
@@ -403,8 +400,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
 
       ! Calculate new data. Using the data update as the grav/mag problems are linear.
-      if (SOLVE_PROBLEM(1)) data(1)%val_calc = data(1)%val_calc + delta_data(1:ipar%ndata(1))
-      if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data((ipar%ndata(1) + 1):sum(ipar%ndata))
+      if (SOLVE_PROBLEM(1)) data(1)%val_calc = data(1)%val_calc + delta_data(1:ipar%ndata_loc(1))
+      if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data(ipar%ndata_loc(1) + 1:)
 
 #ifndef SUPPRESS_OUTPUT
       ! Write costs (for the previous iteration).
@@ -452,7 +449,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       ! Print model value bounds.
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) &
-          print *, 'Model', i , 'min/max values =', minval(model(i)%val_full), maxval(model(i)%val_full)
+          print *, 'Model', i , 'min/max values =', minval(model(i)%val), maxval(model(i)%val)
       enddo
     endif
 #endif
