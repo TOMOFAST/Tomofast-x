@@ -13,7 +13,7 @@
 !========================================================================
 
 !=============================================================================
-! Least Square (LSQR) solver parallelized by the model parameters.
+! Least Square (LSQR) solver parallelized by data.
 !
 ! This solver is unit tested in tests_lsqr.f90 and in tests_method_of_weights.f90.
 ! The unit tests are available for serial and parallel versions.
@@ -41,8 +41,8 @@ contains
 ! LSQR solver for a sparse matrix.
 ! Solve min||Ax - b||, where A is stored in sparse format in 'matrix' variable.
 !
-! nlines - number of matrix rows.
-! nelements - local (at current CPU) number of parameters.
+! nlines - local number of matrix rows.
+! nelements - number of parameters.
 ! Niter - maximum number of iterations.
 ! rmin - stopping criterion (relative residual).
 ! gamma - soft thresholding parameter (see ISTA, proximate L1 norm). Use gamma=0 for pure L2 norm.
@@ -96,7 +96,7 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
   u = b
 
   ! Normalize u and initialize beta.
-  call normalize(nlines, u, beta, .false., ierr)
+  call normalize(nlines, u, beta, .true., ierr)
   if (ierr /= 0) then
     call exit_MPI("Could not normalize initial u, zero denominator!", myrank, 0)
   endif
@@ -109,8 +109,10 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
   ! Compute v = Ht.u.
   call matrix%trans_mult_vector(u, v)
 
+  call MPI_Allreduce(MPI_IN_PLACE, v, nelements, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+
   ! Normalize v and initialize alpha.
-  call normalize(nelements, v, alpha, .true., ierr)
+  call normalize(nelements, v, alpha, .false., ierr)
   if (ierr /= 0) then
     call exit_MPI("Could not normalize initial v, zero denominator!", myrank, 0)
   endif
@@ -125,37 +127,37 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
   ! Use an exit (threshold) criterion in case we can exit the loop before reaching the max iteration count.
   do while (iter <= niter .and. r > rmin)
 
-    !---------------------------------------------------------------
-    ! Compute u = - alpha.u + H.v in parallel.
-    !---------------------------------------------------------------
-    if (myrank == 0) then
-      u = - alpha * u
-    else
-      u = 0._CUSTOM_REAL
-    endif
+    ! Scale u.
+    u = - alpha * u
 
-    ! u = u + H_loc.v
+    ! Compute u = u + H.v.
     call matrix%add_mult_vector(v, u)
 
-    ! Sum partial results from all ranks: u = (- alpha.u + Hv_loc1) + Hv_loc2 + ... + Hv_locN = - alpha.u + Hv.
-    call MPI_Allreduce(MPI_IN_PLACE, u, nlines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-    !---------------------------------------------------------------
-
     ! Normalize u and update beta.
-    call normalize(nlines, u, beta, .false., ierr)
+    call normalize(nlines, u, beta, .true., ierr)
     if (ierr /= 0) then
       ! Found an exact solution. Happens in the unit test test_lsqr_underdetermined_2.
       if (myrank == 0) print *, 'WARNING: u = 0. Possibly found an exact solution in the LSQR solver!'
     endif
 
-    ! Scale v.
-    v = - beta * v
+    !-----------------------------------------------------------------
+    ! Compute v = - beta.v + Ht.u in parallel.
+    !-----------------------------------------------------------------
+    if (myrank == 0) then
+      v = - beta * v
+    else
+      v = 0._CUSTOM_REAL
+    endif
 
-    ! Compute v = v + Ht.u.
+    ! Compute v = v + Ht_loc.u.
     call matrix%add_trans_mult_vector(u, v)
 
+    ! Sum partial results from all ranks: v = (- beta.v + Htu_loc1) + Htu_loc2 + ... + Htu_locN = - beta.v + Ht.u.
+    call MPI_Allreduce(MPI_IN_PLACE, v, nelements, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    !---------------------------------------------------------------
+
     ! Normalize v and update alpha.
-    call normalize(nelements, v, alpha, .true., ierr)
+    call normalize(nelements, v, alpha, .false., ierr)
     if (ierr /= 0) then
       ! Found an exact solution. Happens in the unit test test_method_of_weights_1.
       if (myrank == 0) print *, 'WARNING: v = 0. Possibly found an exact solution in the LSQR solver!'
@@ -211,9 +213,9 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
 
 #ifndef SUPPRESS_OUTPUT
     ! Commented as this badly affects the performance.
-    !if (mod(iter, 10) == 0) then
-    !  if (myrank == 0) print *, 'it, r =', iter, r
-    !endif
+    if (mod(iter, 10) == 0) then
+      if (myrank == 0) print *, 'it, r =', iter, r
+    endif
 #endif
 
     ! To avoid floating point exception of denormal value.

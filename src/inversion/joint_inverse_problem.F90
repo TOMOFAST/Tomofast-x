@@ -448,8 +448,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   !-------------------------------------------------------------------------------------
   call this%matrix%finalize(myrank)
 
-  return
-
   delta_model = 0._CUSTOM_REAL
   if (par%method == 1) then
     call lsqr_solve(size(this%b_RHS), size(delta_model), par%niter, par%rmin, par%gamma, &
@@ -457,6 +455,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   else
     call sca_solve(par%niter, par%rmin, this%matrix, this%b_RHS, delta_model, myrank, nbproc)
   endif
+
+  return
 
   ! ***** Method of weights *****
 
