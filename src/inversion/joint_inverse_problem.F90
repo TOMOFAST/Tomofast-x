@@ -375,8 +375,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
     endif
   enddo
 
-  if (myrank == 0) print *, '-------------------------------------------------------'
-
   ! ***** ADMM method *****
 
   if (par%admm_type > 0) then
