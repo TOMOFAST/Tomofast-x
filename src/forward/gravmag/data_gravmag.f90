@@ -133,59 +133,98 @@ subroutine data_read_points_format(this, file_name, myrank, nbproc)
 end subroutine data_read_points_format
 
 !================================================================================================
-! Writes the data in two formats:
-!   (1) to read by read_data();
-!   (2) for Paraview visualization.
+! Writes the data with grid in two formats:
+!   (1) To read by read_data().
+!   (2) For Paraview visualization.
 !
-! which=1 - for measured data,
+! which=1 - for measured data.
 ! which=2 - for calculated data.
 
 ! name_prefix = prefix for the file name.
 !================================================================================================
-subroutine data_write(this, name_prefix, which, myrank)
+subroutine data_write(this, name_prefix, which, myrank, nbproc)
   class(t_data), intent(in) :: this
   character(len=*), intent(in) :: name_prefix
-  integer, intent(in) :: which, myrank
+  integer, intent(in) :: which, myrank, nbproc
 
+  integer :: i, ierr
   real(kind=CUSTOM_REAL) :: X, Y, Z, val
-  integer :: i
   character(len=512) :: file_name, file_name2
+  integer :: alloc_size
+
+  real(kind=CUSTOM_REAL), allocatable :: x_full(:)
+  real(kind=CUSTOM_REAL), allocatable :: y_full(:)
+  real(kind=CUSTOM_REAL), allocatable :: z_full(:)
+  real(kind=CUSTOM_REAL), allocatable :: val_full(:)
+
+  !----------------------------------------------------------------------------------------
+  ! Gather the full daata grid and values.
+  !----------------------------------------------------------------------------------------
+  if (myrank == 0) then
+    ! Need full arrays only on the master. Allocate to zero size on other ranks for correctness.
+    alloc_size = this%ndata
+  else
+    alloc_size = 0
+  endif
+
+  allocate(x_full(alloc_size), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(y_full(alloc_size), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(z_full(alloc_size), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(val_full(alloc_size), source=0._CUSTOM_REAL, stat=ierr)
+
+  ! Gather the full data grid.
+  call get_full_array(this%X, this%ndata_loc, x_full, .false., myrank, nbproc)
+  call get_full_array(this%Y, this%ndata_loc, y_full, .false., myrank, nbproc)
+  call get_full_array(this%Z, this%ndata_loc, z_full, .false., myrank, nbproc)
+
+  ! Gather the full data values array.
+  if (which == 1) then
+    call get_full_array(this%val_meas, this%ndata_loc, val_full, .false., myrank, nbproc)
+  else
+    call get_full_array(this%val_calc, this%ndata_loc, val_full, .false., myrank, nbproc)
+  endif
+
+  !----------------------------------------------------------------------------------------
+  ! Write data to file.
+  !----------------------------------------------------------------------------------------
 
   ! Write file by master CPU only.
-  if (myrank /= 0) return
+  if (myrank == 0) then
 
-  file_name  = trim(path_output)//'/'//name_prefix//'data.txt'
-  file_name2 = trim(path_output)//'/'//name_prefix//'data_csv.txt'
+    file_name  = trim(path_output)//'/'//name_prefix//'data.txt'
+    file_name2 = trim(path_output)//'/'//name_prefix//'data_csv.txt'
 
-  print *, 'Writing data to file '//trim(file_name)
+    print *, 'Writing data to file '//trim(file_name)
 
-  open(10, file=trim(file_name), access='stream', form='formatted', status='replace', action='write')
-  ! For Paraview.
-  open(20, file=trim(file_name2), access='stream', form='formatted', status='replace', action='write')
+    open(10, file=trim(file_name), access='stream', form='formatted', status='replace', action='write')
+    ! For Paraview.
+    open(20, file=trim(file_name2), access='stream', form='formatted', status='replace', action='write')
 
-  ! Writing a header line.
-  write(10, *) this%ndata
-  write(20, *) "x,y,z,f"
+    ! Writing a header line.
+    write(10, *) this%ndata
+    write(20, *) "x,y,z,f"
 
-  ! Write data.
-  do i = 1, this%ndata
-    X = this%X(i)
-    Y = this%Y(i)
-    Z = this%Z(i)
+    ! Write data.
+    do i = 1, this%ndata
+      X = x_full(i)
+      Y = y_full(i)
+      Z = z_full(i)
+      val = val_full(i)
 
-    if (which == 1) then
-      val = this%val_meas(i)
-    else
-      val = this%val_calc(i)
-    endif
+      write(10, *) X, Y, Z, val
+      ! Note: revert Z-axis for Paraview.
+      write(20, *) X, ", ", Y, ", ", -Z, ", ", val
+    enddo
 
-    write(10, *) X, Y, Z, val
-    ! Note: revert Z-axis for Paraview.
-    write(20, *) X, ", ", Y, ", ", -Z, ", ", val
-  enddo
+    close(10)
+    close(20)
 
-  close(10)
-  close(20)
+  endif
+
+  deallocate(x_full)
+  deallocate(y_full)
+  deallocate(z_full)
+  deallocate(val_full)
 
 end subroutine data_write
 

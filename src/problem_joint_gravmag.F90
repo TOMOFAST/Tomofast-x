@@ -240,14 +240,14 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       line_start(i), param_shift(i), myrank)
   enddo
 
+#ifndef SUPPRESS_OUTPUT
+  ! Write data calculated from the read model.
+  if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_read_', 2, myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_read_', 2, myrank, nbproc)
+#endif
+
   call MPI_Barrier(MPI_COMM_WORLD, ierr)
   return
-
-#ifndef SUPPRESS_OUTPUT
-  ! Write data calculated from the model read.
-  if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_read_', 2, myrank)
-  if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_read_', 2, myrank)
-#endif
 
   ! Reading the data. Read here to allow the use of the above calculated data from the (original) model read.
   if (SOLVE_PROBLEM(1)) call data(1)%read(gpar%data_file, myrank, nbproc)
@@ -255,8 +255,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
   ! Write the observed (measured) data.
-  if (SOLVE_PROBLEM(1)) call data(1)%write('grav_observed_', 1, myrank)
-  if (SOLVE_PROBLEM(2)) call data(2)%write('mag_observed_', 1, myrank)
+  if (SOLVE_PROBLEM(1)) call data(1)%write('grav_observed_', 1, myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call data(2)%write('mag_observed_', 1, myrank, nbproc)
 #endif
 
   !-----------------------------------------------------------------------------------------
@@ -317,8 +317,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
     ! Write data calculated from the prior model.
-    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_prior_', 2, myrank)
-    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_prior_', 2, myrank)
+    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_prior_', 2, myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_prior_', 2, myrank, nbproc)
 #endif
 
     ! SETTING STARTING MODEL FOR INVERSION -----------------------------------------------------
@@ -341,8 +341,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
     ! Write data calculated from the starting model.
-    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_starting_', 2, myrank)
-    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_starting_', 2, myrank)
+    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_starting_', 2, myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_starting_', 2, myrank, nbproc)
 #endif
 
     !-----------------------------------------------------------------------------------------
@@ -457,8 +457,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
     ! Write data calculated from final model.
-    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_final_', 2, myrank)
-    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_final_', 2, myrank)
+    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_final_', 2, myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_final_', 2, myrank, nbproc)
 #endif
 
 #ifndef SUPPRESS_OUTPUT
