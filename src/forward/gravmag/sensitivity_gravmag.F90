@@ -395,7 +395,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   if (myrank == 0) print *, 'Reading the sensitivity kernel.'
 
   param_shift(1) = 0
-  param_shift(2) = par%nelements
+  param_shift(2) = par%nelements_total
 
   !---------------------------------------------------------------------------------------------
   ! Allocate memory.

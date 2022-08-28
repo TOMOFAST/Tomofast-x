@@ -174,7 +174,7 @@ end subroutine model_update
 
 !======================================================================================================
 ! Calculate the linear data using the sensitivity kernel (S) and model (m) as d = S * m.
-! Use line_start, line_end, param_shift to calculate the data using part of the big (joint) matrix.
+! Use line_start and param_shift to calculate the data using part of the big (joint) matrix.
 !======================================================================================================
 subroutine model_calculate_data(this, ndata_loc, matrix_sensit, problem_weight, column_weight, data, &
                                 compression_type, line_start, param_shift, myrank)
@@ -220,7 +220,7 @@ end subroutine model_calculate_data
 
 !======================================================================================================
 ! Calculate the linear data using the sensitivity kernel (S) and model (m) as d = S * m.
-! Use line_start, line_end, param_shift to calculate the data using part of the big (joint) matrix.
+! Use line_start and param_shift to calculate the data using part of the big (joint) matrix.
 ! This version uses unscaled model (in wavelet domain).
 !======================================================================================================
 subroutine calculate_data_unscaled(nelements, model, matrix_sensit, problem_weight, ndata, data, &

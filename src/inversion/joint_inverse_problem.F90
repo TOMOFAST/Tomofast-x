@@ -712,7 +712,7 @@ subroutine joint_inversion_calculate_matrix_partitioning(par, line_start, line_e
   enddo
 
   param_shift(1) = 0
-  param_shift(2) = par%nelements
+  param_shift(2) = par%nelements_total
 
   line_start = 0
   line_end = 0
