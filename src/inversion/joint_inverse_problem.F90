@@ -456,8 +456,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
     call sca_solve(par%niter, par%rmin, this%matrix, this%b_RHS, delta_model, myrank, nbproc)
   endif
 
-  return
-
   ! ***** Method of weights *****
 
   if (par%method_of_weights_niter > 0) then
@@ -479,14 +477,16 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   ! As we have both the compressed kernel and delta model, and the problem is linear.
   !-------------------------------------------------------------------------------------
   if (SOLVE_PROBLEM(1)) then
-    call calculate_data_unscaled(par%nelements, delta_model(1:par%nelements), this%matrix, par%problem_weight(1), &
-      par%ndata(1), delta_data(1:par%ndata(1)), 1, param_shift(1), myrank)
+    call calculate_data_unscaled(par%nelements_total, delta_model(1:par%nelements_total), this%matrix, &
+      par%problem_weight(1), par%ndata_loc(1), delta_data(1:par%ndata_loc(1)), 1, param_shift(1), myrank)
   endif
 
   if (SOLVE_PROBLEM(2)) then
-    call calculate_data_unscaled(par%nelements, delta_model(par%nelements + 1:), this%matrix, par%problem_weight(2), &
-      par%ndata(2), delta_data(par%ndata(1) + 1:), par%ndata(1) + 1, param_shift(2), myrank)
+    call calculate_data_unscaled(par%nelements_total, delta_model(par%nelements_total + 1:), this%matrix, &
+      par%problem_weight(2), par%ndata_loc(2), delta_data(par%ndata_loc(1) + 1:), par%ndata_loc(1) + 1, param_shift(2), myrank)
   endif
+
+  return
 
   !-------------------------------------------------------------------------------------
   ! Unscale the model update.

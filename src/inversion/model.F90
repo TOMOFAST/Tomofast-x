@@ -241,15 +241,9 @@ subroutine calculate_data_unscaled(nelements, model, matrix_sensit, problem_weig
 
   real(kind=CUSTOM_REAL), intent(out) :: data(ndata)
 
-  integer :: ierr
-
   ! Calculate data: d = S' * m'
   ! Assume that both the kernel and the model are unscaled (in wavelet domain).
   call matrix_sensit%part_mult_vector(nelements, model, ndata, data, line_start, param_shift, myrank)
-
-  call MPI_Allreduce(MPI_IN_PLACE, data, ndata, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-
-  if (ierr /= 0) call exit_MPI("MPI error in calculate_data_unscaled!", myrank, ierr)
 
   ! Apply the problem weight.
   if (problem_weight /= 0.d0) then
