@@ -55,8 +55,8 @@ subroutine calculate_cost(arr1, arr2, cost, in_parallel, nbproc)
   cost2 = sum((arr1)**2)
 
   if (in_parallel .and. nbproc > 1) then
-    call mpi_allreduce(cost1, cost1_glob, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-    call mpi_allreduce(cost2, cost2_glob, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    call MPI_Allreduce(cost1, cost1_glob, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    call MPI_Allreduce(cost2, cost2_glob, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
   else
     cost1_glob = cost1
     cost2_glob = cost2
@@ -66,43 +66,28 @@ subroutine calculate_cost(arr1, arr2, cost, in_parallel, nbproc)
 
 end subroutine calculate_cost
 
-!===============================================================================================
-! Computes the Lp norm of the difference of two models, that are split between CPUs.
-!===============================================================================================
-subroutine calculate_cost_model(nelements, norm_power, model, model_prior, column_weight, &
-                                cost_model, nbproc)
-  ! MPI variables.
-  integer, intent(in) :: nbproc
-  ! Local dimension of the model vector.
-  integer, intent(in) :: nelements
-
-  ! Power of the Lp norm on the model variation x-xprior : Int_V |x-xprior|^p dV.
+!==========================================================================================================
+! Computes the model cost.
+!==========================================================================================================
+subroutine calculate_cost_model(nelements_total, norm_power, model, model_prior, column_weight, cost_model)
+  integer, intent(in) :: nelements_total
   real(kind=CUSTOM_REAL), intent(in) :: norm_power
-  real(kind=CUSTOM_REAL), intent(in) :: model(:)
-  real(kind=CUSTOM_REAL), intent(in) :: model_prior(:)
-  ! Inversion weights to scale damping.
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
+  real(kind=CUSTOM_REAL), intent(in) :: model(nelements_total)
+  real(kind=CUSTOM_REAL), intent(in) :: model_prior(nelements_total)
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(nelements_total)
+
   real(kind=CUSTOM_REAL), intent(out) :: cost_model
 
   ! Local variables.
   real(kind=CUSTOM_REAL) :: model_diff
-  real(kind=CUSTOM_REAL) :: cost_model_glob
-  integer :: i, ierr
+  integer :: i
 
-  ! Compute local cost model.
   cost_model = 0._CUSTOM_REAL
-  do i = 1, nelements
+  do i = 1, nelements_total
     ! Make calculations consistent with damping.F90 where we also scale the model difference.
     model_diff = (model(i) - model_prior(i)) / column_weight(i)
     cost_model = cost_model + (abs(model_diff))**norm_power
   enddo
-
-  ! Compute global cost model.
-  cost_model_glob = 0._CUSTOM_REAL
-  if (nbproc > 1) then
-    call mpi_allreduce(cost_model, cost_model_glob, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-    cost_model = cost_model_glob
-  endif
 
 end subroutine calculate_cost_model
 

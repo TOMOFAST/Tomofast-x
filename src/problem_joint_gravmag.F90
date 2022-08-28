@@ -52,7 +52,6 @@ module problem_joint_gravmag
 
   public :: solve_problem_joint_gravmag
 
-  private :: calculate_model_costs
   private :: set_model
   private :: adjust_admm_weight
   private :: exit_loop
@@ -246,8 +245,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_read_', 2, myrank, nbproc)
 #endif
 
+  ! Wait until the 'calc_read' data writing is complete, so that we can read it in parallel by all ranks below (if needed).
   call MPI_Barrier(MPI_COMM_WORLD, ierr)
-  return
 
   ! Reading the data. Read here to allow the use of the above calculated data from the (original) model read.
   if (SOLVE_PROBLEM(1)) call data(1)%read(gpar%data_file, myrank, nbproc)
@@ -263,8 +262,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   number_prior_models = gpar%number_prior_models
   path_output_parfile = path_output
 
-  allocate(delta_model(2 * ipar%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(delta_data(sum(ipar%ndata)), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(delta_model(2 * ipar%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(delta_data(sum(ipar%ndata_loc)), source=0._CUSTOM_REAL, stat=ierr)
 
   !******************************************************************************************
   ! Loop over different prior models.
@@ -346,16 +345,19 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 #endif
 
     !-----------------------------------------------------------------------------------------
-    ! Calculate costs for the models (damping term in the cost function).
-    call calculate_model_costs(ipar, iarr, model, cost_model, SOLVE_PROBLEM, myrank, nbproc)
-
-    ! Calculate initial cost (misfit).
+    ! Calculate initial costs.
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) then
+        call calculate_cost_model(ipar%nelements_total, ipar%norm_power, model(i)%val, model(i)%val_prior, &
+                                  iarr(i)%column_weight, cost_model(i))
         call calculate_cost(data(i)%val_meas, data(i)%val_calc, cost_data(i), .false., nbproc)
+        if (myrank == 0) print *, 'model cost =', cost_model(i)
         if (myrank == 0) print *, 'data cost =', cost_data(i)
       endif
     enddo
+
+    call MPI_Barrier(MPI_COMM_WORLD, ierr)
+    return
 
 #ifndef SUPPRESS_OUTPUT
     ! Stores costs.
@@ -415,13 +417,13 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
 #endif
 
-      ! Calculate new costs for the models (damping term in the cost function).
-      call calculate_model_costs(ipar, iarr, model, cost_model, SOLVE_PROBLEM, myrank, nbproc)
-
-      ! Calculate new costs for data misfits.
+      ! Calculate new costs.
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) then
+          call calculate_cost_model(ipar%nelements_total, ipar%norm_power, model(i)%val, model(i)%val_prior, &
+                                    iarr(i)%column_weight, cost_model(i))
           call calculate_cost(data(i)%val_meas, data(i)%val_calc, cost_data(i), .false., nbproc)
+          if (myrank == 0) print *, 'model cost =', cost_model(i)
           if (myrank == 0) print *, 'data cost =', cost_data(i)
         endif
       enddo
@@ -513,31 +515,6 @@ subroutine adjust_admm_weight(ipar, SOLVE_PROBLEM, cost_data, myrank)
   enddo
 
 end subroutine adjust_admm_weight
-
-!==============================================================================================
-! Computes and prints norm Lp of the difference between inverted and prior models.
-!==============================================================================================
-subroutine calculate_model_costs(ipar, iarr, model, cost_model, solve_problem, myrank, nbproc)
-  type(t_parameters_inversion), intent(in) :: ipar
-  type(t_inversion_arrays), intent(in) :: iarr(2)
-  type(t_model), intent(in) :: model(2)
-  logical, intent(in) :: solve_problem(2)
-  integer, intent(in) :: myrank, nbproc
-  real(kind=CUSTOM_REAL), intent(out) :: cost_model(2)
-
-  integer :: i
-
-  cost_model = 0.d0
-
-  do i = 1, 2
-    if (solve_problem(i)) then
-      call calculate_cost_model(ipar%nelements, ipar%norm_power, model(i)%val, model(i)%val_prior, &
-                                iarr(i)%column_weight, cost_model(i), nbproc)
-
-      if (myrank == 0) print *, 'model cost =', cost_model(i)
-    endif
-  enddo
-end subroutine calculate_model_costs
 
 !========================================================================================
 ! Sets the model values: via constant from Parfile or via reading it from a file.
