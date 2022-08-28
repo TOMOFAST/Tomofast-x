@@ -45,6 +45,7 @@ module sensitivity_gravmag
 
   private :: apply_column_weight
   private :: test_grid_cell_order
+  private :: get_nel_compressed
 
   character(len=4) :: SUFFIX(2) = ["grav", "magn"]
 
@@ -93,6 +94,20 @@ function test_grid_cell_order(par, grid) result(res)
   enddo
 end function test_grid_cell_order
 
+!=============================================================================================
+! Returns the number of elements in compressed sensitivity line.
+!=============================================================================================
+function get_nel_compressed(par) result(nel_compressed)
+  class(t_parameters_base), intent(in) :: par
+  integer :: nel_compressed
+
+  if (par%compression_type > 0) then
+    nel_compressed = max(int(par%compression_rate * par%nelements_total), 1)
+  else
+    nel_compressed = par%nelements_total
+  endif
+end function get_nel_compressed
+
 !===============================================================================================================
 ! Calculates the sensitivity kernel (parallelized by data) and writes it to files.
 !===============================================================================================================
@@ -107,7 +122,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   type(t_magnetic_field) :: mag_field
   integer :: i, p, nel, ierr
-  integer :: nelements_total, nel_compressed
+  integer :: nel_compressed
   integer(kind=8) :: nnz_data
   integer :: problem_type
   character(len=256) :: filename, filename_full
@@ -174,17 +189,12 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   ! Allocate memory.
   !---------------------------------------------------------------------------------------------
-  nelements_total = par%nx * par%ny * par%nz
+  nel_compressed = get_nel_compressed(par)
 
-  if (par%compression_type > 0) then
-    nel_compressed = max(int(par%compression_rate * nelements_total), 1)
-  else
-    nel_compressed = nelements_total
-  endif
   if (myrank == 0) print *, 'nel_compressed =', nel_compressed
 
-  allocate(sensit_line_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(sensit_line_sorted(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(sensit_line_full(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(sensit_line_sorted(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   allocate(sensit_columns(nel_compressed), source=0, stat=ierr)
   allocate(sensit_compressed(nel_compressed), source=0._MATRIX_PRECISION, stat=ierr)
@@ -196,7 +206,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
 
   ! File header.
-  write(77) par%ndata_loc, par%ndata, nelements_total, myrank, nbproc
+  write(77) par%ndata_loc, par%ndata, par%nelements_total, myrank, nbproc
 
   nnz_data = 0
   cost_full_loc = 0.d0
@@ -206,15 +216,15 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   do i = 1, par%ndata_loc
     if (problem_type == 1) then
     ! Gravity problem.
-      call graviprism_z(nelements_total, grid_full, data%X(i), data%Y(i), data%Z(i), sensit_line_full, myrank)
+      call graviprism_z(par%nelements_total, grid_full, data%X(i), data%Y(i), data%Z(i), sensit_line_full, myrank)
 
     else if (problem_type == 2) then
     ! Magnetic problem.
-      call mag_field%magprism(nelements_total, grid_full, data%X(i), data%Y(i), data%Z(i), sensit_line_full)
+      call mag_field%magprism(par%nelements_total, grid_full, data%X(i), data%Y(i), data%Z(i), sensit_line_full)
     endif
 
     ! Applying the depth weight.
-    call apply_column_weight(nelements_total, sensit_line_full, column_weight)
+    call apply_column_weight(par%nelements_total, sensit_line_full, column_weight)
 
     if (par%compression_type > 0) then
     ! Wavelet compression.
@@ -226,10 +236,10 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
       ! Perform sorting (to determine the wavelet threshold corresponding to the desired compression rate).
       sensit_line_sorted = abs(sensit_line_full)
-      call quicksort(sensit_line_sorted, 1, nelements_total)
+      call quicksort(sensit_line_sorted, 1, par%nelements_total)
 
       ! Calculate the wavelet threshold corresponding to the desired compression rate.
-      p = nelements_total - nel_compressed + 1
+      p = par%nelements_total - nel_compressed + 1
       threshold = abs(sensit_line_sorted(p))
 
       if (threshold < 1.d-30) then
@@ -239,7 +249,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
       endif
 
       nel = 0
-      do p = 1, nelements_total
+      do p = 1, par%nelements_total
         if (abs(sensit_line_full(p)) >= threshold) then
           ! Store sensitivity elements greater than the wavelet threshold.
           nel = nel + 1
@@ -257,9 +267,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     else
     ! No compression.
-      nel = nelements_total
+      nel = par%nelements_total
       sensit_compressed = real(sensit_line_full, MATRIX_PRECISION)
-      do p = 1, nelements_total
+      do p = 1, par%nelements_total
         sensit_columns(p) = p
       enddo
     endif
@@ -292,7 +302,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! Calculate the kernel compression rate.
   !---------------------------------------------------------------------------------------------
   call mpi_allreduce(nnz_data, nnz_total, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
-  comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata)
+  comp_rate = dble(nnz_total) / dble(par%nelements_total) / dble(par%ndata)
 
   if (myrank == 0) print *, 'nnz_total = ', nnz_total
   if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
