@@ -42,8 +42,6 @@ module damping
     real(kind=CUSTOM_REAL) :: problem_weight
     ! Power p of Lp norm (for LSQR method). Use p=2. for pure LSQR.
     real(kind=CUSTOM_REAL) :: norm_power
-    ! Cost of the model objective function phi_m.
-    real(kind=CUSTOM_REAL) :: cost
 
     ! Wavelet compression parameters.
     integer :: compression_type
@@ -54,7 +52,6 @@ module damping
 
     procedure, public, pass :: initialize => damping_initialize
     procedure, public, pass :: add => damping_add
-    procedure, public, pass :: get_cost => damping_get_cost
 
     procedure, private, pass :: add_RHS => damping_add_RHS
     procedure, private, pass :: get_norm_multiplier => damping_get_norm_multiplier
@@ -184,9 +181,6 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, &
     call this%add_RHS(b_RHS(row_beg:row_end), model_diff_full(nsmaller + 1 : nsmaller + this%nelements))
   endif
 
-  ! Calculate the damping cost.
-  this%cost = sum(b_RHS(row_beg:row_end)**2)
-
   deallocate(model_diff)
   deallocate(model_diff_full)
 
@@ -219,17 +213,6 @@ subroutine damping_add_RHS(this, b_RHS, model_diff, local_weight)
     endif
   enddo
 end subroutine damping_add_RHS
-
-!===========================================================================================
-! Returns model objective function cost (norm).
-!===========================================================================================
-pure function damping_get_cost(this) result(res)
-  class(t_damping), intent(in) :: this
-  real(kind=CUSTOM_REAL) :: res
-
-  res = this%cost
-
-end function damping_get_cost
 
 !===========================================================================================
 ! Returns a multiplier (for one pixel) to change L2 norm to Lp, in the LSQR method.
