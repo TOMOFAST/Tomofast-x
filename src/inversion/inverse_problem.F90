@@ -157,7 +157,7 @@ subroutine inversion_solve(this, par, arr, model, myrank, nbproc)
   if (par%method == 1) then
     this%delta_model = 0._CUSTOM_REAL
     call lsqr_solve(size(this%b_RHS), size(this%delta_model), par%niter, par%rmin, par%gamma, &
-                    this%matrix, this%b_RHS, this%delta_model, myrank)
+                    this%matrix, this%b_RHS, this%delta_model, myrank, nbproc)
 
   else
     call exit_MPI("Wrong method in inversion_solve!", myrank, 0)

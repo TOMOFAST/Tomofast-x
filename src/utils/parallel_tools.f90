@@ -54,11 +54,6 @@ function calculate_nelements_at_cpu(nelements_total, myrank, nbproc) result(nele
   if (myrank + 1 <= diff) then
     nelements = nelements + 1
   endif
-
-  ! Sanity check.
-  if (get_total_number_elements(nelements, myrank, nbproc) /= nelements_total) then
-    call exit_MPI("Wrong nelements in calculate_nelements_at_cpu!", myrank, 0)
-  endif
 end function calculate_nelements_at_cpu
 
 !=====================================================================================

@@ -67,7 +67,7 @@ contains
 ! This subroutine is unit-tested in tests_method_of_weights.f90.
 !
 !===============================================================================================
-subroutine apply_method_of_weights(par, num_iter, matrix_A, matrix_C, y, b, g, tau, method, myrank)
+subroutine apply_method_of_weights(par, num_iter, matrix_A, matrix_C, y, b, g, tau, method, myrank, nbproc)
   type(t_parameters_lsqr), intent(in) :: par
   integer, intent(in) :: num_iter
   type(t_sparse_matrix), intent(inout) :: matrix_A
@@ -76,7 +76,7 @@ subroutine apply_method_of_weights(par, num_iter, matrix_A, matrix_C, y, b, g, t
   real(kind=CUSTOM_REAL), intent(inout) :: b(matrix_A%get_total_row_number())
   real(kind=CUSTOM_REAL), intent(in) :: g(:)
   real(kind=CUSTOM_REAL), intent(in) :: tau
-  integer, intent(in) :: method, myrank
+  integer, intent(in) :: method, myrank, nbproc
 
   ! Residual.
   real(kind=CUSTOM_REAL), allocatable :: w1(:)
@@ -173,7 +173,7 @@ subroutine apply_method_of_weights(par, num_iter, matrix_A, matrix_C, y, b, g, t
 
     ! Solve for new delta_y.
     delta_y = 0._CUSTOM_REAL
-    call lsqr_solve(size(b), size(delta_y), par%niter, par%rmin, par%gamma, matrix_A, b, delta_y, myrank)
+    call lsqr_solve(size(b), size(delta_y), par%niter, par%rmin, par%gamma, matrix_A, b, delta_y, myrank, nbproc)
 
     ! Update solution.
     y = y + delta_y

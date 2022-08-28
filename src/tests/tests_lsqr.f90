@@ -111,7 +111,7 @@ subroutine test_lsqr_determined(myrank, nbproc)
 
   call matrix%finalize(myrank)
 
-  call lsqr_solve(size(b_RHS), size(delta_model), niter, rmin, gamma, matrix, b_RHS, delta_model, myrank)
+  call lsqr_solve(size(b_RHS), size(delta_model), niter, rmin, gamma, matrix, b_RHS, delta_model, myrank, nbproc)
 
   ! Check the result.
   do i = 1, nelements
@@ -198,7 +198,7 @@ subroutine test_lsqr_overdetermined_1(myrank, nbproc)
 
   call matrix%finalize(myrank)
 
-  call lsqr_solve(size(b_RHS), size(delta_model), niter, rmin, gamma, matrix, b_RHS, delta_model, myrank)
+  call lsqr_solve(size(b_RHS), size(delta_model), niter, rmin, gamma, matrix, b_RHS, delta_model, myrank, nbproc)
 
   ! Check the result.
   if (nbproc == 1) then
@@ -305,7 +305,7 @@ subroutine test_lsqr_overdetermined_2(myrank, nbproc)
   call matrix%finalize(myrank)
 
   ! Solve the least squares problem.
-  call lsqr_solve(size(b_RHS), size(x), niter, rmin, gamma, matrix, b_RHS, x, myrank)
+  call lsqr_solve(size(b_RHS), size(x), niter, rmin, gamma, matrix, b_RHS, x, myrank, nbproc)
   !call sca_solve(niter, rmin, matrix, b_RHS, x, myrank, nbproc)
 
   ! Note the solution given in the Wunsch's book seems to be not correct one.
@@ -429,7 +429,7 @@ subroutine test_lsqr_underdetermined_1(myrank, nbproc)
   !------------------------------------------------------------------
   ! Testing the LSQR solver.
   !------------------------------------------------------------------
-  call lsqr_solve(size(b_RHS), size(delta_model), niter, rmin, gamma, matrix, b_RHS, delta_model, myrank)
+  call lsqr_solve(size(b_RHS), size(delta_model), niter, rmin, gamma, matrix, b_RHS, delta_model, myrank, nbproc)
 
   ! Check the result.
   if (nbproc == 1) then
@@ -524,7 +524,7 @@ subroutine test_lsqr_underdetermined_2(myrank, nbproc)
   !------------------------------------------------------------------
   ! Testing the LSQR solver.
   !------------------------------------------------------------------
-  call lsqr_solve(size(b_RHS), size(x), niter, rmin, gamma, matrix, b_RHS, x, myrank)
+  call lsqr_solve(size(b_RHS), size(x), niter, rmin, gamma, matrix, b_RHS, x, myrank, nbproc)
 
   do i = 1, ncols_loc
     call assert_comparable_real(x(i), d1, tol, "x(i) /= d1 in test_lsqr_underdetermined_2.")
@@ -620,7 +620,7 @@ subroutine test_lsqr_underdetermined_3(myrank, nbproc)
   !------------------------------------------------------------------
   ! Testing the LSQR solver.
   !------------------------------------------------------------------
-  call lsqr_solve(size(b_RHS), size(x), niter, rmin, gamma, matrix, b_RHS, x, myrank)
+  call lsqr_solve(size(b_RHS), size(x), niter, rmin, gamma, matrix, b_RHS, x, myrank, nbproc)
 
   if (nbproc == 1) then
     call assert_comparable_real(x(1), 0.0d0, tol, "x(1) is wrong in test_lsqr_underdetermined_3.")

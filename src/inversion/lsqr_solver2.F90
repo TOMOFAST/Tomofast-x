@@ -25,6 +25,7 @@ module lsqr_solver
   use global_typedefs
   use mpi_tools, only: exit_MPI
   use sparse_matrix
+  use parallel_tools
 
   implicit none
 
@@ -37,7 +38,7 @@ module lsqr_solver
 
 contains
 
-!================================================================================
+!===========================================================================================
 ! LSQR solver for a sparse matrix.
 ! Solve min||Ax - b||, where A is stored in sparse format in 'matrix' variable.
 !
@@ -46,12 +47,12 @@ contains
 ! Niter - maximum number of iterations.
 ! rmin - stopping criterion (relative residual).
 ! gamma - soft thresholding parameter (see ISTA, proximate L1 norm). Use gamma=0 for pure L2 norm.
-!================================================================================
-subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myrank)
+!===========================================================================================
+subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myrank, nbproc)
   integer, intent(in) :: nlines, nelements, niter
   real(kind=CUSTOM_REAL), intent(in) :: rmin, gamma
   real(kind=CUSTOM_REAL), intent(in) :: b(nlines)
-  integer, intent(in) :: myrank
+  integer, intent(in) :: myrank, nbproc
 
   type(t_sparse_matrix), intent(inout) :: matrix
   real(kind=CUSTOM_REAL), intent(inout) :: x(nelements)
@@ -63,6 +64,7 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
   real(kind=CUSTOM_REAL) :: rho_inv
   ! Flag for calculating variance.
   logical :: calculateVariance
+  integer :: i, nelements_loc, nsmaller
 
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w, u
 
@@ -82,10 +84,19 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
     calculateVariance = .false.
   endif
 
+  ! Temporary disable - TODO: adjust calculations for reduced w-size.
+  calculateVariance = .false.
+
+  ! Local nelements - at the current rank.
+  nelements_loc = calculate_nelements_at_cpu(nelements, myrank, nbproc)
+
+  ! The number of elements on CPUs with rank smaller than myrank.
+  nsmaller = get_nsmaller(nelements_loc, myrank, nbproc)
+
   ! Allocate memory.
   allocate(u(nlines))
   allocate(v(nelements))
-  allocate(w(nelements))
+  allocate(w(nelements_loc))
 
   ! Sanity check.
   if (norm2(b) == 0.d0) then
@@ -119,7 +130,8 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
 
   rhobar = alpha
   phibar = beta
-  w = v
+
+  w = v(nsmaller + 1 : nsmaller + nelements_loc)
 
   iter = 1
   r = 1._CUSTOM_REAL
@@ -190,8 +202,11 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
     endif
 
     ! Update the current solution x (w is an auxiliary array in order to compute the solution).
-    x = t1 * w + x
-    w = t2 * w + v
+    ! Note, that we update only local parts, and will gather the full vector in the end.
+    do i = 1, nelements_loc
+      x(i) = t1 * w(i) + x(i)
+      w(i) = t2 * w(i) + v(nsmaller + i)
+    enddo
 
     if (gamma /= 0._CUSTOM_REAL) then
     ! Soft thresholding.
@@ -226,6 +241,9 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
 
     iter = iter + 1
   enddo
+
+  ! Gather the full solution array.
+  call get_full_array_in_place(nelements_loc, x, .true., myrank, nbproc)
 
   if (calculateVariance) then
     ! Scale with data residual (see the bottom of the page 53 in Paige & Saunders 1982).

@@ -447,7 +447,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   delta_model = 0._CUSTOM_REAL
   if (par%method == 1) then
     call lsqr_solve(size(this%b_RHS), size(delta_model), par%niter, par%rmin, par%gamma, &
-                    this%matrix, this%b_RHS, delta_model, myrank)
+                    this%matrix, this%b_RHS, delta_model, myrank, nbproc)
   else
     call sca_solve(par%niter, par%rmin, this%matrix, this%b_RHS, delta_model, myrank, nbproc)
   endif
@@ -464,7 +464,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
 
       ! Applying weighting method for equality-constrained LSQR.
       call apply_method_of_weights(par_lsqr, par%method_of_weights_niter, this%matrix, this%matrix_B, &
-                                   delta_model, this%b_RHS, this%d_RHS, par%cross_grad_weight, 3, myrank)
+                                   delta_model, this%b_RHS, this%d_RHS, par%cross_grad_weight, 3, myrank, nbproc)
     endif
   endif
 
