@@ -184,8 +184,8 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
       do i = 1, nx
         p = p + 1
 
-        model1%val_full(p) = dble(i)
-        model2%val_full(p) = dble(i + 1)
+        model1%val(p) = dble(i)
+        model2%val(p) = dble(i + 1)
 
         model1%grid_full%X1(p) = real(i, CUSTOM_REAL)
         model1%grid_full%X2(p) = real(i + 1, CUSTOM_REAL)

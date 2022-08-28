@@ -34,15 +34,11 @@ module model
 
   type, public :: t_model
 
-    ! Local model parameters.
+    ! Model parameters.
     real(kind=CUSTOM_REAL), allocatable :: val(:)
 
-    ! Prior model (local).
+    ! Prior model.
     real(kind=CUSTOM_REAL), allocatable :: val_prior(:)
-
-    ! Full model parameters.
-    ! (Read initial model here, write final model from here, and use also for cross-gradient.)
-    real(kind=CUSTOM_REAL), allocatable :: val_full(:)
 
     ! Data arrays for local ADMM constraints.
     integer :: nlithos
@@ -97,9 +93,6 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
   this%nelements_total = get_total_number_elements(nelements, myrank, nbproc)
 
   ierr = 0
-
-  ! TODO: remove val_full-array.
-  allocate(this%val_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   allocate(this%val(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%val_prior(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)

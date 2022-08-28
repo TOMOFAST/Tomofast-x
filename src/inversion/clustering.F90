@@ -438,8 +438,8 @@ subroutine clustering_add(this, model1, model2, column_weight1, column_weight2, 
 
     call matrix%new_row(myrank)
 
-    model_val(1) = model1%val_full(p)
-    model_val(2) = model2%val_full(p)
+    model_val(1) = model1%val(p)
+    model_val(2) = model2%val(p)
 
     call this%calculate_Gaussian_mixture(model_val, gauss, deriv, gauss_loc, this%cell_weight(p, :))
 

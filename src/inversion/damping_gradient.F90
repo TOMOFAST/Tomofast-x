@@ -139,9 +139,8 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
 
     call matrix%new_row(myrank)
 
-
-    gradient_fwd = get_grad(model%val_full, model%grid_full, i, j, k, FWD_TYPE)
-    !gradient_bwd = get_grad(model%val_full, model%grid_full, i, j, k, BWD_TYPE)
+    gradient_fwd = get_grad(model%val, model%grid_full, i, j, k, FWD_TYPE)
+    !gradient_bwd = get_grad(model%val, model%grid_full, i, j, k, BWD_TYPE)
 
     ! NOTE: Use only gradient in one direction per time.
 

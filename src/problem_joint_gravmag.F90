@@ -524,7 +524,6 @@ subroutine set_model(model, model_type, model_val, model_file, myrank)
 
   if (model_type == 1) then
     ! Setting homogeneous starting value.
-    model%val_full = model_val
     model%val = model_val
 
   else if (model_type == 2) then

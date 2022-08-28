@@ -382,8 +382,8 @@ function cross_gradient_calculate_tau(model1, model2, i, j, k, der_type) result(
   ! Calculate model gradients.
   ! NOTE: These gradients are used to calculate the partial derivatives below,
   ! so if we want to e.g. normalize gradients then expressions for derivatives have to be changed.
-  m1_grad = get_grad(model1%val_full, model1%grid_full, i, j, k, get_der_type(der_type))
-  m2_grad = get_grad(model2%val_full, model2%grid_full, i, j, k, get_der_type(der_type))
+  m1_grad = get_grad(model1%val, model1%grid_full, i, j, k, get_der_type(der_type))
+  m2_grad = get_grad(model2%val, model2%grid_full, i, j, k, get_der_type(der_type))
 
   ! Calculate the cross-product between model gradients.
   tau%val = m1_grad%cross_product(m2_grad)
@@ -518,8 +518,8 @@ function cross_gradient_calculate_tau2(model1, model2, i, j, k) result(tau)
   ! NOTE: These gradients are used to calculate the partial derivatives below,
   ! so if we want to e.g. normalize gradients then expressions for derivatives have to be changed.
 
-  m1_grad = get_grad(model1%val_full, model1%grid_full, i, j, k, FWD2_TYPE)
-  m2_grad = get_grad(model2%val_full, model2%grid_full, i, j, k, FWD2_TYPE)
+  m1_grad = get_grad(model1%val, model1%grid_full, i, j, k, FWD2_TYPE)
+  m2_grad = get_grad(model2%val, model2%grid_full, i, j, k, FWD2_TYPE)
 
   ! Calculate the cross-product between model gradients.
   tau%val = m1_grad%cross_product(m2_grad)
@@ -617,8 +617,8 @@ function cross_gradient_calculate_tau_backward(model1, model2, i, j, k) result(t
   ! so if we want to e.g. normalize gradients then expressions for derivatives have to be changed.
 
   ! Forward and backward difference.
-  m1_grad = get_grad(model1%val_full, model1%grid_full, i, j, k, BWD_TYPE)
-  m2_grad = get_grad(model2%val_full, model2%grid_full, i, j, k, BWD_TYPE)
+  m1_grad = get_grad(model1%val, model1%grid_full, i, j, k, BWD_TYPE)
+  m2_grad = get_grad(model2%val, model2%grid_full, i, j, k, BWD_TYPE)
 
   ! Calculate the cross-product between model gradients.
   tau%val = m1_grad%cross_product(m2_grad)
@@ -703,12 +703,12 @@ function cross_gradient_calculate_tau_mixed_gradients(model1, model2, i, j, k) r
   ! so if we want to e.g. normalize gradients then expressions for derivatives have to be changed.
 
   ! Forward and central difference.
-!  m1_grad = grad%get_grad(model1%val_full, model1%grid_full, i, j, k, FWD_TYPE)
-!  m2_grad = grad%get_grad(model2%val_full, model2%grid_full, i, j, k, CNT_TYPE)
+!  m1_grad = grad%get_grad(model1%val, model1%grid_full, i, j, k, FWD_TYPE)
+!  m2_grad = grad%get_grad(model2%val, model2%grid_full, i, j, k, CNT_TYPE)
 
   ! Forward and backward difference.
-  m1_grad = get_grad(model1%val_full, model1%grid_full, i, j, k, FWD_TYPE)
-  m2_grad = get_grad(model2%val_full, model2%grid_full, i, j, k, BWD_TYPE)
+  m1_grad = get_grad(model1%val, model1%grid_full, i, j, k, FWD_TYPE)
+  m2_grad = get_grad(model2%val, model2%grid_full, i, j, k, BWD_TYPE)
 
   ! Calculate the cross-product between model gradients.
   tau%val = m1_grad%cross_product(m2_grad)
@@ -869,8 +869,8 @@ subroutine cross_gradient_normalize_tau(tau, model1, model2, i, j, k)
   real(kind=CUSTOM_REAL) :: val1, val2, scale
   integer :: l
 
-  val1 = grad_get_par(model1%val_full, model1%grid_full, i, j, k)
-  val2 = grad_get_par(model2%val_full, model2%grid_full, i, j, k)
+  val1 = grad_get_par(model1%val, model1%grid_full, i, j, k)
+  val2 = grad_get_par(model2%val, model2%grid_full, i, j, k)
 
   if (val1 /= 0._CUSTOM_REAL .and. val2 /= 0._CUSTOM_REAL) then
     scale = 1._CUSTOM_REAL / abs(val1 * val2)
