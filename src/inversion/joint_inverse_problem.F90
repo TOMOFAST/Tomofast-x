@@ -507,9 +507,9 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
     ! Possibly, we cannot compute the variance this way with wavelet compression (by simply applying the inverse wavelet transform), not sure.
     if (allocated(this%matrix%lsqr_var) .and. (ncalls == 1 .or. ncalls == par%ninversions)) then
       if (SOLVE_PROBLEM(1)) &
-        call write_variance(par, this%matrix%lsqr_var(1:par%nelements), arr(1)%column_weight, 1, ncalls, myrank, nbproc)
+        call write_variance(par, this%matrix%lsqr_var(1:par%nelements_total), arr(1)%column_weight, 1, ncalls, myrank)
       if (SOLVE_PROBLEM(2)) &
-        call write_variance(par, this%matrix%lsqr_var(par%nelements + 1:), arr(2)%column_weight, 2, ncalls, myrank, nbproc)
+        call write_variance(par, this%matrix%lsqr_var(par%nelements_total + 1:), arr(2)%column_weight, 2, ncalls, myrank)
     endif
   endif
 
@@ -518,49 +518,28 @@ end subroutine joint_inversion_solve
 !=======================================================================================================
 ! Writing solution variance to a file.
 !=======================================================================================================
-subroutine write_variance(par, lsqr_var, column_weight, problem_type, ncalls, myrank, nbproc)
+subroutine write_variance(par, lsqr_var, column_weight, problem_type, ncalls, myrank)
   type(t_parameters_inversion), intent(in) :: par
-  real(kind=CUSTOM_REAL), intent(in) :: lsqr_var(par%nelements)
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(par%nelements)
+  real(kind=CUSTOM_REAL), intent(inout) :: lsqr_var(par%nelements_total)
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(par%nelements_total)
   integer, intent(in) :: problem_type, ncalls
-  integer, intent(in) :: myrank, nbproc
+  integer, intent(in) :: myrank
 
-  integer :: ierr
-  integer :: nsmaller
   character(len=32) :: filename
   character(len=128) :: filename_full
 
-  real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full(:)
-  real(kind=CUSTOM_REAL), allocatable :: lsqr_var_scaled(:)
-
-  allocate(lsqr_var_full(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(lsqr_var_scaled(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
-
-  if (par%compression_type > 0) then
-  ! Applying the Inverse Wavelet Transform.
-    if (nbproc > 1) then
-      ! Gather full (parallel) vector on the master.
-      call get_full_array(lsqr_var, par%nelements, lsqr_var_full, .true., myrank, nbproc)
-      call iHaar3D(lsqr_var_full, par%nx, par%ny, par%nz)
-
-      nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
-      lsqr_var_scaled = lsqr_var_full(nsmaller + 1 : nsmaller + par%nelements)
-    else
-      lsqr_var_scaled = lsqr_var
-      call iHaar3D(lsqr_var_scaled, par%nx, par%ny, par%nz)
-    endif
-  else
-    lsqr_var_scaled = lsqr_var
-  endif
-
-  ! Rescale with depth weight.
-  call rescale_model(par%nelements, lsqr_var_scaled, column_weight)
-
-  ! Gather full (parallel) vector on the master.
-  call get_full_array(lsqr_var_scaled, par%nelements, lsqr_var_full, .false., myrank, nbproc)
-
   if (myrank == 0) then
   ! Writing variance by master CPU.
+
+    print *, 'Writing the variance array.'
+
+    if (par%compression_type > 0) then
+      ! Applying the Inverse Wavelet Transform.
+      call iHaar3D(lsqr_var, par%nx, par%ny, par%nz)
+    endif
+
+    ! Rescale with depth weight.
+    call rescale_model(par%nelements_total, lsqr_var, column_weight)
 
     if (ncalls == 1) then
       filename = "/lsqr_std_prior"
@@ -579,13 +558,10 @@ subroutine write_variance(par, lsqr_var, column_weight, problem_type, ncalls, my
     open(27, file=trim(filename_full), form='formatted', status='replace', action='write')
 
     write(27, *) par%nelements_total
-    write(27, *) lsqr_var_full
+    write(27, *) lsqr_var
 
     close(27)
   endif
-
-  deallocate(lsqr_var_full)
-  deallocate(lsqr_var_scaled)
 
 end subroutine write_variance
 
