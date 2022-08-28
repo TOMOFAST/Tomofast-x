@@ -400,12 +400,12 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       i = 1
       call this%admm_method_1%iterate_admm_arrays(model(i)%nlithos, &
                                                   model(i)%min_local_bound, model(i)%max_local_bound, &
-                                                  model(i)%val, this%x0_ADMM, myrank)
+                                                  model(i)%val(nsmaller + 1 : nsmaller + par%nelements), this%x0_ADMM, myrank)
     else if (solve_mag_only) then
       i = 2
       call this%admm_method_2%iterate_admm_arrays(model(i)%nlithos, &
                                                   model(i)%min_local_bound, model(i)%max_local_bound, &
-                                                  model(i)%val, this%x0_ADMM, myrank)
+                                                  model(i)%val(nsmaller + 1 : nsmaller + par%nelements), this%x0_ADMM, myrank)
     endif
 
     if (solve_gravity_only .or. solve_mag_only) then
@@ -421,8 +421,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, &
                        model(i)%val, this%x0_ADMM, param_shift(i), myrank, nbproc)
 
-      ! Calculate the ADMM cost in parallel.
-      call calculate_cost(model(i)%val, this%x0_ADMM, cost, .true., nbproc)
+      ! Calculate the ADMM cost.
+      call calculate_cost(model(i)%val(nsmaller + 1 : nsmaller + par%nelements), this%x0_ADMM, cost, .true., nbproc)
       this%admm_cost = sqrt(cost)
 
       if (myrank == 0) print *, "ADMM cost |x - x0| / |x| =", this%admm_cost
