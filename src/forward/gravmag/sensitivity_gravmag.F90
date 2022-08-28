@@ -206,7 +206,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
 
   ! File header.
-  write(77) par%ndata_loc, par%ndata, par%nelements_total, myrank, nbproc
+  write(77) par%ndata_loc, par%ndata, par%nelements_total, nel_compressed, myrank, nbproc
 
   nnz_data = 0
   cost_full_loc = 0.d0
@@ -391,11 +391,10 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   real(kind=CUSTOM_REAL) :: comp_rate
   integer(kind=8) :: nnz_total
   integer :: i, j, ierr
-  integer :: nelements_total
   character(len=256) :: filename, filename_full
   character(len=256) :: msg
 
-  integer :: ndata_loc_read, ndata_read, nelements_total_read, myrank_read, nbproc_read
+  integer :: ndata_loc_read, ndata_read, nelements_total_read, nel_compressed_read, myrank_read, nbproc_read
   integer :: idata, nel
   integer(kind=8) :: nnz
   integer :: column
@@ -406,17 +405,6 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
   param_shift(1) = 0
   param_shift(2) = par%nelements_total
-
-  !---------------------------------------------------------------------------------------------
-  ! Allocate memory.
-  !---------------------------------------------------------------------------------------------
-  nelements_total = par%nx * par%ny * par%nz
-
-  ! TODO: allocate the compressed number of elements.
-  allocate(sensit_columns(nelements_total), source=0, stat=ierr)
-  allocate(sensit_compressed(nelements_total), source=0._MATRIX_PRECISION, stat=ierr)
-
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in read_sensitivity_kernel!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
   ! Reading the sensitivity kernel files.
@@ -438,13 +426,19 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
                                //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
   ! Reading the file header.
-  read(78) ndata_loc_read, ndata_read, nelements_total_read, myrank_read, nbproc_read
+  read(78) ndata_loc_read, ndata_read, nelements_total_read, nel_compressed_read, myrank_read, nbproc_read
 
   ! Consistency check.
-  if (ndata_loc_read /= par%ndata_loc .or. ndata_read /= par%ndata .or. nelements_total_read /= nelements_total &
+  if (ndata_loc_read /= par%ndata_loc .or. ndata_read /= par%ndata .or. nelements_total_read /= par%nelements_total &
       .or. myrank_read /= myrank .or. nbproc_read /= nbproc) then
     call exit_MPI("Wrong file header in read_sensitivity_kernel!", myrank, 0)
   endif
+
+  ! Allocate memory (for compressed sensitivity line).
+  allocate(sensit_columns(nel_compressed_read), source=0, stat=ierr)
+  allocate(sensit_compressed(nel_compressed_read), source=0._MATRIX_PRECISION, stat=ierr)
+
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in read_sensitivity_kernel!", myrank, ierr)
 
   nnz = 0
 
@@ -453,6 +447,10 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
     ! Reading the data descriptor.
     read(78) idata, nel
+
+    if (nel > nel_compressed_read) then
+      call exit_MPI("Wrong nel in read_sensitivity_kernel!", myrank, idata)
+    endif
 
     if (i /= idata) then
       call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, idata)
@@ -486,7 +484,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   ! Calculate the read kernel compression rate.
   !---------------------------------------------------------------------------------------------
   call mpi_allreduce(nnz, nnz_total, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
-  comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata)
+  comp_rate = dble(nnz_total) / dble(par%nelements_total) / dble(par%ndata)
 
   if (myrank == 0) print *, 'nnz_total (of the read kernel)  = ', nnz_total
   if (myrank == 0) print *, 'COMPRESSION RATE (of the read kernel)  = ', comp_rate
