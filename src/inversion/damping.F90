@@ -97,17 +97,18 @@ end subroutine damping_initialize
 subroutine damping_add(this, matrix, b_RHS, column_weight, &
                        model, model_ref, param_shift, myrank, nbproc, local_weight)
   class(t_damping), intent(inout) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
-  real(kind=CUSTOM_REAL), intent(in) :: model(:)
-  real(kind=CUSTOM_REAL), intent(in) :: model_ref(:)
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(this%nelements_total)
+  real(kind=CUSTOM_REAL), intent(in) :: model(this%nelements_total)
+  ! Note the reference model is local.
+  real(kind=CUSTOM_REAL), intent(in) :: model_ref(this%nelements)
   integer, intent(in) :: param_shift
   integer, intent(in) :: myrank, nbproc
-  real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(:)
+  real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(this%nelements)
 
   type(t_sparse_matrix), intent(inout) :: matrix
   real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(matrix%get_total_row_number())
 
-  integer :: i, nsmaller
+  integer :: i, p, nsmaller
   integer :: row_beg, row_end
   integer :: ierr
   real(kind=CUSTOM_REAL) :: value
@@ -118,55 +119,33 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, &
   real(kind=CUSTOM_REAL), allocatable :: model_diff_full(:)
 
   allocate(model_diff(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-
-  model_diff = model - model_ref
-
-  ! Apply the depth-weighting.
-  do i = 1, this%nelements
-    model_diff(i) = model_diff(i) / column_weight(i)
-  enddo
+  allocate(model_diff_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   ! The number of elements on CPUs with rank smaller than myrank.
   nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
 
+  do i = 1, this%nelements
+    ! Index in the full model.
+    p = nsmaller + i
+    model_diff(i) = model(p) - model_ref(i)
+    ! Apply the depth-weighting.
+    model_diff(i) = model_diff(i) / column_weight(p)
+  enddo
+
+  call get_full_array(model_diff, this%nelements, model_diff_full, .true., myrank, nbproc)
+
   if (this%compression_type > 0) then
-  ! Transform the model difference to the wavelet domain.
+    ! Transform the model difference to the wavelet domain.
+    call Haar3D(model_diff_full, this%nx, this%ny, this%nz)
+  endif
 
-    if (nbproc > 1) then
-    ! Parallel version.
-
-      ! Allocate memory for the full model.
-      allocate(model_diff_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-      if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in damping_add!", myrank, ierr)
-
-      ! Gather the full model from all processors.
-      call get_full_array(model_diff, this%nelements, model_diff_full, .true., myrank, nbproc)
-
-      ! Transform to wavelet domain.
-      call Haar3D(model_diff_full, this%nx, this%ny, this%nz)
-
-      ! Extract the local model part.
-      model_diff = model_diff_full(nsmaller + 1 : nsmaller + this%nelements)
-
-      deallocate(model_diff_full)
-
-    else
-    ! Serial version.
-      ! Transform to wavelet domain.
-      call Haar3D(model_diff, this%nx, this%ny, this%nz)
-    endif
-
-    if (this%norm_power /= 2.d0) then
-      call exit_MPI("Lp-norm with p /= 2 is not supported with matrix compression yet!", myrank, 0)
-    endif
+  if (this%compression_type > 0 .and. this%norm_power /= 2.d0) then
+    call exit_MPI("Lp-norm with p /= 2 is not supported with matrix compression yet!", myrank, 0)
   endif
   !---------------------------------------------------------------------
 
   ! First matrix row (in the big matrix) of the damping matrix that will be added.
   row_beg = matrix%get_current_row_number() + 1
-
-  ! Add empty lines.
-  call matrix%add_empty_rows(nsmaller, myrank)
 
   ! Add lines with damping.
   do i = 1, this%nelements
@@ -174,9 +153,12 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, &
 
     value = this%alpha * this%problem_weight
 
+    ! Model index in the full array.
+    p = nsmaller + i
+
     if (this%norm_power /= 2.d0) then
       ! Apply the Lp norm.
-      value = value * this%get_norm_multiplier(model_diff(i))
+      value = value * this%get_norm_multiplier(model_diff_full(p))
     endif
 
     if (present(local_weight)) then
@@ -184,32 +166,29 @@ subroutine damping_add(this, matrix, b_RHS, column_weight, &
       value = value * local_weight(i)
     endif
 
-    call matrix%add(value, param_shift + i, myrank)
-
+    call matrix%add(value, p + param_shift, myrank)
   enddo
-
-  ! Add empty lines.
-  call matrix%add_empty_rows(this%nelements_total - this%nelements - nsmaller, myrank)
 
   ! Last matrix row (in the big matrix) of the added damping matrix.
   row_end = matrix%get_current_row_number()
 
   ! Sanity check.
-  if (row_end - row_beg + 1 /= this%nelements_total) &
+  if (row_end - row_beg + 1 /= this%nelements) &
     call exit_MPI("Sanity check failed in damping_add!", myrank, 0)
 
   !---------------------------------------------------------------------
   ! Add the damping contribution to the right hand side.
   if (present(local_weight)) then
-    call this%add_RHS(b_RHS(row_beg:row_end), model_diff, myrank, nbproc, local_weight)
+    call this%add_RHS(b_RHS(row_beg:row_end), model_diff_full(nsmaller + 1 : nsmaller + this%nelements), local_weight)
   else
-    call this%add_RHS(b_RHS(row_beg:row_end), model_diff, myrank, nbproc)
+    call this%add_RHS(b_RHS(row_beg:row_end), model_diff_full(nsmaller + 1 : nsmaller + this%nelements))
   endif
-
-  deallocate(model_diff)
 
   ! Calculate the damping cost.
   this%cost = sum(b_RHS(row_beg:row_end)**2)
+
+  deallocate(model_diff)
+  deallocate(model_diff_full)
 
 end subroutine damping_add
 
@@ -217,13 +196,12 @@ end subroutine damping_add
 ! Adds damping contribution in the right hand side.
 ! model_diff - depth weighted (m - m_prior).
 !=============================================================================================
-subroutine damping_add_RHS(this, b_RHS, model_diff, myrank, nbproc, local_weight)
+subroutine damping_add_RHS(this, b_RHS, model_diff, local_weight)
   class(t_damping), intent(in) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: model_diff(:)
-  integer, intent(in) :: myrank, nbproc
-  real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(:)
+  real(kind=CUSTOM_REAL), intent(in) :: model_diff(this%nelements)
+  real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(this%nelements)
 
-  real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(this%nelements_total)
+  real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(this%nelements)
 
   integer :: i
 
@@ -240,10 +218,6 @@ subroutine damping_add_RHS(this, b_RHS, model_diff, myrank, nbproc, local_weight
       b_RHS(i) = b_RHS(i) * local_weight(i)
     endif
   enddo
-
-  ! Gather full right hand side.
-  call get_full_array_in_place(this%nelements, b_RHS, .true., myrank, nbproc)
-
 end subroutine damping_add_RHS
 
 !===========================================================================================

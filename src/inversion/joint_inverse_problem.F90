@@ -251,7 +251,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   if (par%admm_type > 0) then
     allocate(this%x0_ADMM(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
-    allocate(this%weight_ADMM(par%nelements), source=1._CUSTOM_REAL, stat=ierr)
+    !allocate(this%weight_ADMM(par%nelements), source=1._CUSTOM_REAL, stat=ierr)
   endif
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize!", myrank, ierr)
@@ -296,6 +296,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   logical :: solve_gravity_only
   logical :: solve_mag_only
   real(kind=CUSTOM_REAL) :: norm_power
+  integer :: nsmaller
 
   logical :: SOLVE_PROBLEM(2)
 
@@ -315,6 +316,9 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   call this%calculate_matrix_partitioning(par, line_start, line_end, param_shift)
 
   ! ***** Data misfit and damping and damping gradient  *****
+
+  ! The number of elements on CPUs with rank smaller than myrank.
+  nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
 
   ! Loop over joint problems.
   do i = 1, 2
@@ -343,7 +347,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
                               par%compression_type, par%nx, par%ny, par%nz)
 
       call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, &
-                       model(i)%val, model(i)%val_prior, param_shift(i), myrank, nbproc)
+                       model(i)%val, model(i)%val_prior(nsmaller + 1 : nsmaller + par%nelements), param_shift(i), myrank, nbproc)
 
       if (myrank == 0) print *, 'damping term cost = ', damping%get_cost()
       if (myrank == 0) print *, 'nel (with damping) = ', this%matrix%get_number_elements()
