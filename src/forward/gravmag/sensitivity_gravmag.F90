@@ -374,10 +374,11 @@ end subroutine calculate_and_write_sensit
 ! Reads the sensitivity kernel from files,
 ! and stores it in the sparse matrix.
 !==================================================================================================================
-subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_weight, problem_type, myrank, nbproc)
+subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_weight, problem_type, param_shift, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
   integer, intent(in) :: problem_type
+  integer, intent(in) :: param_shift
   integer, intent(in) :: myrank, nbproc
 
   ! Sensitivity matrix.
@@ -398,13 +399,9 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   integer :: idata, nel
   integer(kind=8) :: nnz
   integer :: column
-  integer :: param_shift(2)
   integer :: nx_read, ny_read, nz_read, weight_type_read
 
   if (myrank == 0) print *, 'Reading the sensitivity kernel.'
-
-  param_shift(1) = 0
-  param_shift(2) = par%nelements_total
 
   !---------------------------------------------------------------------------------------------
   ! Reading the sensitivity kernel files.
@@ -467,7 +464,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
     do j = 1, nel
       ! The column index in a big (joint) parallel sparse matrix.
-      column = sensit_columns(j) + param_shift(problem_type)
+      column = sensit_columns(j) + param_shift
 
       ! Add element to the sparse matrix.
       call sensit_matrix%add(sensit_compressed(j) * problem_weight, column, myrank)

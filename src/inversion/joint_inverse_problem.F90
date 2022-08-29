@@ -109,11 +109,11 @@ module joint_inverse_problem
     procedure, private, pass :: add_cross_grad_constraints => joint_inversion_add_cross_grad_constraints
     procedure, private, pass :: add_clustering_constraints => joint_inversion_add_clustering_constraints
 
-    procedure, public, nopass :: calculate_matrix_partitioning => joint_inversion_calculate_matrix_partitioning
-
     procedure, private, nopass :: write_variance
 
   end type t_joint_inversion
+
+  public :: calculate_matrix_partitioning
 
 contains
 
@@ -129,6 +129,14 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   integer :: ierr
   integer :: i, nl
   integer(kind=8) :: nnz
+  logical :: SOLVE_PROBLEM(2)
+  logical :: SOLVE_JOINT_PROBLEM
+  integer :: ncolumns
+
+  do i = 1, 2
+    SOLVE_PROBLEM(i) = (par%problem_weight(i) /= 0.d0)
+  enddo
+  SOLVE_JOINT_PROBLEM = (SOLVE_PROBLEM(1) .and. SOLVE_PROBLEM(2))
 
   do i = 1, 2
     if (par%alpha(i) == 0.d0 .or. par%problem_weight(i) == 0.d0) then
@@ -231,7 +239,13 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   !-------------------------------------------------------------------------------------------
   ! MAIN MATRIX MEMORY ALLOCATION.
   !-------------------------------------------------------------------------------------------
-  call this%matrix%initialize(nl, 2 * par%nelements_total, nnz, myrank)
+  if (SOLVE_JOINT_PROBLEM) then
+    ncolumns = 2 * par%nelements_total
+  else
+    ncolumns = par%nelements_total
+  endif
+
+  call this%matrix%initialize(nl, ncolumns, nnz, myrank)
 
   ierr = 0
 
@@ -277,14 +291,15 @@ end subroutine joint_inversion_reset
 !================================================================================================
 ! Joint inversion of two field.
 !================================================================================================
-subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data, myrank, nbproc)
+subroutine joint_inversion_solve(this, par, arr, model, delta_model_size, delta_model, delta_data, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
   type(t_inversion_arrays), intent(inout) :: arr(2)
   type(t_model) :: model(2)
+  integer, intent(in) :: delta_model_size
   integer, intent(in) :: myrank, nbproc
 
-  real(kind=CUSTOM_REAL), intent(out) :: delta_model(2 * par%nelements_total)
+  real(kind=CUSTOM_REAL), intent(out) :: delta_model(delta_model_size)
   real(kind=CUSTOM_REAL), intent(out) :: delta_data(sum(par%ndata_loc))
 
   type(t_damping) :: damping
@@ -299,6 +314,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   integer :: nsmaller
 
   logical :: SOLVE_PROBLEM(2)
+  logical :: SOLVE_JOINT_PROBLEM
 
   ! The number of times this subroutine has been called.
   ! This is effectively the major loop iteration number.
@@ -312,8 +328,9 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   do i = 1, 2
     SOLVE_PROBLEM(i) = (par%problem_weight(i) /= 0.d0)
   enddo
+  SOLVE_JOINT_PROBLEM = (SOLVE_PROBLEM(1) .and. SOLVE_PROBLEM(2))
 
-  call this%calculate_matrix_partitioning(par, line_start, line_end, param_shift)
+  call calculate_matrix_partitioning(par, line_start, line_end, param_shift)
 
   ! ***** Data misfit and damping and damping gradient  *****
 
@@ -472,14 +489,23 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   ! Calculate data update using unscaled delta model (in wavelet domain).
   ! As we have both the compressed kernel and delta model, and the problem is linear.
   !-------------------------------------------------------------------------------------
-  if (SOLVE_PROBLEM(1)) then
+  if (SOLVE_JOINT_PROBLEM) then
     call calculate_data_unscaled(par%nelements_total, delta_model(1:par%nelements_total), this%matrix, &
       par%problem_weight(1), par%ndata_loc(1), delta_data(1:par%ndata_loc(1)), 1, param_shift(1), myrank)
-  endif
 
-  if (SOLVE_PROBLEM(2)) then
     call calculate_data_unscaled(par%nelements_total, delta_model(par%nelements_total + 1:), this%matrix, &
       par%problem_weight(2), par%ndata_loc(2), delta_data(par%ndata_loc(1) + 1:), par%ndata_loc(1) + 1, param_shift(2), myrank)
+  else
+  ! Use the full delta_model here as it has size=nelements_total in single inversion.
+    if (SOLVE_PROBLEM(1)) then
+      call calculate_data_unscaled(par%nelements_total, delta_model, this%matrix, &
+        par%problem_weight(1), par%ndata_loc(1), delta_data, 1, 0, myrank)
+    endif
+
+    if (SOLVE_PROBLEM(2)) then
+      call calculate_data_unscaled(par%nelements_total, delta_model, this%matrix, &
+        par%problem_weight(2), par%ndata_loc(2), delta_data, 1, 0, myrank)
+    endif
   endif
 
   !-------------------------------------------------------------------------------------
@@ -487,12 +513,23 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   !-------------------------------------------------------------------------------------
   if (par%compression_type > 0) then
     ! Applying the Inverse Wavelet Transform.
-    if (SOLVE_PROBLEM(1)) call iHaar3D(delta_model(1:par%nelements_total), par%nx, par%ny, par%nz)
-    if (SOLVE_PROBLEM(2)) call iHaar3D(delta_model(par%nelements_total + 1:), par%nx, par%ny, par%nz)
+    if (SOLVE_JOINT_PROBLEM) then
+      call iHaar3D(delta_model(1:par%nelements_total), par%nx, par%ny, par%nz)
+      call iHaar3D(delta_model(par%nelements_total + 1:), par%nx, par%ny, par%nz)
+    else
+    ! Use the full delta_model here as it has size=nelements_total in single inversion.
+      call iHaar3D(delta_model, par%nx, par%ny, par%nz)
+    endif
   endif
 
-  if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements_total, delta_model(1:par%nelements_total), arr(1)%column_weight)
-  if (SOLVE_PROBLEM(2)) call rescale_model(par%nelements_total, delta_model(par%nelements_total + 1:), arr(2)%column_weight)
+  if (SOLVE_JOINT_PROBLEM) then
+    call rescale_model(par%nelements_total, delta_model(1:par%nelements_total), arr(1)%column_weight)
+    call rescale_model(par%nelements_total, delta_model(par%nelements_total + 1:), arr(2)%column_weight)
+  else
+  ! Use the full delta_model here as it has size=nelements_total in single inversion.
+    if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements_total, delta_model, arr(1)%column_weight)
+    if (SOLVE_PROBLEM(2)) call rescale_model(par%nelements_total, delta_model, arr(2)%column_weight)
+  endif
 
   !----------------------------------------------------------------------------------------------------------
   ! Writing grav/mag prior and posterior variance.
@@ -693,33 +730,44 @@ end function joint_inversion_get_admm_cost
 !==================================================================================================
 ! Calculates the matrix pertitioning.
 !==================================================================================================
-subroutine joint_inversion_calculate_matrix_partitioning(par, line_start, line_end, param_shift)
+subroutine calculate_matrix_partitioning(par, line_start, line_end, param_shift)
   type(t_parameters_inversion), intent(in) :: par
   integer, intent(out) :: line_start(2), line_end(2), param_shift(2)
 
   logical :: SOLVE_PROBLEM(2)
+  logical :: SOLVE_JOINT_PROBLEM
   integer :: i
 
   do i = 1, 2
     SOLVE_PROBLEM(i) = (par%problem_weight(i) /= 0.d0)
   enddo
-
-  param_shift(1) = 0
-  param_shift(2) = par%nelements_total
+  SOLVE_JOINT_PROBLEM = (SOLVE_PROBLEM(1) .and. SOLVE_PROBLEM(2))
 
   line_start = 0
   line_end = 0
 
-  if (SOLVE_PROBLEM(1)) then
+  if (SOLVE_JOINT_PROBLEM) then
+    param_shift(1) = 0
+    param_shift(2) = par%nelements_total
+
     line_start(1) = 1
     line_end(1) = par%ndata_loc(1)
-  endif
 
-  if (SOLVE_PROBLEM(2)) then
     line_start(2) = line_end(1) + 1
     line_end(2) = line_end(1) + par%ndata_loc(2)
+
+  else
+  ! SINGLE inversion.
+    param_shift = 0
+    line_start = 1
+
+    if (SOLVE_PROBLEM(1)) then
+      line_end(1) = par%ndata_loc(1)
+    else
+      line_end(2) = par%ndata_loc(2)
+    endif
   endif
 
-end subroutine joint_inversion_calculate_matrix_partitioning
+end subroutine calculate_matrix_partitioning
 
 end module joint_inverse_problem

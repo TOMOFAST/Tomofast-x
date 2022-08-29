@@ -85,7 +85,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   character(len=256) :: mag_prior_model_filename
 
   logical :: SOLVE_PROBLEM(2)
+  logical :: SOLVE_JOINT_PROBLEM
   integer(kind=8) :: nnz(2)
+  integer :: delta_model_size
 
   ! Unit number for cost file handle.
   integer, parameter :: FILE_COSTS = 1234567
@@ -101,10 +103,14 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     SOLVE_PROBLEM(i) = (ipar%problem_weight(i) /= 0.d0)
     if (myrank == 0) print *, "SOLVE_PROBLEM("//trim(str(i))//") = ", SOLVE_PROBLEM(i)
   enddo
+  SOLVE_JOINT_PROBLEM = (SOLVE_PROBLEM(1) .and. SOLVE_PROBLEM(2))
 
   nnz = 0
   cost_data = 0._CUSTOM_REAL
   cost_model = 0._CUSTOM_REAL
+
+  ! Calculate parameters for matrix offsets needed for joint inversion.
+  call calculate_matrix_partitioning(ipar, line_start, line_end, param_shift)
 
   ! (I) MODEL GRID ALLOCATION.  -----------------------------------------------------------
 
@@ -183,10 +189,14 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! READING THE SENSITIVITY KERNEL ----------------------------------------------------------------------
 
   ! Reading the sensitivity kernel and depth weight from files.
-  if (SOLVE_PROBLEM(1)) &
-    call read_sensitivity_kernel(gpar, jinv%matrix, iarr(1)%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) &
-    call read_sensitivity_kernel(mpar, jinv%matrix, iarr(2)%column_weight, ipar%problem_weight(2), 2, myrank, nbproc)
+  if (SOLVE_PROBLEM(1)) then
+    call read_sensitivity_kernel(gpar, jinv%matrix, iarr(1)%column_weight, ipar%problem_weight(1), 1, &
+                                 param_shift(1), myrank, nbproc)
+  endif
+  if (SOLVE_PROBLEM(2)) then
+    call read_sensitivity_kernel(mpar, jinv%matrix, iarr(2)%column_weight, ipar%problem_weight(2), 2, &
+                                 param_shift(2), myrank, nbproc)
+  endif
 
   ! MODEL ALLOCATION -----------------------------------------------------------------------------------
 
@@ -228,10 +238,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   endif
 
   !-------------------------------------------------------------------------------------------------------
-  ! Calculate parameters for calculating the data using the big (joint inversion) parallel sparse matrix.
-  call jinv%calculate_matrix_partitioning(ipar, line_start, line_end, param_shift)
-
-  !-------------------------------------------------------------------------------------------------------
   ! Calculate the data from the read model.
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata_loc(i), jinv%matrix, &
@@ -262,7 +268,13 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   number_prior_models = gpar%number_prior_models
   path_output_parfile = path_output
 
-  allocate(delta_model(2 * ipar%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  if (SOLVE_JOINT_PROBLEM) then
+    delta_model_size = 2 * ipar%nelements_total
+  else
+    delta_model_size = ipar%nelements_total
+  endif
+
+  allocate(delta_model(delta_model_size), source=0._CUSTOM_REAL, stat=ierr)
   allocate(delta_data(sum(ipar%ndata_loc)), source=0._CUSTOM_REAL, stat=ierr)
 
   !******************************************************************************************
@@ -385,11 +397,16 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       if (it > 1) call jinv%reset()
 
       ! Solve joint inverse problem.
-      call jinv%solve(ipar, iarr, model, delta_model, delta_data, myrank, nbproc)
+      call jinv%solve(ipar, iarr, model, delta_model_size, delta_model, delta_data, myrank, nbproc)
 
       ! Update the local models.
-      if (SOLVE_PROBLEM(1)) call model(1)%update(delta_model(1:ipar%nelements_total))
-      if (SOLVE_PROBLEM(2)) call model(2)%update(delta_model(ipar%nelements_total + 1:))
+      if (SOLVE_JOINT_PROBLEM) then
+        call model(1)%update(delta_model(1:ipar%nelements_total))
+        call model(2)%update(delta_model(ipar%nelements_total + 1:))
+      else
+        if (SOLVE_PROBLEM(1)) call model(1)%update(delta_model)
+        if (SOLVE_PROBLEM(2)) call model(2)%update(delta_model)
+      endif
 
       ! Write intermediate models to file.
       if (ipar%write_model_niter > 0) then
