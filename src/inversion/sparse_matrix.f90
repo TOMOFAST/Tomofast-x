@@ -37,8 +37,11 @@ module sparse_matrix
     integer(kind=8), private :: nel
     ! Total number of rows in the matrix.
     integer, private :: nl
+    ! Total number of non-empty rows in the matrix.
+    integer, private :: nl_nonempty
     ! Current number of the added rows in the matrix.
-    integer, private :: nl_current
+    integer, private :: nl_current ! Excludes empty rows.
+    integer, private :: nl_current_all
     ! Total number of matrix columns.
     integer, private :: ncolumns
 
@@ -48,6 +51,9 @@ module sparse_matrix
     integer, allocatable, private :: ija(:)
     ! The list of 'sa' indexes where each row starts.
     integer(kind=8), allocatable, private :: ijl(:)
+
+    ! An array to identify non-empty rows (for the Doubly Compressed Sparse Row format).
+    integer, allocatable, private :: rowptr(:)
 
     ! Auxilary array to calculate the solution variance.
     real(kind=CUSTOM_REAL), allocatable, public :: lsqr_var(:)
@@ -115,7 +121,7 @@ pure function sparse_matrix_get_current_row_number(this) result(res)
   class(t_sparse_matrix), intent(in) :: this
   integer :: res
 
-  res = this%nl_current
+  res = this%nl_current_all
 end function sparse_matrix_get_current_row_number
 
 !=========================================================================
@@ -178,7 +184,10 @@ subroutine sparse_matrix_initialize(this, nl, ncolumns, nnz, myrank)
   integer(kind=8), intent(in) :: nnz
 
   this%nl_current = 0
+  this%nl_current_all = 0
   this%nel = 0
+  this%nl_nonempty = 0
+
   this%nl = nl
   this%ncolumns = ncolumns
   this%nnz = nnz
@@ -194,12 +203,15 @@ pure subroutine sparse_matrix_reset(this)
   class(t_sparse_matrix), intent(inout) :: this
 
   this%nl_current = 0
+  this%nl_current_all = 0
   this%nel = 0
+  this%nl_nonempty = 0
 
   if (allocated(this%sa)) then
     this%sa = 0._MATRIX_PRECISION
     this%ija = 0
     this%ijl = 0
+    this%rowptr = 0
   endif
 
 end subroutine sparse_matrix_reset
@@ -207,11 +219,29 @@ end subroutine sparse_matrix_reset
 !=========================================================================
 ! Remove matrix lines from the bottom.
 !=========================================================================
-pure subroutine sparse_matrix_remove_lines(this, nlines_to_keep)
+subroutine sparse_matrix_remove_lines(this, nlines_to_keep, myrank)
   class(t_sparse_matrix), intent(inout) :: this
-  integer, intent(in) :: nlines_to_keep
+  integer, intent(in) :: nlines_to_keep, myrank
 
-  this%nl_current = nlines_to_keep
+  integer :: i, row
+
+  this%nl_current_all = nlines_to_keep
+
+  ! Find a non-empty row index corresponding to nlines_to_keep.
+  row = 0
+  do i = 1, this%nl_nonempty
+    if (this%rowptr(i) == nlines_to_keep) then
+      row = i
+      exit
+    endif
+  enddo
+
+  this%nl_current = row
+
+  ! Sanity check.
+  if (this%rowptr(this%nl_current) /= this%nl_current_all) then
+    call exit_MPI("Wrong row index in sparse_matrix_remove_lines!", myrank, 0)
+  endif
 
   this%nel = this%ijl(this%nl_current + 1) - 1
 
@@ -226,12 +256,18 @@ subroutine sparse_matrix_finalize(this, myrank)
   integer, intent(in) :: myrank
 
   ! Sanity check.
-  if (this%nl_current /= this%nl) &
+  if (this%nl_current_all /= this%nl) &
     call exit_MPI("Error in total number of rows in sparse_matrix_finalize!"//new_line('a') &
                   //"nl_current="//str(this%nl_current)//new_line('a') &
                   //"nl="//str(this%nl), myrank, 0)
 
-  this%ijl(this%nl + 1) = this%nel + 1
+  this%ijl(this%nl_current + 1) = this%nel + 1
+
+  this%nl_nonempty = this%nl_current
+
+  if (myrank == 0) then
+    print *, 'Finalizing the sparse matrix with: nl, nl_nonempty =', this%nl, this%nl_nonempty
+  endif
 
   call this%validate(myrank)
 
@@ -246,6 +282,8 @@ pure subroutine sparse_matrix_finalize_part(this)
 
   this%ijl(this%nl_current + 1) = this%nel + 1
 
+  this%nl_nonempty = this%nl_current
+
 end subroutine sparse_matrix_finalize_part
 
 !============================================================================
@@ -258,7 +296,7 @@ subroutine sparse_matrix_validate(this, myrank)
   integer(kind=8) :: k
 
   ! Use the same loop as in sparse_matrix_trans_mult_vector().
-  do i = 1, this%nl
+  do i = 1, this%nl_nonempty
     do k = this%ijl(i), this%ijl(i + 1) - 1
       if (k < 1 .or. k > this%nnz) &
         call exit_MPI("Sparse matrix validation failed (k)!", myrank, 0)
@@ -309,6 +347,10 @@ subroutine sparse_matrix_new_row(this, myrank)
   this%nl_current = this%nl_current + 1
   this%ijl(this%nl_current) = this%nel + 1
 
+  ! To exclude empty rows.
+  this%nl_current_all = this%nl_current_all + 1
+  this%rowptr(this%nl_current) = this%nl_current_all
+
 end subroutine sparse_matrix_new_row
 
 !=========================================================================
@@ -319,9 +361,13 @@ subroutine sparse_matrix_add_empty_rows(this, nrows, myrank)
   integer, intent(in) :: nrows, myrank
   integer :: i
 
+  if (myrank > 0) continue
+
   do i = 1, nrows
-    call this%new_row(myrank)
+    ! We exclude empty rows, so just increase the row counter here.
+    this%nl_current_all = this%nl_current_all + 1
   enddo
+
 end subroutine sparse_matrix_add_empty_rows
 
 !=================================================================================
@@ -371,14 +417,16 @@ pure subroutine sparse_matrix_add_mult_vector(this, x, b)
   class(t_sparse_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: x(this%ncolumns)
 
-  real(kind=CUSTOM_REAL), intent(inout) :: b(this%nl)
+!  real(kind=CUSTOM_REAL), intent(inout) :: b(this%nl)
+  real(kind=CUSTOM_REAL), intent(inout) :: b(:)
 
-  integer :: i
+  integer :: i, i_all
   integer(kind=8) :: k
 
-  do i = 1, this%nl
+  do i = 1, this%nl_nonempty
+    i_all = this%rowptr(i)
     do k = this%ijl(i), this%ijl(i + 1) - 1
-      b(i) = b(i) + this%sa(k) * x(this%ija(k))
+      b(i_all) = b(i_all) + this%sa(k) * x(this%ija(k))
     enddo
   enddo
 
@@ -458,19 +506,21 @@ end subroutine sparse_matrix_trans_mult_vector
 !============================================================================
 pure subroutine sparse_matrix_add_trans_mult_vector(this, x, b)
   class(t_sparse_matrix), intent(in) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: x(this%nl)
+!  real(kind=CUSTOM_REAL), intent(in) :: x(this%nl)
+  real(kind=CUSTOM_REAL), intent(in) :: x(:)
 
   real(kind=CUSTOM_REAL), intent(inout) :: b(this%ncolumns)
 
-  integer :: i, j
+  integer :: i, j, i_all
   integer(kind=8) :: k
 
-  do i = 1, this%nl
+  do i = 1, this%nl_nonempty
 !IBM* ASSERT (NODEPS,ITERCNT(1000))
 !DIR$ IVDEP
+    i_all = this%rowptr(i)
     do k = this%ijl(i), this%ijl(i + 1) - 1
       j = this%ija(k)
-      b(j) = b(j) + this%sa(k) * x(i)
+      b(j) = b(j) + this%sa(k) * x(i_all)
     enddo
   enddo
 
@@ -619,6 +669,7 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
   allocate(this%sa(this%nnz), source=0._MATRIX_PRECISION, stat=ierr)
   allocate(this%ijl(this%nl + 1), source=int(0, 8), stat=ierr)
   allocate(this%ija(this%nnz), source=0, stat=ierr)
+  allocate(this%rowptr(this%nl), source=0, stat=ierr)
 
   if (ierr /= 0) &
     call exit_MPI("Dynamic memory allocation error in sparse_matrix_allocate_arrays!", myrank, ierr)

@@ -300,7 +300,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       print *, '******************************************************************************'
     endif
 
-    if (m > 1) call jinv%reset()
+    if (m > 1) call jinv%reset(myrank)
 
     ! SETTING PRIOR MODEL FOR INVERSION -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) &
@@ -395,7 +395,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       if (SOLVE_PROBLEM(2)) iarr(2)%residuals = data(2)%val_meas - data(2)%val_calc
 
       ! Resets the joint inversion.
-      if (it > 1) call jinv%reset()
+      if (it > 1) call jinv%reset(myrank)
 
       ! Solve joint inverse problem.
       call jinv%solve(ipar, iarr, model, delta_model, delta_data, myrank, nbproc)

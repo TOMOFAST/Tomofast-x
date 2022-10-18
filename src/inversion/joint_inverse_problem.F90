@@ -267,10 +267,11 @@ end subroutine joint_inversion_initialize
 !=====================================================================================
 ! Resets the joint inversion.
 !=====================================================================================
-subroutine joint_inversion_reset(this)
+subroutine joint_inversion_reset(this, myrank)
   class(t_joint_inversion), intent(inout) :: this
+  integer, intent(in) :: myrank
 
-  call this%matrix%remove_lines(this%ndata_lines)
+  call this%matrix%remove_lines(this%ndata_lines, myrank)
   this%b_RHS = 0._CUSTOM_REAL
 
   if (this%add_cross_grad) then
