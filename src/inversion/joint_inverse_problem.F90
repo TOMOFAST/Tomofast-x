@@ -127,8 +127,10 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   integer, intent(in) :: myrank
 
   integer :: ierr
-  integer :: i, nl
+  integer :: i, nl, nl_empty
   integer(kind=8) :: nnz
+
+  nl_empty = 0
 
   do i = 1, 2
     if (par%alpha(i) == 0.d0 .or. par%problem_weight(i) == 0.d0) then
@@ -199,6 +201,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     if (this%add_damping(i)) then
       nl = nl + par%nelements_total
       nnz = nnz + par%nelements
+      nl_empty = nl_empty + par%nelements_total - par%nelements
     endif
   enddo
 
@@ -224,6 +227,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     ! Add only one ADMM constraint at a time.
     nl = nl + 1 * par%nelements_total
     nnz = nnz + 1 * par%nelements
+    nl_empty = nl_empty + par%nelements_total - par%nelements
 
     call this%admm_method_1%initialize(par%nelements, myrank)
     call this%admm_method_2%initialize(par%nelements, myrank)
@@ -237,7 +241,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   !-------------------------------------------------------------------------------------------
   ! MAIN MATRIX MEMORY ALLOCATION.
   !-------------------------------------------------------------------------------------------
-  call this%matrix%initialize(nl, 2 * par%nelements, nnz, myrank)
+  call this%matrix%initialize(nl, 2 * par%nelements, nnz, myrank, nl_empty)
 
   ierr = 0
 

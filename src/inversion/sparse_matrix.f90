@@ -35,11 +35,13 @@ module sparse_matrix
     integer(kind=8), private :: nnz
     ! Actual number of nonzero elements.
     integer(kind=8), private :: nel
-    ! Total number of rows in the matrix.
+    ! Total number of rows.
     integer, private :: nl
-    ! Total number of non-empty rows in the matrix.
+    ! Total actual number of non-empty rows.
     integer, private :: nl_nonempty
-    ! Current number of the added rows in the matrix.
+    ! The expected number of non-empty rows.
+    integer, private :: nl_nonempty_allocated
+    ! Current number of the added rows.
     integer, private :: nl_current ! Excludes empty rows.
     integer, private :: nl_current_all
     ! Total number of matrix columns.
@@ -52,7 +54,7 @@ module sparse_matrix
     ! The list of 'sa' indexes where each row starts.
     integer(kind=8), allocatable, private :: ijl(:)
 
-    ! An array to identify non-empty rows (for the Doubly Compressed Sparse Row format).
+    ! An array to identify non-empty rows.
     integer, allocatable, private :: rowptr(:)
 
     ! Auxilary array to calculate the solution variance.
@@ -107,9 +109,10 @@ contains
 !=========================================================================
 ! Initializes the sparse matrix.
 !=========================================================================
-subroutine sparse_matrix_initialize(this, nl, ncolumns, nnz, myrank)
+subroutine sparse_matrix_initialize(this, nl, ncolumns, nnz, myrank, nl_empty)
   class(t_sparse_matrix), intent(inout) :: this
   integer, intent(in) :: nl, ncolumns, myrank
+  integer, intent(in), optional :: nl_empty
   integer(kind=8), intent(in) :: nnz
 
   this%nl_current = 0
@@ -120,6 +123,13 @@ subroutine sparse_matrix_initialize(this, nl, ncolumns, nnz, myrank)
   this%nl = nl
   this%ncolumns = ncolumns
   this%nnz = nnz
+
+  ! Define the expected number of non-empty rows.
+  if (present(nl_empty)) then
+    this%nl_nonempty_allocated = this%nl - nl_empty
+  else
+    this%nl_nonempty_allocated = this%nl
+  endif
 
   call this%allocate_arrays(myrank)
 
@@ -194,6 +204,11 @@ subroutine sparse_matrix_finalize(this, myrank)
 
   this%nl_nonempty = this%nl_current
 
+  if (this%nl_nonempty < this%nl_nonempty_allocated) then
+    print *, "Note: there are more non-empty rows allocated than the actual number:", &
+             this%nl_nonempty, this%nl_nonempty_allocated, this%nl
+  endif
+
   call this%validate(myrank)
 
 end subroutine sparse_matrix_finalize
@@ -264,7 +279,7 @@ subroutine sparse_matrix_new_row(this, myrank)
   integer, intent(in) :: myrank
 
   ! Sanity check.
-  if (this%nl_current >= this%nl) &
+  if (this%nl_current >= this%nl_nonempty_allocated) &
     call exit_MPI("Error in number of rows in sparse_matrix_new_row!"//new_line('a') &
                   //"nl_current="//str(this%nl_current)//new_line('a') &
                   //"nl="//str(this%nl), myrank, 0)
@@ -661,9 +676,9 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
   ierr = 0
 
   allocate(this%sa(this%nnz), source=0._MATRIX_PRECISION, stat=ierr)
-  allocate(this%ijl(this%nl + 1), source=int(0, 8), stat=ierr)
+  allocate(this%ijl(this%nl_nonempty_allocated + 1), source=int(0, 8), stat=ierr)
   allocate(this%ija(this%nnz), source=0, stat=ierr)
-  allocate(this%rowptr(this%nl), source=0, stat=ierr)
+  allocate(this%rowptr(this%nl_nonempty_allocated), source=0, stat=ierr)
 
   if (ierr /= 0) &
     call exit_MPI("Dynamic memory allocation error in sparse_matrix_allocate_arrays!", myrank, ierr)
