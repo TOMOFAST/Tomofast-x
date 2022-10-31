@@ -105,77 +105,6 @@ module sparse_matrix
 contains
 
 !=========================================================================
-! Returns the total number of rows in the matrix.
-!=========================================================================
-pure function sparse_matrix_get_total_row_number(this) result(res)
-  class(t_sparse_matrix), intent(in) :: this
-  integer :: res
-
-  res = this%nl
-end function sparse_matrix_get_total_row_number
-
-!=========================================================================
-! Returns the current number of rows in the matrix.
-!=========================================================================
-pure function sparse_matrix_get_current_row_number(this) result(res)
-  class(t_sparse_matrix), intent(in) :: this
-  integer :: res
-
-  res = this%nl_current_all
-end function sparse_matrix_get_current_row_number
-
-!=========================================================================
-! Returns the total number of columnts in the matrix.
-!=========================================================================
-pure function sparse_matrix_get_ncolumns(this) result(res)
-  class(t_sparse_matrix), intent(in) :: this
-  integer :: res
-
-  res = this%ncolumns
-end function sparse_matrix_get_ncolumns
-
-!=========================================================================
-! Returns the current number of elements stored in the matrix.
-!=========================================================================
-pure function sparse_matrix_get_number_elements(this) result(res)
-  class(t_sparse_matrix), intent(in) :: this
-  integer(kind=8) :: res
-
-  res = this%nel
-end function sparse_matrix_get_number_elements
-
-!===========================================================================
-! Returns the predicted number of elements.
-!===========================================================================
-pure function sparse_matrix_get_nnz(this) result(res)
-  class(t_sparse_matrix), intent(in) :: this
-  integer(kind=8) :: res
-
-  res = this%nnz
-end function sparse_matrix_get_nnz
-
-!===========================================================================
-! Returns the (i, j)-element's value of the matrix.
-! i - column number, j - row number.
-!===========================================================================
-pure function sparse_matrix_get_value(this, i, j) result(res)
-  class(t_sparse_matrix), intent(in) :: this
-  integer, intent(in) :: i, j
-  real(kind=CUSTOM_REAL) :: res
-  integer(kind=8) :: k
-
-  res = 0.d0
-  do k = this%ijl(j), this%ijl(j + 1) - 1
-    if (this%ija(k) == i) then
-    ! Found a non-zero element at the column i.
-      res = this%sa(k)
-      exit
-    endif
-  enddo
-
-end function sparse_matrix_get_value
-
-!=========================================================================
 ! Initializes the sparse matrix.
 !=========================================================================
 subroutine sparse_matrix_initialize(this, nl, ncolumns, nnz, myrank)
@@ -264,10 +193,6 @@ subroutine sparse_matrix_finalize(this, myrank)
   this%ijl(this%nl_current + 1) = this%nel + 1
 
   this%nl_nonempty = this%nl_current
-
-  if (myrank == 0) then
-    print *, 'Finalizing the sparse matrix with: nl, nl_nonempty =', this%nl, this%nl_nonempty
-  endif
 
   call this%validate(myrank)
 
@@ -417,8 +342,7 @@ pure subroutine sparse_matrix_add_mult_vector(this, x, b)
   class(t_sparse_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: x(this%ncolumns)
 
-!  real(kind=CUSTOM_REAL), intent(inout) :: b(this%nl)
-  real(kind=CUSTOM_REAL), intent(inout) :: b(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: b(this%nl)
 
   integer :: i, i_all
   integer(kind=8) :: k
@@ -506,8 +430,7 @@ end subroutine sparse_matrix_trans_mult_vector
 !============================================================================
 pure subroutine sparse_matrix_add_trans_mult_vector(this, x, b)
   class(t_sparse_matrix), intent(in) :: this
-!  real(kind=CUSTOM_REAL), intent(in) :: x(this%nl)
-  real(kind=CUSTOM_REAL), intent(in) :: x(:)
+  real(kind=CUSTOM_REAL), intent(in) :: x(this%nl)
 
   real(kind=CUSTOM_REAL), intent(inout) :: b(this%ncolumns)
 
@@ -652,6 +575,77 @@ subroutine sparse_matrix_normalize_columns(this, column_norm)
   enddo
 
 end subroutine sparse_matrix_normalize_columns
+
+!=========================================================================
+! Returns the total number of rows in the matrix.
+!=========================================================================
+pure function sparse_matrix_get_total_row_number(this) result(res)
+  class(t_sparse_matrix), intent(in) :: this
+  integer :: res
+
+  res = this%nl
+end function sparse_matrix_get_total_row_number
+
+!=========================================================================
+! Returns the current number of rows in the matrix.
+!=========================================================================
+pure function sparse_matrix_get_current_row_number(this) result(res)
+  class(t_sparse_matrix), intent(in) :: this
+  integer :: res
+
+  res = this%nl_current_all
+end function sparse_matrix_get_current_row_number
+
+!=========================================================================
+! Returns the total number of columnts in the matrix.
+!=========================================================================
+pure function sparse_matrix_get_ncolumns(this) result(res)
+  class(t_sparse_matrix), intent(in) :: this
+  integer :: res
+
+  res = this%ncolumns
+end function sparse_matrix_get_ncolumns
+
+!=========================================================================
+! Returns the current number of elements stored in the matrix.
+!=========================================================================
+pure function sparse_matrix_get_number_elements(this) result(res)
+  class(t_sparse_matrix), intent(in) :: this
+  integer(kind=8) :: res
+
+  res = this%nel
+end function sparse_matrix_get_number_elements
+
+!===========================================================================
+! Returns the predicted number of elements.
+!===========================================================================
+pure function sparse_matrix_get_nnz(this) result(res)
+  class(t_sparse_matrix), intent(in) :: this
+  integer(kind=8) :: res
+
+  res = this%nnz
+end function sparse_matrix_get_nnz
+
+!===========================================================================
+! Returns the (i, j)-element's value of the matrix.
+! i - column number, j - row number.
+!===========================================================================
+pure function sparse_matrix_get_value(this, i, j) result(res)
+  class(t_sparse_matrix), intent(in) :: this
+  integer, intent(in) :: i, j
+  real(kind=CUSTOM_REAL) :: res
+  integer(kind=8) :: k
+
+  res = 0.d0
+  do k = this%ijl(j), this%ijl(j + 1) - 1
+    if (this%ija(k) == i) then
+    ! Found a non-zero element at the column i.
+      res = this%sa(k)
+      exit
+    endif
+  enddo
+
+end function sparse_matrix_get_value
 
 !=========================================================================
 ! Allocates dynamic arrays.
