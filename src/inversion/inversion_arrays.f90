@@ -13,14 +13,7 @@
 !========================================================================
 
 !==========================================================================================
-! A class that stores allocatable arrays (and types containing them as e.g. t_model) needed for inversion.
-! Memory allocation is done here.
-!
-! Note: we use sourced allocation (with source=0 parameter), which also initializes the arrays.
-! This is because allocate() allocates virtual memory,
-! and it can be that there is less free physical memory available than virtual memory allocated.
-! In this case the program will be killed by OS during initialization.
-! When "source=0" parameter is used, then it will invoke an error via "stat=ierr" in such case.
+! A class that stores allocatable arrays needed for inversion.
 !
 ! Vitaliy Ogarko, UWA, CET, Australia.
 !==========================================================================================
@@ -41,16 +34,11 @@ module inversion_arrays
     ! Weights to scale the sensitivity matrix columns.
     real(kind=CUSTOM_REAL), allocatable :: column_weight(:)
 
-    ! (Legacy, used for the ECT problem) Sensitivity kernel computed in forward problem.
-    real(kind=CUSTOM_REAL), allocatable :: sensitivity(:, :)
-
   contains
     private
 
     procedure, public, pass :: allocate_aux => inversion_arrays_allocate_aux
     procedure, public, pass :: reallocate_aux => inversion_arrays_reallocate_aux
-
-    procedure, public, pass :: allocate_sensit => inversion_arrays_allocate_sensit
 
   end type t_inversion_arrays
 
@@ -111,30 +99,5 @@ subroutine inversion_arrays_reallocate_aux(this, nelements, ndata, myrank)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in inversion_arrays_reallocate_aux!", myrank, ierr)
 
 end subroutine inversion_arrays_reallocate_aux
-
-!====================================================================================================
-! Allocates memory for the ECT sensitivity kernel (not used for grav/mag).
-!====================================================================================================
-subroutine inversion_arrays_allocate_sensit(this, nelements, ndata, myrank)
-  class(t_inversion_arrays), intent(inout) :: this
-  integer, intent(in) :: nelements, ndata
-  integer, intent(in) :: myrank
-
-  integer :: ierr
-
-  if (myrank == 0) print *, "Allocating sensitivity kernel..."
-
-  if (ndata <= 0 .or. nelements <= 0) &
-    call exit_MPI("Wrong dimensions in inversion_arrays_allocate_sensit!", myrank, 0)
-
-  ierr = 0
-
-  allocate(this%sensitivity(nelements, ndata), source=0._CUSTOM_REAL, stat=ierr)
-
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in inversion_arrays_allocate_sensit!", myrank, ierr)
-
-  if (myrank == 0) print *, "Sensitivity kernel allocated."
-
-end subroutine inversion_arrays_allocate_sensit
 
 end module inversion_arrays

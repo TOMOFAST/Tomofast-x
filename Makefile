@@ -140,14 +140,12 @@ inversion_arrays.f90 \
 lsqr_solver2.F90 \
 sca_solver.F90 \
 damping.F90 \
-sensitivity_matrix.F90 \
 gradient.F90 \
 cross_gradient.F90 \
 method_of_weights.F90 \
 admm_method.F90 \
 clustering.F90 \
 damping_gradient.F90 \
-inverse_problem.F90 \
 joint_inverse_problem.F90
 
 # Source files for gravity and magnetism problems.
