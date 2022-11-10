@@ -86,29 +86,21 @@ subroutine read_filename(file_id, val)
 end subroutine read_filename
 
 !==========================================================================
-! Get problem type (ECT / Grav & Mag).
+! Get problem type.
 !==========================================================================
 subroutine get_problem_type(problem_type, myrank)
   integer, intent(in) :: myrank
   integer, intent(out) :: problem_type
   character(len=256) :: arg
 
-  ! Grav/mag problem is set by default.
-  arg = '-j'
-  problem_type = 2
+  arg = ''
 
   if (command_argument_count() > 0) call get_command_argument(1, arg)
 
-  if (arg == '-e') then
+  if (arg == '-j' .or. arg == '-p') then
     problem_type = 1
-    if (myrank == 0) print *, '===== START ECT PROBLEM ====='
-
-  else if (arg == '-j') then
-    problem_type = 2
-    if (myrank == 0) print *, '===== START GRAV/MAG PROBLEM ====='
-
   else
-    call exit_MPI("UNKNOWN PROBLEM TYPE! arg ="//arg, myrank, 0)
+    call exit_MPI("Unknown problem type! arg ="//arg, myrank, 0)
   endif
 
 end subroutine get_problem_type
@@ -118,7 +110,7 @@ end subroutine get_problem_type
 !=======================================================================================
 subroutine initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
   integer, intent(in) :: problem_type
-  integer, intent(in) :: myrank,nbproc
+  integer, intent(in) :: myrank, nbproc
 
   type(t_parameters_grav), intent(out) :: gpar
   type(t_parameters_mag), intent(out) :: mpar
@@ -153,8 +145,6 @@ subroutine initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
   call MPI_Bcast(path_output, len(path_output), MPI_CHAR, 0, MPI_COMM_WORLD, ierr)
 
   if (problem_type == 1) then
-
-  else if (problem_type == 2) then
     call gpar%broadcast(myrank)
     call mpar%broadcast(myrank)
   endif
@@ -165,9 +155,7 @@ subroutine initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
   ! Some extra initializations.
   !--------------------------------
   if (problem_type == 1) then
-
-  else if (problem_type == 2) then
-  ! Gravity and magnetism problems.
+    ! Gravity and magnetism problems.
 
     ! Inverse problem parameters.
     ipar%nx = gpar%nx

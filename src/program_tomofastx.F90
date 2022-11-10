@@ -70,7 +70,12 @@ program program_tomofastx
   ! INITIALIZATION.
   if (myrank == 0) print *, "Started Tomofast-x, version >= v.1.5"
 
-  ! Get the problem type from the command line (ECT = 1, Grav/Mag = 2).
+  if (command_argument_count() /= 2) then
+    if (myrank == 0) print *, "Usage: tomofastx -p <Parfile_path>"
+    stop
+  endif
+
+  ! Get the problem type from the command line.
   call get_problem_type(problem_type, myrank)
 
   ! Read the Parfile and initialize forward and inverse problem parameters.
@@ -84,9 +89,7 @@ program program_tomofastx
   !----------------------------------------------------------------------------
   ! MAIN CALCULATIONS.
   if (problem_type == 1) then
-
-  else if (problem_type == 2) then
-  ! Gravity and Magnetism problem.
+    ! Gravity and Magnetism problem.
     call solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   endif
 
