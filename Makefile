@@ -101,8 +101,6 @@ vpath %.F90 ./src/libs
 vpath %.c   ./src/libs
 vpath %.f90 ./src/forward
 vpath %.F90 ./src/forward
-vpath %.f90 ./src/forward/ect
-vpath %.F90 ./src/forward/ect
 vpath %.f90 ./src/forward/gravmag
 vpath %.F90 ./src/forward/gravmag
 vpath %.f90 ./src/forward/gravmag/grav
@@ -152,25 +150,6 @@ damping_gradient.F90 \
 inverse_problem.F90 \
 joint_inverse_problem.F90
 
-# Source files for ECT problem and some utils.
-SRC_LIST_ECT = \
-utils.f90 \
-sanity_check.F90 \
-periodic_and_matmul.f90 \
-conjugate_gradient.F90 \
-parameters_ect.f90 \
-geometry.f90 \
-flag_init_bc.f90 \
-paraview_ect.f90 \
-solution_ect.f90 \
-matrix_init.f90 \
-model_ect.f90 \
-data_ect.F90 \
-capacitance.F90 \
-sensitivity_ect.F90 \
-source_RHS.f90 \
-forward_problem_ect.F90
-
 # Source files for gravity and magnetism problems.
 SRC_LIST_GRAVMAG = \
 parameters_gravmag.f90 \
@@ -185,14 +164,10 @@ sensitivity_gravmag.F90
 # Main routines.
 SRC_LIST_MAIN = \
 parameters_init.f90 \
-problem_ect.F90 \
 problem_joint_gravmag.F90
 
 # Unit tests.
 SRC_LIST_TESTS = \
-trootj.f90 \
-laplace.f90 \
-tests_ect.f90 \
 tests_inversion.f90 \
 tests_lsqr.f90 \
 tests_parallel_tools.f90 \
@@ -208,7 +183,6 @@ global_typedefs.F90 \
 $(SRC_LIST_LIBS) \
 $(SRC_LIST_UTILS) \
 $(SRC_LIST_INVERSION) \
-$(SRC_LIST_ECT) \
 $(SRC_LIST_GRAVMAG) \
 $(SRC_LIST_MAIN) \
 $(SRC_LIST_TESTS) \

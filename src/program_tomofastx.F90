@@ -24,17 +24,15 @@
 !
 !========================================================================
 
-program program_tomofast3D
+program program_tomofastx
 
   use global_typedefs
   use ftnunit, only: runtests_init, runtests, runtests_final
   use unit_tests, only: test_all
-  use parameters_ect
   use parameters_grav
   use parameters_mag
   use parameters_inversion
   use init_parameters
-  use problem_ect
   use problem_joint_gravmag
 
   implicit none
@@ -42,8 +40,6 @@ program program_tomofast3D
   ! MPI variables (error code, rank of this process, total number of ranks).
   integer :: ierr, myrank, nbproc
 
-  ! ECT (forward) problem parameters.
-  type(t_parameters_ect) :: epar
   ! Gravity (forward) problem parameters.
   type(t_parameters_grav) :: gpar
   ! Magnetism (forward) problem parameters.
@@ -78,7 +74,7 @@ program program_tomofast3D
   call get_problem_type(problem_type, myrank)
 
   ! Read the Parfile and initialize forward and inverse problem parameters.
-  call initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, nbproc)
+  call initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
 
   ! Create the output directory. If it already exists there is no problem.
   if (myrank == 0) call execute_command_line('mkdir -p '//path_output)
@@ -88,8 +84,6 @@ program program_tomofast3D
   !----------------------------------------------------------------------------
   ! MAIN CALCULATIONS.
   if (problem_type == 1) then
-  ! ECT problem.
-    call solve_problem_ect(epar, ipar, myrank, nbproc)
 
   else if (problem_type == 2) then
   ! Gravity and Magnetism problem.
@@ -102,5 +96,5 @@ program program_tomofast3D
   ! ALL DONE.
   call MPI_Finalize(ierr)
 
-end program program_tomofast3D
+end program program_tomofastx
 

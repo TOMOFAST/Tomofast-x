@@ -21,12 +21,9 @@ module init_parameters
 
   use global_typedefs
   use mpi_tools, only: exit_MPI
-  use sanity_check
-  use parameters_ect
   use parameters_grav
   use parameters_mag
   use parameters_inversion
-  use geometry, only: get_refined_ntheta
   use parallel_tools
 
   implicit none
@@ -117,14 +114,12 @@ subroutine get_problem_type(problem_type, myrank)
 end subroutine get_problem_type
 
 !=======================================================================================
-! TODO: Split to ect, grav & mag routines.
 ! Initialize parameters for forward and inverse problems.
 !=======================================================================================
-subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, nbproc)
+subroutine initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
   integer, intent(in) :: problem_type
   integer, intent(in) :: myrank,nbproc
 
-  type(t_parameters_ect), intent(out) :: epar
   type(t_parameters_grav), intent(out) :: gpar
   type(t_parameters_mag), intent(out) :: mpar
   type(t_parameters_inversion), intent(out) :: ipar
@@ -133,11 +128,11 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
 
   if (myrank == 0) then
     ! Setting default parameter values.
-    call set_default_parameters(epar, gpar, mpar, ipar)
+    call set_default_parameters(gpar, mpar, ipar)
 
     ! Read Parfile data, only the master does this,
     ! and then broadcasts all the information to the other processes.
-    call read_parfile(epar, gpar, mpar, ipar, myrank)
+    call read_parfile(gpar, mpar, ipar, myrank)
 
     ! Print out if we do this in double or single precision.
     if (myrank == 0) then
@@ -146,14 +141,6 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
       else
         print *, "precision = SINGLE"
       endif
-    endif
-
-    ! Global sanity checks.
-    if (problem_type == 1) then
-      ! ntheta is a multiple of the number of electrodes.
-      call sanity_ntheta_nel(epar%dims%ntheta, epar%nel / epar%nrings, myrank)
-      ! nz is a multiple of the number of processes.
-      call sanity_nz(epar%dims%nz, nbproc, myrank)
     endif
   endif
 
@@ -166,7 +153,6 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
   call MPI_Bcast(path_output, len(path_output), MPI_CHAR, 0, MPI_COMM_WORLD, ierr)
 
   if (problem_type == 1) then
-    call epar%broadcast()
 
   else if (problem_type == 2) then
     call gpar%broadcast(myrank)
@@ -179,52 +165,6 @@ subroutine initialize_parameters(problem_type, epar, gpar, mpar, ipar, myrank, n
   ! Some extra initializations.
   !--------------------------------
   if (problem_type == 1) then
-  ! Electrical capacitance tomography (ECT) problem.
-
-    epar%read_guess_from_file = .false.
-
-    !-----------------------
-    ! PARTITIONING FOR MPI
-
-    ! Cut the model into vertical slices for MPI,
-    ! always divides evenly because of the previous sanity check.
-    epar%dims%nzlocal = epar%dims%nz / nbproc
-
-    ipar%nx = epar%dims%nr
-    ipar%ny = epar%dims%ntheta
-    ipar%nz = epar%dims%nz + 1
-
-    ipar%nelements_total = ipar%nx * ipar%ny * ipar%nz
-
-    ! We have nzlocal+1 k-elements in the last processor,
-    ! since the model is defined in the middle of the potential (phi) grid nodes, which run from 0 to nz+1.
-    ! So for nz=4, phi-nodes are:   0   1   2   3   4   5, and
-    !              model-nodes are:   1   2   3   4   5, i.e., not even number.
-    if (myrank < nbproc - 1) then
-      ipar%nelements = ipar%nx * ipar%ny * epar%dims%nzlocal
-    else
-      ipar%nelements = ipar%nx * ipar%ny * (epar%dims%nzlocal + 1)
-    endif
-
-    ipar%ndata = epar%get_ndata()
-
-    !-----------------------------------
-    ! CHANGE NTHETA FOR MESH REFINEMENT
-
-    epar%dims%ntheta0 = epar%dims%ntheta
-    ! Increase theta-dimension for mesh refinement.
-    if (epar%irefine == 1) then
-      ! Sanity checks.
-      if (epar%linear_solver == LINSOLV_MG) then
-        call exit_MPI("Mesh refinement is not implemented for the MG solver!", myrank, 0)
-      endif
-      if (epar%sens%space_electrodes == 0._CUSTOM_REAL) then
-        call exit_MPI("Mesh refinement is implemented only for the case with gaps between electrodes!", myrank, 0)
-      endif
-
-      epar%dims%ntheta = get_refined_ntheta(epar%dims%ntheta, epar%nel)
-      if (myrank == 0) print *, 'ntheta_read0, ntheta(new)', epar%dims%ntheta0, epar%dims%ntheta
-    endif
 
   else if (problem_type == 2) then
   ! Gravity and magnetism problems.
@@ -283,8 +223,7 @@ end subroutine initialize_parameters
 !===================================================================================
 ! Set default parameters.
 !===================================================================================
-subroutine set_default_parameters(epar, gpar, mpar, ipar)
-  type(t_parameters_ect), intent(out) :: epar
+subroutine set_default_parameters(gpar, mpar, ipar)
   type(t_parameters_grav), intent(out) :: gpar
   type(t_parameters_mag), intent(out) :: mpar
   type(t_parameters_inversion), intent(out) :: ipar
@@ -411,58 +350,14 @@ subroutine set_default_parameters(epar, gpar, mpar, ipar)
   ipar%clustering_opt_type = 2 ! 1-normal, 2-log
   ipar%clustering_constraints_type = 2 ! 1-global, 2-local
 
-  !***********************************************
-  ! ECT parameters:
-  !***********************************************
-  ! ECT GRID parameters.
-  epar%dims%nr = 36
-  epar%dims%ntheta = 36
-  epar%dims%nz = 36
-
-  ! ECT GEOMETRY parameters.
-  epar%nel = 36
-  epar%nrings = 3
-  epar%dims%kguards = 0
-  epar%ifixed_elecgeo = 0 ! NO=0, YES=1
-  epar%irefine = 0        ! NO=0, YES=1
-  epar%sens%radiusin = 0.045d0
-  epar%sens%radiusout = 0.06d0
-  epar%sens%radiusoutout = 0.07d0
-  epar%sens%heicyl = 0.2d0
-  epar%sens%space_elec_guards = 0.d0
-  epar%sens%space_electrodes = 0.d0
-
-  ! ECT MODEL parameters.
-  epar%num_bubbles = 4
-  epar%filename_bubbles = "data/ECT/bubble_4vert.dat"
-  epar%permit0 = 1.d0
-  epar%permit_air = 1.d0
-  epar%permit_isolated_tube = 3.5d0
-  epar%permit_oil = 2.d0
-
-  ! ECT SOLVER parameters.
-  epar%linear_solver = LINSOLV_PCG ! Not exposed to Parfile.
-  epar%iprecond = 1 ! 0=NO, YES>0
-  epar%omega1 = 0.8d0
-  epar%itypenorm = 1 ! 1=L2, 2=max
-  epar%itmax = 1000
-  epar%output_frequency = 20
-  epar%tol = 1.d-12
-
-  ! MULTIGRID parameters.
-  ! Removed multigrid, keep this not to change a lot of code.
-  epar%ilevel_coarse = 1
-  epar%coarse_solver = LINSOLV_PCG
-
 end subroutine set_default_parameters
 
 !===================================================================================
 ! Read input parameters from Parfile.
 !===================================================================================
-subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
+subroutine read_parfile(gpar, mpar, ipar, myrank)
   integer, intent(in) :: myrank
 
-  type(t_parameters_ect), intent(inout) :: epar
   type(t_parameters_grav), intent(inout) :: gpar
   type(t_parameters_mag), intent(inout) :: mpar
   type(t_parameters_inversion), intent(inout) :: ipar
@@ -513,119 +408,6 @@ subroutine read_parfile(epar, gpar, mpar, ipar, myrank)
       case("global.description")
         read(10, 3) parfile_description
         call print_arg(myrank, parname, parfile_description)
-
-      ! ECT GRID parameters ---------------------------------
-
-      case("forward.ect.grid.nr")
-        read(10, 2) epar%dims%nr
-        call print_arg(myrank, parname, epar%dims%nr)
-
-      case("forward.ect.grid.ntheta")
-        read(10, 2) epar%dims%ntheta
-        call print_arg(myrank, parname, epar%dims%ntheta)
-
-      case("forward.ect.grid.nz")
-        read(10, 2) epar%dims%nz
-        call print_arg(myrank, parname, epar%dims%nz)
-
-      ! ECT GEOMETRY parameters -----------------------------
-
-      case("forward.ect.geometry.nElectrodes")
-        read(10, 2) epar%nel
-        call print_arg(myrank, parname, epar%nel)
-
-      case("forward.ect.geometry.nRings")
-        read(10, 2) epar%nrings
-        call print_arg(myrank, parname, epar%nrings)
-
-      case("forward.ect.geometry.kguards")
-        read(10, 2) epar%dims%kguards
-        if (epar%dims%kguards == 0) epar%dims%kguards = epar%dims%nz / 4
-        call print_arg(myrank, parname, epar%dims%kguards)
-
-      case("forward.ect.geometry.fixedElectrodes")
-        read(10, 2) epar%ifixed_elecgeo
-        call print_arg(myrank, parname, epar%ifixed_elecgeo)
-
-      case("forward.ect.geometry.meshRefinement")
-        read(10, 2) epar%irefine
-        call print_arg(myrank, parname, epar%irefine)
-
-      case("forward.ect.geometry.locationR1")
-        read(10, 1) epar%sens%radiusin
-        call print_arg(myrank, parname, epar%sens%radiusin)
-
-      case("forward.ect.geometry.locationR2")
-        read(10, 1) epar%sens%radiusout
-        call print_arg(myrank, parname, epar%sens%radiusout)
-
-      case("forward.ect.geometry.locationR3")
-        read(10, 1) epar%sens%radiusoutout
-        call print_arg(myrank, parname, epar%sens%radiusoutout)
-
-      case("forward.ect.geometry.sensorHeight")
-        read(10, 1) epar%sens%heicyl
-        call print_arg(myrank, parname, epar%sens%heicyl)
-
-      case("forward.ect.geometry.spaceBetweenGuards")
-        read(10, 1) epar%sens%space_elec_guards
-        call print_arg(myrank, parname, epar%sens%space_elec_guards)
-
-      case("forward.ect.geometry.spaceBetweenElectrodes")
-        read(10, 1) epar%sens%space_electrodes
-        call print_arg(myrank, parname, epar%sens%space_electrodes)
-
-      ! ECT MODEL parameters --------------------------------
-
-      case("forward.ect.model.nBubbles")
-        read(10, 2) epar%num_bubbles
-        call print_arg(myrank, parname, epar%num_bubbles)
-
-      case("forward.ect.model.bubblesLocationFile")
-        call read_filename(10, epar%filename_bubbles)
-        call print_arg(myrank, parname, epar%filename_bubbles)
-
-      case("forward.ect.model.absolutePermittivity")
-        read(10, 1) epar%permit0
-        call print_arg(myrank, parname, epar%permit0)
-
-      case("forward.ect.model.permittivityAir")
-        read(10, 1) epar%permit_air
-        call print_arg(myrank, parname, epar%permit_air)
-
-      case("forward.ect.model.permittivityIsolatedTube")
-        read(10, 1) epar%permit_isolated_tube
-        call print_arg(myrank, parname, epar%permit_isolated_tube)
-
-      case("forward.ect.model.permittivityOil")
-        read(10, 1) epar%permit_oil
-        call print_arg(myrank, parname, epar%permit_oil)
-
-      ! ECT SOLVER parameters -------------------------------
-
-      case("forward.ect.solver.precond")
-        read(10, 2) epar%iprecond
-        call print_arg(myrank, parname, epar%iprecond)
-
-      case("forward.ect.solver.precond.relaxOmega")
-        read(10, 1) epar%omega1
-        call print_arg(myrank, parname, epar%omega1)
-
-      case("forward.ect.solver.normType")
-        read(10, 2) epar%itypenorm
-        call print_arg(myrank, parname, epar%itypenorm)
-
-      case("forward.ect.solver.nMaxIterations")
-        read(10, 2) epar%itmax
-        call print_arg(myrank, parname, epar%itmax)
-
-      case("forward.ect.solver.outputFrequencyIter")
-        read(10, 2) epar%output_frequency
-        call print_arg(myrank, parname, epar%output_frequency)
-
-      case("forward.ect.solver.tolerance")
-        read(10, 1) epar%tol
-        call print_arg(myrank, parname, epar%tol)
 
       ! MODEL GRID parameters -------------------------------
 

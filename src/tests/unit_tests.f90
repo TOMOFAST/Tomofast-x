@@ -21,7 +21,6 @@
 module unit_tests
 
   use ftnunit, only: test
-  use tests_ect
   use tests_inversion
   use tests_lsqr
   use tests_parallel_tools
@@ -46,10 +45,6 @@ subroutine test_all(myrank, nbproc)
 
   if (nbproc == 1) then
   ! These tests are not adapted for the parallel version.
-
-    call test(test_geometry_all, "Tests of the system geometry (ECT).", myrank, nbproc)
-    call test(test_boundary_conditions_all, "Tests of the boundary conditions and right hand side (ECT).", myrank, nbproc)
-    call test(test_analytical_comparison_all, "Compare to analytical solution (ECT).", myrank, nbproc)
 
     call test(test_trans_mult_matrix, "Test of the matrices multiplication.", myrank, nbproc)
     call test(test_normalize_columns, "Test of the matrix columns normalization.", myrank, nbproc)
