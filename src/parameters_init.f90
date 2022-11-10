@@ -592,10 +592,6 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
         read(10, 1) ipar%alpha(2)
         call print_arg(myrank, parname, ipar%alpha(2))
 
-      case("inversion.modelDamping.ect.weight")
-        read(10, 1) ipar%alpha(1)
-        call print_arg(myrank, parname, ipar%alpha(1))
-
       case("inversion.modelDamping.normPower")
         read(10, 1) ipar%norm_power
         call print_arg(myrank, parname, ipar%norm_power)
