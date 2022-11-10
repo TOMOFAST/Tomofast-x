@@ -90,7 +90,6 @@ module sparse_matrix
     procedure, public, pass :: get_ncolumns => sparse_matrix_get_ncolumns
     procedure, public, pass :: get_number_elements => sparse_matrix_get_number_elements
     procedure, public, pass :: get_nnz => sparse_matrix_get_nnz
-    procedure, public, pass :: get_value => sparse_matrix_get_value
 
     procedure, public, pass :: allocate_variance_array => sparse_matrix_allocate_variance_array
 
@@ -531,27 +530,6 @@ pure function sparse_matrix_get_nnz(this) result(res)
   res = this%nnz
 end function sparse_matrix_get_nnz
 
-!===========================================================================
-! Returns the (i, j)-element's value of the matrix.
-! i - column number, j - row number.
-!===========================================================================
-pure function sparse_matrix_get_value(this, i, j) result(res)
-  class(t_sparse_matrix), intent(in) :: this
-  integer, intent(in) :: i, j
-  real(kind=CUSTOM_REAL) :: res
-  integer(kind=8) :: k
-
-  res = 0.d0
-  do k = this%ijl(j), this%ijl(j + 1) - 1
-    if (this%ija(k) == i) then
-    ! Found a non-zero element at the column i.
-      res = this%sa(k)
-      exit
-    endif
-  enddo
-
-end function sparse_matrix_get_value
-
 !=========================================================================
 ! Allocates dynamic arrays.
 !=========================================================================
@@ -560,8 +538,9 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
   integer, intent(in) :: myrank
   integer :: ierr
 
-  if (this%nnz < 0 .or. this%nl <= 0) &
+  if (this%nnz < 0 .or. this%nl <= 0) then
     call exit_MPI("Wrong sizes in sparse_matrix_allocate_arrays!", myrank, 0)
+  endif
 
   ierr = 0
 
@@ -570,8 +549,9 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
   allocate(this%ija(this%nnz), source=0, stat=ierr)
   allocate(this%rowptr(this%nl_nonempty_allocated), source=0, stat=ierr)
 
-  if (ierr /= 0) &
+  if (ierr /= 0) then
     call exit_MPI("Dynamic memory allocation error in sparse_matrix_allocate_arrays!", myrank, ierr)
+  endif
 
 end subroutine sparse_matrix_allocate_arrays
 

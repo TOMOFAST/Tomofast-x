@@ -45,9 +45,7 @@ subroutine test_all(myrank, nbproc)
 
   if (nbproc == 1) then
   ! These tests are not adapted for the parallel version.
-
     call test(test_normalize_columns, "Test of the matrix columns normalization.", myrank, nbproc)
-    call test(test_get_value, "Test of getting matrix element value.", myrank, nbproc)
 
     call test(test_method_of_weights_1, "Test of method of weights by Van Loan.", myrank, nbproc)
     call test(test_method_of_weights_2, "Test of method of weights by Per-Ake Wedin.", myrank, nbproc)

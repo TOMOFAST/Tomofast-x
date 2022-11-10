@@ -28,64 +28,10 @@ module tests_sparse_matrix
 
   private
 
-  ! Testing retrieving the matrix element.
-  public :: test_get_value
-
   ! Testing matrix columns normalization.
   public :: test_normalize_columns
 
 contains
-
-!=============================================================================================
-! Perform test for a (ncolumns x nrows) matrix with some zero columns.
-!=============================================================================================
-subroutine test_get_value(myrank, nbproc)
-  integer, intent(in) :: myrank, nbproc
-
-  type(t_sparse_matrix) :: matrix
-  integer :: nrows, ncolumns
-  integer :: i, j, counter
-
-  if (nbproc > 0) continue
-
-  ! Set matrix size.
-  ncolumns = 10
-  nrows = 30
-
-  call matrix%initialize(nrows, ncolumns, int(ncolumns * nrows, 8), myrank)
-
-  ! Building the matrix.
-  counter = 0
-  do j = 1, nrows
-    call matrix%new_row(myrank)
-    do i = 1, ncolumns
-      counter = counter + 1
-
-      if (i <= ncolumns / 2) then
-        call matrix%add(dble(counter), i, myrank)
-      else
-        ! These columns get zero values.
-      endif
-    enddo
-  enddo
-
-  call matrix%finalize(myrank)
-
-  ! Testing matrix values.
-  counter = 0
-  do j = 1, nrows
-    do i = 1, ncolumns
-      counter = counter + 1
-
-      if (i <= ncolumns / 2) then
-        call assert_comparable_real(matrix%get_value(i, j), dble(counter), tol, "Wrong value in test_get_value!")
-      else
-        call assert_comparable_real(matrix%get_value(i, j), 0.d0, tol, "Wrong value in test_get_value!")
-      endif
-    enddo
-  enddo
-
-end subroutine test_get_value
 
 !=============================================================================================
 ! Perform test for a (ncolumns x nrows) matrix with some zero columns.
