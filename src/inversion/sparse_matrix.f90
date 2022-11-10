@@ -91,7 +91,6 @@ module sparse_matrix
     procedure, public, pass :: get_number_elements => sparse_matrix_get_number_elements
     procedure, public, pass :: get_nnz => sparse_matrix_get_nnz
     procedure, public, pass :: get_value => sparse_matrix_get_value
-    procedure, public, pass :: get_line => sparse_matrix_get_line
     procedure, public, pass :: get_column => sparse_matrix_get_column
 
     procedure, public, pass :: allocate_variance_array => sparse_matrix_allocate_variance_array
@@ -404,23 +403,6 @@ subroutine sparse_matrix_part_mult_vector(this, nelements, x, ndata, b, line_sta
   enddo
 
 end subroutine sparse_matrix_part_mult_vector
-
-!=========================================================================
-! Extract the j-th line from the matrix and stores in b-vector.
-!=========================================================================
-pure subroutine sparse_matrix_get_line(this, j, b)
-  class(t_sparse_matrix), intent(in) :: this
-  integer, intent(in) :: j
-  real(kind=CUSTOM_REAL), intent(out) :: b(this%ncolumns)
-  integer(kind=8) :: k
-
-  b = 0._CUSTOM_REAL
-
-  do k = this%ijl(j), this%ijl(j + 1) - 1
-    b(this%ija(k)) = this%sa(k)
-  enddo
-
-end subroutine sparse_matrix_get_line
 
 !============================================================================
 ! Computes the product between the transpose of sparse matrix and vector x:
