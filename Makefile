@@ -138,7 +138,6 @@ model_IO.F90 \
 parameters_inversion.f90 \
 inversion_arrays.f90 \
 lsqr_solver2.F90 \
-sca_solver.F90 \
 damping.F90 \
 gradient.F90 \
 cross_gradient.F90 \

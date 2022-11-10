@@ -27,7 +27,6 @@ module tests_lsqr
 
   use sparse_matrix
   use lsqr_solver
-  use sca_solver
 
   implicit none
 
@@ -306,7 +305,6 @@ subroutine test_lsqr_overdetermined_2(myrank, nbproc)
 
   ! Solve the least squares problem.
   call lsqr_solve(size(b_RHS), size(x), niter, rmin, gamma, matrix, b_RHS, x, myrank)
-  !call sca_solve(niter, rmin, matrix, b_RHS, x, myrank, nbproc)
 
   ! Note the solution given in the Wunsch's book seems to be not correct one.
   ! As it leads to a larger residual norm.
@@ -446,18 +444,6 @@ subroutine test_lsqr_underdetermined_1(myrank, nbproc)
       call assert_comparable_real(delta_model(1), 1._CUSTOM_REAL, tol, "delta_model(i) /= x(i) in test_lsqr_underdetermined.")
   endif
 
-  !------------------------------------------------------------------
-  ! Testing the SCA solver.
-  !------------------------------------------------------------------
-  ! (!) NOTE: It finds another correct solution: (0.5, 0.5, 1.5)
-  if (nbproc == 1) then
-    call sca_solve(100, rmin, matrix, b_RHS, delta_model, myrank, nbproc)
-
-    call assert_comparable_real(delta_model(1), 0.5_CUSTOM_REAL, tol, "delta_model(2) /= x(1) in test_lsqr_underdetermined.")
-    call assert_comparable_real(delta_model(2), 0.5_CUSTOM_REAL, tol, "delta_model(2) /= x(2) in test_lsqr_underdetermined.")
-    call assert_comparable_real(delta_model(3), 1.5_CUSTOM_REAL, tol, "delta_model(3) /= x(3) in test_lsqr_underdetermined.")
-  endif
-
   deallocate(b_RHS)
   deallocate(delta_model)
 
@@ -529,19 +515,6 @@ subroutine test_lsqr_underdetermined_2(myrank, nbproc)
   do i = 1, ncols_loc
     call assert_comparable_real(x(i), d1, tol, "x(i) /= d1 in test_lsqr_underdetermined_2.")
   enddo
-
-  !------------------------------------------------------------------
-  ! Testing the SCA solver.
-  !------------------------------------------------------------------
-  ! (!) NOTE: It finds another correct solution: (4 * d1, 0, 0, 0)
-  if (nbproc == 1) then
-    call sca_solve(niter, rmin, matrix, b_RHS, x, myrank, nbproc)
-
-    call assert_comparable_real(x(1), 4.d0 * d1, tol, "x(1) /= 4 * d1 in test_lsqr_underdetermined_2.")
-    do i = 2, ncols
-      call assert_comparable_real(x(i), 0.d0, tol, "x(i) /= 0 in test_lsqr_underdetermined_2.")
-    enddo
-  endif
 
   deallocate(b_RHS)
   deallocate(x)
@@ -647,20 +620,6 @@ subroutine test_lsqr_underdetermined_3(myrank, nbproc)
     else if (myrank == 3) then
       call assert_comparable_real(x(1), 0.0d0, tol, "x(1) is wrong in test_lsqr_underdetermined_3.")
     endif
-  endif
-
-  !------------------------------------------------------------------
-  ! Testing the SCA solver.
-  !------------------------------------------------------------------
-  ! (!) NOTE: It finds another correct solution: (0, 1, 0, 0)
-  if (nbproc == 1) then
-    x = 0.d0
-    call sca_solve(niter, rmin, matrix, b_RHS, x, myrank, nbproc)
-
-    call assert_comparable_real(x(1), 0.0d0, tol, "x(1) is wrong in test_lsqr_underdetermined_3.")
-    call assert_comparable_real(x(2), 1.0d0, tol, "x(2) is wrong in test_lsqr_underdetermined_3.")
-    call assert_comparable_real(x(3), 0.0d0, tol, "x(3) is wrong in test_lsqr_underdetermined_3.")
-    call assert_comparable_real(x(4), 0.0d0, tol, "x(4) is wrong in test_lsqr_underdetermined_3.")
   endif
 
   deallocate(b_RHS)

@@ -33,7 +33,6 @@ module joint_inverse_problem
   use damping
   use model
   use method_of_weights
-  use sca_solver
   use admm_method
   use clustering
   use damping_gradient
@@ -464,7 +463,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
     call lsqr_solve(size(this%b_RHS), size(delta_model), par%niter, par%rmin, par%gamma, &
                     this%matrix, this%b_RHS, delta_model, myrank)
   else
-    call sca_solve(par%niter, par%rmin, this%matrix, this%b_RHS, delta_model, myrank, nbproc)
+    call exit_MPI("Unknown solver type!", myrank, 0)
   endif
 
   ! ***** Method of weights *****
