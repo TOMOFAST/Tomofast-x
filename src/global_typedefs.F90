@@ -54,31 +54,5 @@ module global_typedefs
   ! Tolerance for comparing real numbers in unit tests.
   real(kind=CUSTOM_REAL), parameter :: tol = merge(1.e-12_CUSTOM_REAL, 1.e-6_CUSTOM_REAL, MATRIX_PRECISION == SIZE_DOUBLE)
 
-  ! To have arrays of pointers (which are not directly supported in Fortran),
-  ! we need arrays of types which only contain pointers.
-  type real_p
-    real(kind=CUSTOM_REAL), dimension(:), pointer :: p
-  end type real_p
-
-  type real2_p
-    real(kind=CUSTOM_REAL), dimension(:,:), pointer :: p
-  end type real2_p
-
-  type real3_p
-    real(kind=CUSTOM_REAL), dimension(:,:,:), pointer :: p
-  end type real3_p
-
-  type real4_p
-    real(kind=CUSTOM_REAL), dimension(:,:,:,:), pointer :: p
-  end type real4_p
-
-  type int_p
-    integer, dimension(:), pointer :: p
-  end type int_p
-
-  type int3_p
-    integer, dimension(:,:,:), pointer :: p
-  end type int3_p
-
 end module global_typedefs
 
