@@ -34,9 +34,6 @@ module tests_sparse_matrix
   ! Testing matrix columns normalization.
   public :: test_normalize_columns
 
-  ! Testing sparse_matrix_trans_mult_matrix.
-  public :: test_trans_mult_matrix
-
 contains
 
 !=============================================================================================
@@ -163,107 +160,5 @@ subroutine test_normalize_columns(myrank, nbproc)
   deallocate(A_column)
 
 end subroutine test_normalize_columns
-
-!=============================================================================================
-! Perform test of A'A calculation for a matrix:
-!     (1 2)
-! A = (3 4)
-!     (5 6)
-!=============================================================================================
-subroutine test_trans_mult_matrix(myrank, nbproc)
-  integer, intent(in) :: myrank, nbproc
-
-  type(t_sparse_matrix) :: matrix
-  integer :: nrows, ncolumns
-  integer :: i, j
-
-  real(kind=CUSTOM_REAL), allocatable :: vec(:)
-  real(kind=CUSTOM_REAL), allocatable :: vec2(:)
-  real(kind=CUSTOM_REAL), allocatable :: Avi(:)
-  real(kind=CUSTOM_REAL), allocatable :: Avj(:)
-  real(kind=CUSTOM_REAL), allocatable :: H(:, :)
-
-  if (nbproc > 0) continue
-
-  ! Set matrix size.
-  ncolumns = 2
-  nrows = 3
-
-  ! Allocate auxiliary arrays.
-  allocate(vec(ncolumns))
-  allocate(vec2(nrows))
-  allocate(Avi(nrows))
-  allocate(Avj(nrows))
-  allocate(H(ncolumns, ncolumns))
-
-  ! Building the matrix.
-  call matrix%initialize(nrows, ncolumns, int(ncolumns * nrows, 8), myrank)
-
-  call matrix%new_row(myrank)
-  call matrix%add(1.d0, 1, myrank)
-  call matrix%add(2.d0, 2, myrank)
-
-  call matrix%new_row(myrank)
-  call matrix%add(3.d0, 1, myrank)
-  call matrix%add(4.d0, 2, myrank)
-
-  call matrix%new_row(myrank)
-  call matrix%add(5.d0, 1, myrank)
-  call matrix%add(6.d0, 2, myrank)
-
-  call matrix%finalize(myrank)
-
-  ! Calculate the resulting matrix H = A'A.
-  do i = 1, ncolumns
-    do j = 1, ncolumns
-      H(i, j) = matrix%trans_mult_matrix(i, j, vec, Avi, Avj)
-    enddo
-  enddo
-
-  call assert_comparable_real(H(1, 1), 35.d0, tol, "Wrong H[1, 1] in test_trans_mult_matrix!")
-  call assert_comparable_real(H(2, 1), 44.d0, tol, "Wrong H[2, 1] in test_trans_mult_matrix!")
-  call assert_comparable_real(H(1, 2), 44.d0, tol, "Wrong H[1, 2] in test_trans_mult_matrix!")
-  call assert_comparable_real(H(2, 2), 56.d0, tol, "Wrong H[2, 2] in test_trans_mult_matrix!")
-
-  !------------------------------------------------------------------------------------
-  ! Test extraction of the matrix row.
-  ! TODO: Move to a separate routine.
-  call matrix%get_line(1, vec)
-
-  call assert_comparable_real(vec(1), 1.d0, tol, "Wrong value in test_trans_mult_matrix!")
-  call assert_comparable_real(vec(2), 2.d0, tol, "Wrong value in test_trans_mult_matrix!")
-
-  call matrix%get_line(2, vec)
-
-  call assert_comparable_real(vec(1), 3.d0, tol, "Wrong value in test_trans_mult_matrix!")
-  call assert_comparable_real(vec(2), 4.d0, tol, "Wrong value in test_trans_mult_matrix!")
-
-  call matrix%get_line(3, vec)
-
-  call assert_comparable_real(vec(1), 5.d0, tol, "Wrong value in test_trans_mult_matrix!")
-  call assert_comparable_real(vec(2), 6.d0, tol, "Wrong value in test_trans_mult_matrix!")
-
-  !------------------------------------------------------------------------------------
-  ! Test extraction of the matrix column.
-  ! TODO: Move to a separate routine.
-  call matrix%get_column(1, vec2)
-
-  call assert_comparable_real(vec2(1), 1.d0, tol, "Wrong value in test_trans_mult_matrix!")
-  call assert_comparable_real(vec2(2), 3.d0, tol, "Wrong value in test_trans_mult_matrix!")
-  call assert_comparable_real(vec2(3), 5.d0, tol, "Wrong value in test_trans_mult_matrix!")
-
-  call matrix%get_column(2, vec2)
-
-  call assert_comparable_real(vec2(1), 2.d0, tol, "Wrong value in test_trans_mult_matrix!")
-  call assert_comparable_real(vec2(2), 4.d0, tol, "Wrong value in test_trans_mult_matrix!")
-  call assert_comparable_real(vec2(3), 6.d0, tol, "Wrong value in test_trans_mult_matrix!")
-
-  deallocate(vec)
-  deallocate(vec2)
-  deallocate(Avi)
-  deallocate(Avj)
-  deallocate(H)
-
-end subroutine test_trans_mult_matrix
 
 end module tests_sparse_matrix

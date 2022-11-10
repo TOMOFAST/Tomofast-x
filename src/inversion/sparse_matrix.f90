@@ -82,7 +82,6 @@ module sparse_matrix
     procedure, public, pass :: part_mult_vector => sparse_matrix_part_mult_vector
     procedure, public, pass :: trans_mult_vector => sparse_matrix_trans_mult_vector
     procedure, public, pass :: add_trans_mult_vector => sparse_matrix_add_trans_mult_vector
-    procedure, public, pass :: trans_mult_matrix => sparse_matrix_trans_mult_matrix
 
     procedure, public, pass :: normalize_columns => sparse_matrix_normalize_columns
 
@@ -487,44 +486,6 @@ pure subroutine sparse_matrix_get_column(this, column, b)
   enddo
 
 end subroutine sparse_matrix_get_column
-
-!================================================================================
-! Computes the (i,j)-element of the product between
-! the transpose of (this) matrix and (this) matrix, i.e, H = A'A, return H[i,j].
-! SLOW VERSION (use auxiliary arrays), but simple to implement.
-! vec has size on ncolumns, and Avi, Avj have size of nrows.
-!
-! This function is unit tested in tests_sparse_matrix.f90.
-!================================================================================
-function sparse_matrix_trans_mult_matrix(this, i, j, vec, Avi, Avj) result (Hij)
-  class(t_sparse_matrix), intent(in) :: this
-  integer, intent(in) :: i, j
-  ! Use for storage only, to do not allocate memory here.
-  real(kind=CUSTOM_REAL), intent(inout) :: vec(this%ncolumns)
-  real(kind=CUSTOM_REAL), intent(inout) :: Avi(this%nl)
-  real(kind=CUSTOM_REAL), intent(inout) :: Avj(this%nl)
-  integer :: k
-
-  real(kind=CUSTOM_REAL) :: Hij
-
-  vec = 0.d0
-  vec(i) = 1.d0
-
-  call this%mult_vector(vec, Avi)
-
-  vec(i) = 0.d0
-  vec(j) = 1.d0
-
-  call this%mult_vector(vec, Avj)
-
-  Hij = 0.d0
-
-  do k = 1, this%nl
-    Hij = Hij + Avi(k) * Avj(k)
-  enddo
-
-end function sparse_matrix_trans_mult_matrix
-
 
 !================================================================================
 ! Scale all matrix columns to have unit length and returns the column original norm.
