@@ -100,6 +100,7 @@ subroutine test_normalize_columns(myrank, nbproc)
   real(kind=CUSTOM_REAL), allocatable :: A(:, :)
   real(kind=CUSTOM_REAL), allocatable :: column_norm(:)
   real(kind=CUSTOM_REAL), allocatable :: A_column(:)
+  real(kind=CUSTOM_REAL), allocatable :: vi(:)
 
   if (nbproc > 0) continue
 
@@ -110,6 +111,7 @@ subroutine test_normalize_columns(myrank, nbproc)
   allocate(A(ncolumns, nrows))
   allocate(column_norm(ncolumns))
   allocate(A_column(nrows))
+  allocate(vi(ncolumns))
 
   ! Building the matrix.
   counter = 0
@@ -145,7 +147,9 @@ subroutine test_normalize_columns(myrank, nbproc)
     call assert_comparable_real(column_norm(i), norm2(A(i, :)), tol, "Wrong column_norm array in test_normalize_columns!")
 
     ! Extract the sparse matrix column.
-    call matrix%get_column(i, A_column)
+    vi = 0.d0
+    vi(i) = 1.d0
+    call matrix%mult_vector(vi, A_column)
 
     ! Test the norm of the sparse matrix column.
     if (norm2(A(i, :)) /= 0.d0) then
@@ -158,6 +162,7 @@ subroutine test_normalize_columns(myrank, nbproc)
   deallocate(A)
   deallocate(column_norm)
   deallocate(A_column)
+  deallocate(vi)
 
 end subroutine test_normalize_columns
 
