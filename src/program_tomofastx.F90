@@ -46,7 +46,7 @@ program program_tomofastx
   type(t_parameters_mag) :: mpar
   ! Inversion parameters.
   type(t_parameters_inversion) :: ipar
-  ! Type of problem (ECT/Grav/Mag).
+  ! Type of problem to solve.
   integer :: problem_type
 
   !----------------------------------------------------------------------------
