@@ -1,4 +1,4 @@
-# Tomofast-x  v.1.5
+# Tomofast-x  v.1.6
 
 Geophysical 3D potential field joint and constrained parallel inversion code.  
 Authors: Vitaliy Ogarko, Jeremie Giraud, Roland Martin.
