@@ -353,7 +353,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       call damping%initialize(par%nelements, par%alpha(i), par%problem_weight(i), par%norm_power, &
                               par%compression_type, par%nx, par%ny, par%nz)
 
-      call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, &
+      call damping%add(this%matrix, this%matrix%get_total_row_number(), this%b_RHS, arr(i)%column_weight, &
                        model(i)%val, model(i)%val_prior, param_shift(i), myrank, nbproc)
 
       if (myrank == 0) print *, 'damping term cost = ', damping%get_cost()
@@ -425,7 +425,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
                               par%compression_type, par%nx, par%ny, par%nz)
 
       ! Note: with wavelet compression we currently cannot have the local weight.
-      call damping%add(this%matrix, this%b_RHS, arr(i)%column_weight, &
+      call damping%add(this%matrix, this%matrix%get_total_row_number(), this%b_RHS, arr(i)%column_weight, &
                        model(i)%val, this%x0_ADMM, param_shift(i), myrank, nbproc)
 
       ! Calculate the ADMM cost in parallel.
@@ -476,8 +476,9 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       par_lsqr%gamma = par%gamma
       par_lsqr%rmin = par%rmin
 
-      ! Applying weighting method for equality-constrained LSQR.
+      ! Applying method of weights.
       call apply_method_of_weights(par_lsqr, par%method_of_weights_niter, this%matrix, this%matrix_B, &
+                                   this%matrix%get_ncolumns(), this%matrix%get_total_row_number(), &
                                    delta_model, this%b_RHS, this%d_RHS, par%cross_grad_weight, 3, myrank)
     endif
   endif

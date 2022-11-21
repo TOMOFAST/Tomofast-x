@@ -15,7 +15,7 @@
 !===============================================================================================
 ! Unit tests for methods of weights (equality-constrained LSQR).
 !
-! Author: Vitaliy Ogarko, UWA, CET, Australia, 2016.
+! Author: Vitaliy Ogarko, UWA, CET, Australia.
 !===============================================================================================
 module tests_method_of_weights
 
@@ -128,7 +128,9 @@ subroutine test_method_of_weights_1(myrank, nbproc)
   call lsqr_solve(size(b), size(y), par%niter, par%rmin, par%gamma, matrix_A, b, y, myrank)
 
   ! Apply method of weights to correct y.
-  call apply_method_of_weights(par, niter, matrix_A, matrix_C, y, b, g, tau, 3, myrank)
+  call apply_method_of_weights(par, niter, matrix_A, matrix_C, &
+                               matrix_A%get_ncolumns(), matrix_A%get_total_row_number(), &
+                               y, b, g, tau, 3, myrank)
 
   !----------------------------------------------------------
   ! Compare results with analytical solution y_LSE.
@@ -255,7 +257,9 @@ subroutine test_method_of_weights_2(myrank, nbproc)
   call lsqr_solve(size(b), size(y), par%niter, par%rmin, par%gamma, matrix_A, b, y, myrank)
 
   ! Apply method of weights to correct y.
-  call apply_method_of_weights(par, niter, matrix_A, matrix_C, y, b, g, tau, 3, myrank)
+  call apply_method_of_weights(par, niter, matrix_A, matrix_C, &
+                               matrix_A%get_ncolumns(), matrix_A%get_total_row_number(), &
+                               y, b, g, tau, 3, myrank)
 
   !----------------------------------------------------------
   ! Compare results with analytical solution y_LSE.

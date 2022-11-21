@@ -94,18 +94,18 @@ end subroutine damping_initialize
 !
 ! Tested in unit_tests.f90 in test_damping_identity_matrix().
 !===========================================================================================
-subroutine damping_add(this, matrix, b_RHS, column_weight, &
+subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
                        model, model_ref, param_shift, myrank, nbproc, local_weight)
   class(t_damping), intent(inout) :: this
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   real(kind=CUSTOM_REAL), intent(in) :: model(:)
   real(kind=CUSTOM_REAL), intent(in) :: model_ref(:)
-  integer, intent(in) :: param_shift
+  integer, intent(in) :: nrows, param_shift
   integer, intent(in) :: myrank, nbproc
   real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(:)
 
   type(t_sparse_matrix), intent(inout) :: matrix
-  real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(matrix%get_total_row_number())
+  real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(nrows)
 
   integer :: i, nsmaller
   integer :: row_beg, row_end

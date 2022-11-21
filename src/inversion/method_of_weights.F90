@@ -67,13 +67,14 @@ contains
 ! This subroutine is unit-tested in tests_method_of_weights.f90.
 !
 !===============================================================================================
-subroutine apply_method_of_weights(par, num_iter, matrix_A, matrix_C, y, b, g, tau, method, myrank)
+subroutine apply_method_of_weights(par, num_iter, matrix_A, matrix_C, ncolumns_A, nrows_A, &
+                                   y, b, g, tau, method, myrank)
   type(t_parameters_lsqr), intent(in) :: par
-  integer, intent(in) :: num_iter
+  integer, intent(in) :: num_iter, ncolumns_A, nrows_A
   type(t_sparse_matrix), intent(inout) :: matrix_A
   type(t_sparse_matrix), intent(in) :: matrix_C
-  real(kind=CUSTOM_REAL), intent(inout) :: y(matrix_A%get_ncolumns())
-  real(kind=CUSTOM_REAL), intent(inout) :: b(matrix_A%get_total_row_number())
+  real(kind=CUSTOM_REAL), intent(inout) :: y(ncolumns_A)
+  real(kind=CUSTOM_REAL), intent(inout) :: b(nrows_A)
   real(kind=CUSTOM_REAL), intent(in) :: g(:)
   real(kind=CUSTOM_REAL), intent(in) :: tau
   integer, intent(in) :: method, myrank

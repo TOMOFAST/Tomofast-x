@@ -98,7 +98,8 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
                           par%compression_type, par%nx, par%ny, par%nz)
 
   ! Create an identity matrix.
-  call damping%add(isensit, b_RHS, arr%column_weight, model%val, model%val_prior, 0, myrank, nbproc)
+  call damping%add(isensit, isensit%get_total_row_number(), b_RHS, arr%column_weight, &
+                   model%val, model%val_prior, 0, myrank, nbproc)
 
   ! Store the index of last element.
   call isensit%finalize(myrank)
