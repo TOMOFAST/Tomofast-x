@@ -78,6 +78,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   real(kind=CUSTOM_REAL) :: cost_data(2)
   real(kind=CUSTOM_REAL) :: cost_model(2)
+  real(kind=CUSTOM_REAL) :: damping_gradient_cost(6)
+
   integer :: it, i, m, number_prior_models, ierr
   integer :: line_start(2), line_end(2), param_shift(2)
 
@@ -419,8 +421,10 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 #ifndef SUPPRESS_OUTPUT
       ! Write costs (for the previous iteration).
       if (myrank == 0) then
+        damping_gradient_cost = jinv%get_damping_gradient_cost()
         write(FILE_COSTS, *) it - 1, cost_data(1), cost_data(2), cost_model(1), cost_model(2), &
                              jinv%get_admm_cost(), &
+                             damping_gradient_cost, &
                              jinv%get_cross_grad_cost(), &
                              jinv%get_clustering_cost(1), jinv%get_clustering_cost(2)
         flush(FILE_COSTS)

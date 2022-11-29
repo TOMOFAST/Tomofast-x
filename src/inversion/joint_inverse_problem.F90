@@ -84,8 +84,11 @@ module joint_inverse_problem
     type(t_admm_method) :: admm_method_1
     type(t_admm_method) :: admm_method_2
 
-    ! The ADMM term cost.
+    ! ADMM term cost.
     real(kind=CUSTOM_REAL) :: admm_cost
+
+    ! Damping gradient term cost (in each direction and for each joint problem).
+    real(kind=CUSTOM_REAL) :: damping_gradient_cost(6)
 
     ! Clustering constraints.
     type(t_clustering), public :: clustering
@@ -104,6 +107,7 @@ module joint_inverse_problem
     procedure, public, pass :: get_cross_grad_cost => joint_inversion_get_cross_grad_cost
     procedure, public, pass :: get_clustering_cost => joint_inversion_get_clustering_cost
     procedure, public, pass :: get_admm_cost => joint_inversion_get_admm_cost
+    procedure, public, pass :: get_damping_gradient_cost => joint_inversion_get_damping_gradient_cost
 
     procedure, private, pass :: add_cross_grad_constraints => joint_inversion_add_cross_grad_constraints
     procedure, private, pass :: add_clustering_constraints => joint_inversion_add_clustering_constraints
@@ -181,6 +185,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   endif
 
   this%admm_cost = 0.d0
+  this%damping_gradient_cost = 0.d0
 
   !--------------------------------------------------------------------------------------
   ! Calculate number of matrix rows and (approx.) non-zero elements.
@@ -365,8 +370,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
 
       call damping_gradient%initialize(par%beta(i), par%problem_weight(i), par%nx, par%ny, par%nz, par%nelements, myrank)
 
-      cost = 0.d0
-
       if (par%damp_grad_weight_type > 1) then
       ! Local damping gradient weight.
         ! TODO case.
@@ -377,12 +380,13 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       do j = 1, 3 ! j is direction (1 = x, 2 = y, 3 = z).
         call damping_gradient%add(model(i), damping_gradient%grad_weight, arr(i)%column_weight, &
                                   this%matrix, this%b_RHS, param_shift(i), j, myrank, nbproc)
-        cost = cost + damping_gradient%get_cost()
 
-        if (myrank == 0) print *, 'damping_gradient term cost in direction j = ', j, damping_gradient%get_cost()
+        cost = damping_gradient%get_cost()
+        this%damping_gradient_cost((i - 1) * 3 + j) = cost
+
+        if (myrank == 0) print *, 'damping_gradient term cost in direction j = ', j, cost
       enddo
 
-      if (myrank == 0) print *, 'damping_gradient terms total cost = ', cost
       if (myrank == 0) print *, 'nel (with damping_gradient) = ', this%matrix%get_number_elements()
     endif
   enddo
@@ -755,6 +759,17 @@ pure function joint_inversion_get_admm_cost(this) result(res)
   res = this%admm_cost
 
 end function joint_inversion_get_admm_cost
+
+!==================================================================================================
+! Returns the damping gradient cost.
+!==================================================================================================
+pure function joint_inversion_get_damping_gradient_cost(this) result(res)
+  class(t_joint_inversion), intent(in) :: this
+  real(kind=CUSTOM_REAL) :: res(6)
+
+  res = this%damping_gradient_cost
+
+end function joint_inversion_get_damping_gradient_cost
 
 !==================================================================================================
 ! Calculates the matrix pertitioning.
