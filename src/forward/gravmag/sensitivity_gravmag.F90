@@ -111,7 +111,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   integer, intent(out) :: nelements_new
 
   type(t_magnetic_field) :: mag_field
-  integer :: i, p, nel, ierr
+  integer :: i, k, p, nel, ierr
   integer :: nelements_total, nel_compressed
   integer(kind=8) :: nnz_data
   integer :: problem_type
@@ -126,7 +126,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   integer(kind=8) :: nnz_at_cpu_new(nbproc)
 
   ! Sensitivity matrix row.
-  real(kind=CUSTOM_REAL), allocatable :: sensit_line_full(:)
+  real(kind=CUSTOM_REAL), allocatable :: sensit_line_full(:, :)
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_sorted(:)
 
   ! Arrays for storing the compressed sensitivity line.
@@ -196,7 +196,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   endif
   if (myrank == 0) print *, 'nel_compressed =', nel_compressed
 
-  allocate(sensit_line_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(sensit_line_full(nelements_total, ncomponents), source=0._CUSTOM_REAL, stat=ierr)
   allocate(sensit_line_sorted(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
@@ -237,74 +237,79 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
       call mag_field%magprism(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), sensit_line_full)
     endif
 
-    ! Applying the depth weight.
-    call apply_column_weight(nelements_total, sensit_line_full, column_weight_full)
+    ! Loop over the model components.
+    do k = 1, ncomponents
 
-    if (par%compression_type > 0) then
-    ! Wavelet compression.
-      ! The uncompressed line cost.
-      cost_full_loc = cost_full_loc + sum(sensit_line_full**2)
+      ! Applying the depth weight.
+      call apply_column_weight(nelements_total, sensit_line_full(:, k), column_weight_full)
 
-      ! Apply the wavelet transform.
-      call Haar3D(sensit_line_full, par%nx, par%ny, par%nz)
+      if (par%compression_type > 0) then
+      ! Wavelet compression.
+        ! The uncompressed line cost.
+        cost_full_loc = cost_full_loc + sum(sensit_line_full(:, k)**2)
 
-      ! Perform sorting (to determine the wavelet threshold corresponding to the desired compression rate).
-      sensit_line_sorted = abs(sensit_line_full)
-      call quicksort(sensit_line_sorted, 1, nelements_total)
+        ! Apply the wavelet transform.
+        call Haar3D(sensit_line_full(:, k), par%nx, par%ny, par%nz)
 
-      ! Calculate the wavelet threshold corresponding to the desired compression rate.
-      p = nelements_total - nel_compressed + 1
-      threshold = abs(sensit_line_sorted(p))
+        ! Perform sorting (to determine the wavelet threshold corresponding to the desired compression rate).
+        sensit_line_sorted = abs(sensit_line_full(:, k))
+        call quicksort(sensit_line_sorted, 1, nelements_total)
 
-      if (threshold < 1.d-30) then
-        ! Keep small threshold to avoid extremely small values, because when MATRIX_PRECISION is 4 bytes real
-        ! they lead to SIGFPE: Floating-point exception - erroneous arithmetic operation.
-        threshold = 1.d-30
+        ! Calculate the wavelet threshold corresponding to the desired compression rate.
+        p = nelements_total - nel_compressed + 1
+        threshold = abs(sensit_line_sorted(p))
+
+        if (threshold < 1.d-30) then
+          ! Keep small threshold to avoid extremely small values, because when MATRIX_PRECISION is 4 bytes real
+          ! they lead to SIGFPE: Floating-point exception - erroneous arithmetic operation.
+          threshold = 1.d-30
+        endif
+
+        nel = 0
+        do p = 1, nelements_total
+          if (abs(sensit_line_full(p, k)) >= threshold) then
+            ! Store sensitivity elements greater than the wavelet threshold.
+            nel = nel + 1
+            sensit_columns(nel) = p
+            sensit_compressed(nel) = real(sensit_line_full(p, k), MATRIX_PRECISION)
+
+            sensit_nnz(p) = sensit_nnz(p) + 1
+          endif
+        enddo
+
+        ! Sanity check.
+        if (nel > nel_compressed) then
+          call exit_MPI("Wrong number of elements in calculate_and_write_sensit!", myrank, 0)
+        endif
+
+        cost_compressed_loc = cost_compressed_loc + sum(sensit_compressed(1:nel)**2)
+
+      else
+      ! No compression.
+        nel = nelements_total
+        sensit_compressed = real(sensit_line_full(:, k), MATRIX_PRECISION)
+        do p = 1, nelements_total
+          sensit_columns(p) = p
+          sensit_nnz(p) = sensit_nnz(p) + 1
+        enddo
       endif
 
-      nel = 0
-      do p = 1, nelements_total
-        if (abs(sensit_line_full(p)) >= threshold) then
-          ! Store sensitivity elements greater than the wavelet threshold.
-          nel = nel + 1
-          sensit_columns(nel) = p
-          sensit_compressed(nel) = real(sensit_line_full(p), MATRIX_PRECISION)
-
-          sensit_nnz(p) = sensit_nnz(p) + 1
-        endif
-      enddo
+      ! The sensitivity kernel size (when parallelized by data).
+      nnz_data = nnz_data + nel
 
       ! Sanity check.
-      if (nel > nel_compressed) then
-        call exit_MPI("Wrong number of elements in calculate_and_write_sensit!", myrank, 0)
+      if (nnz_data < 0) then
+        call exit_MPI("Integer overflow in nnz_data! Reduce the compression rate or increase the number of CPUs.", myrank, 0)
       endif
 
-      cost_compressed_loc = cost_compressed_loc + sum(sensit_compressed(1:nel)**2)
+      ! Write the sensitivity line to file.
+      write(77) idata, nel, k
+      if (nel > 0) then
+        write(77) sensit_columns(1:nel)
+        write(77) sensit_compressed(1:nel)
+      endif
 
-    else
-    ! No compression.
-      nel = nelements_total
-      sensit_compressed = real(sensit_line_full, MATRIX_PRECISION)
-      do p = 1, nelements_total
-        sensit_columns(p) = p
-        sensit_nnz(p) = sensit_nnz(p) + 1
-      enddo
-    endif
-
-    ! The sensitivity kernel size (when parallelized by data).
-    nnz_data = nnz_data + nel
-
-    ! Sanity check.
-    if (nnz_data < 0) then
-      call exit_MPI("Integer overflow in nnz_data! Reduce the compression rate or increase the number of CPUs.", myrank, 0)
-    endif
-
-    ! Write the sensitivity line to file.
-    write(77) idata, nel
-    if (nel > 0) then
-      write(77) sensit_columns(1:nel)
-      write(77) sensit_compressed(1:nel)
-    endif
+    enddo ! ncomponents loop
 
     ! Print the progress.
     if (myrank == 0 .and. mod(i, max(int(0.1d0 * ndata_loc), 1)) == 0) then
@@ -470,13 +475,13 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
   real(kind=CUSTOM_REAL) :: comp_rate
   integer(kind=8) :: nnz_total
-  integer :: i, j, p, nsmaller, ierr
+  integer :: i, j, k, p, nsmaller, ierr
   integer :: rank, nelements_total
   character(len=256) :: filename, filename_full
   character(len=256) :: msg
 
   integer :: ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
-  integer :: idata, nel, idata_glob
+  integer :: idata, nel, idata_glob, icomponent
   integer(kind=8) :: nnz
   integer :: column
   integer :: param_shift(2)
@@ -538,37 +543,46 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
     do i = 1, ndata_loc
       idata_glob = idata_glob + 1
 
-      ! Reading the data descriptor.
-      read(78) idata, nel
-
-      ! Make sure the data is stored in the correct order.
-      if (idata /= idata_glob) then
-        call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, 0)
-      endif
-
-      if (nel > 0) then
-        ! Reading the data.
-        read(78) sensit_columns(1:nel)
-        read(78) sensit_compressed(1:nel)
-      endif
-
       ! Adding the matrix line.
       call sensit_matrix%new_row(myrank)
 
-      do j = 1, nel
-        p = sensit_columns(j)
-        if (p > nsmaller .and. p <= nsmaller + par%nelements) then
-        ! The element belongs to this rank. Adding it to the matrix.
-          ! The column index in a big (joint) parallel sparse matrix.
-          column = p - nsmaller + param_shift(problem_type)
+      ! Loop over the model components.
+      do k = 1, ncomponents
 
-          ! Add element to the sparse matrix.
-          call sensit_matrix%add(sensit_compressed(j) * problem_weight, column, myrank)
-          nnz = nnz + 1
-        else
-          if (p > nsmaller + par%nelements) exit
+        ! Reading the data descriptor.
+        read(78) idata, nel, icomponent
+
+        ! Make sure the data is stored in the correct order.
+        if (idata /= idata_glob) then
+          call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, 0)
         endif
-      enddo
+
+        ! Sanity check for the component index.
+        if (icomponent /= k) then
+          call exit_MPI("Wrong component index in read_sensitivity_kernel!", myrank, 0)
+        endif
+
+        if (nel > 0) then
+          ! Reading the data.
+          read(78) sensit_columns(1:nel)
+          read(78) sensit_compressed(1:nel)
+        endif
+
+        do j = 1, nel
+          p = sensit_columns(j)
+          if (p > nsmaller .and. p <= nsmaller + par%nelements) then
+          ! The element belongs to this rank. Adding it to the matrix.
+            ! The column index in a big (joint) parallel sparse matrix.
+            column = p - nsmaller + param_shift(problem_type) + (k - 1) * par%nelements
+
+            ! Add element to the sparse matrix.
+            call sensit_matrix%add(sensit_compressed(j) * problem_weight, column, myrank)
+            nnz = nnz + 1
+          else
+            if (p > nsmaller + par%nelements) exit
+          endif
+        enddo
+      enddo ! components loop
 
     enddo ! data loop
 

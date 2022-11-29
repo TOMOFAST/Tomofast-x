@@ -18,6 +18,9 @@ module global_typedefs
 
   implicit none
 
+  ! Place temporary here.
+  integer, parameter :: ncomponents = 1
+
   ! Try this if 'use mpi' does not work, e.g., there is no 'module load' system.
   !include 'mpif.h'
 

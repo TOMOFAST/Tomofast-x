@@ -110,7 +110,7 @@ subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, s
     type(t_grid), intent(in)                :: grid
     real(kind=CUSTOM_REAL), intent(in)      :: Xdata, Ydata, Zdata
 
-    real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(nelements)
+    real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(nelements, ncomponents)
 
     integer :: i
     real(kind=SENSIT_REAL) :: tx(3), ty(3), tz(3)
@@ -138,7 +138,7 @@ subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, s
         my = sum(ty * this%magv)
         mz = sum(tz * this%magv)
 
-        sensit_line(i) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
+        sensit_line(i, 1) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
     enddo
 
     ! Convert to SI.
