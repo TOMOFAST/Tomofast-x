@@ -112,17 +112,11 @@ subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, s
 
     real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(nelements, ncomponents)
 
-    integer :: i
+    integer :: i, k
     real(kind=SENSIT_REAL) :: tx(3), ty(3), tz(3)
     double precision :: mx, my, mz
-    double precision :: weight
 
     do i = 1, nelements
-!        call this%sharmbox(Xdata, Ydata, Zdata, &
-!                           grid%X1(i), grid%Y1(i), grid%Z1(i), &
-!                           grid%X2(i), grid%Y2(i), grid%Z2(i), &
-!                           tx, ty, tz)
-
         call this%sharmbox(real(Xdata, SENSIT_REAL), &
                            real(Ydata, SENSIT_REAL), &
                            real(Zdata, SENSIT_REAL), &
@@ -134,16 +128,34 @@ subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, s
                            real(grid%Z2(i), SENSIT_REAL), &
                            ty, tx, tz)
 
-        mx = sum(tx * this%magv)
-        my = sum(ty * this%magv)
-        mz = sum(tz * this%magv)
+        if (ncomponents == 1) then
+        ! Susceptibility model.
 
-        sensit_line(i, 1) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
+          mx = sum(tx * this%magv)
+          my = sum(ty * this%magv)
+          mz = sum(tz * this%magv)
+
+          sensit_line(i, 1) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
+
+        else if (ncomponents == 3) then
+        ! Magnetisation model (Mx, My, Mz) - calculating three sensitivity kernels.
+
+          do k = 1, 3
+            sensit_line(i, k) = tx(k) * this%magv(1) + ty(k) * this%magv(2) + tz(k) * this%magv(3)
+          enddo
+
+        else
+          print *, "Wrong number of components in magnetic_field_magprism()!"
+          stop
+        endif
     enddo
 
+    if (ncomponents == 1) then
+      sensit_line = this%intensity * sensit_line
+    endif
+
     ! Convert to SI.
-    weight = this%intensity / (4.d0 * PI)
-    sensit_line = weight * sensit_line
+    sensit_line = sensit_line / (4.d0 * PI)
 
 end subroutine magnetic_field_magprism
 
