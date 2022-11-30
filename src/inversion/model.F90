@@ -248,12 +248,10 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
 
   real(kind=CUSTOM_REAL), allocatable :: model_scaled(:, :)
   real(kind=CUSTOM_REAL), allocatable :: model_scaled_full(:)
-  real(kind=CUSTOM_REAL), allocatable :: model_scaled_remapped(:)
-  integer :: i, k, p, ierr
+  integer :: i, k, ierr
   integer :: nsmaller
 
   allocate(model_scaled(this%nelements, ncomponents), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(model_scaled_remapped(this%nelements * ncomponents), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_calculate_data!", myrank, ierr)
 
@@ -292,21 +290,12 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
     endif
   endif
 
-  ! Remap the 2D model array to 1D using the same order as in the sensitivity kernel.
-  p = 0
-  do i = 1, this%nelements
-    do k = 1, ncomponents
-      p = p + 1
-      model_scaled_remapped(p) = model_scaled(i, k)
-    enddo
-  enddo
-
   ! Calculate data: d = S * m
-  call matrix_sensit%part_mult_vector(this%nelements * ncomponents, model_scaled_remapped, &
+  ! Note, the 2D-array model_scaled is remapped to 1D on the input of part_mult_vector().
+  call matrix_sensit%part_mult_vector(this%nelements * ncomponents, model_scaled, &
                                       ndata, data, line_start, param_shift, myrank)
 
   deallocate(model_scaled)
-  deallocate(model_scaled_remapped)
 
   call MPI_Allreduce(MPI_IN_PLACE, data, ndata, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
