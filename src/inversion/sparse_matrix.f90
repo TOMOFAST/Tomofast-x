@@ -212,12 +212,15 @@ end subroutine sparse_matrix_finalize
 ! Stores the index of last element (for the not fully built sparse matrix).
 ! To be able to calculate the forward data using the big joint matrix.
 !============================================================================
-pure subroutine sparse_matrix_finalize_part(this)
+subroutine sparse_matrix_finalize_part(this, myrank)
   class(t_sparse_matrix), intent(inout) :: this
+  integer, intent(in) :: myrank
 
   this%ijl(this%nl_current + 1) = this%nel + 1
 
   this%nl_nonempty = this%nl_current
+
+  call this%validate(myrank)
 
 end subroutine sparse_matrix_finalize_part
 
@@ -234,12 +237,13 @@ subroutine sparse_matrix_validate(this, myrank)
   do i = 1, this%nl_nonempty
     do k = this%ijl(i), this%ijl(i + 1) - 1
       if (k < 1 .or. k > this%nnz) &
-        call exit_MPI("Sparse matrix validation failed (k)!", myrank, 0)
+        call exit_MPI("Sparse matrix element-index validation failed!", myrank, 0)
 
+      ! Column index.
       j = this%ija(k)
 
       if (j < 1 .or. j > this%ncolumns) &
-        call exit_MPI("Sparse matrix validation failed (j)!", myrank, j)
+        call exit_MPI("Sparse matrix column-index validation failed!", myrank, j)
     enddo
   enddo
 
