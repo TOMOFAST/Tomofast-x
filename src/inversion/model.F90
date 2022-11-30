@@ -145,13 +145,15 @@ subroutine model_distribute(this, myrank, nbproc)
   integer :: displs(nbproc)
   ! The number of elements on every CPU for mpi_scatterv.
   integer :: nelements_at_cpu(nbproc)
-  integer :: ierr
+  integer :: ierr, k
 
   ! Partitioning for MPI_Scatterv.
   call get_mpi_partitioning(this%nelements, displs, nelements_at_cpu, myrank, nbproc)
 
-  call MPI_Scatterv(this%val_full, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
-                    this%val, this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  do k = 1, ncomponents
+    call MPI_Scatterv(this%val_full(:, k), nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
+                      this%val(:, k), this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  enddo
 
   if (ierr /= 0) call exit_MPI("Error in MPI_Scatterv in model_distribute!", myrank, ierr)
 

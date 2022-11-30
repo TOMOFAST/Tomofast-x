@@ -51,10 +51,10 @@ subroutine model_read(model, file_name, myrank, nbproc)
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank, nbproc
 
-  integer :: i, nelements_read
+  integer :: i, k, nelements_read
   integer :: ierr
   character(len=256) :: msg
-  real(kind=CUSTOM_REAL) :: dummy, val
+  real(kind=CUSTOM_REAL) :: dummy(6), val(ncomponents)
   integer :: i_, j_, k_
 
   if (myrank == 0) then
@@ -78,18 +78,21 @@ subroutine model_read(model, file_name, myrank, nbproc)
 
     ! Reading the model only (without grid).
     do i = 1, model%nelements_total
-      read(10, *, iostat=ierr) dummy, dummy, dummy, dummy, dummy, dummy, val, i_, j_, k_
+      ! Note we read an array of val.
+      read(10, *, iostat=ierr) dummy, val, i_, j_, k_
 
       ! Set the model value.
-      model%val_full(i, 1) = val
-
+      do k = 1, 3
+        model%val_full(i, k) = val(k)
+      enddo
       if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_voxels!", myrank, ierr)
     enddo
+
     close(10)
   endif
 
   ! Broadcast the full model to all CPUs.
-  call MPI_Bcast(model%val_full, model%nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(model%val_full, model%nelements_total * ncomponents, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("Error in MPI_Bcast in model_read!", myrank, ierr)
 
@@ -112,7 +115,7 @@ subroutine model_read_grid(model, file_name, myrank)
   integer :: nelements_total
   integer :: ierr
   character(len=256) :: msg
-  real(kind=CUSTOM_REAL) :: val
+  real(kind=CUSTOM_REAL) :: val(ncomponents)
 
   if (myrank == 0) then
   ! Reading the full grid by master CPU only.
