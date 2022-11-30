@@ -99,7 +99,7 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
 
   ! Create an identity matrix.
   call damping%add(isensit, isensit%get_total_row_number(), b_RHS, arr%column_weight, &
-                   model%val, model%val_prior, 0, myrank, nbproc)
+                   model%val(:, 1), model%val_prior(:, 1), 0, myrank, nbproc)
 
   ! Store the index of last element.
   call isensit%finalize(myrank)
@@ -185,8 +185,8 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
       do i = 1, nx
         p = p + 1
 
-        model1%val_full(p) = dble(i)
-        model2%val_full(p) = dble(i + 1)
+        model1%val_full(p, 1) = dble(i)
+        model2%val_full(p, 1) = dble(i + 1)
 
         model1%grid_full%X1(p) = real(i, CUSTOM_REAL)
         model1%grid_full%X2(p) = real(i + 1, CUSTOM_REAL)

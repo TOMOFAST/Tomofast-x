@@ -245,7 +245,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   !-------------------------------------------------------------------------------------------
   ! MAIN MATRIX MEMORY ALLOCATION.
   !-------------------------------------------------------------------------------------------
-  call this%matrix%initialize(nl, 2 * par%nelements, nnz, myrank, nl_empty)
+  call this%matrix%initialize(nl, 2 * par%nelements * ncomponents, nnz, myrank, nl_empty)
 
   ierr = 0
 
@@ -359,7 +359,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
                               par%compression_type, par%nx, par%ny, par%nz)
 
       call damping%add(this%matrix, this%matrix%get_total_row_number(), this%b_RHS, arr(i)%column_weight, &
-                       model(i)%val, model(i)%val_prior, param_shift(i), myrank, nbproc)
+                       model(i)%val(:, 1), model(i)%val_prior(:, 1), param_shift(i), myrank, nbproc)
 
       if (myrank == 0) print *, 'damping term cost = ', damping%get_cost()
       if (myrank == 0) print *, 'nel (with damping) = ', this%matrix%get_number_elements()
@@ -430,10 +430,10 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
 
       ! Note: with wavelet compression we currently cannot have the local weight.
       call damping%add(this%matrix, this%matrix%get_total_row_number(), this%b_RHS, arr(i)%column_weight, &
-                       model(i)%val, this%x0_ADMM, param_shift(i), myrank, nbproc)
+                       model(i)%val(:, 1), this%x0_ADMM, param_shift(i), myrank, nbproc)
 
       ! Calculate the ADMM cost in parallel.
-      call calculate_cost(model(i)%val, this%x0_ADMM, cost, .true., nbproc)
+      call calculate_cost(model(i)%val(:, 1), this%x0_ADMM, cost, .true., nbproc)
       this%admm_cost = sqrt(cost)
 
       if (myrank == 0) print *, "ADMM cost |x - x0| / |x| =", this%admm_cost
@@ -519,7 +519,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
         call iHaar3D(model(1)%val_full, par%nx, par%ny, par%nz)
 
         ! Extract the local model update.
-        delta_model(1:par%nelements) = model(1)%val_full(nsmaller + 1 : nsmaller + par%nelements)
+        delta_model(1:par%nelements) = model(1)%val_full(nsmaller + 1 : nsmaller + par%nelements, 1)
       endif
 
       if (SOLVE_PROBLEM(2)) then
@@ -527,7 +527,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
         call iHaar3D(model(2)%val_full, par%nx, par%ny, par%nz)
 
         ! Extract the local model update.
-        delta_model(par%nelements + 1:) = model(2)%val_full(nsmaller + 1 : nsmaller + par%nelements)
+        delta_model(par%nelements + 1:) = model(2)%val_full(nsmaller + 1 : nsmaller + par%nelements, 1)
       endif
 
     else

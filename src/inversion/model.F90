@@ -35,14 +35,14 @@ module model
   type, public :: t_model
 
     ! Local model parameters.
-    real(kind=CUSTOM_REAL), allocatable :: val(:)
+    real(kind=CUSTOM_REAL), allocatable :: val(:, :)
 
     ! Prior model (local).
-    real(kind=CUSTOM_REAL), allocatable :: val_prior(:)
+    real(kind=CUSTOM_REAL), allocatable :: val_prior(:, :)
 
     ! Full model parameters.
     ! (Read initial model here, write final model from here, and use also for cross-gradient.)
-    real(kind=CUSTOM_REAL), allocatable :: val_full(:)
+    real(kind=CUSTOM_REAL), allocatable :: val_full(:, :)
 
     ! Data arrays for local ADMM constraints.
     integer :: nlithos
@@ -106,9 +106,9 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
 
   ierr = 0
 
-  allocate(this%val_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%val(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%val_prior(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val_full(this%nelements_total, ncomponents), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val(this%nelements, ncomponents), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val_prior(this%nelements, ncomponents), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_initialize!", myrank, ierr)
 
@@ -207,7 +207,8 @@ subroutine model_update(this, delta_model)
   integer :: i
 
   do i = 1, this%nelements
-    this%val(i) = this%val(i) + delta_model(i)
+    ! TODO: Adust for ncomponents!!!
+    this%val(i, 1) = this%val(i, 1) + delta_model(i)
   enddo
 
   this%full_model_updated = .false.
@@ -243,17 +244,22 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
 
   real(kind=CUSTOM_REAL), intent(out) :: data(ndata)
 
-  real(kind=CUSTOM_REAL), allocatable :: model_scaled(:)
+  real(kind=CUSTOM_REAL), allocatable :: model_scaled(:, :)
   real(kind=CUSTOM_REAL), allocatable :: model_scaled_full(:)
-  integer :: i, ierr
+  real(kind=CUSTOM_REAL), allocatable :: model_scaled_remapped(:)
+  integer :: i, k, p, ierr
   integer :: nsmaller
 
-  allocate(model_scaled(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(model_scaled(this%nelements, ncomponents), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(model_scaled_remapped(this%nelements * ncomponents), source=0._CUSTOM_REAL, stat=ierr)
+
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_calculate_data!", myrank, ierr)
 
   ! Rescale the model to calculate data, as we store the depth-weighted sensitivity kernel.
-  do i = 1, this%nelements
-    model_scaled(i) = this%val(i) / column_weight(i)
+  do k = 1, ncomponents
+    do i = 1, this%nelements
+      model_scaled(i, k) = this%val(i, k) / column_weight(i)
+    enddo
   enddo
 
   if (compression_type > 0) then
@@ -267,27 +273,38 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
       if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_calculate_data!", myrank, ierr)
 
       ! Gather the full model from all processors.
-      call get_full_array(model_scaled, this%nelements, model_scaled_full, .true., myrank, nbproc)
+      call get_full_array(model_scaled(:, 1), this%nelements, model_scaled_full, .true., myrank, nbproc)
 
       ! Compress the full model.
       call Haar3D(model_scaled_full, this%grid_full%nx, this%grid_full%ny, this%grid_full%nz)
 
       ! Extract the local model part.
       nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
-      model_scaled = model_scaled_full(nsmaller + 1 : nsmaller + this%nelements)
+      model_scaled(:, 1) = model_scaled_full(nsmaller + 1 : nsmaller + this%nelements)
 
       deallocate(model_scaled_full)
 
     else
     ! Serial version.
-      call Haar3D(model_scaled, this%grid_full%nx, this%grid_full%ny, this%grid_full%nz)
+      call Haar3D(model_scaled(:, 1), this%grid_full%nx, this%grid_full%ny, this%grid_full%nz)
     endif
   endif
 
+  ! Remap the 2D model array to 1D using the same order as in the sensitivity kernel.
+  p = 0
+  do i = 1, this%nelements
+    do k = 1, ncomponents
+      p = p + 1
+      model_scaled_remapped(p) = model_scaled(i, k)
+    enddo
+  enddo
+
   ! Calculate data: d = S * m
-  call matrix_sensit%part_mult_vector(this%nelements, model_scaled, ndata, data, line_start, param_shift, myrank)
+  call matrix_sensit%part_mult_vector(this%nelements * ncomponents, model_scaled_remapped, &
+                                      ndata, data, line_start, param_shift, myrank)
 
   deallocate(model_scaled)
+  deallocate(model_scaled_remapped)
 
   call MPI_Allreduce(MPI_IN_PLACE, data, ndata, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 

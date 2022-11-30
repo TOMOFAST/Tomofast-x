@@ -81,7 +81,7 @@ subroutine model_read(model, file_name, myrank, nbproc)
       read(10, *, iostat=ierr) dummy, dummy, dummy, dummy, dummy, dummy, val, i_, j_, k_
 
       ! Set the model value.
-      model%val_full(i) = val
+      model%val_full(i, 1) = val
 
       if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_voxels!", myrank, ierr)
     enddo

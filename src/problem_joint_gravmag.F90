@@ -216,7 +216,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Writing the column weight for Paraview visualisation.
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) then
-      model(i)%val = iarr(i)%column_weight
+      model(i)%val(:, 1) = iarr(i)%column_weight
       call model_write(model(i), merge('grav_weight_', 'magn_weight_', i == 1), .true., .false., myrank, nbproc)
     endif
   enddo
@@ -262,6 +262,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_read_', 2, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_read_', 2, myrank)
 #endif
+
+stop
 
   ! Reading the data. Read here to allow the use of the above calculated data from the (original) model read.
   if (SOLVE_PROBLEM(1)) call data(1)%read(gpar%data_file, myrank)
@@ -547,7 +549,7 @@ subroutine calculate_model_costs(ipar, iarr, model, cost_model, solve_problem, m
 
   do i = 1, 2
     if (solve_problem(i)) then
-      call calculate_cost_model(ipar%nelements, ipar%norm_power, model(i)%val, model(i)%val_prior, &
+      call calculate_cost_model(ipar%nelements, ipar%norm_power, model(i)%val(:, 1), model(i)%val_prior(:, 1), &
                                 iarr(i)%column_weight, cost_model(i), nbproc)
 
       if (myrank == 0) print *, 'model cost =', cost_model(i)
