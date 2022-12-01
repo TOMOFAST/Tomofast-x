@@ -86,6 +86,9 @@ Geophysical Journal International, 218(1): 666–688, https://doi.org/10.1093/gj
 - R. Martin, V. Ogarko, D. Komatitsch, M. Jessell (2018), "Parallel three-dimensional electrical capacitance data imaging using a nonlinear inversion algorithm and Lp norm-based model regularization", 
 Measurement, 128: 428-445, https://doi.org/10.1016/j.measurement.2018.05.099
 
+- M. Rashidifard, J. Giraud, M. Lindsay, M. Jessell, and V. Ogarko (2021), "Constraining 3D geometric gravity inversion with a 2D reflection seismic profile using a generalized level set approach: application to the eastern Yilgarn Craton", 
+Solid Earth, 12, 2387–2406, https://doi.org/10.5194/se-12-2387-2021
+
 ### Authors and contacts 
 
 Vitaliy Ogarko, Jeremie Giraud, Roland Martin.  
