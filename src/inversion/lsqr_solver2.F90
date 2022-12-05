@@ -69,7 +69,8 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
   if (myrank == 0) print *, 'Entered subroutine lsqr_solve, gamma =', gamma
 
   ! Sanity check.
-  if (matrix%get_total_row_number() /= nlines) then
+  if (matrix%get_total_row_number() /= nlines .or. &
+      matrix%get_ncolumns() /= nelements) then
     call exit_MPI("Wrong matrix size in lsqr_solve! Exiting.", myrank, 0)
   endif
 

@@ -263,8 +263,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_read_', 2, myrank)
 #endif
 
-stop
-
   ! Reading the data. Read here to allow the use of the above calculated data from the (original) model read.
   if (SOLVE_PROBLEM(1)) call data(1)%read(gpar%data_file, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%read(mpar%data_file, myrank)
@@ -279,7 +277,8 @@ stop
   number_prior_models = gpar%number_prior_models
   path_output_parfile = path_output
 
-  allocate(delta_model(2 * ipar%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  ! Allocate nelements for gravity problem and (ncomponents * nelements) for magnetic problem.
+  allocate(delta_model((1 + ncomponents) * ipar%nelements), source=0._CUSTOM_REAL, stat=ierr)
   allocate(delta_data(sum(ipar%ndata)), source=0._CUSTOM_REAL, stat=ierr)
 
   !******************************************************************************************

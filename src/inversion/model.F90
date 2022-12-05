@@ -204,14 +204,10 @@ end function model_get_Ymax
 !======================================================================================================
 subroutine model_update(this, delta_model)
   class(t_model), intent(inout) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: delta_model(this%nelements)
+  ! TODO: use ncomponents from the model class so that it is 1 for grav and 1 or 3 for mag.
+  real(kind=CUSTOM_REAL), intent(in) :: delta_model(this%nelements, ncomponents)
 
-  integer :: i
-
-  do i = 1, this%nelements
-    ! TODO: Adust for ncomponents!!!
-    this%val(i, 1) = this%val(i, 1) + delta_model(i)
-  enddo
+  this%val = this%val + delta_model
 
   this%full_model_updated = .false.
 
@@ -224,7 +220,7 @@ subroutine model_update_full(this, myrank, nbproc)
   class(t_model), intent(inout) :: this
   integer, intent(in) :: myrank, nbproc
 
-  call get_full_array(this%val, this%nelements, this%val_full, .true., myrank, nbproc)
+  call get_full_array(this%val, size(this%val), this%val_full, .true., myrank, nbproc)
 
   this%full_model_updated = .true.
 

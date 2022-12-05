@@ -245,7 +245,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   !-------------------------------------------------------------------------------------------
   ! MAIN MATRIX MEMORY ALLOCATION.
   !-------------------------------------------------------------------------------------------
-  call this%matrix%initialize(nl, 2 * par%nelements * ncomponents, nnz, myrank, nl_empty)
+  call this%matrix%initialize(nl, (1 + ncomponents) * par%nelements, nnz, myrank, nl_empty)
 
   ierr = 0
 
@@ -299,7 +299,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   type(t_model) :: model(2)
   integer, intent(in) :: myrank, nbproc
 
-  real(kind=CUSTOM_REAL), intent(out) :: delta_model(2 * par%nelements)
+  real(kind=CUSTOM_REAL), intent(out) :: delta_model((1 + ncomponents) * par%nelements)
   real(kind=CUSTOM_REAL), intent(out) :: delta_data(sum(par%ndata))
 
   type(t_damping) :: damping
@@ -497,7 +497,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   endif
 
   if (SOLVE_PROBLEM(2)) then
-    call calculate_data_unscaled(par%nelements, delta_model(par%nelements + 1:), this%matrix, par%problem_weight(2), &
+    call calculate_data_unscaled(ncomponents * par%nelements, delta_model(par%nelements + 1:), this%matrix, par%problem_weight(2), &
       par%ndata(2), delta_data(par%ndata(1) + 1:), par%ndata(1) + 1, param_shift(2), myrank)
   endif
 
