@@ -288,7 +288,7 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
 
   ! Calculate data: d = S * m
   ! Note, the 2D-array model_scaled is remapped to 1D on the input of part_mult_vector().
-  call matrix_sensit%part_mult_vector(this%nelements * ncomponents, model_scaled, &
+  call matrix_sensit%part_mult_vector(size(model_scaled), model_scaled, &
                                       ndata, data, line_start, param_shift, myrank)
 
   deallocate(model_scaled)
