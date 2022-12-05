@@ -325,7 +325,7 @@ subroutine calculate_data_unscaled(nelements, model, matrix_sensit, problem_weig
   integer :: ierr
 
   ! Calculate data: d = S' * m'
-  ! Assume that both the kernel and the model are unscaled (in wavelet domain).
+  ! Assume that both the kernel and the model are unscaled (depth weighted and in wavelet domain if compression is activated).
   call matrix_sensit%part_mult_vector(nelements, model, ndata, data, line_start, param_shift, myrank)
 
   call MPI_Allreduce(MPI_IN_PLACE, data, ndata, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
@@ -344,15 +344,17 @@ end subroutine calculate_data_unscaled
 !================================================================================================
 ! Weights the model parameters.
 !================================================================================================
-subroutine rescale_model(nelements, model, weight)
-  integer, intent(in) :: nelements
+subroutine rescale_model(nelements, ncomponents, model, weight)
+  integer, intent(in) :: nelements, ncomponents
   real(kind=CUSTOM_REAL), intent(in) :: weight(nelements)
-  real(kind=CUSTOM_REAL), intent(inout) :: model(nelements)
+  real(kind=CUSTOM_REAL), intent(inout) :: model(nelements, ncomponents)
 
-  integer :: i
+  integer :: i, k
 
-  do i = 1, nelements
-    model(i) = model(i) * weight(i)
+  do k = 1, ncomponents
+    do i = 1, nelements
+      model(i, k) = model(i, k) * weight(i)
+    enddo
   enddo
 end subroutine rescale_model
 

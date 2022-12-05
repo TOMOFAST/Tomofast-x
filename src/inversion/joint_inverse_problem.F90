@@ -537,13 +537,13 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
     endif
   endif
 
-  if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements, delta_model(1:par%nelements), arr(1)%column_weight)
-  if (SOLVE_PROBLEM(2)) call rescale_model(par%nelements, delta_model(par%nelements + 1:), arr(2)%column_weight)
+  if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements, ncomponents, delta_model(1:par%nelements), arr(1)%column_weight)
+  if (SOLVE_PROBLEM(2)) call rescale_model(par%nelements, ncomponents, delta_model(par%nelements + 1:), arr(2)%column_weight)
 
   !----------------------------------------------------------------------------------------------------------
   ! Writing grav/mag prior and posterior variance.
   !----------------------------------------------------------------------------------------------------------
-  if (par%compression_type == 0) then
+  if (par%compression_type == 0 .and. ncomponents == 1) then
     ! Calculate solution variance only for the non-compressed problem, as it does not work with wavelet compression:
     ! When using the wavelet compression the lsqr variance is very different from the non-compressed case,
     ! even for high compression rate of 0.99. Also, the variance numbers do not look correct with compression.
@@ -576,6 +576,8 @@ subroutine write_variance(par, lsqr_var, column_weight, problem_type, ncalls, my
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full(:)
   real(kind=CUSTOM_REAL), allocatable :: lsqr_var_scaled(:)
 
+  if (myrank == 0) print *, "Writing the variance to a file"
+
   allocate(lsqr_var_full(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(lsqr_var_scaled(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
@@ -597,7 +599,7 @@ subroutine write_variance(par, lsqr_var, column_weight, problem_type, ncalls, my
   endif
 
   ! Rescale with depth weight.
-  call rescale_model(par%nelements, lsqr_var_scaled, column_weight)
+  call rescale_model(par%nelements, ncomponents, lsqr_var_scaled, column_weight)
 
   ! Gather full (parallel) vector on the master.
   call get_full_array(lsqr_var_scaled, par%nelements, lsqr_var_full, .false., myrank, nbproc)
