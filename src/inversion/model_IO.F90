@@ -254,7 +254,7 @@ subroutine model_write(model, name_prefix, gather_full_model, write_voxet, myran
   ! Note: model_write function uses values from val_full array.
 
   if (gather_full_model) then
-    call get_full_array(model%val, model%nelements, model%val_full, .false., myrank, nbproc)
+    call get_full_array(model%val, size(model%val), model%val_full, .false., myrank, nbproc)
   endif
 
   ! Write the model in vtk format.
@@ -276,6 +276,7 @@ subroutine model_write_voxels_format(model, file_name, myrank)
   integer, intent(in) :: myrank
 
   character(len=256) :: filename_full
+  integer :: i
 
   if (myrank == 0) then
 
@@ -290,7 +291,8 @@ subroutine model_write_voxels_format(model, file_name, myrank)
     write(27, *) model%nelements_total
 
     ! Write the full model array.
-    write(27, *) model%val_full
+    ! Use the loop instead of writing the whole array to write model components in different columns.
+    write(27, *) (model%val_full(i, :), new_line("A"), i = 1, model%nelements_total)
 
     close(27)
   endif
