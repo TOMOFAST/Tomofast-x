@@ -537,7 +537,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
     endif
   endif
 
-  if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements, ncomponents, delta_model(1:par%nelements), arr(1)%column_weight)
+  if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements, 1, delta_model(1:par%nelements), arr(1)%column_weight)
   if (SOLVE_PROBLEM(2)) call rescale_model(par%nelements, ncomponents, delta_model(par%nelements + 1:), arr(2)%column_weight)
 
   !----------------------------------------------------------------------------------------------------------
