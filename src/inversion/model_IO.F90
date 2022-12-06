@@ -51,7 +51,7 @@ subroutine model_read(model, file_name, myrank, nbproc)
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank, nbproc
 
-  integer :: i, k, nelements_read
+  integer :: i, nelements_read
   integer :: ierr
   character(len=256) :: msg
   real(kind=CUSTOM_REAL) :: dummy(6), val(ncomponents)
@@ -82,9 +82,8 @@ subroutine model_read(model, file_name, myrank, nbproc)
       read(10, *, iostat=ierr) dummy, val, i_, j_, k_
 
       ! Set the model value.
-      do k = 1, 3
-        model%val_full(i, k) = val(k)
-      enddo
+      model%val_full(i, :) = val
+
       if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_voxels!", myrank, ierr)
     enddo
 
