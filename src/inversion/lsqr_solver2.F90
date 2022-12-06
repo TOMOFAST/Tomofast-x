@@ -93,7 +93,7 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
 
   ! Right-hand side check.
   if (norm2(b) == 0.d0) then
-    if (myrank == 0) print *, "WARNING: |b| = 0, the model is exact!", myrank, 0)
+    if (myrank == 0) print *, "WARNING: |b| = 0, the model is exact!"
     return
   end if
 
