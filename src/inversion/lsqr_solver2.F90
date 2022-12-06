@@ -88,9 +88,13 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
   allocate(v(nelements))
   allocate(w(nelements))
 
-  ! Sanity check.
+  ! Required by the algorithm.
+  x = 0._CUSTOM_REAL
+
+  ! Right-hand side check.
   if (norm2(b) == 0.d0) then
-    call exit_MPI("|b| = 0, starting model is exact? Exiting.", myrank, 0)
+    if (myrank == 0) print *, "WARNING: |b| = 0, the model is exact!", myrank, 0)
+    return
   end if
 
   ! Initialization.
@@ -103,9 +107,6 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
   endif
 
   b1 = beta
-
-  ! Required by the algorithm.
-  x = 0._CUSTOM_REAL
 
   ! Compute v = Ht.u.
   call matrix%trans_mult_vector(u, v)
