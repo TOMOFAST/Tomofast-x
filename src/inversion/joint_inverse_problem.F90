@@ -681,7 +681,7 @@ end subroutine joint_inversion_add_cross_grad_constraints
 subroutine joint_inversion_add_clustering_constraints(this, arr, model, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
   type(t_inversion_arrays), intent(in) :: arr(2)
-  type(t_model), intent(in) :: model(2)
+  type(t_model), intent(inout) :: model(2)
   integer, intent(in) :: myrank, nbproc
 
   integer :: i

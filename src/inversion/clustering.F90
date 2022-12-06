@@ -15,7 +15,7 @@
 !===========================================================================================
 ! A class to add clustering constraints to joint inversion.
 !
-! Vitaliy Ogarko and Jeremie Giraud, UWA, CET, Australia, 2016-2017.
+! Vitaliy Ogarko and Jeremie Giraud, UWA, CET, Australia.
 !===========================================================================================
 module clustering
 
@@ -397,8 +397,8 @@ end subroutine clustering_write_data
 subroutine clustering_add(this, model1, model2, column_weight1, column_weight2, &
                           matrix, b_RHS, problem_type, myrank, nbproc)
   class(t_clustering), intent(inout) :: this
-  type(t_model), intent(in) :: model1
-  type(t_model), intent(in) :: model2
+  type(t_model), intent(inout) :: model1
+  type(t_model), intent(inout) :: model2
   real(kind=CUSTOM_REAL), intent(in) :: column_weight1(:)
   real(kind=CUSTOM_REAL), intent(in) :: column_weight2(:)
   integer, intent(in) :: problem_type
@@ -415,6 +415,10 @@ subroutine clustering_add(this, model1, model2, column_weight1, column_weight2, 
   real(kind=CUSTOM_REAL) :: func_val
   integer :: row_beg, row_end, nsmaller
   integer :: i, p, ind
+
+  ! Update the full models (if required).
+  if (.not. model1%full_model_updated) call model1%update_full(.true., myrank, nbproc)
+  if (.not. model2%full_model_updated) call model2%update_full(.true., myrank, nbproc)
 
   ! Calculate 'Cp-weights'.
   do i = 1, 2
