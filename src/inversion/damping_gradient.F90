@@ -124,7 +124,7 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
   !type(t_vector) :: gradient_bwd
 
   ! Update the full model (if required).
-  if (.not. model%full_model_updated) call model%update_full(myrank, nbproc)
+  if (.not. model%full_model_updated) call model%update_full(.true., myrank, nbproc)
 
   ! Number of parameters on ranks smaller than current one.
   nsmaller = get_nsmaller(this%nelements, myrank, nbproc)

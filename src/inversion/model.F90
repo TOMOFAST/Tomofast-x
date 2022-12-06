@@ -216,13 +216,19 @@ end subroutine model_update
 !======================================================================================================
 ! Update the full model from its local parts (split between CPUs).
 !======================================================================================================
-subroutine model_update_full(this, myrank, nbproc)
+subroutine model_update_full(this, broadcast, myrank, nbproc)
   class(t_model), intent(inout) :: this
+  logical, intent(in) :: broadcast
   integer, intent(in) :: myrank, nbproc
+  integer :: k
 
-  call get_full_array(this%val, size(this%val), this%val_full, .true., myrank, nbproc)
+  do k = 1, ncomponents
+    call get_full_array(this%val(:, k), this%nelements, this%val_full(:, k), broadcast, myrank, nbproc)
+  enddo
 
-  this%full_model_updated = .true.
+  if (broadcast) then
+    this%full_model_updated = .true.
+  endif
 
 end subroutine model_update_full
 
