@@ -249,11 +249,14 @@ subroutine model_write(model, name_prefix, gather_full_model, write_voxet, myran
   character(len=*), intent(in) :: name_prefix
   logical, intent(in) :: gather_full_model, write_voxet
   integer, intent(in) :: myrank, nbproc
+  integer :: k
 
   ! Note: model_write function uses values from val_full array.
 
   if (gather_full_model) then
-    call get_full_array(model%val, size(model%val), model%val_full, .false., myrank, nbproc)
+    do k = 1, ncomponents
+      call get_full_array(model%val(:, k), model%nelements, model%val_full(:, k), .false., myrank, nbproc)
+    enddo
   endif
 
   ! Write the model in vtk format.
