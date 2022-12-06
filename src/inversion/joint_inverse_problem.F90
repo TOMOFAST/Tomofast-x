@@ -295,8 +295,8 @@ end subroutine joint_inversion_reset
 subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
-  type(t_inversion_arrays), intent(inout) :: arr(2)
-  type(t_model) :: model(2)
+  type(t_inversion_arrays), intent(in) :: arr(2)
+  type(t_model), intent(inout) :: model(2)
   integer, intent(in) :: myrank, nbproc
 
   real(kind=CUSTOM_REAL), intent(out) :: delta_model((1 + ncomponents) * par%nelements)
