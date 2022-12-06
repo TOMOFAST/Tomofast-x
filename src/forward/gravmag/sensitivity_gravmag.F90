@@ -438,7 +438,7 @@ subroutine get_load_balancing_nelements(nelements_total, sensit_nnz, nnz_total, 
     nnz_new = nnz_new + sensit_nnz(p)
     nelements_new = nelements_new + 1
 
-    if (nnz_new > nnz_at_cpu_new(cpu) .or. p == nelements_total) then
+    if ((nnz_new >= nnz_at_cpu_new(cpu) .and. cpu < nbproc) .or. p == nelements_total) then
       nnz_at_cpu_new(cpu) = nnz_new
       nelements_at_cpu_new(cpu) = nelements_new
       nnz_new = 0
