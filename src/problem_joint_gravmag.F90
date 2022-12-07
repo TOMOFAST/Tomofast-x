@@ -417,7 +417,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
       ! Calculate new data. Using the data update as the grav/mag problems are linear.
       if (SOLVE_PROBLEM(1)) data(1)%val_calc = data(1)%val_calc + delta_data(1:ipar%ndata(1))
-      if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data((ipar%ndata(1) + 1):sum(ipar%ndata))
+      if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data(ipar%ndata(1) + 1:)
 
 #ifndef SUPPRESS_OUTPUT
       ! Write costs (for the previous iteration).

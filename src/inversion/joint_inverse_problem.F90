@@ -492,12 +492,12 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   ! As we have both the compressed kernel and delta model, and the problem is linear.
   !-------------------------------------------------------------------------------------
   if (SOLVE_PROBLEM(1)) then
-    call calculate_data_unscaled(par%nelements, delta_model(:, 1), this%matrix, par%problem_weight(1), &
+    call calculate_data_unscaled(size(delta_model(:, 1)), delta_model(:, 1), this%matrix, par%problem_weight(1), &
       par%ndata(1), delta_data(1:par%ndata(1)), 1, param_shift(1), myrank)
   endif
 
   if (SOLVE_PROBLEM(2)) then
-    call calculate_data_unscaled(ncomponents * par%nelements, delta_model(:, 2), this%matrix, par%problem_weight(2), &
+    call calculate_data_unscaled(size(delta_model(:, 2)), delta_model(:, 2), this%matrix, par%problem_weight(2), &
       par%ndata(2), delta_data(par%ndata(1) + 1:), par%ndata(1) + 1, param_shift(2), myrank)
   endif
 
