@@ -95,7 +95,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   integer, parameter :: FILE_COSTS = 1234567
 
   ! Model change (update) at inversion iteration.
-  real(kind=CUSTOM_REAL), allocatable :: delta_model(:, :)
+  real(kind=CUSTOM_REAL), allocatable :: delta_model(:, :, :)
   ! Data change (update) at inversion iteration.
   real(kind=CUSTOM_REAL), allocatable :: delta_data(:)
 
@@ -278,7 +278,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   path_output_parfile = path_output
 
   ! Allocate memory.
-  allocate(delta_model(ncomponents * ipar%nelements, 2), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(delta_model(ipar%nelements, ncomponents, 2), source=0._CUSTOM_REAL, stat=ierr)
   allocate(delta_data(sum(ipar%ndata)), source=0._CUSTOM_REAL, stat=ierr)
 
   !******************************************************************************************
@@ -404,8 +404,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       call jinv%solve(ipar, iarr, model, delta_model, delta_data, myrank, nbproc)
 
       ! Update the local models.
-      if (SOLVE_PROBLEM(1)) call model(1)%update(delta_model(:, 1))
-      if (SOLVE_PROBLEM(2)) call model(2)%update(delta_model(:, 2))
+      if (SOLVE_PROBLEM(1)) call model(1)%update(delta_model(:, :, 1))
+      if (SOLVE_PROBLEM(2)) call model(2)%update(delta_model(:, :, 2))
 
       ! Write intermediate models to file.
       if (ipar%write_model_niter > 0) then
