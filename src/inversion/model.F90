@@ -288,7 +288,9 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
 
     else
     ! Serial version.
-      call Haar3D(model_scaled(:, 1), this%grid_full%nx, this%grid_full%ny, this%grid_full%nz)
+      do k = 1, ncomponents
+        call Haar3D(model_scaled(:, k), this%grid_full%nx, this%grid_full%ny, this%grid_full%nz)
+      enddo
     endif
   endif
 
