@@ -510,25 +510,20 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
     ! Parallel version.
       nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
 
-      ! Note: use 'model%val_full' for storage here, as we overwrite it later anyway.
-      model(1)%full_model_updated = .false.
-      model(2)%full_model_updated = .false.
+      do i = 1, 2
+        if (SOLVE_PROBLEM(i)) then
+          ! Note: use val_full for storage here, as we overwrite it later anyway.
+          model(i)%full_model_updated = .false.
 
-      if (SOLVE_PROBLEM(1)) then
-        call get_full_array(delta_model(:, :, 1), par%nelements, model(1)%val_full, .true., myrank, nbproc)
-        call iHaar3D(model(1)%val_full, par%nx, par%ny, par%nz)
+          do k = 1, ncomponents
+            call get_full_array(delta_model(:, k, i), par%nelements, model(i)%val_full(:, k), .true., myrank, nbproc)
+            call iHaar3D(model(i)%val_full(:, k), par%nx, par%ny, par%nz)
 
-        ! Extract the local model update.
-        delta_model(:, 1, 1) = model(1)%val_full(nsmaller + 1 : nsmaller + par%nelements, 1)
-      endif
-
-      if (SOLVE_PROBLEM(2)) then
-        call get_full_array(delta_model(:, :, 2), par%nelements, model(2)%val_full, .true., myrank, nbproc)
-        call iHaar3D(model(2)%val_full, par%nx, par%ny, par%nz)
-
-        ! Extract the local model update.
-        delta_model(:, 1, 2) = model(2)%val_full(nsmaller + 1 : nsmaller + par%nelements, 1)
-      endif
+            ! Extract the local model update.
+            delta_model(:, k, i) = model(i)%val_full(nsmaller + 1 : nsmaller + par%nelements, k)
+          enddo
+        endif
+      enddo
 
     else
     ! Serial version.
