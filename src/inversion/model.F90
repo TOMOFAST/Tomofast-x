@@ -274,16 +274,18 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
       allocate(model_scaled_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
       if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_calculate_data!", myrank, ierr)
 
-      ! Gather the full model from all processors.
-      call get_full_array(model_scaled(:, 1), this%nelements, model_scaled_full, .true., myrank, nbproc)
-
-      ! Compress the full model.
-      call Haar3D(model_scaled_full, this%grid_full%nx, this%grid_full%ny, this%grid_full%nz)
-
-      ! Extract the local model part.
       nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
-      model_scaled(:, 1) = model_scaled_full(nsmaller + 1 : nsmaller + this%nelements)
 
+      do k = 1, ncomponents
+        ! Gather the full model from all processors.
+        call get_full_array(model_scaled(:, k), this%nelements, model_scaled_full, .true., myrank, nbproc)
+
+        ! Compress the full model.
+        call Haar3D(model_scaled_full, this%grid_full%nx, this%grid_full%ny, this%grid_full%nz)
+
+        ! Extract the local model part.
+        model_scaled(:, k) = model_scaled_full(nsmaller + 1 : nsmaller + this%nelements)
+      enddo
       deallocate(model_scaled_full)
 
     else
