@@ -326,7 +326,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! Calculate the kernel compression rate.
   !---------------------------------------------------------------------------------------------
   call mpi_allreduce(nnz_data, nnz_total, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
-  comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata)
+  comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata) / dble(ncomponents)
 
   if (myrank == 0) print *, 'nnz_total = ', nnz_total
   if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
@@ -595,7 +595,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   ! Calculate the read kernel compression rate.
   !---------------------------------------------------------------------------------------------
   call mpi_allreduce(nnz, nnz_total, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
-  comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata)
+  comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata) / dble(ncomponents)
 
   if (myrank == 0) print *, 'nnz_total (of the read kernel)  = ', nnz_total
   if (myrank == 0) print *, 'COMPRESSION RATE (of the read kernel)  = ', comp_rate
