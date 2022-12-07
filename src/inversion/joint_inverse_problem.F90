@@ -305,7 +305,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   type(t_damping) :: damping
   type(t_damping_gradient) :: damping_gradient
   type(t_parameters_lsqr) :: par_lsqr
-  integer :: i, j
+  integer :: i, j, k
   integer :: line_start(2), line_end(2), param_shift(2)
   real(kind=CUSTOM_REAL) :: cost
   logical :: solve_gravity_only
@@ -532,8 +532,10 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
 
     else
     ! Serial version.
-      if (SOLVE_PROBLEM(1)) call iHaar3D(delta_model(:, :, 1), par%nx, par%ny, par%nz)
-      if (SOLVE_PROBLEM(2)) call iHaar3D(delta_model(:, :, 2), par%nx, par%ny, par%nz)
+      do k = 1, ncomponents
+        if (SOLVE_PROBLEM(1)) call iHaar3D(delta_model(:, k, 1), par%nx, par%ny, par%nz)
+        if (SOLVE_PROBLEM(2)) call iHaar3D(delta_model(:, k, 2), par%nx, par%ny, par%nz)
+      enddo
     endif
   endif
 
