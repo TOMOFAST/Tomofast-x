@@ -245,7 +245,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   !-------------------------------------------------------------------------------------------
   ! MAIN MATRIX MEMORY ALLOCATION.
   !-------------------------------------------------------------------------------------------
-  call this%matrix%initialize(nl, (1 + ncomponents) * par%nelements, nnz, myrank, nl_empty)
+  call this%matrix%initialize(nl, 2 * ncomponents * par%nelements, nnz, myrank, nl_empty)
 
   ierr = 0
 
@@ -299,7 +299,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   type(t_model), intent(inout) :: model(2)
   integer, intent(in) :: myrank, nbproc
 
-  real(kind=CUSTOM_REAL), intent(out) :: delta_model((1 + ncomponents) * par%nelements)
+  real(kind=CUSTOM_REAL), intent(out) :: delta_model(ncomponents * par%nelements, 2)
   real(kind=CUSTOM_REAL), intent(out) :: delta_data(sum(par%ndata))
 
   type(t_damping) :: damping
@@ -492,12 +492,12 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   ! As we have both the compressed kernel and delta model, and the problem is linear.
   !-------------------------------------------------------------------------------------
   if (SOLVE_PROBLEM(1)) then
-    call calculate_data_unscaled(par%nelements, delta_model(1:par%nelements), this%matrix, par%problem_weight(1), &
+    call calculate_data_unscaled(par%nelements, delta_model(:, 1), this%matrix, par%problem_weight(1), &
       par%ndata(1), delta_data(1:par%ndata(1)), 1, param_shift(1), myrank)
   endif
 
   if (SOLVE_PROBLEM(2)) then
-    call calculate_data_unscaled(ncomponents * par%nelements, delta_model(par%nelements + 1:), this%matrix, par%problem_weight(2), &
+    call calculate_data_unscaled(ncomponents * par%nelements, delta_model(:, 2), this%matrix, par%problem_weight(2), &
       par%ndata(2), delta_data(par%ndata(1) + 1:), par%ndata(1) + 1, param_shift(2), myrank)
   endif
 
@@ -515,30 +515,30 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       model(2)%full_model_updated = .false.
 
       if (SOLVE_PROBLEM(1)) then
-        call get_full_array(delta_model(1:par%nelements), par%nelements, model(1)%val_full, .true., myrank, nbproc)
+        call get_full_array(delta_model(:, 1), par%nelements, model(1)%val_full, .true., myrank, nbproc)
         call iHaar3D(model(1)%val_full, par%nx, par%ny, par%nz)
 
         ! Extract the local model update.
-        delta_model(1:par%nelements) = model(1)%val_full(nsmaller + 1 : nsmaller + par%nelements, 1)
+        delta_model(:, 1) = model(1)%val_full(nsmaller + 1 : nsmaller + par%nelements, 1)
       endif
 
       if (SOLVE_PROBLEM(2)) then
-        call get_full_array(delta_model(par%nelements + 1:), par%nelements, model(2)%val_full, .true., myrank, nbproc)
+        call get_full_array(delta_model(:, 2), par%nelements, model(2)%val_full, .true., myrank, nbproc)
         call iHaar3D(model(2)%val_full, par%nx, par%ny, par%nz)
 
         ! Extract the local model update.
-        delta_model(par%nelements + 1:) = model(2)%val_full(nsmaller + 1 : nsmaller + par%nelements, 1)
+        delta_model(:, 2) = model(2)%val_full(nsmaller + 1 : nsmaller + par%nelements, 1)
       endif
 
     else
     ! Serial version.
-      if (SOLVE_PROBLEM(1)) call iHaar3D(delta_model(1:par%nelements), par%nx, par%ny, par%nz)
-      if (SOLVE_PROBLEM(2)) call iHaar3D(delta_model(par%nelements + 1:), par%nx, par%ny, par%nz)
+      if (SOLVE_PROBLEM(1)) call iHaar3D(delta_model(:, 1), par%nx, par%ny, par%nz)
+      if (SOLVE_PROBLEM(2)) call iHaar3D(delta_model(:, 2), par%nx, par%ny, par%nz)
     endif
   endif
 
-  if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements, 1, delta_model(1:par%nelements), arr(1)%column_weight)
-  if (SOLVE_PROBLEM(2)) call rescale_model(par%nelements, ncomponents, delta_model(par%nelements + 1:), arr(2)%column_weight)
+  if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements, ncomponents, delta_model(:, 1), arr(1)%column_weight)
+  if (SOLVE_PROBLEM(2)) call rescale_model(par%nelements, ncomponents, delta_model(:, 2), arr(2)%column_weight)
 
   !----------------------------------------------------------------------------------------------------------
   ! Writing grav/mag prior and posterior variance.
@@ -788,7 +788,7 @@ subroutine joint_inversion_calculate_matrix_partitioning(par, line_start, line_e
   enddo
 
   param_shift(1) = 0
-  param_shift(2) = par%nelements
+  param_shift(2) = par%nelements * ncomponents
 
   line_start = 0
   line_end = 0

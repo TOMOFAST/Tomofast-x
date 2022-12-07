@@ -488,7 +488,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   integer :: nx_read, ny_read, nz_read, weight_type_read
 
   param_shift(1) = 0
-  param_shift(2) = par%nelements
+  param_shift(2) = par%nelements * ncomponents
 
   !---------------------------------------------------------------------------------------------
   ! Allocate memory.
