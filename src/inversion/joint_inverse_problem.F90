@@ -130,7 +130,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   integer, intent(in) :: myrank
 
   integer :: ierr
-  integer :: i, nl, nl_empty
+  integer :: i, k, nl, nl_empty
   integer(kind=8) :: nnz
 
   nl_empty = 0
@@ -203,9 +203,11 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   do i = 1, 2
     if (this%add_damping(i)) then
-      nl = nl + par%nelements_total
-      nnz = nnz + par%nelements
-      nl_empty = nl_empty + par%nelements_total - par%nelements
+      do k = 1, ncomponents
+        nl = nl + par%nelements_total
+        nnz = nnz + par%nelements
+        nl_empty = nl_empty + par%nelements_total - par%nelements
+      enddo
     endif
   enddo
 
@@ -307,6 +309,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   type(t_parameters_lsqr) :: par_lsqr
   integer :: i, j, k
   integer :: line_start(2), line_end(2), param_shift(2)
+  integer :: damping_param_shift
   real(kind=CUSTOM_REAL) :: cost
   logical :: solve_gravity_only
   logical :: solve_mag_only
@@ -358,10 +361,14 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       call damping%initialize(par%nelements, par%alpha(i), par%problem_weight(i), par%norm_power, &
                               par%compression_type, par%nx, par%ny, par%nz)
 
-      call damping%add(this%matrix, this%matrix%get_total_row_number(), this%b_RHS, arr(i)%column_weight, &
-                       model(i)%val(:, 1), model(i)%val_prior(:, 1), param_shift(i), myrank, nbproc)
+      ! Adding model damping for each component.
+      do k = 1, ncomponents
+        damping_param_shift = param_shift(i) + (k - 1) * par%nelements
+        call damping%add(this%matrix, size(this%b_RHS), this%b_RHS, arr(i)%column_weight, &
+                         model(i)%val(:, k), model(i)%val_prior(:, k), damping_param_shift, myrank, nbproc)
 
-      if (myrank == 0) print *, 'damping term cost = ', damping%get_cost()
+        if (myrank == 0) print *, 'damping term cost = ', damping%get_cost()
+      enddo
       if (myrank == 0) print *, 'nel (with damping) = ', this%matrix%get_number_elements()
     endif
 
@@ -429,7 +436,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
                               par%compression_type, par%nx, par%ny, par%nz)
 
       ! Note: with wavelet compression we currently cannot have the local weight.
-      call damping%add(this%matrix, this%matrix%get_total_row_number(), this%b_RHS, arr(i)%column_weight, &
+      call damping%add(this%matrix, size(this%b_RHS), this%b_RHS, arr(i)%column_weight, &
                        model(i)%val(:, 1), this%x0_ADMM, param_shift(i), myrank, nbproc)
 
       ! Calculate the ADMM cost in parallel.
