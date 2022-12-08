@@ -300,7 +300,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   integer, intent(in) :: myrank, nbproc
 
   real(kind=CUSTOM_REAL), intent(out) :: delta_model(par%nelements, ncomponents, 2)
-  real(kind=CUSTOM_REAL), intent(out) :: delta_data(sum(par%ndata))
+  real(kind=CUSTOM_REAL), intent(out) :: delta_data(maxval(par%ndata), 2)
 
   type(t_damping) :: damping
   type(t_damping_gradient) :: damping_gradient
@@ -491,15 +491,12 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   ! Calculate data update using unscaled delta model (in wavelet domain).
   ! As we have both the compressed kernel and delta model, and the problem is linear.
   !-------------------------------------------------------------------------------------
-  if (SOLVE_PROBLEM(1)) then
-    call calculate_data_unscaled(size(delta_model(:, :, 1)), delta_model(:, :, 1), this%matrix, par%problem_weight(1), &
-      par%ndata(1), delta_data(1:par%ndata(1)), line_start(1), param_shift(1), myrank)
-  endif
-
-  if (SOLVE_PROBLEM(2)) then
-    call calculate_data_unscaled(size(delta_model(:, :, 2)), delta_model(:, :, 2), this%matrix, par%problem_weight(2), &
-      par%ndata(2), delta_data(par%ndata(1) + 1:), line_start(2), param_shift(2), myrank)
-  endif
+  do i = 1, 2
+    if (SOLVE_PROBLEM(i)) then
+      call calculate_data_unscaled(size(delta_model(:, :, i)), delta_model(:, :, i), this%matrix, par%problem_weight(i), &
+        par%ndata(i), delta_data(1:par%ndata(i), i), line_start(i), param_shift(i), myrank)
+    endif
+  enddo
 
   !-------------------------------------------------------------------------------------
   ! Unscale the model update.

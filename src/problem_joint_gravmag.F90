@@ -97,7 +97,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Model change (update) at inversion iteration.
   real(kind=CUSTOM_REAL), allocatable :: delta_model(:, :, :)
   ! Data change (update) at inversion iteration.
-  real(kind=CUSTOM_REAL), allocatable :: delta_data(:)
+  real(kind=CUSTOM_REAL), allocatable :: delta_data(:, :)
 
   if (myrank == 0) print *, "Solving problem joint grav/mag."
 
@@ -279,7 +279,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   ! Allocate memory.
   allocate(delta_model(ipar%nelements, ncomponents, 2), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(delta_data(sum(ipar%ndata)), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(delta_data(maxval(ipar%ndata), 2), source=0._CUSTOM_REAL, stat=ierr)
 
   !******************************************************************************************
   ! Loop over different prior models.
@@ -416,8 +416,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
 
       ! Calculate new data. Using the data update as the grav/mag problems are linear.
-      if (SOLVE_PROBLEM(1)) data(1)%val_calc = data(1)%val_calc + delta_data(1:ipar%ndata(1))
-      if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data(ipar%ndata(1) + 1:)
+      if (SOLVE_PROBLEM(1)) data(1)%val_calc = data(1)%val_calc + delta_data(1:ipar%ndata(1), 1)
+      if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data(1:ipar%ndata(2), 2)
 
 #ifndef SUPPRESS_OUTPUT
       ! Write costs (for the previous iteration).
