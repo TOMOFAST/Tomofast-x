@@ -72,7 +72,7 @@ inversion.priorModel.type                = 1
 # Number of models for model type 2.
 inversion.priorModel.nModels             = 1
 inversion.priorModel.grav.value          = 0.d0
-inversion.priorModel.magn.value          = 1.d-9
+inversion.priorModel.magn.value          = 0.d0
 inversion.priorModel.grav.file           = None
 inversion.priorModel.magn.file           = None
 
@@ -82,7 +82,7 @@ STARTING MODEL
 # 1-set value, 2-read from file.
 inversion.startingModel.type             = 1
 inversion.startingModel.grav.value       = 0.d0
-inversion.startingModel.magn.value       = 1.d-9
+inversion.startingModel.magn.value       = 0.d0
 inversion.startingModel.grav.file        = None
 inversion.startingModel.magn.file        = None
 

@@ -276,7 +276,7 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   gpar%number_prior_models = 1 ! Number of prior models, for the model type = 2
   mpar%number_prior_models = 1
   gpar%prior_model_val = 0.d0
-  mpar%prior_model_val = 1.d-9
+  mpar%prior_model_val = 0.d0
   gpar%model_files(2) = "NILL"
   mpar%model_files(2) = "NILL"
 
@@ -284,7 +284,7 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   gpar%start_model_type = 1 ! 1-set value, 2-read from file.
   mpar%start_model_type = 1
   gpar%start_model_val = 0.d0
-  mpar%start_model_val = 1.d-9
+  mpar%start_model_val = 0.d0
   gpar%model_files(3) = "NILL"
   mpar%model_files(3) = "NILL"
 
