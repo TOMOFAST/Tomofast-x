@@ -20,7 +20,7 @@
 
 module paraview
 
-  use global_typedefs, only: CUSTOM_REAL, path_output
+  use global_typedefs
   use mpi_tools, only: exit_MPI
 
   implicit none
@@ -70,7 +70,7 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   ! Total number of cells.
   integer, intent(in) :: nelements
   ! Values for visualization.
-  real(kind=CUSTOM_REAL), intent(in) :: val(nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: val(nelements, ncomponents)
   ! Coordinates of points in the grid.
   real(kind=CUSTOM_REAL), intent(in) :: X1(nelements), Y1(nelements), Z1(nelements)
   real(kind=CUSTOM_REAL), intent(in) :: X2(nelements), Y2(nelements), Z2(nelements)
@@ -87,8 +87,8 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   integer :: npoints, nelements_slice
   integer :: j, p
 
-  real(kind=4), allocatable :: cell_centers(:, :)
-  real(kind=4), allocatable :: cell_data(:)
+  real(kind=4), allocatable :: point_centers(:, :)
+  real(kind=4), allocatable :: point_data(:, :)
   real(kind=4) :: z_sign
 
   character :: lf*1, str1*8, str2*8, str3*8
@@ -128,8 +128,9 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   write(333) lf//lf//'POINTS '//str1//' FLOAT'//lf
 
   ! Allocate memory.
-  allocate(cell_centers(3, nelements_slice), stat=ierr)
-  allocate(cell_data(nelements_slice), stat=ierr)
+  allocate(point_centers(3, nelements_slice), stat=ierr)
+  ! Note we need the first dimension equal to the number of components.
+  allocate(point_data(ncomponents, nelements_slice), stat=ierr)
 
   !-------------------------------------------------------------------
   ! Build the grid.
@@ -145,18 +146,18 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
     if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
       j = j + 1
 
-      cell_centers(1, j) = real(0.5 * (X1(p) + X2(p)))
-      cell_centers(2, j) = real(0.5 * (Y1(p) + Y2(p)))
-      cell_centers(3, j) = real(0.5 * (Z1(p) + Z2(p)))
+      point_centers(1, j) = real(0.5 * (X1(p) + X2(p)))
+      point_centers(2, j) = real(0.5 * (Y1(p) + Y2(p)))
+      point_centers(3, j) = real(0.5 * (Z1(p) + Z2(p)))
 
-      cell_centers(3, j) = z_sign * cell_centers(3, j)
+      point_centers(3, j) = z_sign * point_centers(3, j)
 
-      cell_data(j) = real(val(p), 4)
+      point_data(:, j) = real(val(p, :), 4)
     endif
   enddo
 
   ! Write the grid to a file.
-  write(333) cell_centers
+  write(333) point_centers
 
   !-------------------------------------------------------------------
   ! Generate element data values.
@@ -164,15 +165,23 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   write(str1(1:8),'(i8)') nelements_slice
 
   write(333) lf//lf//'POINT_DATA '//str1//lf
-  write(333) 'SCALARS F FLOAT'//lf
-  write(333) 'LOOKUP_TABLE default'//lf
 
-  write(333) cell_data
+  if (ncomponents == 1) then
+  ! Scalar data.
+    write(333) 'SCALARS F FLOAT'//lf
+    write(333) 'LOOKUP_TABLE default'//lf
+
+  else if (ncomponents == 3) then
+  ! Vector data.
+    write(333) 'VECTORS vectors FLOAT'//lf
+  endif
+
+  write(333) point_data
 
   close(333)
 
-  deallocate(cell_centers)
-  deallocate(cell_data)
+  deallocate(point_centers)
+  deallocate(point_data)
 
 end subroutine visualisation_paraview_struct_grid
 
