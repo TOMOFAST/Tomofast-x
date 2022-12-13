@@ -153,6 +153,11 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
       point_centers(3, j) = z_sign * point_centers(3, j)
 
       point_data(:, j) = real(val(p, :), 4)
+
+      if (ncomponents == 3) then
+        ! Flip the Z-axis of a vector.
+        point_data(3, j) = z_sign * point_data(3, j)
+      endif
     endif
   enddo
 
