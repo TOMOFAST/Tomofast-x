@@ -55,6 +55,7 @@ module problem_joint_gravmag
   private :: calculate_model_costs
   private :: set_model
   private :: adjust_admm_weight
+  private :: calculate_residual
   private :: exit_loop
 
 contains
@@ -97,7 +98,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Model change (update) at inversion iteration.
   real(kind=CUSTOM_REAL), allocatable :: delta_model(:, :, :)
   ! Data change (update) at inversion iteration.
-  real(kind=CUSTOM_REAL), allocatable :: delta_data(:, :)
+  real(kind=CUSTOM_REAL), allocatable :: delta_data(:, :, :)
 
   if (myrank == 0) print *, "Solving problem joint grav/mag."
 
@@ -130,9 +131,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call data(1)%initialize(gpar%ndata, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%initialize(mpar%ndata, myrank)
 
-  ! Reading the GRID ONLY for data point (needed to generate sensitivity matrix).
-  if (SOLVE_PROBLEM(1)) call data(1)%read(gpar%data_grid_file, myrank)
-  if (SOLVE_PROBLEM(2)) call data(2)%read(mpar%data_grid_file, myrank)
+  ! Reading the GRID ONLY for data points (needed to generate sensitivity matrix).
+  if (SOLVE_PROBLEM(1)) call data(1)%read_grid(gpar%data_grid_file, myrank)
+  if (SOLVE_PROBLEM(2)) call data(2)%read_grid(mpar%data_grid_file, myrank)
  
   ! (III) SENSITIVITY MATRIX ALLOCATION  ---------------------------------------------------
 
@@ -258,10 +259,12 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   enddo
 
 #ifndef SUPPRESS_OUTPUT
-  ! Write data calculated from the model read.
+  ! Write data calculated from the read model.
   if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_read_', 2, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_read_', 2, myrank)
 #endif
+
+  stop
 
   ! Reading the data. Read here to allow the use of the above calculated data from the (original) model read.
   if (SOLVE_PROBLEM(1)) call data(1)%read(gpar%data_file, myrank)
@@ -279,7 +282,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   ! Allocate memory.
   allocate(delta_model(ipar%nelements, ncomponents, 2), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(delta_data(maxval(ipar%ndata), 2), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(delta_data(ndata_components, maxval(ipar%ndata), 2), source=0._CUSTOM_REAL, stat=ierr)
 
   !******************************************************************************************
   ! Loop over different prior models.
@@ -367,7 +370,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     ! Calculate initial cost (misfit).
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) then
-        call calculate_cost(data(i)%val_meas, data(i)%val_calc, cost_data(i), .false., nbproc)
+        call calculate_cost(size(data(i)%val_meas), data(i)%val_meas, data(i)%val_calc, cost_data(i), .false., nbproc)
         if (myrank == 0) print *, 'data cost =', cost_data(i)
       endif
     enddo
@@ -394,8 +397,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
 
       ! Calculate data residuals.
-      if (SOLVE_PROBLEM(1)) iarr(1)%residuals = data(1)%val_meas - data(1)%val_calc
-      if (SOLVE_PROBLEM(2)) iarr(2)%residuals = data(2)%val_meas - data(2)%val_calc
+      if (SOLVE_PROBLEM(1)) call calculate_residual(size(data(1)%val_meas), data(1)%val_meas, data(1)%val_calc, iarr(1)%residuals)
+      if (SOLVE_PROBLEM(2)) call calculate_residual(size(data(2)%val_meas), data(2)%val_meas, data(2)%val_calc, iarr(2)%residuals)
 
       ! Resets the joint inversion.
       if (it > 1) call jinv%reset(myrank)
@@ -416,8 +419,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
 
       ! Calculate new data. Using the data update as the grav/mag problems are linear.
-      if (SOLVE_PROBLEM(1)) data(1)%val_calc = data(1)%val_calc + delta_data(1:ipar%ndata(1), 1)
-      if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data(1:ipar%ndata(2), 2)
+      if (SOLVE_PROBLEM(1)) data(1)%val_calc = data(1)%val_calc + delta_data(:, 1:ipar%ndata(1), 1)
+      if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data(:, 1:ipar%ndata(2), 2)
 
 #ifndef SUPPRESS_OUTPUT
       ! Write costs (for the previous iteration).
@@ -438,7 +441,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       ! Calculate new costs for data misfits.
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) then
-          call calculate_cost(data(i)%val_meas, data(i)%val_calc, cost_data(i), .false., nbproc)
+          call calculate_cost(size(data(i)%val_meas), data(i)%val_meas, data(i)%val_calc, cost_data(i), .false., nbproc)
           if (myrank == 0) print *, 'data cost =', cost_data(i)
         endif
       enddo
@@ -580,6 +583,20 @@ subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
     call exit_MPI("Unknown model type in set_model!", myrank, model_type)
   endif
 end subroutine set_model
+
+!========================================================================================
+! Calcualte data residual.
+! Note: utilize conversion 2D to 1D array via subroutine interface.
+!========================================================================================
+pure subroutine calculate_residual(n, d_obs, d_calc, residual)
+  integer, intent(in) :: n
+  real(kind=CUSTOM_REAL), intent(in) :: d_obs(n)
+  real(kind=CUSTOM_REAL), intent(in) :: d_calc(n)
+  real(kind=CUSTOM_REAL), intent(out) :: residual(n)
+
+  residual = d_obs - d_calc
+
+end subroutine calculate_residual
 
 !========================================================================================
 ! Check if need to exit the inversion loop.

@@ -36,14 +36,15 @@ module data_gravmag
     real(kind=CUSTOM_REAL), dimension(:), allocatable :: X, Y, Z
 
     ! Data values measured and calculated (using a model from inversion).
-    real(kind=CUSTOM_REAL), allocatable :: val_meas(:)
-    real(kind=CUSTOM_REAL), allocatable :: val_calc(:)
+    real(kind=CUSTOM_REAL), allocatable :: val_meas(:, :)
+    real(kind=CUSTOM_REAL), allocatable :: val_calc(:, :)
 
   contains
     private
 
     procedure, public, pass :: initialize => data_initialize
     procedure, public, pass :: read => data_read
+    procedure, public, pass :: read_grid => data_read_grid
     procedure, public, pass :: write => data_write
 
     procedure, pass :: broadcast => data_broadcast
@@ -68,8 +69,8 @@ subroutine data_initialize(this, ndata, myrank)
   if (.not. allocated(this%X)) allocate(this%X(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
   if (.not. allocated(this%Y)) allocate(this%Y(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
   if (.not. allocated(this%Z)) allocate(this%Z(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%val_meas)) allocate(this%val_meas(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%val_calc)) allocate(this%val_calc(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
+  if (.not. allocated(this%val_meas)) allocate(this%val_meas(ndata_components, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
+  if (.not. allocated(this%val_calc)) allocate(this%val_calc(ndata_components, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in data_initialize!", myrank, ierr)
 
@@ -88,7 +89,7 @@ subroutine data_broadcast(this, myrank)
   call MPI_Bcast(this%X, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%Y, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%Z, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%val_meas, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%val_meas, size(this%val_meas), CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("MPI_Bcast error in data_broadcast!", myrank, ierr)
 
@@ -105,7 +106,7 @@ subroutine data_read(this, file_name, myrank)
 
   if (myrank == 0) then
     print *, 'Reading data from file '//trim(file_name)
-    call this%read_points_format(file_name, myrank)
+    call this%read_points_format(file_name, .false., myrank)
   endif
 
   ! MPI broadcast data arrays.
@@ -114,11 +115,30 @@ subroutine data_read(this, file_name, myrank)
 end subroutine data_read
 
 !============================================================================================================
-! Read data in points format.
+! Read data grid.
 !============================================================================================================
-subroutine data_read_points_format(this, file_name, myrank)
+subroutine data_read_grid(this, file_name, myrank)
   class(t_data), intent(inout) :: this
   character(len=*), intent(in) :: file_name
+  integer, intent(in) :: myrank
+
+  if (myrank == 0) then
+    print *, 'Reading data grid from file '//trim(file_name)
+    call this%read_points_format(file_name, .true., myrank)
+  endif
+
+  ! MPI broadcast data arrays.
+  call this%broadcast(myrank)
+
+end subroutine data_read_grid
+
+!============================================================================================================
+! Read data in points format.
+!============================================================================================================
+subroutine data_read_points_format(this, file_name, grid_only, myrank)
+  class(t_data), intent(inout) :: this
+  character(len=*), intent(in) :: file_name
+  logical, intent(in) :: grid_only
   integer, intent(in) :: myrank
 
   integer :: i, ierr
@@ -136,14 +156,14 @@ subroutine data_read_points_format(this, file_name, myrank)
     call exit_MPI("The number of data in Parfile differs from the number of data in data file!", myrank, ndata_in_file)
 
   do i = 1, this%ndata
-    read(10, *, end=20, err=11) this%X(i), this%Y(i), this%Z(i), this%val_meas(i)
+    if (grid_only) then
+      read(10, *, iostat=ierr) this%X(i), this%Y(i), this%Z(i)
+    else
+      read(10, *, iostat=ierr) this%X(i), this%Y(i), this%Z(i), this%val_meas(:, i)
+   endif
+
+    if (ierr /= 0) call exit_MPI("Problem while reading file in data_read_points_format!", myrank, 0)
   enddo
-
-20 close(unit=10)
-
-  return
-
-11 call exit_MPI("Problem while reading the data!", myrank, 0)
 
 end subroutine data_read_points_format
 
@@ -162,7 +182,8 @@ subroutine data_write(this, name_prefix, which, myrank)
   character(len=*), intent(in) :: name_prefix
   integer, intent(in) :: which, myrank
 
-  real(kind=CUSTOM_REAL) :: X, Y, Z, val
+  real(kind=CUSTOM_REAL) :: X, Y, Z
+  real(kind=CUSTOM_REAL) :: val(ndata_components)
   integer :: i
   character(len=512) :: file_name, file_name2
 
@@ -189,9 +210,9 @@ subroutine data_write(this, name_prefix, which, myrank)
     Z = this%Z(i)
 
     if (which == 1) then
-      val = this%val_meas(i)
+      val = this%val_meas(:, i)
     else
-      val = this%val_calc(i)
+      val = this%val_calc(:, i)
     endif
 
     write(10, *) X, Y, Z, val

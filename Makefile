@@ -62,10 +62,10 @@ EXEC = tomofastx
 #FFLAGS = -convert big_endian -vec-report0 -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn argument_checking -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check nobounds -O3 -xHost -module $(OBJDIR)
 
 # GNU gfortran pseudo-optimized.
-FFLAGS = -std=f2008 -fconvert=big-endian -O3 -fimplicit-none -frange-check -fmax-errors=10 -pedantic -pedantic-errors -Warray-temporaries -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -DUSE_FLUSH6 -J $(OBJDIR)
+#FFLAGS = -std=f2008 -fconvert=big-endian -O3 -fimplicit-none -frange-check -fmax-errors=10 -pedantic -pedantic-errors -Warray-temporaries -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -DUSE_FLUSH6 -J $(OBJDIR)
 
 # GNU gfortran with debug symbols and full debugging.
-#FFLAGS = -std=f2008 -fconvert=big-endian -O0 -g -fimplicit-none -frange-check -fmax-errors=10 -pedantic -pedantic-errors -Warray-temporaries -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -fbacktrace -Wunreachable-code -Wunused-label -Wunused-variable -Wimplicit-interface -Wall -fcheck=all -fbounds-check -ffpe-trap=invalid,zero,overflow,underflow,denormal -DUSE_FLUSH6 -J $(OBJDIR)
+FFLAGS = -std=f2008 -fconvert=big-endian -O0 -g -fimplicit-none -frange-check -fmax-errors=10 -pedantic -pedantic-errors -Warray-temporaries -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -fbacktrace -Wunreachable-code -Wunused-label -Wunused-variable -Wimplicit-interface -Wall -fcheck=all -fbounds-check -ffpe-trap=invalid,zero,overflow,underflow,denormal -DUSE_FLUSH6 -J $(OBJDIR)
 
 # (GNU) Flags to output the vector optimizations report.
 # possible flags: -fopt-info-vec-optimized, -fopt-info-vec-missed, -fopt-info-vec-note, -fopt-info-vec-all

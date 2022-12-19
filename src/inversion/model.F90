@@ -236,7 +236,7 @@ end subroutine model_update_full
 ! Calculate the linear data using the sensitivity kernel (S) and model (m) as d = S * m.
 ! Use line_start, line_end, param_shift to calculate the data using part of the big (joint) matrix.
 !======================================================================================================
-subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, column_weight, data, compression_type, &
+subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, column_weight, data_calc, compression_type, &
                                 line_start, param_shift, myrank, nbproc)
   class(t_model), intent(in) :: this
   integer, intent(in) :: ndata, compression_type
@@ -246,7 +246,7 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
   type(t_sparse_matrix), intent(in) :: matrix_sensit
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(this%nelements)
 
-  real(kind=CUSTOM_REAL), intent(out) :: data(ndata)
+  real(kind=CUSTOM_REAL), intent(out) :: data_calc(ndata_components, ndata)
 
   real(kind=CUSTOM_REAL), allocatable :: model_scaled(:, :)
   real(kind=CUSTOM_REAL), allocatable :: model_scaled_full(:)
@@ -299,17 +299,17 @@ subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, colu
   ! Calculate data: d = S * m
   ! Note, the 2D-array model_scaled is remapped to 1D on the input of part_mult_vector().
   call matrix_sensit%part_mult_vector(size(model_scaled), model_scaled, &
-                                      ndata, data, line_start, param_shift, myrank)
+                                      size(data_calc), data_calc, line_start, param_shift, myrank)
 
   deallocate(model_scaled)
 
-  call MPI_Allreduce(MPI_IN_PLACE, data, ndata, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+  call MPI_Allreduce(MPI_IN_PLACE, data_calc, ndata, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("MPI error in model_calculate_data!", myrank, ierr)
 
   ! Apply the problem weight.
   if (problem_weight /= 0.d0) then
-    data = data / problem_weight
+    data_calc = data_calc / problem_weight
   else
     call exit_MPI("Zero problem weight in model_calculate_data!", myrank, 0)
   endif

@@ -20,6 +20,7 @@ module global_typedefs
 
   ! Place temporary here.
   integer, parameter :: ncomponents = 3
+  integer, parameter :: ndata_components = 3
 
   ! Try this if 'use mpi' does not work, e.g., there is no 'module load' system.
   !include 'mpif.h'

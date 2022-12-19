@@ -302,7 +302,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   integer, intent(in) :: myrank, nbproc
 
   real(kind=CUSTOM_REAL), intent(out) :: delta_model(par%nelements, ncomponents, 2)
-  real(kind=CUSTOM_REAL), intent(out) :: delta_data(maxval(par%ndata), 2)
+  real(kind=CUSTOM_REAL), intent(out) :: delta_data(ndata_components, maxval(par%ndata), 2)
 
   type(t_damping) :: damping
   type(t_damping_gradient) :: damping_gradient
@@ -440,7 +440,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
                        model(i)%val(:, 1), this%x0_ADMM, param_shift(i), myrank, nbproc)
 
       ! Calculate the ADMM cost in parallel.
-      call calculate_cost(model(i)%val(:, 1), this%x0_ADMM, cost, .true., nbproc)
+      call calculate_cost(size(model(i)%val(:, 1)), model(i)%val(:, 1), this%x0_ADMM, cost, .true., nbproc)
       this%admm_cost = sqrt(cost)
 
       if (myrank == 0) print *, "ADMM cost |x - x0| / |x| =", this%admm_cost
@@ -501,7 +501,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) then
       call calculate_data_unscaled(size(delta_model(:, :, i)), delta_model(:, :, i), this%matrix, par%problem_weight(i), &
-        par%ndata(i), delta_data(1:par%ndata(i), i), line_start(i), param_shift(i), myrank)
+        par%ndata(i), delta_data(:, 1:par%ndata(i), i), line_start(i), param_shift(i), myrank)
     endif
   enddo
 

@@ -110,7 +110,7 @@ subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, s
     type(t_grid), intent(in)                :: grid
     real(kind=CUSTOM_REAL), intent(in)      :: Xdata, Ydata, Zdata
 
-    real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(nelements, ncomponents)
+    real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(nelements, ncomponents, ndata_components)
 
     integer :: i, k
     real(kind=SENSIT_REAL) :: tx(3), ty(3), tz(3)
@@ -135,17 +135,29 @@ subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, s
           my = sum(ty * this%magv)
           mz = sum(tz * this%magv)
 
-          sensit_line(i, 1) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
+          sensit_line(i, 1, 1) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
 
         else if (ncomponents == 3) then
         ! Magnetisation model (Mx, My, Mz) - calculating three sensitivity kernels.
 
-          do k = 1, 3
-            sensit_line(i, k) = tx(k) * this%magv(1) + ty(k) * this%magv(2) + tz(k) * this%magv(3)
-          enddo
+          if (ndata_components == 1) then
+            do k = 1, 3
+              sensit_line(i, k, 1) = tx(k) * this%magv(1) + ty(k) * this%magv(2) + tz(k) * this%magv(3)
+            enddo
+
+          else if (ndata_components == 3) then
+            do k = 1, 3
+              sensit_line(i, k, 1) = tx(k)
+              sensit_line(i, k, 2) = ty(k)
+              sensit_line(i, k, 3) = tz(k)
+            enddo
+          else
+            print *, "Wrong number of data components in magnetic_field_magprism!"
+            stop
+          endif
 
         else
-          print *, "Wrong number of components in magnetic_field_magprism()!"
+          print *, "Wrong number of model components in magnetic_field_magprism!"
           stop
         endif
     enddo

@@ -35,10 +35,10 @@ contains
 ! Calculates the relative cost.
 ! Flag 'in_parallel' for when arrays are split between the CPUs.
 !=====================================================================
-subroutine calculate_cost(arr1, arr2, cost, in_parallel, nbproc)
-  integer, intent(in) :: nbproc
-  real(kind=CUSTOM_REAL), intent(in) :: arr1(:)
-  real(kind=CUSTOM_REAL), intent(in) :: arr2(:)
+subroutine calculate_cost(n, arr1, arr2, cost, in_parallel, nbproc)
+  integer, intent(in) :: n, nbproc
+  real(kind=CUSTOM_REAL), intent(in) :: arr1(n)
+  real(kind=CUSTOM_REAL), intent(in) :: arr2(n)
   logical, intent(in) :: in_parallel
 
   real(kind=CUSTOM_REAL), intent(out) :: cost
