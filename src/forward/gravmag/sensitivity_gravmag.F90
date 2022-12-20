@@ -373,6 +373,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     open(77, file=trim(filename_full), form='formatted', status='replace', action='write')
 
     write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, MATRIX_PRECISION, comp_error
+    write(77, *) ncomponents, ndata_components
     write(77, *) nnz_at_cpu_new
     write(77, *) nelements_at_cpu_new
 
@@ -677,6 +678,7 @@ subroutine read_sensitivity_metadata(par, nnz, nelements_new, problem_type, myra
   character(len=256) :: filename, filename_full
   character(len=256) :: msg
   integer :: nx_read, ny_read, nz_read, ndata_read, nbproc_read
+  integer :: nmodel_components_read, ndata_components_read
   integer :: precision_read
   real(kind=CUSTOM_REAL) :: comp_error
 
@@ -693,12 +695,14 @@ subroutine read_sensitivity_metadata(par, nnz, nelements_new, problem_type, myra
                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
   read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read, precision_read, comp_error
+  read(78, *) nmodel_components_read, ndata_components_read
 
   if (myrank == 0) print *, "COMPRESSION ERROR (read) =", comp_error
 
   ! Consistency check.
   if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
-      ndata_read /= par%ndata .or. nbproc_read /= nbproc) then
+      ndata_read /= par%ndata .or. nbproc_read /= nbproc .or. &
+      nmodel_components_read /= ncomponents .or. ndata_components_read /= ndata_components) then
     call exit_MPI("Sensitivity metadata file info does not match the Parfile!", myrank, 0)
   endif
 
