@@ -264,8 +264,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_read_', 2, myrank)
 #endif
 
-  stop
-
   ! Reading the data. Read here to allow the use of the above calculated data from the (original) model read.
   if (SOLVE_PROBLEM(1)) call data(1)%read(gpar%data_file, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%read(mpar%data_file, myrank)

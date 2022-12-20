@@ -194,8 +194,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   this%ndata_lines = 0
   do i = 1, 2
     if (par%problem_weight(i) /= 0.d0) then
-      nl = nl + par%ndata(i)
-      this%ndata_lines = this%ndata_lines + par%ndata(i)
+      nl = nl + par%ndata(i) * ndata_components
+      this%ndata_lines = this%ndata_lines + par%ndata(i) * ndata_components
     endif
   enddo
 
@@ -500,7 +500,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   !-------------------------------------------------------------------------------------
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) then
-      call calculate_data_unscaled(size(delta_model(:, :, i)), delta_model(:, :, i), this%matrix, par%problem_weight(i), &
+      call calculate_data_unscaled(par%nelements, delta_model(:, :, i), this%matrix, par%problem_weight(i), &
         par%ndata(i), delta_data(:, 1:par%ndata(i), i), line_start(i), param_shift(i), myrank)
     endif
   enddo
@@ -796,12 +796,12 @@ subroutine joint_inversion_calculate_matrix_partitioning(par, line_start, line_e
 
   if (SOLVE_PROBLEM(1)) then
     line_start(1) = 1
-    line_end(1) = par%ndata(1)
+    line_end(1) = par%ndata(1) * ndata_components
   endif
 
   if (SOLVE_PROBLEM(2)) then
     line_start(2) = line_end(1) + 1
-    line_end(2) = line_end(1) + par%ndata(2)
+    line_end(2) = line_end(1) + par%ndata(2) * ndata_components
   endif
 
 end subroutine joint_inversion_calculate_matrix_partitioning
