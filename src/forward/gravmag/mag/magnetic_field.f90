@@ -112,11 +112,15 @@ subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, s
 
     real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(nelements, ncomponents, ndata_components)
 
-    integer :: i, k
-    real(kind=SENSIT_REAL) :: tx(3), ty(3), tz(3)
+    integer :: i, k, d
+    real(kind=SENSIT_REAL) :: T(3, 3)
     double precision :: mx, my, mz
 
     do i = 1, nelements
+        ! Calculate the magnetic tensor T:
+        !   tx = T(:, 1)
+        !   ty = T(:, 2)
+        !   tz = T(:, 3)
         call this%sharmbox(real(Xdata, SENSIT_REAL), &
                            real(Ydata, SENSIT_REAL), &
                            real(Zdata, SENSIT_REAL), &
@@ -126,14 +130,14 @@ subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, s
                            real(grid%X2(i), SENSIT_REAL), &
                            real(grid%Y2(i), SENSIT_REAL), &
                            real(grid%Z2(i), SENSIT_REAL), &
-                           ty, tx, tz)
+                           T(:, 2), T(:, 1), T(:, 3))
 
         if (ncomponents == 1) then
         ! Susceptibility model.
 
-          mx = sum(tx * this%magv)
-          my = sum(ty * this%magv)
-          mz = sum(tz * this%magv)
+          mx = sum(T(:, 1) * this%magv)
+          my = sum(T(:, 2) * this%magv)
+          mz = sum(T(:, 3) * this%magv)
 
           sensit_line(i, 1, 1) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
 
@@ -142,15 +146,14 @@ subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, s
 
           if (ndata_components == 1) then
             do k = 1, 3
-              sensit_line(i, k, 1) = tx(k) * this%magv(1) + ty(k) * this%magv(2) + tz(k) * this%magv(3)
+              sensit_line(i, k, 1) = sum(T(k, :) * this%magv)
             enddo
 
           else if (ndata_components == 3) then
-            do k = 1, 3
-              sensit_line(i, k, 1) = tx(k)
-              sensit_line(i, k, 2) = ty(k)
-              sensit_line(i, k, 3) = tz(k)
+            do d = 1, 3
+              sensit_line(i, :, d) = T(:, d)
             enddo
+
           else
             print *, "Wrong number of data components in magnetic_field_magprism!"
             stop
