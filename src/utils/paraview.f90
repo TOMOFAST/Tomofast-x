@@ -106,8 +106,9 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   if (ierr /= 0) call exit_MPI("Error with writing the VTK file! path="&
                                //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
-  ! ************* Generate points ******************
-
+  !-----------------------------------------------------------------
+  ! Write a header.
+  !-----------------------------------------------------------------
   write(333) '# vtk DataFile Version 3.0'//lf
   write(333) 'Tomofast-x'//lf
   write(333) 'BINARY'//lf
@@ -127,7 +128,9 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
   write(str1(1:8),'(i8)') npoints
   write(333) lf//lf//'POINTS '//str1//' FLOAT'//lf
 
+  !-----------------------------------------------------------------
   ! Allocate memory.
+  !-----------------------------------------------------------------
   allocate(point_centers(3, nelements_slice), stat=ierr)
   ! Note we need the first dimension equal to the number of components.
   allocate(point_data(ncomponents, nelements_slice), stat=ierr)
@@ -150,6 +153,7 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
       point_centers(2, j) = real(0.5 * (Y1(p) + Y2(p)))
       point_centers(3, j) = real(0.5 * (Z1(p) + Z2(p)))
 
+      ! Flip the Z-axis of the grid.
       point_centers(3, j) = z_sign * point_centers(3, j)
 
       point_data(:, j) = real(val(p, :), 4)
@@ -207,7 +211,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   ! Total number of cells.
   integer, intent(in) :: nelements
   ! Values for visualization.
-  real(kind=CUSTOM_REAL), intent(in) :: val(nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: val(nelements, ncomponents)
   ! Coordinates of points in the grid.
   real(kind=CUSTOM_REAL), intent(in) :: X1(nelements), Y1(nelements), Z1(nelements)
   real(kind=CUSTOM_REAL), intent(in) :: X2(nelements), Y2(nelements), Z2(nelements)
@@ -227,7 +231,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   real(kind=CUSTOM_REAL) :: Z1_p, Z2_p, z_sign
 
   real(kind=4), allocatable :: xyzgrid_all(:, :, :)
-  real(kind=4), allocatable :: cell_data(:)
+  real(kind=4), allocatable :: cell_data(:, :)
   integer, allocatable :: cell_indexes(:, :)
   integer, allocatable :: cell_type(:)
 
@@ -245,8 +249,9 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   if (ierr /= 0) call exit_MPI("Error with writing the VTK file! path="&
                                //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
-  ! ************* Generate points ******************
-
+  !-----------------------------------------------------------------
+  ! Write a header.
+  !-----------------------------------------------------------------
   write(333) '# vtk DataFile Version 3.0'//lf
   write(333) 'TOMOFAST-X'//lf
   write(333) 'BINARY'//lf
@@ -260,17 +265,18 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
   write(str1(1:8),'(i8)') npoints
   write(333) 'POINTS '//str1//' FLOAT'//lf
 
-  !=================================================================
+  !-----------------------------------------------------------------
   ! Allocate memory.
-  !=================================================================
+  !-----------------------------------------------------------------
   allocate(xyzgrid_all(3, 8, nelements_slice), stat=ierr)
-  allocate(cell_data(nelements_slice), stat=ierr)
+  ! Note we need the first dimension equal to the number of components.
+  allocate(cell_data(ncomponents, nelements_slice), stat=ierr)
   allocate(cell_indexes(9, nelements_slice), stat=ierr)
   allocate(cell_type(nelements_slice), stat=ierr)
 
-  !====================================
+  !-----------------------------------------------------------------
   ! Build lego-grid.
-  !====================================
+  !-----------------------------------------------------------------
   if (INVERT_Z_AXIS) then
     z_sign = - 1._CUSTOM_REAL
   else
@@ -282,6 +288,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
     if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
       j = j + 1
 
+      ! Flip the Z-axis of the grid.
       Z1_p = z_sign * Z1(p)
       Z2_p = z_sign * Z2(p)
 
@@ -322,17 +329,21 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
       ! Store the values.
       xyzgrid_all(:, :, j) = real(xyzgrid, 4)
 
-      cell_data(j) = real(val(p), 4)
+      cell_data(:, j) = real(val(p, :), 4)
+
+      if (ncomponents == 3) then
+        ! Flip the Z-axis of a vector.
+        cell_data(3, j) = real(z_sign, 4) * cell_data(3, j)
+      endif
     endif
   enddo
 
   ! Write the grid to a file.
   write(333) xyzgrid_all
 
-  ! ************* Generate elements ******************
-
-  ! See documentation here http://dunne.uni-hd.de/VisuSimple/documents/vtkfileformat.html
-
+  !-------------------------------------------------------------------
+  ! Generate elements.
+  !-------------------------------------------------------------------
   do p = 1, nelements_slice
     cell_indexes(1, p) = 8
     do i = 1, 8
@@ -346,7 +357,9 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
 
   write(333) cell_indexes
 
-  ! Write cell types --------------------------------------------
+  !-------------------------------------------------------------------
+  ! Write cell types.
+  !-------------------------------------------------------------------
   write(str1(1:8),'(i8)') nelements_slice
   write(333) lf//lf//'CELL_TYPES '//str1//lf
 
@@ -355,13 +368,22 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1,
 
   write(333) cell_type
 
-  ! ************* Generate element data values ******************
-
+  !-------------------------------------------------------------------
+  ! Generate element data values.
+  !-------------------------------------------------------------------
   write(str1(1:8),'(i8)') nelements_slice
 
   write(333) lf//lf//'CELL_DATA '//str1//lf
-  write(333) 'SCALARS F FLOAT'//lf
-  write(333) 'LOOKUP_TABLE default'//lf
+
+  if (ncomponents == 1) then
+  ! Scalar data.
+    write(333) 'SCALARS F FLOAT'//lf
+    write(333) 'LOOKUP_TABLE default'//lf
+
+  else if (ncomponents == 3) then
+  ! Vector data.
+    write(333) 'VECTORS vectors FLOAT'//lf
+  endif
 
   write(333) cell_data
 
