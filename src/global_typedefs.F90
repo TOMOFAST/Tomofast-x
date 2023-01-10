@@ -20,7 +20,6 @@ module global_typedefs
 
   ! Place temporary here.
   integer, parameter :: ncomponents = 3
-  integer, parameter :: ndata_components = 3
 
   ! Try this if 'use mpi' does not work, e.g., there is no 'module load' system.
   !include 'mpif.h'
@@ -57,6 +56,11 @@ module global_typedefs
 
   ! Tolerance for comparing real numbers in unit tests.
   real(kind=CUSTOM_REAL), parameter :: tol = merge(1.e-12_CUSTOM_REAL, 1.e-6_CUSTOM_REAL, MATRIX_PRECISION == SIZE_DOUBLE)
+
+  ! An auxiliarily type that stores a 2D array.
+  type t_real2d
+    real(kind=CUSTOM_REAL), allocatable :: val(:, :)
+  end type t_real2d
 
 end module global_typedefs
 

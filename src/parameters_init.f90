@@ -165,6 +165,9 @@ subroutine initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
     ipar%ndata(1) = gpar%ndata
     ipar%ndata(2) = mpar%ndata
 
+    ipar%ndata_components(1) = gpar%ndata_components
+    ipar%ndata_components(2) = mpar%ndata_components
+
     ipar%nelements_total = ipar%nx * ipar%ny * ipar%nz
 
     ipar%compression_type = gpar%compression_type
@@ -220,9 +223,6 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   ! Define here the DEFAULT parameter values:
   !-----------------------------------------------
 
-  gpar%ncomponents = 1
-  mpar%ncomponents = 1
-
   ! GLOBAL parameters.
   path_output = "output/test/"
 
@@ -243,6 +243,8 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   mpar%data_grid_file = "NILL"
   gpar%data_file = "NILL"
   mpar%data_file = "NILL"
+  gpar%ndata_components = 1
+  mpar%ndata_components = 1
 
   ! MAGNETIC FIELD constants.
   mpar%mi = 90.d0
@@ -439,6 +441,10 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
       case("forward.data.magn.dataValuesFile")
         call read_filename(10, mpar%data_file)
         call print_arg(myrank, parname, mpar%data_file)
+
+      case("forward.data.magn.nDataComponents")
+        read(10, 2) mpar%ndata_components
+        call print_arg(myrank, parname, mpar%ndata_components)
 
       ! MAGNETIC FIELD constants ---------------------------
 

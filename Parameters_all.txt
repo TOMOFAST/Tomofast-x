@@ -31,6 +31,7 @@ forward.data.grav.dataGridFile      = None
 forward.data.magn.dataGridFile      = None
 forward.data.grav.dataValuesFile    = None
 forward.data.magn.dataValuesFile    = None
+forward.data.magn.nDataComponents   = 1
 
 ===================================================================================
 MAGNETIC FIELD constants

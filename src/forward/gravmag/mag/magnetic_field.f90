@@ -104,9 +104,9 @@ end subroutine dircos
 ! This subroutine is meant to perform mbox on a set of voxels before returning their
 ! respective magnetic tensor flattened in vector form.
 !===================================================================================================
-subroutine magnetic_field_magprism(this, nelements, grid, Xdata, Ydata, Zdata, sensit_line)
+subroutine magnetic_field_magprism(this, nelements, ndata_components, grid, Xdata, Ydata, Zdata, sensit_line)
     class(t_magnetic_field), intent(in)     :: this
-    integer, intent(in)                     :: nelements
+    integer, intent(in)                     :: nelements, ndata_components
     type(t_grid), intent(in)                :: grid
     real(kind=CUSTOM_REAL), intent(in)      :: Xdata, Ydata, Zdata
 

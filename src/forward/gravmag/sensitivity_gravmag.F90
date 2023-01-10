@@ -196,7 +196,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   endif
   if (myrank == 0) print *, 'nel_compressed =', nel_compressed
 
-  allocate(sensit_line_full(nelements_total, ncomponents, ndata_components), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(sensit_line_full(nelements_total, ncomponents, par%ndata_components), source=0._CUSTOM_REAL, stat=ierr)
   allocate(sensit_line_sorted(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
@@ -228,17 +228,18 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     idata = ndata_smaller + i
 
     if (problem_type == 1) then
-    ! Gravity problem.
+      ! Calcualte gravity kernel.
       call graviprism_z(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
                         sensit_line_full, myrank)
 
     else if (problem_type == 2) then
-    ! Magnetic problem.
-      call mag_field%magprism(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), sensit_line_full)
+      ! Calculate magnetic kernel.
+      call mag_field%magprism(nelements_total, par%ndata_components, grid_full, &
+                              data%X(idata), data%Y(idata), data%Z(idata), sensit_line_full)
     endif
 
     ! Loop over the data components.
-    do d = 1, ndata_components
+    do d = 1, par%ndata_components
 
       ! Loop over the model components.
       do k = 1, ncomponents
@@ -330,7 +331,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! Calculate the kernel compression rate.
   !---------------------------------------------------------------------------------------------
   call mpi_allreduce(nnz_data, nnz_total, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
-  comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata) / dble(ncomponents) / dble(ndata_components)
+  comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata) / dble(ncomponents) / dble(par%ndata_components)
 
   if (myrank == 0) print *, 'nnz_total = ', nnz_total
   if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
@@ -373,7 +374,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     open(77, file=trim(filename_full), form='formatted', status='replace', action='write')
 
     write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, MATRIX_PRECISION, comp_error
-    write(77, *) ncomponents, ndata_components
+    write(77, *) ncomponents, par%ndata_components
     write(77, *) nnz_at_cpu_new
     write(77, *) nelements_at_cpu_new
 
@@ -549,7 +550,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
       idata_glob = idata_glob + 1
 
       ! Loop over data components.
-      do d = 1, ndata_components
+      do d = 1, par%ndata_components
 
         ! Adding the matrix line.
         call sensit_matrix%new_row(myrank)
@@ -610,7 +611,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   ! Calculate the read kernel compression rate.
   !---------------------------------------------------------------------------------------------
   call mpi_allreduce(nnz, nnz_total, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
-  comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata) / dble(ncomponents) / dble(ndata_components)
+  comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata) / dble(ncomponents) / dble(par%ndata_components)
 
   if (myrank == 0) print *, 'nnz_total (of the read kernel)  = ', nnz_total
   if (myrank == 0) print *, 'COMPRESSION RATE (of the read kernel)  = ', comp_rate
@@ -702,7 +703,7 @@ subroutine read_sensitivity_metadata(par, nnz, nelements_new, problem_type, myra
   ! Consistency check.
   if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
       ndata_read /= par%ndata .or. nbproc_read /= nbproc .or. &
-      nmodel_components_read /= ncomponents .or. ndata_components_read /= ndata_components) then
+      nmodel_components_read /= ncomponents .or. ndata_components_read /= par%ndata_components) then
     call exit_MPI("Sensitivity metadata file info does not match the Parfile!", myrank, 0)
   endif
 

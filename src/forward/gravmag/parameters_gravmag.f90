@@ -30,12 +30,13 @@ module parameters_gravmag
 
     ! Problem dimensions.
     integer :: nx, ny, nz
-    ! The number of elements (on current CPU).
+    ! The number of model elements (on current CPU).
     integer :: nelements
     ! Number of data.
     integer :: ndata
-    ! Number of data components (x, y, z, zz, yy, zz, etc).
-    integer :: ncomponents
+    ! Number of data components.
+    integer :: ndata_components
+
     ! File name for the data.
     character(len=256) :: data_file
     ! File name for the data grid.
@@ -99,6 +100,7 @@ subroutine parameters_base_broadcast(this, myrank)
   call MPI_Bcast(this%ny, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%nz, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%ndata, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%ndata_components, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
   call MPI_Bcast(this%prior_model_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%number_prior_models, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)

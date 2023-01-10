@@ -98,7 +98,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Model change (update) at inversion iteration.
   real(kind=CUSTOM_REAL), allocatable :: delta_model(:, :, :)
   ! Data change (update) at inversion iteration.
-  real(kind=CUSTOM_REAL), allocatable :: delta_data(:, :, :)
+  type(t_real2d) :: delta_data(2)
 
   if (myrank == 0) print *, "Solving problem joint grav/mag."
 
@@ -128,8 +128,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (myrank == 0) print *, "(II) DATA ALLOCATION."
 
   ! Allocate memory for data objects.
-  if (SOLVE_PROBLEM(1)) call data(1)%initialize(gpar%ndata, myrank)
-  if (SOLVE_PROBLEM(2)) call data(2)%initialize(mpar%ndata, myrank)
+  if (SOLVE_PROBLEM(1)) call data(1)%initialize(gpar%ndata, gpar%ndata_components, myrank)
+  if (SOLVE_PROBLEM(2)) call data(2)%initialize(mpar%ndata, mpar%ndata_components, myrank)
 
   ! Reading the GRID ONLY for data points (needed to generate sensitivity matrix).
   if (SOLVE_PROBLEM(1)) call data(1)%read_grid(gpar%data_grid_file, myrank)
@@ -140,8 +140,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (myrank == 0) print *, "(III) SENSITIVITY MATRIX ALLOCATION."
 
   ! Memory allocation for auxiliarily inversion arrays.
-  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_aux(ipar%nelements, ipar%ndata(1), myrank)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_aux(ipar%nelements, ipar%ndata(2), myrank)
+  if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_aux(ipar%nelements, ipar%ndata(1), ipar%ndata_components(1), myrank)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%allocate_aux(ipar%nelements, ipar%ndata(2), ipar%ndata_components(2), myrank)
 
   !-------------------------------------------------------------------------------------------------------
   if (gpar%sensit_read == 0) then
@@ -176,8 +176,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ipar%nelements = nelements_new
 
   ! Reallocate the inversion arrays using the updated nelements value (for the nnz load balancing).
-  if (SOLVE_PROBLEM(1)) call iarr(1)%reallocate_aux(ipar%nelements, ipar%ndata(1), myrank)
-  if (SOLVE_PROBLEM(2)) call iarr(2)%reallocate_aux(ipar%nelements, ipar%ndata(2), myrank)
+  if (SOLVE_PROBLEM(1)) call iarr(1)%reallocate_aux(ipar%nelements, ipar%ndata(1), ipar%ndata_components(1), myrank)
+  if (SOLVE_PROBLEM(2)) call iarr(2)%reallocate_aux(ipar%nelements, ipar%ndata(2), ipar%ndata_components(2), myrank)
 
   !-------------------------------------------------------------------------------------------------------
   ! Deallocate the model grid.
@@ -253,7 +253,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   !-------------------------------------------------------------------------------------------------------
   ! Calculate the data from the read model.
   do i = 1, 2
-    if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
+    if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix, &
       ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
       line_start(i), param_shift(i), myrank, nbproc)
   enddo
@@ -280,7 +280,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   ! Allocate memory.
   allocate(delta_model(ipar%nelements, ncomponents, 2), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(delta_data(ndata_components, maxval(ipar%ndata), 2), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(delta_data(1)%val(ipar%ndata_components(1), ipar%ndata(1)), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(delta_data(2)%val(ipar%ndata_components(2), ipar%ndata(2)), source=0._CUSTOM_REAL, stat=ierr)
 
   !******************************************************************************************
   ! Loop over different prior models.
@@ -326,7 +327,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the prior model.
     do i = 1, 2
-      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
+      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix, &
         ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
         line_start(i), param_shift(i), myrank, nbproc)
     enddo
@@ -350,7 +351,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the starting model.
     do i = 1, 2
-      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), jinv%matrix, &
+      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix, &
         ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
         line_start(i), param_shift(i), myrank, nbproc)
     enddo
@@ -417,8 +418,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
 
       ! Calculate new data. Using the data update as the grav/mag problems are linear.
-      if (SOLVE_PROBLEM(1)) data(1)%val_calc = data(1)%val_calc + delta_data(:, 1:ipar%ndata(1), 1)
-      if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data(:, 1:ipar%ndata(2), 2)
+      if (SOLVE_PROBLEM(1)) data(1)%val_calc = data(1)%val_calc + delta_data(1)%val
+      if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data(2)%val
 
 #ifndef SUPPRESS_OUTPUT
       ! Write costs (for the previous iteration).
@@ -503,7 +504,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   !******************************
 
   deallocate(delta_model)
-  deallocate(delta_data)
+  deallocate(delta_data(1)%val)
+  deallocate(delta_data(2)%val)
 
 end subroutine solve_problem_joint_gravmag
 

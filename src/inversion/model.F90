@@ -236,10 +236,10 @@ end subroutine model_update_full
 ! Calculate the linear data using the sensitivity kernel (S) and model (m) as d = S * m.
 ! Use line_start, line_end, param_shift to calculate the data using part of the big (joint) matrix.
 !======================================================================================================
-subroutine model_calculate_data(this, ndata, matrix_sensit, problem_weight, column_weight, data_calc, compression_type, &
-                                line_start, param_shift, myrank, nbproc)
+subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, problem_weight, column_weight, data_calc, &
+                                compression_type, line_start, param_shift, myrank, nbproc)
   class(t_model), intent(in) :: this
-  integer, intent(in) :: ndata, compression_type
+  integer, intent(in) :: ndata, ndata_components, compression_type
   integer, intent(in) :: line_start, param_shift
   integer, intent(in) :: myrank, nbproc
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
@@ -321,13 +321,13 @@ end subroutine model_calculate_data
 ! Use line_start, line_end, param_shift to calculate the data using part of the big (joint) matrix.
 ! This version uses unscaled model (in wavelet domain).
 !======================================================================================================
-subroutine calculate_data_unscaled(nelements, model, matrix_sensit, problem_weight, ndata, data_calc, &
-                                   line_start, param_shift, myrank)
+subroutine calculate_data_unscaled(nelements, model, matrix_sensit, problem_weight, ndata, ndata_components, &
+                                   data_calc, line_start, param_shift, myrank)
   integer, intent(in) :: nelements
   real(kind=CUSTOM_REAL), intent(in) :: model(nelements, ncomponents)
   type(t_sparse_matrix), intent(in) :: matrix_sensit
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
-  integer, intent(in) :: ndata, line_start, param_shift
+  integer, intent(in) :: ndata, ndata_components, line_start, param_shift
   integer, intent(in) :: myrank
 
   real(kind=CUSTOM_REAL), intent(out) :: data_calc(ndata_components, ndata)

@@ -47,9 +47,9 @@ contains
 !============================================================================================
 ! Allocates the auxiliarily inversion arrays.
 !============================================================================================
-subroutine inversion_arrays_allocate_aux(this, nelements, ndata, myrank)
+subroutine inversion_arrays_allocate_aux(this, nelements, ndata, ndata_components, myrank)
   class(t_inversion_arrays), intent(inout) :: this
-  integer, intent(in) :: nelements, ndata
+  integer, intent(in) :: nelements, ndata, ndata_components
   integer, intent(in) :: myrank
 
   integer :: ierr
@@ -72,9 +72,9 @@ end subroutine inversion_arrays_allocate_aux
 ! Reallocates the auxiliarily inversion arrays using new dimensions.
 ! Note: it reallocates only the arrays which dimenion has changed.
 !============================================================================================
-subroutine inversion_arrays_reallocate_aux(this, nelements, ndata, myrank)
+subroutine inversion_arrays_reallocate_aux(this, nelements, ndata, ndata_components, myrank)
   class(t_inversion_arrays), intent(inout) :: this
-  integer, intent(in) :: nelements, ndata
+  integer, intent(in) :: nelements, ndata, ndata_components
   integer, intent(in) :: myrank
 
   integer :: ierr

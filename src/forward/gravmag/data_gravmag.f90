@@ -31,6 +31,7 @@ module data_gravmag
 
     ! Number of data points.
     integer :: ndata
+    integer :: ncomponents
 
     ! Data positions.
     real(kind=CUSTOM_REAL), dimension(:), allocatable :: X, Y, Z
@@ -57,20 +58,21 @@ contains
 !============================================================================================================
 ! Initialize data object.
 !============================================================================================================
-subroutine data_initialize(this, ndata, myrank)
+subroutine data_initialize(this, ndata, ncomponents, myrank)
   class(t_data), intent(inout) :: this
-  integer, intent(in) :: ndata, myrank
+  integer, intent(in) :: ndata, ncomponents, myrank
   integer :: ierr
 
   this%ndata = ndata
+  this%ncomponents = ncomponents
 
   ierr = 0
 
   if (.not. allocated(this%X)) allocate(this%X(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
   if (.not. allocated(this%Y)) allocate(this%Y(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
   if (.not. allocated(this%Z)) allocate(this%Z(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%val_meas)) allocate(this%val_meas(ndata_components, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%val_calc)) allocate(this%val_calc(ndata_components, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
+  if (.not. allocated(this%val_meas)) allocate(this%val_meas(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
+  if (.not. allocated(this%val_calc)) allocate(this%val_calc(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in data_initialize!", myrank, ierr)
 
@@ -183,7 +185,7 @@ subroutine data_write(this, name_prefix, which, myrank)
   integer, intent(in) :: which, myrank
 
   real(kind=CUSTOM_REAL) :: X, Y, Z
-  real(kind=CUSTOM_REAL) :: val(ndata_components)
+  real(kind=CUSTOM_REAL) :: val(this%ncomponents)
   integer :: i
   character(len=512) :: file_name, file_name2
 
@@ -216,7 +218,7 @@ subroutine data_write(this, name_prefix, which, myrank)
     endif
 
     write(10, *) X, Y, Z, val
-    ! Note: revert Z-axis for Paraview.
+    ! Note: flip the Z-axis for Paraview.
     write(20, *) X, ", ", Y, ", ", -Z, ", ", val
   enddo
 

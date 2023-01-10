@@ -130,7 +130,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   integer, intent(in) :: myrank
 
   integer :: ierr
-  integer :: i, k, nl, nl_empty
+  integer :: i, k, nl, nl_empty, ndata_i
   integer(kind=8) :: nnz
 
   nl_empty = 0
@@ -194,8 +194,9 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   this%ndata_lines = 0
   do i = 1, 2
     if (par%problem_weight(i) /= 0.d0) then
-      nl = nl + par%ndata(i) * ndata_components
-      this%ndata_lines = this%ndata_lines + par%ndata(i) * ndata_components
+      ndata_i = par%ndata(i) * par%ndata_components(i)
+      nl = nl + ndata_i
+      this%ndata_lines = this%ndata_lines + ndata_i
     endif
   enddo
 
@@ -302,7 +303,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   integer, intent(in) :: myrank, nbproc
 
   real(kind=CUSTOM_REAL), intent(out) :: delta_model(par%nelements, ncomponents, 2)
-  real(kind=CUSTOM_REAL), intent(out) :: delta_data(ndata_components, maxval(par%ndata), 2)
+  type(t_real2d), intent(inout) :: delta_data(2)
 
   type(t_damping) :: damping
   type(t_damping_gradient) :: damping_gradient
@@ -501,7 +502,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) then
       call calculate_data_unscaled(par%nelements, delta_model(:, :, i), this%matrix, par%problem_weight(i), &
-        par%ndata(i), delta_data(:, 1:par%ndata(i), i), line_start(i), param_shift(i), myrank)
+           par%ndata(i), par%ndata_components(i), delta_data(i)%val, &
+           line_start(i), param_shift(i), myrank)
     endif
   enddo
 
@@ -796,12 +798,12 @@ subroutine joint_inversion_calculate_matrix_partitioning(par, line_start, line_e
 
   if (SOLVE_PROBLEM(1)) then
     line_start(1) = 1
-    line_end(1) = par%ndata(1) * ndata_components
+    line_end(1) = par%ndata(1) * par%ndata_components(1)
   endif
 
   if (SOLVE_PROBLEM(2)) then
     line_start(2) = line_end(1) + 1
-    line_end(2) = line_end(1) + par%ndata(2) * ndata_components
+    line_end(2) = line_end(1) + par%ndata(2) * par%ndata_components(2)
   endif
 
 end subroutine joint_inversion_calculate_matrix_partitioning
