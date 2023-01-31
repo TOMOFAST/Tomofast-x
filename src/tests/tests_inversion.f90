@@ -69,13 +69,14 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
   par%alpha = 1._CUSTOM_REAL
   par%problem_weight = 1._CUSTOM_REAL
   par%compression_type = 0
+  par%nmodel_components = 1
 
   if (mod(par%nelements_total, nbproc) /= 0) then
     if (myrank == 0) print *, "WARNING: nelements_total mod nbproc /= 0, skipping the test."
     return
   endif
 
-  call model%initialize(par%nelements, myrank, nbproc)
+  call model%initialize(par%nelements, par%nmodel_components, myrank, nbproc)
 
   allocate(arr%column_weight(par%nelements), source=0._CUSTOM_REAL)
   allocate(x(par%nelements), source=0._CUSTOM_REAL)
@@ -149,7 +150,7 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
   real(kind=CUSTOM_REAL), allocatable :: b_RHS(:)
   real(kind=CUSTOM_REAL), allocatable :: column_weight1(:)
   real(kind=CUSTOM_REAL), allocatable :: column_weight2(:)
-  integer :: nx, ny, nz
+  integer :: nx, ny, nz, ncomponents
   integer :: nelements, nelements_total, ierr
   integer :: matrix_nel_loc, matrix_nel_glob
   integer :: i, j, k, p
@@ -158,6 +159,7 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
   nx = 20
   ny = 20
   nz = 144
+  ncomponents = 1
 
   nelements_total = nx * ny * nz
   nelements = nelements_total / nbproc
@@ -167,10 +169,10 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
     return
   endif
 
-  call model1%initialize(nelements_total, myrank, nbproc)
+  call model1%initialize(nelements_total, ncomponents, myrank, nbproc)
   call model1%grid_full%allocate(nx, ny, nz, myrank)
 
-  call model2%initialize(nelements_total, myrank, nbproc)
+  call model2%initialize(nelements_total, ncomponents, myrank, nbproc)
   call model2%grid_full%allocate(nx, ny, nz, myrank)
 
   allocate(b_RHS(3 * nelements_total), source=0._CUSTOM_REAL, stat=ierr)

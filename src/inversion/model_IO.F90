@@ -26,13 +26,14 @@ module model_IO
   use parallel_tools
   use string
   use model
+  use grid
 
   implicit none
 
   private
 
   public :: model_read
-  public :: model_read_grid
+  public :: read_model_grid
   public :: model_write
   public :: model_read_bound_constraints
 
@@ -54,7 +55,7 @@ subroutine model_read(model, file_name, myrank, nbproc)
   integer :: i, nelements_read
   integer :: ierr
   character(len=256) :: msg
-  real(kind=CUSTOM_REAL) :: dummy(6), val(ncomponents)
+  real(kind=CUSTOM_REAL) :: dummy(6), val(model%ncomponents)
   integer :: i_, j_, k_
 
   if (myrank == 0) then
@@ -91,7 +92,7 @@ subroutine model_read(model, file_name, myrank, nbproc)
   endif
 
   ! Broadcast the full model to all CPUs.
-  call MPI_Bcast(model%val_full, model%nelements_total * ncomponents, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(model%val_full, model%nelements_total * model%ncomponents, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("Error in MPI_Bcast in model_read!", myrank, ierr)
 
@@ -105,8 +106,9 @@ end subroutine model_read
 !================================================================================================
 ! Read the model grid from a file.
 !================================================================================================
-subroutine model_read_grid(model, file_name, myrank)
-  class(t_model), intent(inout) :: model
+subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
+  class(t_grid), intent(inout) :: grid
+  integer, intent(in) :: nmodel_components
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank
 
@@ -114,7 +116,7 @@ subroutine model_read_grid(model, file_name, myrank)
   integer :: nelements_total
   integer :: ierr
   character(len=256) :: msg
-  real(kind=CUSTOM_REAL) :: val(ncomponents)
+  real(kind=CUSTOM_REAL) :: val(nmodel_components)
 
   if (myrank == 0) then
   ! Reading the full grid by master CPU only.
@@ -128,7 +130,7 @@ subroutine model_read_grid(model, file_name, myrank)
     read(10, *, iostat=ierr) nelements_read
     if (ierr /= 0) call exit_MPI("Problem while reading the model grid file!", myrank, ierr)
 
-    nelements_total = model%grid_full%nx * model%grid_full%ny * model%grid_full%nz
+    nelements_total = grid%nx * grid%ny * grid%nz
 
     ! Sanity check.
     if (nelements_total /= nelements_read) &
@@ -138,48 +140,48 @@ subroutine model_read_grid(model, file_name, myrank)
 
     ! Reading the full grid.
     do i = 1, nelements_total
-      read(10, *, iostat=ierr) model%grid_full%X1(i), model%grid_full%X2(i), &
-                               model%grid_full%Y1(i), model%grid_full%Y2(i), &
-                               model%grid_full%Z1(i), model%grid_full%Z2(i), &
+      read(10, *, iostat=ierr) grid%X1(i), grid%X2(i), &
+                               grid%Y1(i), grid%Y2(i), &
+                               grid%Z1(i), grid%Z2(i), &
                                val, &
-                               model%grid_full%i_(i), model%grid_full%j_(i), model%grid_full%k_(i)
+                               grid%i_(i), grid%j_(i), grid%k_(i)
 
-      if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_grid!", myrank, ierr)
+      if (ierr /= 0) call exit_MPI("Problem while reading the grid file in grid_read!", myrank, ierr)
 
       ! Sanity check.
-      if (model%grid_full%i_(i) < 1 .or. &
-          model%grid_full%j_(i) < 1 .or. &
-          model%grid_full%k_(i) < 1 .or. &
-          model%grid_full%i_(i) > model%grid_full%nx .or. &
-          model%grid_full%j_(i) > model%grid_full%ny .or. &
-          model%grid_full%k_(i) > model%grid_full%nz) then
+      if (grid%i_(i) < 1 .or. &
+          grid%j_(i) < 1 .or. &
+          grid%k_(i) < 1 .or. &
+          grid%i_(i) > grid%nx .or. &
+          grid%j_(i) > grid%ny .or. &
+          grid%k_(i) > grid%nz) then
 
         call exit_MPI("The model grid dimensions in the Parfile are inconsistent with the model 3D indexes!"//new_line('a') &
-                  //"i="//str(model%grid_full%i_(i))//new_line('a') &
-                  //"j="//str(model%grid_full%j_(i))//new_line('a') &
-                  //"k="//str(model%grid_full%k_(i)), myrank, 0)
+                  //"i="//str(grid%i_(i))//new_line('a') &
+                  //"j="//str(grid%j_(i))//new_line('a') &
+                  //"k="//str(grid%k_(i)), myrank, 0)
       endif
 
       ! Store 1D grid index of the model parameter.
-      model%grid_full%ind(model%grid_full%i_(i), model%grid_full%j_(i), model%grid_full%k_(i)) = i
+      grid%ind(grid%i_(i), grid%j_(i), grid%k_(i)) = i
 
       ! Sanity check.
-      if (model%grid_full%X1(i) > model%grid_full%X2(i) .or. &
-          model%grid_full%Y1(i) > model%grid_full%Y2(i) .or. &
-          model%grid_full%Z1(i) > model%grid_full%Z2(i)) then
-        call exit_MPI("The grid is not correctly defined (X1>X2 or Y1>Y2 or Z1>Z2)!", myrank, 0)
+      if (grid%X1(i) > grid%X2(i) .or. &
+          grid%Y1(i) > grid%Y2(i) .or. &
+          grid%Z1(i) > grid%Z2(i)) then
+        call exit_MPI("The grid is not correctly defined (X1 > X2 or Y1 > Y2 or Z1 > Z2)!", myrank, 0)
       endif
     enddo
     close(10)
 
-    print *, 'Xmin, Xmax =', model%get_Xmin(), model%get_Xmax()
-    print *, 'Ymin, Ymax =', model%get_Ymin(), model%get_Ymax()
+    print *, 'Xmin, Xmax =', grid%get_Xmin(), grid%get_Xmax()
+    print *, 'Ymin, Ymax =', grid%get_Ymin(), grid%get_Ymax()
   endif ! myrank == 0
 
   ! Broadcast full grid to all CPUs.
-  call model%grid_full%broadcast(myrank)
+  call grid%broadcast(myrank)
 
-end subroutine model_read_grid
+end subroutine read_model_grid
 
 !==========================================================================================================
 ! Read the local bound constraints (for ADMM).
@@ -323,7 +325,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
     ! In this format each cell has constant value, while in the structured grid case the values get smoothed between the cell centers.
     ! But this format needs to allocate ~6 times more memory, and the output file has much bigger size.
     filename = trim(name_prefix)//"model3D_full_lego.vtk"
-    call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val_full, &
+    call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%ncomponents, model%val_full, &
                                          model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                          model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                          model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
@@ -333,7 +335,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
 
   ! Write the full model using structured grid.
   filename = trim(name_prefix)//"model3D_full.vtk"
-  call visualisation_paraview_struct_grid(filename, myrank, model%nelements_total, model%val_full, &
+  call visualisation_paraview_struct_grid(filename, myrank, model%nelements_total, model%ncomponents, model%val_full, &
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
@@ -342,7 +344,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
 
   ! Write the x-profile of the model.
   filename = trim(name_prefix)//"model3D_half_x.vtk"
-  call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val_full, &
+  call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%ncomponents, model%val_full, &
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
@@ -351,7 +353,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
 
   ! Write the y-profile of the model.
   filename = trim(name_prefix)//"model3D_half_y.vtk"
-  call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val_full, &
+  call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%ncomponents, model%val_full, &
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
@@ -360,7 +362,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
 
   ! Write the z-profile of the model.
   filename = trim(name_prefix)//"model3D_half_z.vtk"
-  call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%val_full, &
+  call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%ncomponents, model%val_full, &
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &

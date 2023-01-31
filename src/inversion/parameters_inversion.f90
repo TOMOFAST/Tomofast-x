@@ -40,6 +40,8 @@ module parameters_inversion
     integer :: ndata(2)
     ! Number of data components.
     integer :: ndata_components(2)
+    ! Number of model components.
+    integer :: nmodel_components
     ! Number of iterations in inversion solver (e.g. LSQR).
     integer :: niter
     ! Number of inversions (outer inversion loop).

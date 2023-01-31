@@ -104,13 +104,13 @@ end subroutine dircos
 ! This subroutine is meant to perform mbox on a set of voxels before returning their
 ! respective magnetic tensor flattened in vector form.
 !===================================================================================================
-subroutine magnetic_field_magprism(this, nelements, ndata_components, grid, Xdata, Ydata, Zdata, sensit_line)
+subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_components, grid, Xdata, Ydata, Zdata, sensit_line)
     class(t_magnetic_field), intent(in)     :: this
-    integer, intent(in)                     :: nelements, ndata_components
+    integer, intent(in)                     :: nelements, nmodel_components, ndata_components
     type(t_grid), intent(in)                :: grid
     real(kind=CUSTOM_REAL), intent(in)      :: Xdata, Ydata, Zdata
 
-    real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(nelements, ncomponents, ndata_components)
+    real(kind=CUSTOM_REAL), intent(out)     :: sensit_line(nelements, nmodel_components, ndata_components)
 
     integer :: i, k
     real(kind=SENSIT_REAL) :: tx(3), ty(3), tz(3)
@@ -129,7 +129,7 @@ subroutine magnetic_field_magprism(this, nelements, ndata_components, grid, Xdat
                            real(grid%Z2(i), SENSIT_REAL), &
                            ty, tx, tz)
 
-        if (ncomponents == 1) then
+        if (nmodel_components == 1) then
         ! Susceptibility model.
 
           mx = sum(tx * this%magv)
@@ -138,7 +138,7 @@ subroutine magnetic_field_magprism(this, nelements, ndata_components, grid, Xdat
 
           sensit_line(i, 1, 1) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
 
-        else if (ncomponents == 3) then
+        else if (nmodel_components == 3) then
         ! Magnetisation model (Mx, My, Mz) - calculating three sensitivity kernels.
 
           if (ndata_components == 1) then
@@ -164,7 +164,7 @@ subroutine magnetic_field_magprism(this, nelements, ndata_components, grid, Xdat
         endif
     enddo
 
-    if (ncomponents == 1) then
+    if (nmodel_components == 1) then
       sensit_line = this%intensity * sensit_line
     endif
 

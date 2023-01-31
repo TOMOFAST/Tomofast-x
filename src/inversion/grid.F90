@@ -60,6 +60,12 @@ module grid
 
     procedure, public, pass :: get_cell_volume => grid_get_cell_volume
 
+    procedure, public, pass :: get_Xmin => grid_get_Xmin
+    procedure, public, pass :: get_Xmax => grid_get_Xmax
+    procedure, public, pass :: get_Ymin => grid_get_Ymin
+    procedure, public, pass :: get_Ymax => grid_get_Ymax
+
+
   end type t_grid
 
 contains
@@ -259,5 +265,45 @@ pure function grid_get_cell_volume(this, i) result(res)
             (this%Z2(i) - this%Z1(i)))
 
 end function grid_get_cell_volume
+
+!================================================================================================
+! Get the minimum X-coordinate of the grid.
+!================================================================================================
+pure function grid_get_Xmin(this) result(res)
+  class(t_grid), intent(in) :: this
+  real(kind=CUSTOM_REAL) :: res
+
+  res = minval(this%X1)
+end function grid_get_Xmin
+
+!================================================================================================
+! Get the maximum X-coordinate of the grid.
+!================================================================================================
+pure function grid_get_Xmax(this) result(res)
+  class(t_grid), intent(in) :: this
+  real(kind=CUSTOM_REAL) :: res
+
+  res = maxval(this%X2)
+end function grid_get_Xmax
+
+!================================================================================================
+! Get the minimum Y-coordinate of the grid.
+!================================================================================================
+pure function grid_get_Ymin(this) result(res)
+  class(t_grid), intent(in) :: this
+  real(kind=CUSTOM_REAL) :: res
+
+  res = minval(this%Y1)
+end function grid_get_Ymin
+
+!================================================================================================
+! Get the maximum Y-coordinate of the grid.
+!================================================================================================
+pure function grid_get_Ymax(this) result(res)
+  class(t_grid), intent(in) :: this
+  real(kind=CUSTOM_REAL) :: res
+
+  res = maxval(this%Y2)
+end function grid_get_Ymax
 
 end module grid

@@ -36,6 +36,8 @@ module parameters_gravmag
     integer :: ndata
     ! Number of data components.
     integer :: ndata_components
+    ! Number of model components.
+    integer :: nmodel_components
 
     ! File name for the data.
     character(len=256) :: data_file
@@ -101,6 +103,7 @@ subroutine parameters_base_broadcast(this, myrank)
   call MPI_Bcast(this%nz, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%ndata, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%ndata_components, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%nmodel_components, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
   call MPI_Bcast(this%prior_model_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%number_prior_models, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)

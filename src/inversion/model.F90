@@ -57,6 +57,8 @@ module model
     integer :: nelements_total
     ! Local number of model parameters (on current CPU).
     integer :: nelements
+    ! The number of model components.
+    integer :: ncomponents
 
     ! Flag to check if the full model has been updated (to the state of the local model).
     logical :: full_model_updated
@@ -68,11 +70,6 @@ module model
     procedure, public, pass :: allocate_bound_arrays => model_allocate_bound_arrays
 
     procedure, public, pass :: distribute => model_distribute
-
-    procedure, public, pass :: get_Xmin => model_get_Xmin
-    procedure, public, pass :: get_Xmax => model_get_Xmax
-    procedure, public, pass :: get_Ymin => model_get_Ymin
-    procedure, public, pass :: get_Ymax => model_get_Ymax
 
     procedure, public, pass :: update => model_update
     procedure, public, pass :: update_full => model_update_full
@@ -88,9 +85,9 @@ contains
 !================================================================================================
 ! Initialization.
 !================================================================================================
-subroutine model_initialize(this, nelements, myrank, nbproc)
+subroutine model_initialize(this, nelements, ncomponents, myrank, nbproc)
   class(t_model), intent(inout) :: this
-  integer, intent(in) :: nelements, myrank, nbproc
+  integer, intent(in) :: nelements, ncomponents, myrank, nbproc
 
   integer :: ierr
 
@@ -102,13 +99,15 @@ subroutine model_initialize(this, nelements, myrank, nbproc)
   this%nelements = nelements
   this%nelements_total = get_total_number_elements(nelements, myrank, nbproc)
 
+  this%ncomponents = ncomponents
+
   this%full_model_updated = .true.
 
   ierr = 0
 
-  allocate(this%val_full(this%nelements_total, ncomponents), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%val(this%nelements, ncomponents), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%val_prior(this%nelements, ncomponents), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val_full(this%nelements_total, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val(this%nelements, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val_prior(this%nelements, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_initialize!", myrank, ierr)
 
@@ -150,7 +149,7 @@ subroutine model_distribute(this, myrank, nbproc)
   ! Partitioning for MPI_Scatterv.
   call get_mpi_partitioning(this%nelements, displs, nelements_at_cpu, myrank, nbproc)
 
-  do k = 1, ncomponents
+  do k = 1, this%ncomponents
     call MPI_Scatterv(this%val_full(:, k), nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
                       this%val(:, k), this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   enddo
@@ -159,53 +158,12 @@ subroutine model_distribute(this, myrank, nbproc)
 
 end subroutine model_distribute
 
-!================================================================================================
-! Get the minimum X-coordinate of the model grid.
-!================================================================================================
-pure function model_get_Xmin(this) result(res)
-  class(t_model), intent(in) :: this
-  real(kind=CUSTOM_REAL) :: res
-
-  res = minval(this%grid_full%X1)
-end function model_get_Xmin
-
-!================================================================================================
-! Get the maximum X-coordinate of the model grid.
-!================================================================================================
-pure function model_get_Xmax(this) result(res)
-  class(t_model), intent(in) :: this
-  real(kind=CUSTOM_REAL) :: res
-
-  res = maxval(this%grid_full%X2)
-end function model_get_Xmax
-
-!================================================================================================
-! Get the minimum Y-coordinate of the model grid.
-!================================================================================================
-pure function model_get_Ymin(this) result(res)
-  class(t_model), intent(in) :: this
-  real(kind=CUSTOM_REAL) :: res
-
-  res = minval(this%grid_full%Y1)
-end function model_get_Ymin
-
-!================================================================================================
-! Get the maximum Y-coordinate of the model grid.
-!================================================================================================
-pure function model_get_Ymax(this) result(res)
-  class(t_model), intent(in) :: this
-  real(kind=CUSTOM_REAL) :: res
-
-  res = maxval(this%grid_full%Y2)
-end function model_get_Ymax
-
 !======================================================================================================
 ! Update the local model after inversion.
 !======================================================================================================
 subroutine model_update(this, delta_model)
   class(t_model), intent(inout) :: this
-  ! TODO: use ncomponents from the model class so that it is 1 for grav and 1 or 3 for mag.
-  real(kind=CUSTOM_REAL), intent(in) :: delta_model(this%nelements, ncomponents)
+  real(kind=CUSTOM_REAL), intent(in) :: delta_model(this%nelements, this%ncomponents)
 
   this%val = this%val + delta_model
 
@@ -222,7 +180,7 @@ subroutine model_update_full(this, broadcast, myrank, nbproc)
   integer, intent(in) :: myrank, nbproc
   integer :: k
 
-  do k = 1, ncomponents
+  do k = 1, this%ncomponents
     call get_full_array(this%val(:, k), this%nelements, this%val_full(:, k), broadcast, myrank, nbproc)
   enddo
 
@@ -253,12 +211,12 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
   integer :: i, k, ierr
   integer :: nsmaller
 
-  allocate(model_scaled(this%nelements, ncomponents), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(model_scaled(this%nelements, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_calculate_data!", myrank, ierr)
 
   ! Rescale the model to calculate data, as we store the depth-weighted sensitivity kernel.
-  do k = 1, ncomponents
+  do k = 1, this%ncomponents
     do i = 1, this%nelements
       model_scaled(i, k) = this%val(i, k) / column_weight(i)
     enddo
@@ -276,7 +234,7 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
 
       nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
 
-      do k = 1, ncomponents
+      do k = 1, this%ncomponents
         ! Gather the full model from all processors.
         call get_full_array(model_scaled(:, k), this%nelements, model_scaled_full, .true., myrank, nbproc)
 
@@ -290,7 +248,7 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
 
     else
     ! Serial version.
-      do k = 1, ncomponents
+      do k = 1, this%ncomponents
         call Haar3D(model_scaled(:, k), this%grid_full%nx, this%grid_full%ny, this%grid_full%nz)
       enddo
     endif
@@ -321,10 +279,10 @@ end subroutine model_calculate_data
 ! Use line_start, line_end, param_shift to calculate the data using part of the big (joint) matrix.
 ! This version uses unscaled model (in wavelet domain).
 !======================================================================================================
-subroutine calculate_data_unscaled(nelements, model, matrix_sensit, problem_weight, ndata, ndata_components, &
-                                   data_calc, line_start, param_shift, myrank)
-  integer, intent(in) :: nelements
-  real(kind=CUSTOM_REAL), intent(in) :: model(nelements, ncomponents)
+subroutine calculate_data_unscaled(nelements, nmodel_components, model, matrix_sensit, problem_weight, &
+                                   ndata, ndata_components, data_calc, line_start, param_shift, myrank)
+  integer, intent(in) :: nelements, nmodel_components
+  real(kind=CUSTOM_REAL), intent(in) :: model(nelements, nmodel_components)
   type(t_sparse_matrix), intent(in) :: matrix_sensit
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
   integer, intent(in) :: ndata, ndata_components, line_start, param_shift

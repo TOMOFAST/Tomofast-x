@@ -56,19 +56,19 @@ function index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2) re
   endif
 end function index_included
 
-!============================================================================================================
+!=======================================================================================================================
 ! This subroutine writes the file in (legacy) VTK format used for Paraview visualization.
 ! A slice of the full model can be specified via i1, i2, j1, j2, k1, k2 grid indexes.
 ! The Paraview structured grid datastructure is used, which allows additional analysis in Paraview (like contours).
-!============================================================================================================
-subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, X1, Y1, Z1, X2, Y2, Z2, &
+!=======================================================================================================================
+subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomponents, val, X1, Y1, Z1, X2, Y2, Z2, &
                                            i_index, j_index, k_index, &
                                            i1, i2, j1, j2, k1, k2, &
                                            INVERT_Z_AXIS)
   ! MPI rank of this process.
   integer, intent(in) :: myrank
   ! Total number of cells.
-  integer, intent(in) :: nelements
+  integer, intent(in) :: nelements, ncomponents
   ! Values for visualization.
   real(kind=CUSTOM_REAL), intent(in) :: val(nelements, ncomponents)
   ! Coordinates of points in the grid.
@@ -194,22 +194,22 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, val, 
 
 end subroutine visualisation_paraview_struct_grid
 
-!============================================================================================================
+!====================================================================================================================
 ! This subroutine writes the file in (legacy) VTK format used for Paraview visualization.
 ! A slice of the full model can be specified via i1, i2, j1, j2, k1, k2 grid indexes.
 ! An arbitrary "lego" grid is considered.
 !
 ! VO: Converted the ASCII version to binary using logics of the code of Renato N. Elias:
 !     http://www.nacad.ufrj.br/~rnelias/paraview/VTKFormats.f90
-!============================================================================================================
-subroutine visualisation_paraview_legogrid(filename, myrank, nelements, val, X1, Y1, Z1, X2, Y2, Z2, &
+!====================================================================================================================
+subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncomponents, val, X1, Y1, Z1, X2, Y2, Z2, &
                                            i_index, j_index, k_index, &
                                            i1, i2, j1, j2, k1, k2, &
                                            INVERT_Z_AXIS)
   ! MPI rank of this process.
   integer, intent(in) :: myrank
   ! Total number of cells.
-  integer, intent(in) :: nelements
+  integer, intent(in) :: nelements, ncomponents
   ! Values for visualization.
   real(kind=CUSTOM_REAL), intent(in) :: val(nelements, ncomponents)
   ! Coordinates of points in the grid.

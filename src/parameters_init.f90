@@ -168,6 +168,15 @@ subroutine initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
     ipar%ndata_components(1) = gpar%ndata_components
     ipar%ndata_components(2) = mpar%ndata_components
 
+    ipar%nmodel_components = 1
+
+    if (mpar%nmodel_components > 1) then
+      if (ipar%problem_weight(1) /= 0.d0) then
+        call exit_MPI("For the magnetisation inversion the gravity problem should be disabled!", myrank, 0)
+      endif
+      ipar%nmodel_components = mpar%nmodel_components
+    endif
+
     ipar%nelements_total = ipar%nx * ipar%ny * ipar%nz
 
     ipar%compression_type = gpar%compression_type
@@ -235,6 +244,8 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   mpar%nz = 0
   gpar%model_files(1) = "NILL"
   mpar%model_files(1) = "NILL"
+  gpar%nmodel_components = 1
+  mpar%nmodel_components = 1
 
   ! DATA parameters.
   gpar%ndata = 0
@@ -415,6 +426,10 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
       case("modelGrid.magn.file")
         call read_filename(10, mpar%model_files(1))
         call print_arg(myrank, parname, mpar%model_files(1))
+
+      case("modelGrid.magn.nModelComponents")
+        read(10, 2) mpar%nmodel_components
+        call print_arg(myrank, parname, mpar%nmodel_components)
 
       ! DATA parameters -------------------------------------
 

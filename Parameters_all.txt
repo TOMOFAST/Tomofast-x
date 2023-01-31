@@ -22,6 +22,9 @@ modelGrid.size                      = 0 0 0
 modelGrid.grav.file                 = None
 modelGrid.magn.file                 = None
 
+# Set to 3 for magnetisation inversion.
+modelGrid.magn.nModelComponents     = 1
+
 ===================================================================================
 DATA parameters
 ===================================================================================

@@ -119,9 +119,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call model(1)%grid_full%allocate(ipar%nx, ipar%ny, ipar%nz, myrank)
   if (SOLVE_PROBLEM(2)) call model(2)%grid_full%allocate(ipar%nx, ipar%ny, ipar%nz, myrank)
 
-  ! Reading the full grid.
-  if (SOLVE_PROBLEM(1)) call model_read_grid(model(1), gpar%model_files(1), myrank)
-  if (SOLVE_PROBLEM(2)) call model_read_grid(model(2), mpar%model_files(1), myrank)
+  ! Reading the full model grid.
+  if (SOLVE_PROBLEM(1)) call read_model_grid(model(1)%grid_full, ipar%nmodel_components, gpar%model_files(1), myrank)
+  if (SOLVE_PROBLEM(2)) call read_model_grid(model(2)%grid_full, ipar%nmodel_components, mpar%model_files(1), myrank)
 
   ! (II) DATA ALLOCATION. -----------------------------------------------------------------
 
@@ -134,7 +134,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Reading the GRID ONLY for data points (needed to generate sensitivity matrix).
   if (SOLVE_PROBLEM(1)) call data(1)%read_grid(gpar%data_grid_file, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%read_grid(mpar%data_grid_file, myrank)
- 
+
   ! (III) SENSITIVITY MATRIX ALLOCATION  ---------------------------------------------------
 
   if (myrank == 0) print *, "(III) SENSITIVITY MATRIX ALLOCATION."
@@ -210,8 +210,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! MODEL ALLOCATION -----------------------------------------------------------------------------------
 
   ! Allocate memory for the model.
-  if (SOLVE_PROBLEM(1)) call model(1)%initialize(ipar%nelements, myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call model(2)%initialize(ipar%nelements, myrank, nbproc)
+  if (SOLVE_PROBLEM(1)) call model(1)%initialize(ipar%nelements, ipar%nmodel_components, myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call model(2)%initialize(ipar%nelements, ipar%nmodel_components, myrank, nbproc)
 
   !-----------------------------------------------------------------------------------------------------
   ! Writing the column weight for Paraview visualisation.
@@ -279,7 +279,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   path_output_parfile = path_output
 
   ! Allocate memory.
-  allocate(delta_model(ipar%nelements, ncomponents, 2), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(delta_model(ipar%nelements, ipar%nmodel_components, 2), source=0._CUSTOM_REAL, stat=ierr)
   allocate(delta_data(1)%val(ipar%ndata_components(1), ipar%ndata(1)), source=0._CUSTOM_REAL, stat=ierr)
   allocate(delta_data(2)%val(ipar%ndata_components(2), ipar%ndata(2)), source=0._CUSTOM_REAL, stat=ierr)
 
