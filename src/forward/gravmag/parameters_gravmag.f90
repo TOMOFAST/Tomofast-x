@@ -67,6 +67,8 @@ module parameters_gravmag
     integer :: depth_weighting_type
     ! Power constant for depth weighting.
     real(kind=CUSTOM_REAL) :: depth_weighting_power
+    ! Power constant for depth weighting strength (external power).
+    real(kind=CUSTOM_REAL) :: depth_weighting_beta
     ! Empirical constant (Z-shift) for depth weighting type #1.
     real(kind=CUSTOM_REAL) :: Z0
 
@@ -114,6 +116,7 @@ subroutine parameters_base_broadcast(this, myrank)
 
   call MPI_Bcast(this%depth_weighting_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%depth_weighting_power, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%depth_weighting_beta, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%Z0, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   call MPI_Bcast(this%compression_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)

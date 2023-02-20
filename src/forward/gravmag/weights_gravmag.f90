@@ -132,7 +132,7 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
 
       enddo ! data loop
 
-      iarr%column_weight(i) = (1.d0 / sqrt(dVj)) * wr**(1.d0 / 4.d0)
+      iarr%column_weight(i) = (1.d0 / sqrt(dVj)) * wr**(par%depth_weighting_beta / 4.d0)
     enddo ! cells loop
 
   else

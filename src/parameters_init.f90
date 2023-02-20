@@ -268,6 +268,8 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   mpar%depth_weighting_type = 2
   gpar%depth_weighting_power = 2.0d0
   mpar%depth_weighting_power = 3.0d0
+  gpar%depth_weighting_beta = 1.0d0
+  mpar%depth_weighting_beta = 1.0d0
   gpar%Z0 = 0.d0
   mpar%Z0 = 0.d0
 
@@ -490,6 +492,10 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
         read(10, 1) gpar%depth_weighting_power
         call print_arg(myrank, parname, gpar%depth_weighting_power)
 
+      case("forward.depthWeighting.grav.beta")
+        read(10, 1) gpar%depth_weighting_beta
+        call print_arg(myrank, parname, gpar%depth_weighting_beta)
+
       case("forward.depthWeighting.grav.Z0")
         read(10, 1) gpar%Z0
         call print_arg(myrank, parname, gpar%Z0)
@@ -497,6 +503,10 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
       case("forward.depthWeighting.magn.power")
         read(10, 1) mpar%depth_weighting_power
         call print_arg(myrank, parname, mpar%depth_weighting_power)
+
+      case("forward.depthWeighting.magn.beta")
+        read(10, 1) mpar%depth_weighting_beta
+        call print_arg(myrank, parname, mpar%depth_weighting_beta)
 
       case("forward.depthWeighting.magn.Z0")
         read(10, 1) mpar%Z0
