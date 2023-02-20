@@ -1,0 +1,75 @@
+===================================================================================
+GLOBAL
+===================================================================================
+global.outputFolderPath     = output/hamersley/magn_single/
+global.description          = Magn. inv. with damping and smoothing (Hamersley area)
+
+===================================================================================
+MODEL GRID parameters
+===================================================================================
+# nx ny nz
+modelGrid.size                      = 13 133 33
+modelGrid.magn.file                 = data/gravmag/hamersley/mag_prior.txt
+
+===================================================================================
+DATA parameters
+===================================================================================
+forward.data.magn.nData             = 113
+forward.data.magn.dataGridFile      = data/gravmag/hamersley/mag_observed_data.txt
+forward.data.magn.dataValuesFile    = data/gravmag/hamersley/mag_observed_data.txt
+
+===================================================================================
+DEPTH WEIGHTING
+===================================================================================
+forward.depthWeighting.type         = 1
+forward.depthWeighting.magn.power   = 3.0d0
+
+===================================================================================
+SENSITIVITY KERNEL
+===================================================================================
+sensit.readFromFiles                = 0
+sensit.folderPath                   = SENSIT/
+
+===================================================================================
+MATRIX COMPRESSION
+===================================================================================
+# 0-none, 1-wavelet compression.
+forward.matrixCompression.type                       = 0
+forward.matrixCompression.rate                       = 0.15
+
+===================================================================================
+PRIOR MODEL
+===================================================================================
+inversion.priorModel.type           = 1
+inversion.priorModel.magn.value     = 0.d0
+
+===================================================================================
+STARTING MODEL
+===================================================================================
+inversion.startingModel.type        = 1
+inversion.startingModel.magn.value  = 0.d0
+
+===================================================================================
+INVERSION parameters
+===================================================================================
+inversion.nMajorIterations          = 10
+inversion.nMinorIterations          = 100
+inversion.minResidual               = 1.d-13
+
+===================================================================================
+MODEL DAMPING (m - m_prior)
+===================================================================================
+inversion.modelDamping.magn.weight  = 2.8d3
+inversion.modelDamping.normPower    = 2.0d0
+
+===================================================================================
+DAMPING-GRADIENT constraints
+===================================================================================
+inversion.dampingGradient.weightType     = 1
+inversion.dampingGradient.magn.weight    = 3.93d+5
+
+===================================================================================
+JOINT INVERSION parameters
+===================================================================================
+inversion.joint.grav.problemWeight  = 0.d0
+inversion.joint.magn.problemWeight  = 1.d0
