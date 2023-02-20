@@ -69,7 +69,7 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   if (par%depth_weighting_type == 1) then
   ! Depth weighting.
 
-    ! Use empirical function 1/(z+z0)**(beta/2).
+    ! Use empirical function 1/(z+z0)**(power/2).
     do i = 1, par%nelements
       ! Full grid index.
       p = nsmaller + i
@@ -78,7 +78,7 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
 
   else if (par%depth_weighting_type == 2) then
   ! Distance weighting.
-  ! The implementation is based on the Eq.(10) in https://www.eoas.ubc.ca/ubcgif/iag/sftwrdocs/grav3d/grav3d-manual.pdf
+  ! Based on Eq.(19) in Li & Oldenburg, Joint inversion of surface and three‐component borehole magnetic data, GEOPHYSICS 65, 540–552 (2000).
 
     ! A small constant for integral validity.
     R0 = 0.1d0 ! 0.1 meter
@@ -176,9 +176,9 @@ end subroutine calculate_depth_weight
 !===================================================================================
 ! Calculates the depth weight for a pixel using empirical function.
 !===================================================================================
-function calc_depth_weight_pixel(grid, beta, Z0, i, myrank) result(weight)
+function calc_depth_weight_pixel(grid, power, Z0, i, myrank) result(weight)
   type(t_grid), intent(in) :: grid
-  real(kind=CUSTOM_REAL), intent(in) :: beta
+  real(kind=CUSTOM_REAL), intent(in) :: power
   integer, intent(in) :: i, myrank
   real(kind=CUSTOM_REAL), intent(in) :: Z0
   real(kind=CUSTOM_REAL) :: weight
@@ -189,11 +189,10 @@ function calc_depth_weight_pixel(grid, beta, Z0, i, myrank) result(weight)
   depth = grid%get_Z_cell_center(i)
 
   if (depth + Z0 > 0.d0) then
-    weight = (depth + Z0)**(- beta / 2.d0)
+    weight = (depth + Z0)**(- power / 2.d0)
   else
-    print *, depth
-    print *, Z0
-    call exit_MPI("Error: non-positive depth in calculate_depth_weight!", myrank, 0)
+    print *, depth, Z0
+    call exit_MPI("Error: non-positive depth in calc_depth_weight_pixel!", myrank, 0)
   endif
 
 end function calc_depth_weight_pixel
