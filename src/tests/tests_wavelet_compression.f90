@@ -252,7 +252,7 @@ subroutine test_wavelet_inverse(myrank, nbproc)
   call test_wavelet_inverse_kind(1)
 
   ! Daubechies D4 wavelet.
-  !call test_wavelet_inverse_kind(2)
+  call test_wavelet_inverse_kind(2)
 
 end subroutine test_wavelet_inverse
 
