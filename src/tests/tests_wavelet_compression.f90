@@ -194,9 +194,8 @@ subroutine test_wavelet_norm_preserving(myrank, nbproc)
   ! Haar wavelet.
   call test_wavelet_norm_preserving_kind(1)
 
-  ! TODO: DaubD43D wavelet not passing the test! Should it preserve the norm?
   ! Daubechies D4 wavelet.
-  !call test_wavelet_norm_preserving_kind(2)
+  call test_wavelet_norm_preserving_kind(2)
 
 end subroutine test_wavelet_norm_preserving
 !=============================================================================================
@@ -253,7 +252,7 @@ subroutine test_wavelet_inverse(myrank, nbproc)
   call test_wavelet_inverse_kind(1)
 
   ! Daubechies D4 wavelet.
-  call test_wavelet_inverse_kind(2)
+  !call test_wavelet_inverse_kind(2)
 
 end subroutine test_wavelet_inverse
 

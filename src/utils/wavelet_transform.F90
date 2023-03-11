@@ -199,13 +199,13 @@ subroutine DaubD43D(s,n1,n2,n3)
   integer, intent(in) :: n1,n2,n3
   real(kind=CUSTOM_REAL), intent(inout) :: s(n1,n2,n3)
 
-  integer :: i,i1,i2,i3,ic,L,il,ig,ngmin,ngmax
+  integer :: i,i1,i2,i3,ic,L,il,ig,ngmin,ngmax,ilmax
   integer :: istep,step_incr,step2,nscale,ng
 
-! Loop over the 3 dimensions
+  ! Loop over the 3 dimensions.
   do ic = 1,3
 
-! Loop over the scales
+     ! Loop over the scales.
      if (ic==1) then
         nscale = int(log(real(n1,CUSTOM_REAL))/log(2._CUSTOM_REAL))
         L = n1
@@ -222,31 +222,36 @@ subroutine DaubD43D(s,n1,n2,n3)
         ngmax = ngmin+int((L-ngmin)/step_incr)*step_incr
         ng = (ngmax-ngmin)/step_incr+1
         step2 = step_incr
+        ! The last index of the odd indexes (of the first half of an array). Corresponds to S[half-1].
+        ilmax = 1 + (ng - 1) * step2
 
         !--------------Update 1
         ig = ngmin
         il = 1
         do i = 1,ng
            if (ic==1) then
-              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3)+s(ig,i2,i3)*sqrt(3._CUSTOM_REAL)
+              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) + s(ig,i2,i3)*sqrt(3._CUSTOM_REAL)
            else if (ic==2) then
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3)+s(i1,ig,i3)*sqrt(3._CUSTOM_REAL)
+              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) + s(i1,ig,i3)*sqrt(3._CUSTOM_REAL)
            else
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il)+s(i1,i2,ig)*sqrt(3._CUSTOM_REAL)
+              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) + s(i1,i2,ig)*sqrt(3._CUSTOM_REAL)
            endif
            il = il+step2
            ig = ig+step2
         enddo
 
         !-------------- Predict
-        il=1
-        ig=ngmin
+        il = 1
+        ig = ngmin
         if (ic==1) then
-           forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) - s(il,i2,i3)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL
+           forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) - s(il,i2,i3)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
+              - s(ilmax,i2,i3)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
         else if (ic==2) then
-           forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) - s(i1,il,i3) *sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL
+           forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) - s(i1,il,i3)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
+              - s(i1,ilmax,i3)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
         else
-           forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) - s(i1,i2,il) *sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL
+           forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) - s(i1,i2,il)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
+              - s(i1,i2,ilmax)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
         endif
 
         ig = ngmin + step2
@@ -256,16 +261,15 @@ subroutine DaubD43D(s,n1,n2,n3)
               forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) - s(il,i2,i3)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
               - s(il-step2,i2,i3)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
            else if (ic==2) then
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3)-s(i1,il,i3) *sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
+              forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) - s(i1,il,i3)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
               - s(i1,il-step2,i3)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
            else
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig)-s(i1,i2,il) *sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
+              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) - s(i1,i2,il)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
               - s(i1,i2,il-step2)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
            endif
            il = il+step2
            ig = ig+step2
         enddo
-
 
         !------------- Update 2
 
@@ -273,15 +277,26 @@ subroutine DaubD43D(s,n1,n2,n3)
         il = 1
         do i = 1,ng-1
            if (ic==1) then
-              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3)-s(ig+step2,i2,i3)
+              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) - s(ig+step2,i2,i3)
            else if (ic==2) then
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3)-s(i1,ig+step2,i3)
+              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) - s(i1,ig+step2,i3)
            else
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il)-s(i1,i2,ig+step2)
+              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) - s(i1,i2,ig+step2)
            endif
            il = il+step2
            ig = ig+step2
         enddo
+
+        ! Calculate: S[half-1] = S[half-1] - S[half]
+        ig = ngmin
+        il = ilmax
+        if (ic==1) then
+          forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) - s(ig,i2,i3)
+        else if (ic==2) then
+          forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) - s(i1,ig,i3)
+        else
+          forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) - s(i1,i2,ig)
+        endif
 
         !--------------- Normalization
         ig = ngmin
