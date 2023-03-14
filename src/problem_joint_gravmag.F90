@@ -241,10 +241,23 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       if (SOLVE_PROBLEM(i)) then
         ! Reading min/max ADMM bounds from file.
         call model(i)%allocate_bound_arrays(ipar%nlithos, myrank)
-        call model_read_bound_constraints(model(i), ipar%bounds_ADMM_file(i), myrank, nbproc)
+        call read_bound_constraints(model(i), ipar%bounds_ADMM_file(i), myrank, nbproc)
       endif
     enddo
   endif
+
+  ! SETTING damping gradient weights --------------------------------------------------------------------
+
+  do i = 1, 2
+    if (SOLVE_PROBLEM(i)) then
+      if (ipar%beta(i) /= 0.) then
+        call model(i)%allocate_damping_gradient_arrays(myrank)
+        if (ipar%damp_grad_weight_type > 1) then
+          call read_damping_gradient_weights(model(i), ipar%damping_gradient_file(i), myrank)
+        endif
+      endif
+    endif
+  enddo
 
   !-------------------------------------------------------------------------------------------------------
   ! Calculate parameters for calculating the data using the big (joint inversion) parallel sparse matrix.

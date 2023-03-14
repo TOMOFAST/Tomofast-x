@@ -35,7 +35,9 @@ module model_IO
   public :: model_read
   public :: read_model_grid
   public :: model_write
-  public :: model_read_bound_constraints
+
+  public :: read_bound_constraints
+  public :: read_damping_gradient_weights
 
   private :: model_write_voxels_format
   private :: model_write_paraview
@@ -184,9 +186,9 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
 end subroutine read_model_grid
 
 !==========================================================================================================
-! Read the local bound constraints (for ADMM).
+! Read the local bound constraints (for the ADMM).
 !==========================================================================================================
-subroutine model_read_bound_constraints(model, file_name, myrank, nbproc)
+subroutine read_bound_constraints(model, file_name, myrank, nbproc)
   class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank, nbproc
@@ -241,7 +243,47 @@ subroutine model_read_bound_constraints(model, file_name, myrank, nbproc)
 
   close(10)
 
-end subroutine model_read_bound_constraints
+end subroutine read_bound_constraints
+
+!==========================================================================================================
+! Read damping gradient local weights.
+!==========================================================================================================
+subroutine read_damping_gradient_weights(model, file_name, myrank)
+  class(t_model), intent(inout) :: model
+  character(len=*), intent(in) :: file_name
+  integer, intent(in) :: myrank
+
+  integer :: ierr, i, nelements_read
+  character(len=256) :: msg
+
+  if (myrank == 0) print *, 'Reading damping gradient weights from file ', trim(file_name)
+
+  open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
+  if (ierr /= 0) call exit_MPI("Error in opening the damping gradient weights file! path=" &
+                 //file_name//" iomsg="//msg, myrank, ierr)
+
+  read(10, *, iostat=ierr) nelements_read
+  if (ierr /= 0) call exit_MPI("Problem while reading the damping gradient weights file!", myrank, ierr)
+
+  ! Sanity check.
+  if (model%nelements_total /= nelements_read) &
+    call exit_MPI("The damping gradient weights are not correctly defined!"//new_line('a') &
+          //"nelements="//str(model%nelements)//new_line('a') &
+          //"nelements_read="//str(nelements_read)//new_line('a') &
+          //"nelements_total="//str(model%nelements_total), myrank, 0)
+
+  ! Reading.
+  do i = 1, model%nelements_total
+      read(10, *, iostat=ierr) &
+        model%damping_grad_weight(i, 1), model%damping_grad_weight(i, 2), model%damping_grad_weight(i, 3)
+
+      if (ierr /= 0) &
+        call exit_MPI("Problem with reading the damping gradient weights for pixel i = "//str(i), myrank, ierr)
+  enddo
+
+  close(10)
+
+end subroutine read_damping_gradient_weights
 
 !======================================================================================================
 ! Write the model snapshots for visualization.

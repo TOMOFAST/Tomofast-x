@@ -211,13 +211,6 @@ subroutine initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
     endif
   endif
 
-  if (ipar%beta(1) /= 0.d0 .or. ipar%beta(2) /= 0.d0) then
-    if (ipar%damp_grad_weight_type > 1) then
-      call exit_MPI("Local damping gradient weight is currently not available! "// &
-                    "Contact the code authors if you want to use it.", myrank, 0)
-    endif
-  endif
-
 end subroutine initialize_parameters
 
 !===================================================================================
@@ -338,6 +331,7 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   ipar%damp_grad_weight_type = 1 ! 1-global, 2-local
   ipar%beta(1) = 0.d0
   ipar%beta(2) = 0.d0
+  ipar%damping_gradient_file = "NILL"
 
   ! CROSS-GRADIENT constraints.
   ipar%cross_grad_weight = 0.d0
@@ -683,7 +677,6 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
         read(10, 1) ipar%max_weight_ADMM
         call print_arg(myrank, parname, ipar%max_weight_ADMM)
 
-
       ! DAMPING-GRADIENT constraints -------------------------------
 
       case("inversion.dampingGradient.weightType")
@@ -697,6 +690,14 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
       case("inversion.dampingGradient.magn.weight")
         read(10, 1) ipar%beta(2)
         call print_arg(myrank, parname, ipar%beta(2))
+
+      case("inversion.dampingGradient.grav.weightsFile")
+        call read_filename(10, ipar%damping_gradient_file(1))
+        call print_arg(myrank, parname, ipar%damping_gradient_file(1))
+
+      case("inversion.dampingGradient.magn.weightsFile")
+        call read_filename(10, ipar%damping_gradient_file(2))
+        call print_arg(myrank, parname, ipar%damping_gradient_file(2))
 
       ! CROSS-GRADIENT constraints ---------------------------------
 

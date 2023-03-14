@@ -46,9 +46,6 @@ module damping_gradient
     ! Cost.
     real(kind=CUSTOM_REAL) :: cost
 
-    ! Gradient weight per cell.
-    real(kind=CUSTOM_REAL), public, allocatable :: grad_weight(:)
-
   contains
     private
 
@@ -63,12 +60,10 @@ contains
 !=================================================================================================
 ! Initialization.
 !=================================================================================================
-subroutine damping_gradient_initialize(this, beta, problem_weight, nx, ny, nz, nelements, myrank)
+subroutine damping_gradient_initialize(this, beta, problem_weight, nx, ny, nz, nelements)
   class(t_damping_gradient), intent(inout) :: this
   real(kind=CUSTOM_REAL), intent(in) :: beta, problem_weight
   integer, intent(in) :: nx, ny, nz, nelements
-  integer, intent(in) :: myrank
-  integer :: ierr
 
   this%beta = beta
   this%problem_weight = problem_weight
@@ -79,13 +74,6 @@ subroutine damping_gradient_initialize(this, beta, problem_weight, nx, ny, nz, n
 
   this%nelements_total = nx * ny * nz
   this%cost = 0.d0
-
-  ierr = 0
-  if (.not. allocated(this%grad_weight)) &
-    allocate(this%grad_weight(this%nelements_total), source=1._CUSTOM_REAL, stat=ierr)
-
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in damping_gradient_initialize!", myrank, ierr)
-
 end subroutine damping_gradient_initialize
 
 !==================================================================================================
@@ -101,20 +89,19 @@ end function damping_gradient_get_cost
 
 !==================================================================================================================
 ! Adding gradient constraints to the matrix and right-hand-side.
-!
-! grad_weight(:) is an array of gradient weights, one per cell.
 !==================================================================================================================
-subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix, b_RHS, param_shift, direction, myrank, nbproc)
+subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix, nrows, &
+                                b_RHS, param_shift, direction, myrank, nbproc)
   class(t_damping_gradient), intent(inout) :: this
   type(t_model), intent(inout) :: model
-  real(kind=CUSTOM_REAL), intent(in) :: grad_weight(:)
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
-  integer, intent(in) :: param_shift
+  real(kind=CUSTOM_REAL), intent(in) :: local_weight(:)
+  integer, intent(in) :: param_shift, nrows
   integer, intent(in) :: direction
   integer, intent(in) :: myrank, nbproc
 
   type(t_sparse_matrix), intent(inout) :: matrix
-  real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(nrows)
 
   integer :: row_beg, row_end, nsmaller
   integer :: i, j, k, p
@@ -141,7 +128,6 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
     k = model%grid_full%k_(p)
 
     call matrix%new_row(myrank)
-
 
     gradient_fwd = get_grad(model%val_full(:, 1), model%grid_full, i, j, k, FWD_TYPE)
     !gradient_bwd = get_grad(model%val_full(:, 1), model%grid_full, i, j, k, BWD_TYPE)
@@ -201,14 +187,14 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
     do i = 1, 2
       if (ind(i) > nsmaller .and. ind(i) <= nsmaller + this%nelements) then
         ind(i) = ind(i) - nsmaller
-        val(i) = val(i) * this%problem_weight * this%beta * column_weight(ind(i)) * grad_weight(p)
+        val(i) = val(i) * this%problem_weight * this%beta * column_weight(ind(i)) * local_weight(p)
 
         call matrix%add(val(i), param_shift + ind(i), myrank)
       endif
     enddo
 
     ! Setting the right-hand side.
-    b_RHS(matrix%get_current_row_number()) = - this%problem_weight * this%beta * gradient_val * grad_weight(p)
+    b_RHS(matrix%get_current_row_number()) = - this%problem_weight * this%beta * gradient_val * local_weight(p)
   enddo
 
   ! Last matrix row (in the big matrix).
@@ -216,8 +202,6 @@ subroutine damping_gradient_add(this, model, grad_weight, column_weight, matrix,
 
   ! Calculate the cost.
   this%cost = sum(b_RHS(row_beg:row_end)**2)
-
-  !if (myrank == 0) print *, 'Damping_gradient added lines: ', row_end - row_beg + 1
 
 end subroutine damping_gradient_add
 

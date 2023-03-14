@@ -137,9 +137,11 @@ DAMPING-GRADIENT constraints
 https://doi.org/10.5194/se-10-193-2019
 ===================================================================================
 # 1-global, 2-local.
-inversion.dampingGradient.weightType     = 1
-inversion.dampingGradient.grav.weight    = 0.d0
-inversion.dampingGradient.magn.weight    = 0.d0
+inversion.dampingGradient.weightType       = 1
+inversion.dampingGradient.grav.weight      = 0.d0
+inversion.dampingGradient.magn.weight      = 0.d0
+inversion.dampingGradient.grav.weightsFile = None
+inversion.dampingGradient.magn.weightsFile = None
 
 ===================================================================================
 CROSS-GRADIENT constraints

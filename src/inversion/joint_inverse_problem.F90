@@ -374,20 +374,13 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
     endif
 
     if (this%add_damping_gradient(i)) then
-      if (myrank == 0) print *, 'adding damping_gradient with beta =', par%beta(i), ' weight type =', par%damp_grad_weight_type
+      if (myrank == 0) print *, 'adding damping_gradient with beta =', par%beta(i)
 
-      call damping_gradient%initialize(par%beta(i), par%problem_weight(i), par%nx, par%ny, par%nz, par%nelements, myrank)
-
-      if (par%damp_grad_weight_type > 1) then
-      ! Local damping gradient weight.
-        ! TODO case.
-      else
-        damping_gradient%grad_weight = 1.d0
-      endif
+      call damping_gradient%initialize(par%beta(i), par%problem_weight(i), par%nx, par%ny, par%nz, par%nelements)
 
       do j = 1, 3 ! j is direction (1 = x, 2 = y, 3 = z).
-        call damping_gradient%add(model(i), damping_gradient%grad_weight, arr(i)%column_weight, &
-                                  this%matrix, this%b_RHS, param_shift(i), j, myrank, nbproc)
+        call damping_gradient%add(model(i), arr(i)%column_weight, model(i)%damping_grad_weight(:, j), &
+                                  this%matrix, size(this%b_RHS), this%b_RHS, param_shift(i), j, myrank, nbproc)
 
         cost = damping_gradient%get_cost()
         this%damping_gradient_cost((i - 1) * 3 + j) = cost

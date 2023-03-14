@@ -58,6 +58,8 @@ module parameters_inversion
     integer :: damp_grad_weight_type
     ! Damping gradient global weight.
     real(kind=CUSTOM_REAL) :: beta(2)
+    ! File with local damping gradient weights.
+    character(len=256) :: damping_gradient_file(2)
 
     ! Stopping criterion.
     real(kind=CUSTOM_REAL) :: rmin
@@ -152,6 +154,7 @@ subroutine parameters_inversion_broadcast(this, myrank)
 
   call MPI_Bcast(this%damp_grad_weight_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%beta, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%damping_gradient_file, 512, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
 
   call MPI_Bcast(this%compression_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%wavelet_threshold, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)

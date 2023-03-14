@@ -44,11 +44,14 @@ module model
     ! (Read initial model here, write final model from here, and use also for cross-gradient.)
     real(kind=CUSTOM_REAL), allocatable :: val_full(:, :)
 
-    ! Data arrays for local ADMM constraints.
+    ! Data arrays for the ADMM constraints.
     integer :: nlithos
     real(kind=CUSTOM_REAL), allocatable :: min_local_bound(:, :)
     real(kind=CUSTOM_REAL), allocatable :: max_local_bound(:, :)
     real(kind=CUSTOM_REAL), allocatable :: local_bound_constraints_weight(:)
+
+    ! Local weights for damping gradient constraints, for every direction (X, Y, Z).
+    real(kind=CUSTOM_REAL), allocatable :: damping_grad_weight(:, :)
 
     ! Full grid.
     type(t_grid) :: grid_full
@@ -68,6 +71,7 @@ module model
 
     procedure, public, pass :: initialize => model_initialize
     procedure, public, pass :: allocate_bound_arrays => model_allocate_bound_arrays
+    procedure, public, pass :: allocate_damping_gradient_arrays => model_allocate_damping_gradient_arrays
 
     procedure, public, pass :: distribute => model_distribute
 
@@ -132,6 +136,23 @@ subroutine model_allocate_bound_arrays(this, nlithos, myrank)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_allocate_bound_arrays!", myrank, ierr)
 
 end subroutine model_allocate_bound_arrays
+
+!================================================================================================
+! Allocate damping gradient arrays.
+!================================================================================================
+subroutine model_allocate_damping_gradient_arrays(this, myrank)
+  class(t_model), intent(inout) :: this
+  integer, intent(in) :: myrank
+
+  integer :: ierr
+  ierr = 0
+
+  ! Note: allocate the full array as some local weights will be needed on other procs due to gradient involves several elements.
+  allocate(this%damping_grad_weight(this%nelements_total, 3), source=1._CUSTOM_REAL, stat=ierr)
+
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_allocate_damping_gradient_arrays!", myrank, ierr)
+
+end subroutine model_allocate_damping_gradient_arrays
 
 !=================================================================================
 ! Distribute the grid and the prior model among CPUs.
