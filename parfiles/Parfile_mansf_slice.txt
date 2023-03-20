@@ -52,7 +52,7 @@ inversion.startingModel.grav.value  = 0.d0
 ===================================================================================
 INVERSION parameters
 ===================================================================================
-inversion.nMajorIterations          = 50
+inversion.nMajorIterations          = 60
 inversion.nMinorIterations          = 100
 inversion.writeModelEveryNiter      = 0
 inversion.minResidual               = 1.d-13
@@ -60,7 +60,7 @@ inversion.minResidual               = 1.d-13
 ===================================================================================
 MODEL DAMPING (m - m_prior)
 ===================================================================================
-inversion.modelDamping.grav.weight  = 1.d-11
+inversion.modelDamping.grav.weight  = 0.d0
 inversion.modelDamping.normPower    = 2.0d0
 
 ===================================================================================
