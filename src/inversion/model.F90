@@ -260,7 +260,7 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
         call get_full_array(model_scaled(:, k), this%nelements, model_scaled_full, .true., myrank, nbproc)
 
         ! Compress the full model.
-        call Haar3D(model_scaled_full, this%grid_full%nx, this%grid_full%ny, this%grid_full%nz)
+        call forward_wavelet(model_scaled_full, this%grid_full%nx, this%grid_full%ny, this%grid_full%nz, compression_type)
 
         ! Extract the local model part.
         model_scaled(:, k) = model_scaled_full(nsmaller + 1 : nsmaller + this%nelements)
@@ -270,7 +270,7 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
     else
     ! Serial version.
       do k = 1, this%ncomponents
-        call Haar3D(model_scaled(:, k), this%grid_full%nx, this%grid_full%ny, this%grid_full%nz)
+        call forward_wavelet(model_scaled(:, k), this%grid_full%nx, this%grid_full%ny, this%grid_full%nz, compression_type)
       enddo
     endif
   endif

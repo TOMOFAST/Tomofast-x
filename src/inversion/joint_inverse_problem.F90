@@ -516,7 +516,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
 
           do k = 1, par%nmodel_components
             call get_full_array(delta_model(:, k, i), par%nelements, model(i)%val_full(:, k), .true., myrank, nbproc)
-            call iHaar3D(model(i)%val_full(:, k), par%nx, par%ny, par%nz)
+            call inverse_wavelet(model(i)%val_full(:, k), par%nx, par%ny, par%nz, par%compression_type)
 
             ! Extract the local model update.
             delta_model(:, k, i) = model(i)%val_full(nsmaller + 1 : nsmaller + par%nelements, k)
@@ -527,8 +527,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
     else
     ! Serial version.
       do k = 1, par%nmodel_components
-        if (SOLVE_PROBLEM(1)) call iHaar3D(delta_model(:, k, 1), par%nx, par%ny, par%nz)
-        if (SOLVE_PROBLEM(2)) call iHaar3D(delta_model(:, k, 2), par%nx, par%ny, par%nz)
+        if (SOLVE_PROBLEM(1)) call inverse_wavelet(delta_model(:, k, 1), par%nx, par%ny, par%nz, par%compression_type)
+        if (SOLVE_PROBLEM(2)) call inverse_wavelet(delta_model(:, k, 2), par%nx, par%ny, par%nz, par%compression_type)
       enddo
     endif
   endif
@@ -582,13 +582,13 @@ subroutine write_variance(par, lsqr_var, column_weight, problem_type, ncalls, my
     if (nbproc > 1) then
       ! Gather full (parallel) vector on the master.
       call get_full_array(lsqr_var, par%nelements, lsqr_var_full, .true., myrank, nbproc)
-      call iHaar3D(lsqr_var_full, par%nx, par%ny, par%nz)
+      call inverse_wavelet(lsqr_var_full, par%nx, par%ny, par%nz, par%compression_type)
 
       nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
       lsqr_var_scaled = lsqr_var_full(nsmaller + 1 : nsmaller + par%nelements)
     else
       lsqr_var_scaled = lsqr_var
-      call iHaar3D(lsqr_var_scaled, par%nx, par%ny, par%nz)
+      call inverse_wavelet(lsqr_var_scaled, par%nx, par%ny, par%nz, par%compression_type)
     endif
   else
     lsqr_var_scaled = lsqr_var

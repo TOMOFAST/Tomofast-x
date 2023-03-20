@@ -143,7 +143,7 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
       call get_full_array(model_diff, this%nelements, model_diff_full, .true., myrank, nbproc)
 
       ! Transform to wavelet domain.
-      call Haar3D(model_diff_full, this%nx, this%ny, this%nz)
+      call forward_wavelet(model_diff_full, this%nx, this%ny, this%nz, this%compression_type)
 
       ! Extract the local model part.
       model_diff = model_diff_full(nsmaller + 1 : nsmaller + this%nelements)
@@ -153,7 +153,7 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
     else
     ! Serial version.
       ! Transform to wavelet domain.
-      call Haar3D(model_diff, this%nx, this%ny, this%nz)
+      call forward_wavelet(model_diff, this%nx, this%ny, this%nz, this%compression_type)
     endif
 
     if (this%norm_power /= 2.d0) then

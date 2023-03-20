@@ -253,7 +253,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
           cost_full_loc = cost_full_loc + sum(sensit_line_full(:, k, d)**2)
 
           ! Apply the wavelet transform.
-          call Haar3D(sensit_line_full(:, k, d), par%nx, par%ny, par%nz)
+          call forward_wavelet(sensit_line_full(:, k, d), par%nx, par%ny, par%nz, par%compression_type)
 
           ! Perform sorting (to determine the wavelet threshold corresponding to the desired compression rate).
           sensit_line_sorted = abs(sensit_line_full(:, k, d))

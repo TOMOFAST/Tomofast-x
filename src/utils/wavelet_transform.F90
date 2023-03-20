@@ -20,6 +20,9 @@ module wavelet_transform
 
   private
 
+  public :: forward_wavelet
+  public :: inverse_wavelet
+
   public :: Haar3D
   public :: iHaar3D
 
@@ -29,12 +32,49 @@ module wavelet_transform
 contains
 
 !=====================================================================================================
+! Forward wavelet transform.
+!=====================================================================================================
+subroutine forward_wavelet(s, n1, n2, n3, wavelet_type)
+  integer, intent(in) :: n1, n2, n3, wavelet_type
+  real(kind=CUSTOM_REAL), intent(inout) :: s(n1, n2, n3)
+
+  select case(wavelet_type)
+    case(1)
+      call Haar3D(s, n1, n2, n3)
+    case(2)
+      call DaubD43D(s, n1, n2, n3)
+    case default
+      print *, 'Unknown wavelet type!'
+      stop
+  end select
+
+end subroutine forward_wavelet
+
+!=====================================================================================================
+! Inverse wavelet transform.
+!=====================================================================================================
+subroutine inverse_wavelet(s, n1, n2, n3, wavelet_type)
+  integer, intent(in) :: n1, n2, n3, wavelet_type
+  real(kind=CUSTOM_REAL), intent(inout) :: s(n1, n2, n3)
+
+  select case(wavelet_type)
+    case(1)
+      call iHaar3D(s, n1, n2, n3)
+    case(2)
+      call iDaubD43D(s, n1, n2, n3)
+    case default
+      print *, 'Unknown wavelet type!'
+      stop
+  end select
+
+end subroutine inverse_wavelet
+
+!=====================================================================================================
 ! Haar wavelet transform adapted from code by Sebastien Chevrot.
 !=====================================================================================================
-subroutine Haar3D(s,n1,n2,n3)
-
-  integer, intent(in) :: n1,n2,n3
-  real(kind=CUSTOM_REAL), intent(inout) :: s(n1,n2,n3)
+subroutine Haar3D(s, n1, n2, n3)
+  integer, intent(in) :: n1, n2, n3
+  real(kind=CUSTOM_REAL), intent(inout) :: s(n1, n2, n3)
 
   integer :: i,i1,i2,i3,ic,L,il,ig,ngmin,ngmax
   integer :: istep,step_incr,step2,nscale,ng
@@ -112,10 +152,9 @@ end subroutine Haar3D
 !=====================================================================================================
 ! Inverse Haar transform adapted from code by Sebastien Chevrot.
 !=====================================================================================================
-subroutine iHaar3D(s,n1,n2,n3)
-
-  integer, intent(in) :: n1,n2,n3
-  real(kind=CUSTOM_REAL), intent(inout) :: s(n1,n2,n3)
+subroutine iHaar3D(s, n1, n2, n3)
+  integer, intent(in) :: n1, n2, n3
+  real(kind=CUSTOM_REAL), intent(inout) :: s(n1, n2, n3)
 
   integer :: i,i1,i2,i3,ic,L,il,ig,ngmin,ngmax
   integer :: istep,step_incr,step2,nscale,ng
@@ -191,13 +230,12 @@ subroutine iHaar3D(s,n1,n2,n3)
 end subroutine iHaar3D
 
 !=====================================================================================================
-! Daubechies D4 transform from algorithm found at
+! Daubechies D4 transform from algorithm by Ian Kaplan (2001) found at
 ! http://www.bearcave.com/misl/misl_tech/wavelets/daubechies/index.html
 !=====================================================================================================
-subroutine DaubD43D(s,n1,n2,n3)
-
-  integer, intent(in) :: n1,n2,n3
-  real(kind=CUSTOM_REAL), intent(inout) :: s(n1,n2,n3)
+subroutine DaubD43D(s, n1, n2, n3)
+  integer, intent(in) :: n1, n2, n3
+  real(kind=CUSTOM_REAL), intent(inout) :: s(n1, n2, n3)
 
   integer :: i,i1,i2,i3,ic,L,il,ig,ngmin,ngmax,ilmax
   integer :: istep,step_incr,step2,nscale,ng
@@ -321,13 +359,12 @@ subroutine DaubD43D(s,n1,n2,n3)
 end subroutine DaubD43D
 
 !=====================================================================================================
-! Inverse Daubechies D4 transform from algorithm found at
+! Inverse Daubechies D4 transform from algorithm by Ian Kaplan (2001) found at
 ! http://www.bearcave.com/misl/misl_tech/wavelets/daubechies/index.html
 !=====================================================================================================
-subroutine iDaubD43D(s,n1,n2,n3)
-
-  integer, intent(in) :: n1,n2,n3
-  real(kind=CUSTOM_REAL), intent(inout) :: s(n1,n2,n3)
+subroutine iDaubD43D(s, n1, n2, n3)
+  integer, intent(in) :: n1, n2, n3
+  real(kind=CUSTOM_REAL), intent(inout) :: s(n1, n2, n3)
 
   integer :: i,i1,i2,i3,ic,L,il,ig,ngmin,ngmax,ilmax
   integer :: istep,step_incr,step2,nscale,ng
