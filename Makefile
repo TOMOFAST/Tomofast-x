@@ -141,7 +141,6 @@ lsqr_solver2.F90 \
 damping.F90 \
 gradient.F90 \
 cross_gradient.F90 \
-method_of_weights.F90 \
 admm_method.F90 \
 clustering.F90 \
 damping_gradient.F90 \
@@ -168,7 +167,6 @@ SRC_LIST_TESTS = \
 tests_inversion.f90 \
 tests_lsqr.f90 \
 tests_parallel_tools.f90 \
-tests_method_of_weights.f90 \
 tests_sparse_matrix.f90 \
 tests_wavelet_compression.f90 \
 unit_tests.f90

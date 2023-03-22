@@ -86,9 +86,6 @@ module parameters_inversion
     ! Contribution of the cross-gradient to the cost function.
     real(kind=CUSTOM_REAL) :: cross_grad_weight
 
-    ! The number of iterations in the method of weights (equality-constrained LSQR).
-    integer :: method_of_weights_niter
-
     ! The type of derivative use for cross-gradients discretization:
     ! 1 - forward, 2 - central.
     integer :: derivative_type
@@ -165,7 +162,6 @@ subroutine parameters_inversion_broadcast(this, myrank)
 
   ! Cross-gradient parameters.
   call MPI_Bcast(this%cross_grad_weight, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%method_of_weights_niter, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%derivative_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
   ! Clustering parameters.

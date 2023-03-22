@@ -32,7 +32,6 @@ module joint_inverse_problem
   use lsqr_solver
   use damping
   use model
-  use method_of_weights
   use admm_method
   use clustering
   use damping_gradient
@@ -307,7 +306,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
 
   type(t_damping) :: damping
   type(t_damping_gradient) :: damping_gradient
-  type(t_parameters_lsqr) :: par_lsqr
   integer :: i, j, k
   integer :: line_start(2), line_end(2), param_shift(2)
   integer :: damping_param_shift
@@ -469,23 +467,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
                     this%matrix, this%b_RHS, delta_model, myrank)
   else
     call exit_MPI("Unknown solver type!", myrank, 0)
-  endif
-
-  ! ***** Method of weights *****
-
-  if (par%method_of_weights_niter > 0) then
-    if (norm2(this%d_RHS) /= 0._CUSTOM_REAL) then
-    ! If cross gradient is not zero everywhere.
-
-      par_lsqr%niter = par%niter
-      par_lsqr%gamma = par%gamma
-      par_lsqr%rmin = par%rmin
-
-      ! Applying method of weights.
-      call apply_method_of_weights(par_lsqr, par%method_of_weights_niter, this%matrix, this%matrix_B, &
-                                   this%matrix%get_ncolumns(), this%matrix%get_total_row_number(), &
-                                   delta_model, this%b_RHS, this%d_RHS, par%cross_grad_weight, 3, myrank)
-    endif
   endif
 
   !-------------------------------------------------------------------------------------

@@ -335,8 +335,7 @@ subroutine set_default_parameters(gpar, mpar, ipar)
 
   ! CROSS-GRADIENT constraints.
   ipar%cross_grad_weight = 0.d0
-  ipar%method_of_weights_niter = 0
-  ipar%derivative_type = 1 ! 1-fwd, 2-cent, 3-mixed
+  ipar%derivative_type = 1 ! 1-fwd, 2-cent
 
   ! CLUSTERING constraints.
   ipar%clustering_weight_glob(1) = 0.d0
@@ -704,10 +703,6 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
       case("inversion.crossGradient.weight")
         read(10, 1) ipar%cross_grad_weight
         call print_arg(myrank, parname, ipar%cross_grad_weight)
-
-      case("inversion.crossGradient.nIterMethodOfWeight")
-        read(10, 2) ipar%method_of_weights_niter
-        call print_arg(myrank, parname, ipar%method_of_weights_niter)
 
       case("inversion.crossGradient.derivativeType")
         read(10, 2) ipar%derivative_type
