@@ -40,6 +40,7 @@ contains
 !================================================================================
 ! LSQR solver for a sparse matrix.
 ! Solve min||Ax - b||, where A is stored in sparse format in 'matrix' variable.
+! u = b
 !
 ! nlines - number of matrix rows.
 ! nelements - local (at current CPU) number of parameters.
@@ -47,14 +48,15 @@ contains
 ! rmin - stopping criterion (relative residual).
 ! gamma - soft thresholding parameter (see ISTA, proximate L1 norm). Use gamma=0 for pure L2 norm.
 !================================================================================
-subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myrank)
+subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, u, x, myrank)
   integer, intent(in) :: nlines, nelements, niter
   real(kind=CUSTOM_REAL), intent(in) :: rmin, gamma
-  real(kind=CUSTOM_REAL), intent(in) :: b(nlines)
   integer, intent(in) :: myrank
 
   type(t_sparse_matrix), intent(inout) :: matrix
   real(kind=CUSTOM_REAL), intent(inout) :: x(nelements)
+  ! Use the right-hand side for solver calculations to avoid memory allocation.
+  real(kind=CUSTOM_REAL), intent(inout) :: u(nlines)
 
   ! Local variables.
   integer :: iter, ierr
@@ -64,7 +66,7 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
   ! Flag for calculating variance.
   logical :: calculateVariance
 
-  real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w, u
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w
 
   if (myrank == 0) print *, 'Entered subroutine lsqr_solve, gamma =', gamma
 
@@ -84,7 +86,6 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
   endif
 
   ! Allocate memory.
-  allocate(u(nlines))
   allocate(v(nelements))
   allocate(w(nelements))
 
@@ -92,13 +93,10 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
   x = 0._CUSTOM_REAL
 
   ! Right-hand side check.
-  if (norm2(b) == 0.d0) then
+  if (norm2(u) == 0.d0) then
     if (myrank == 0) print *, "WARNING: |b| = 0, the model is exact!"
     return
   end if
-
-  ! Initialization.
-  u = b
 
   ! Normalize u and initialize beta.
   call normalize(nlines, u, beta, .false., ierr)
@@ -197,13 +195,6 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
     ! Soft thresholding.
       call apply_soft_thresholding(x, nelements, gamma)
 
-      ! Calculate the residual for thresholded solution.
-      !call matrix%mult_vector(x, Hv)
-      !call MPI_Allreduce(MPI_IN_PLACE, Hv, nlines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-
-      ! Norm of the relative residual.
-      !r = norm2(Hv - b) / b1
-
       ! Approximate residual.
       r = phibar / b1
     else
@@ -242,7 +233,6 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
 
   if (myrank == 0) print *, 'End of subroutine lsqr_solve, r =', r, ' iter =', iter - 1
 
-  deallocate(u)
   deallocate(v)
   deallocate(w)
 
