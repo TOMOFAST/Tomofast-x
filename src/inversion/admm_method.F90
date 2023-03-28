@@ -69,11 +69,12 @@ end subroutine admm_method_initialize
 !===========================================================================================
 ! Calculating the main ADMM arrays needed to add the ADMM constraints.
 !===========================================================================================
-subroutine admm_method_iterate_admm_arrays(this, nlithos, xmin, xmax, x, x0, myrank)
+subroutine admm_method_iterate_admm_arrays(this, nlithos, xmin, xmax, litho_weights, x, x0, myrank)
   class(t_admm_method), intent(inout) :: this
   integer, intent(in) :: nlithos
   real(kind=CUSTOM_REAL), intent(in) :: xmin(nlithos, this%nelements)
   real(kind=CUSTOM_REAL), intent(in) :: xmax(nlithos, this%nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: litho_weights(nlithos, this%nelements)
   real(kind=CUSTOM_REAL), intent(in) :: x(this%nelements)
   integer, intent(in) :: myrank
 
@@ -115,13 +116,13 @@ subroutine admm_method_iterate_admm_arrays(this, nlithos, xmin, xmax, x, x0, myr
     ! The value lies outside boundaries, so finding the closest boundary.
       mindist = 1.d30
       do j = 1, nlithos
-        val = dabs(xmin(j, i) - arg)
+        val = dabs(xmin(j, i) - arg) * litho_weights(j, i)
         if (val < mindist) then
           mindist = val
           closest_boundary = xmin(j, i)
         endif
 
-        val = dabs(xmax(j, i) - arg)
+        val = dabs(xmax(j, i) - arg) * litho_weights(j, i)
         if (val < mindist) then
           mindist = val
           closest_boundary = xmax(j, i)

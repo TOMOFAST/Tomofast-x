@@ -49,6 +49,7 @@ module model
     real(kind=CUSTOM_REAL), allocatable :: min_local_bound(:, :)
     real(kind=CUSTOM_REAL), allocatable :: max_local_bound(:, :)
     real(kind=CUSTOM_REAL), allocatable :: local_bound_constraints_weight(:)
+    real(kind=CUSTOM_REAL), allocatable :: admm_litho_weights(:, :)
 
     ! Local weights for damping gradient constraints, for every direction (X, Y, Z).
     real(kind=CUSTOM_REAL), allocatable :: damping_grad_weight(:, :)
@@ -132,6 +133,7 @@ subroutine model_allocate_bound_arrays(this, nlithos, myrank)
   allocate(this%min_local_bound(this%nlithos, this%nelements), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%max_local_bound(this%nlithos, this%nelements), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%local_bound_constraints_weight(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%admm_litho_weights(this%nlithos, this%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_allocate_bound_arrays!", myrank, ierr)
 
