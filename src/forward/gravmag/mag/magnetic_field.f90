@@ -136,10 +136,21 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
           my = sum(ty * this%magv)
           mz = sum(tz * this%magv)
 
-          sensit_line(i, 1, 1) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
+          if (ndata_components == 1) then
+            sensit_line(i, 1, 1) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
+
+          else if (ndata_components == 3) then
+            sensit_line(i, 1, 1) = mx
+            sensit_line(i, 1, 2) = my
+            sensit_line(i, 1, 3) = mz
+
+          else
+            print *, "Wrong number of data components in magnetic_field_magprism!"
+            stop
+          endif
 
         else if (nmodel_components == 3) then
-        ! Magnetisation model (Mx, My, Mz) - calculating three sensitivity kernels.
+        ! Magnetisation model (Mx, My, Mz).
 
           if (ndata_components == 1) then
             do k = 1, 3
