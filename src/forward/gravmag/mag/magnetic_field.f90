@@ -127,7 +127,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
                            real(grid%X2(i), SENSIT_REAL), &
                            real(grid%Y2(i), SENSIT_REAL), &
                            real(grid%Z2(i), SENSIT_REAL), &
-                           ty, tx, tz)
+                           tx, ty, tz)
 
         if (nmodel_components == 1) then
         ! Susceptibility model.
@@ -206,7 +206,7 @@ end subroutine magnetic_field_magprism
 !   tz = [tzx tzy tzz]
 !   components of the magnetic tensor
 !===================================================================================
-subroutine sharmbox(y0, x0, z0, y1, x1, z1, y2, x2, z2, ts_y, ts_x, ts_z)
+subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
     real(kind=SENSIT_REAL), intent(in) :: x0, y0, z0, x1, y1, z1, x2, y2, z2
 
     real(kind=SENSIT_REAL), intent(out) :: ts_x(3), ts_y(3), ts_z(3)
