@@ -355,60 +355,60 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
 end subroutine sharmbox
 
 !================================================================================
-subroutine guobox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
-  real(kind=SENSIT_REAL), intent(in) :: x0, y0, z0, x1, y1, z1, x2, y2, z2
+subroutine guobox(x, y, z, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
+  real(kind=SENSIT_REAL), intent(in) :: x, y, z, x1, y1, z1, x2, y2, z2
 
   real(kind=SENSIT_REAL), intent(out) :: ts_x(3), ts_y(3), ts_z(3)
 
-  real(kind=SENSIT_REAL) :: x(2), y(2), z(2)
-  real(kind=SENSIT_REAL) :: sx, sy, sz
+  real(kind=SENSIT_REAL) :: sx(2), sy(2), sz(2)
   real(kind=SENSIT_REAL) :: R
-  integer :: i, j, k
   real(kind=SENSIT_REAL) :: ss(2), s
+  real(kind=SENSIT_REAL) :: four_pi
+  integer :: i, j, k
 
-  x(1) = x1
-  x(2) = x2
+  ! Ranges of the source point in cuboid.
+  sx(1) = x1
+  sx(2) = x2
 
-  y(1) = y1
-  y(2) = y2
+  sy(1) = y1
+  sy(2) = y2
 
-  z(1) = z1
-  z(2) = z2
+  sz(1) = z1
+  sz(2) = z2
 
-  ! Source point in cuboid.
-  sx = 0.5 * (x1 + x2)
-  sy = 0.5 * (y1 + y2)
-  sz = 0.5 * (z1 + z2)
+  ts_x = 0._SENSIT_REAL
+  ts_y = 0._SENSIT_REAL
+  ts_z = 0._SENSIT_REAL
 
-  R = sqrt((x0 - sx)**2 + (y0 - sy)**2 + (z0 - sz)**2)
+  ss(1) = -1._SENSIT_REAL
+  ss(2) = 1._SENSIT_REAL
 
-  ts_x = 0.d0
-  ts_y = 0.d0
-  ts_z = 0.d0
-
-  ss(1) = -1.d0
-  ss(2) = 1.d0
-
+  ! Calculate the integral.
   do i = 1, 2
     do j = 1, 2
       do k = 1, 2
         ! Sign of the integral component.
         s = ss(i) * ss(j) * ss(k)
 
-        ts_x(1) = ts_x(1) - s * atan2((sx - x(i)) * (sy - y(j)), (sx - x(i))**2 + R * (sz - z(k)) + (sz - z(k))**2)
-        ts_x(2) = ts_x(2) + s * log(sz - z(k) + R)
-        ts_x(3) = ts_x(3) + s * log(sy - y(j) + R)
+        R = sqrt((x - sx(i))**2 + (y - sy(j))**2 + (z - sz(k))**2)
 
-        ts_y(1) = ts_y(1) + s * log(sz - z(k) + R)
-        ts_y(2) = ts_y(2) - s * atan2((sx - x(i)) * (sy - y(j)), (sy - y(j))**2 + R * (sz - z(k)) + (sz - z(k))**2)
-        ts_y(3) = ts_y(3) + s * log(sx - x(i) + R)
+        ts_x(1) = ts_x(1) - s * atan2((sx(i) - x) * (sy(j) - y), (sx(i) - x)**2 + R * (sz(k) - z) + (sz(k) - z)**2)
+        ts_x(2) = ts_x(2) + s * log(sz(k) - z + R)
+        ts_x(3) = ts_x(3) + s * log(sy(j) - y + R)
 
-        ts_z(1) = ts_z(1) + s * log(sy - y(j) + R)
-        ts_z(2) = ts_z(2) + s * log(sx - x(i) + R)
-        ts_z(3) = ts_z(3) - s * atan2((sx - x(i)) * (sy - y(j)), R * (sz - z(k)))
+        ts_y(2) = ts_y(2) - s * atan2((sx(i) - x) * (sy(j) - y), (sy(j) - y)**2 + R * (sz(k) - z) + (sz(k) - z)**2)
+        ts_y(3) = ts_y(3) + s * log(sx(i) - x + R)
+
+        ts_z(3) = ts_z(3) - s * atan2((sx(i) - x) * (sy(j) - y), R * (sz(k) - z))
       enddo
     enddo
   enddo
+
+  ! Filling the symmetric components.
+  ts_y(1) = ts_x(2)
+  ts_z(1) = ts_x(3)
+  ts_z(2) = ts_y(3)
+
 end subroutine guobox
 
 end module magnetic_field
