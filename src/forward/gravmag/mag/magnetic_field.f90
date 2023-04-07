@@ -404,6 +404,10 @@ subroutine guobox(x, y, z, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
     enddo
   enddo
 
+  ! Fixing the total trace to make it zero, and to align the expression with Guo et al (2004).
+  ts_x(1) = - ts_x(1)
+  ts_y(2) = - ts_y(2)
+
   ! Filling the symmetric components.
   ts_y(1) = ts_x(2)
   ts_z(1) = ts_x(3)
