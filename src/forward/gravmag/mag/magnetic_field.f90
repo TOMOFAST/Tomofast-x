@@ -364,6 +364,7 @@ subroutine guobox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
   real(kind=SENSIT_REAL) :: sx, sy, sz
   real(kind=SENSIT_REAL) :: R
   integer :: i, j, k
+  real(kind=SENSIT_REAL) :: ss(2), s
 
   x(1) = x1
   x(2) = x2
@@ -385,20 +386,26 @@ subroutine guobox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
   ts_y = 0.d0
   ts_z = 0.d0
 
+  ss(1) = -1.d0
+  ss(2) = 1.d0
+
   do i = 1, 2
     do j = 1, 2
       do k = 1, 2
-        ts_x(1) = ts_x(1) - atan2((sx - x(i)) * (sy - y(j)), (sx - x(i))**2 + R * (sz - z(k)) + (sz - z(k))**2)
-        ts_x(2) = ts_x(2) + log(sz - z(k) + R)
-        ts_x(3) = ts_x(3) + log(sy - y(j) + R)
+        ! Sign of the integral component.
+        s = ss(i) * ss(j) * ss(k)
 
-        ts_y(1) = ts_y(1) + log(sz - z(k) + R)
-        ts_y(2) = ts_y(2) - atan2((sx - x(i)) * (sy - y(j)), (sy - y(j))**2 + R * (sz - z(k)) + (sz - z(k))**2)
-        ts_y(3) = ts_y(3) + log(sx - x(i) + R)
+        ts_x(1) = ts_x(1) - s * atan2((sx - x(i)) * (sy - y(j)), (sx - x(i))**2 + R * (sz - z(k)) + (sz - z(k))**2)
+        ts_x(2) = ts_x(2) + s * log(sz - z(k) + R)
+        ts_x(3) = ts_x(3) + s * log(sy - y(j) + R)
 
-        ts_z(1) = ts_z(1) + log(sy - y(j) + R)
-        ts_z(2) = ts_z(2) + log(sx - x(i) + R)
-        ts_z(3) = ts_z(3) - atan2((sx - x(i)) * (sy - y(j)), R * (sz - z(k)))
+        ts_y(1) = ts_y(1) + s * log(sz - z(k) + R)
+        ts_y(2) = ts_y(2) - s * atan2((sx - x(i)) * (sy - y(j)), (sy - y(j))**2 + R * (sz - z(k)) + (sz - z(k))**2)
+        ts_y(3) = ts_y(3) + s * log(sx - x(i) + R)
+
+        ts_z(1) = ts_z(1) + s * log(sy - y(j) + R)
+        ts_z(2) = ts_z(2) + s * log(sx - x(i) + R)
+        ts_z(3) = ts_z(3) - s * atan2((sx - x(i)) * (sy - y(j)), R * (sz - z(k)))
       enddo
     enddo
   enddo
