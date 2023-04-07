@@ -47,6 +47,8 @@ module magnetic_field
       procedure, private, nopass  :: sharmbox
       procedure, private, nopass  :: dircos
 
+      procedure, private, nopass  :: guobox
+
     end type t_magnetic_field
 
 contains
@@ -118,7 +120,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
 
     do i = 1, nelements
         ! Calculate the magnetic tensor.
-        call this%sharmbox(real(Xdata, SENSIT_REAL), &
+        call this%guobox(real(Xdata, SENSIT_REAL), &
                            real(Ydata, SENSIT_REAL), &
                            real(Zdata, SENSIT_REAL), &
                            real(grid%X1(i), SENSIT_REAL), &
@@ -351,5 +353,55 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
     ts_z(1) = ts_x(3)
 
 end subroutine sharmbox
+
+!================================================================================
+subroutine guobox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
+  real(kind=SENSIT_REAL), intent(in) :: x0, y0, z0, x1, y1, z1, x2, y2, z2
+
+  real(kind=SENSIT_REAL), intent(out) :: ts_x(3), ts_y(3), ts_z(3)
+
+  real(kind=SENSIT_REAL) :: x(2), y(2), z(2)
+  real(kind=SENSIT_REAL) :: sx, sy, sz
+  real(kind=SENSIT_REAL) :: R
+  integer :: i, j, k
+
+  x(1) = x1
+  x(2) = x2
+
+  y(1) = y1
+  y(2) = y2
+
+  z(1) = z1
+  z(2) = z2
+
+  ! Source point in cuboid.
+  sx = 0.5 * (x1 + x2)
+  sy = 0.5 * (y1 + y2)
+  sz = 0.5 * (z1 + z2)
+
+  R = sqrt((x0 - sx)**2 + (y0 - sy)**2 + (z0 - sz)**2)
+
+  ts_x = 0.d0
+  ts_y = 0.d0
+  ts_z = 0.d0
+
+  do i = 1, 2
+    do j = 1, 2
+      do k = 1, 2
+        ts_x(1) = ts_x(1) - atan2((sx - x(i)) * (sy - y(j)), (sx - x(i))**2 + R * (sz - z(k)) + (sz - z(k))**2)
+        ts_x(2) = ts_x(2) + log(sz - z(k) + R)
+        ts_x(3) = ts_x(3) + log(sy - y(j) + R)
+
+        ts_y(1) = ts_y(1) + log(sz - z(k) + R)
+        ts_y(2) = ts_y(2) - atan2((sx - x(i)) * (sy - y(j)), (sy - y(j))**2 + R * (sz - z(k)) + (sz - z(k))**2)
+        ts_y(3) = ts_y(3) + log(sx - x(i) + R)
+
+        ts_z(1) = ts_z(1) + log(sy - y(j) + R)
+        ts_z(2) = ts_z(2) + log(sx - x(i) + R)
+        ts_z(3) = ts_z(3) - atan2((sx - x(i)) * (sy - y(j)), R * (sz - z(k)))
+      enddo
+    enddo
+  enddo
+end subroutine guobox
 
 end module magnetic_field
