@@ -600,6 +600,11 @@ subroutine mbox2(x, y, z, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
     ts_z(3) = -1 * (ts_x(1) + ts_y(2)) ! gauss
   endif
 
+  ! Flip the sign.
+  ts_x = - ts_x
+  ts_y = - ts_y
+  ts_z = - ts_z
+
 end subroutine mbox2
 
 end module magnetic_field
