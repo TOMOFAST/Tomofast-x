@@ -48,6 +48,7 @@ module magnetic_field
       procedure, private, nopass  :: dircos
 
       procedure, private, nopass  :: guobox
+      procedure, private, nopass  :: mbox2
 
     end type t_magnetic_field
 
@@ -120,7 +121,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
 
     do i = 1, nelements
         ! Calculate the magnetic tensor.
-        call this%guobox(real(Xdata, SENSIT_REAL), &
+        call this%mbox2(real(Xdata, SENSIT_REAL), &
                            real(Ydata, SENSIT_REAL), &
                            real(Zdata, SENSIT_REAL), &
                            real(grid%X1(i), SENSIT_REAL), &
@@ -414,5 +415,191 @@ subroutine guobox(x, y, z, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
   ts_z(2) = ts_y(3)
 
 end subroutine guobox
+
+!================================================================================
+subroutine mbox2(x, y, z, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
+  real(kind=SENSIT_REAL), intent(in) :: x, y, z, x1, y1, z1, x2, y2, z2
+
+  real(kind=SENSIT_REAL), intent(out) :: ts_x(3), ts_y(3), ts_z(3)
+
+  real(kind=SENSIT_REAL) :: dx1, dx2, dy1, dy2, dz1, dz2
+  real(kind=SENSIT_REAL) :: dx1dx1, dx2dx2, dy1dy1, dy2dy2, dz1dz1, dz2dz2
+  real(kind=SENSIT_REAL) :: R1_, R2_, R3_, R4_
+  real(kind=SENSIT_REAL) :: r1, r2, r3, r4, r5, r6, r7, r8
+  real(kind=SENSIT_REAL) :: arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10
+  real(kind=SENSIT_REAL) :: arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18, arg19, arg20
+  real(kind=SENSIT_REAL) :: arg21, arg22, arg23, arg24, arg25, arg26, arg27, arg28, arg29, arg30
+  real(kind=SENSIT_REAL) :: arg31, arg32, arg33, arg34, arg35, arg36, arg37, arg38, arg39, arg40
+  real(kind=SENSIT_REAL) :: arg1_, arg6_, arg11_, arg16_, arg21_, arg26_, arg31_, arg36_
+  real(kind=SENSIT_REAL) :: tol1
+  real(kind=SENSIT_REAL) :: four_pi
+  logical :: l_inside
+
+  four_pi = 4 * 3.1415926535897932385_SENSIT_REAL
+
+  ! Tolerance for numerical stability over nodes and edges.
+  tol1 = 1.e-10
+
+  ! Relative coordinates to obs.
+  dx1 = x1 - x
+  dx2 = x2 - x
+
+  dy1 = y1 - y
+  dy2 = y2 - y
+
+  dz1 = z1 - z
+  dz2 = z2 - z
+
+  ! Squared difference.
+  dx2dx2 = dx2**2
+  dx1dx1 = dx1**2
+
+  dy2dy2 = dy2**2
+  dy1dy1 = dy1**2
+
+  dz2dz2 = dz2**2
+  dz1dz1 = dz1**2
+
+  ! The 2D radius component squared of corner nodes.
+  R1_ = dy2dy2 + dx2dx2
+  R2_ = dy2dy2 + dx1dx1
+  R3_ = dy1dy1 + dx2dx2
+  R4_ = dy1dy1 + dx1dx1
+
+  ! Radius to each cell node
+  r1 = sqrt(dz2dz2 + R2_)
+  r2 = sqrt(dz2dz2 + R1_)
+  r3 = sqrt(dz1dz1 + R1_)
+  r4 = sqrt(dz1dz1 + R2_)
+  r5 = sqrt(dz2dz2 + R3_)
+  r6 = sqrt(dz2dz2 + R4_)
+  r7 = sqrt(dz1dz1 + R4_)
+  r8 = sqrt(dz1dz1 + R3_)
+
+  ! Argument calculations.
+  arg1_ = dx1 + dy2 + r1
+  arg1 = dy2 + dz2 + r1
+  arg2 = dx1 + dz2 + r1
+  arg3 = dx1 + r1
+  arg4 = dy2 + r1
+  arg5 = dz2 + r1
+
+  arg6_ = dx2 + dy2 + r2
+  arg6 = dy2 + dz2 + r2
+  arg7 = dx2 + dz2 + r2
+  arg8 = dx2 + r2
+  arg9 = dy2 + r2
+  arg10 = dz2 + r2
+
+  arg11_ = dx2 + dy2 + r3
+  arg11 = dy2 + dz1 + r3
+  arg12 = dx2 + dz1 + r3
+  arg13 = dx2 + r3
+  arg14 = dy2 + r3
+  arg15 = dz1 + r3
+
+  arg16_ = dx1 + dy2 + r4
+  arg16 = dy2 + dz1 + r4
+  arg17 = dx1 + dz1 + r4
+  arg18 = dx1 + r4
+  arg19 = dy2 + r4
+  arg20 = dz1 + r4
+
+  arg21_ = dx2 + dy1 + r5
+  arg21 = dy1 + dz2 + r5
+  arg22 = dx2 + dz2 + r5
+  arg23 = dx2 + r5
+  arg24 = dy1 + r5
+  arg25 = dz2 + r5
+
+  arg26_ = dx1 + dy1 + r6
+  arg26 = dy1 + dz2 + r6
+  arg27 = dx1 + dz2 + r6
+  arg28 = dx1 + r6
+  arg29 = dy1 + r6
+  arg30 = dz2 + r6
+
+  arg31_ = dx1 + dy1 + r7
+  arg31 = dy1 + dz1 + r7
+  arg32 = dx1 + dz1 + r7
+  arg33 = dx1 + r7
+  arg34 = dy1 + r7
+  arg35 = dz1 + r7
+
+  arg36_ = dx2 + dy1 + r8
+  arg36 = dy1 + dz1 + r8
+  arg37 = dx2 + dz1 + r8
+  arg38 = dx2 + r8
+  arg39 = dy1 + r8
+  arg40 = dz1 + r8
+
+  ! Calculate tensor components.
+  ts_x(1) = &
+        (-2 * atan2(dx1, arg1 + tol1)) &
+      - (-2 * atan2(dx2, arg6 + tol1)) &
+      + (-2 * atan2(dx2, arg11 + tol1)) &
+      - (-2 * atan2(dx1, arg16 + tol1)) &
+      + (-2 * atan2(dx2, arg21 + tol1)) &
+      - (-2 * atan2(dx1, arg26 + tol1)) &
+      + (-2 * atan2(dx1, arg31 + tol1)) &
+      - (-2 * atan2(dx2, arg36 + tol1))
+
+  ts_x(2) = &
+        log(arg5) - log(arg10) &
+      + log(arg15) - log(arg20) &
+      + log(arg25) - log(arg30) &
+      + log(arg35) - log(arg40)
+
+  ts_x(3) = &
+        log(arg4) - log(arg9) &
+      + log(arg14) - log(arg19) &
+      + log(arg24) - log(arg29) &
+      + log(arg34) - log(arg39)
+
+  ts_y(2) = &
+        (-2 * atan2(dy2, arg2 + tol1)) &
+      - (-2 * atan2(dy2, arg7 + tol1)) &
+      + (-2 * atan2(dy2, arg12 + tol1)) &
+      - (-2 * atan2(dy2, arg17 + tol1)) &
+      + (-2 * atan2(dy1, arg22 + tol1)) &
+      - (-2 * atan2(dy1, arg27 + tol1)) &
+      + (-2 * atan2(dy1, arg32 + tol1)) &
+      - (-2 * atan2(dy1, arg37 + tol1))
+
+  ts_y(3) = &
+        log(arg3) - log(arg8) &
+      + log(arg13) - log(arg18) &
+      + log(arg23) - log(arg28) &
+      + log(arg33) - log(arg38)
+
+  ! Filling the symmetric components.
+  ts_y(1) = ts_x(2)
+  ts_z(1) = ts_x(3)
+  ts_z(2) = ts_y(3)
+
+  l_inside = .false.
+
+  ! Checking if point is inside the voxel.
+  ! If so, use Poisson's relation.
+  if (x >= x1 .and. x <= x2) then
+    if (y >= y1 .and. y <= y2) then
+      if (z >= z1 .and. z <= z2) then
+        l_inside = .true.
+      endif
+    endif
+  endif
+
+  ! Filling the rest of the diagonal.
+  if (l_inside) then
+    print *, "Observation point inside target voxel!"
+    print *, "Obs: ", x, y, z
+    print *, "Voxel: ", x1, x2, y1, y2, z1, z2
+
+    ts_z(3) = -1 * (ts_x(1) + ts_y(2) + four_pi) ! poisson
+  else
+    ts_z(3) = -1 * (ts_x(1) + ts_y(2)) ! gauss
+  endif
+
+end subroutine mbox2
 
 end module magnetic_field
