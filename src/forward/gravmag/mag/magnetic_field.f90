@@ -91,9 +91,14 @@ subroutine dircos(incl, decl, azim, a, b, c)
     double precision, intent(out)   :: a, b, c
 
     double precision :: xincl, xdecl, xazim
+    double precision :: incl2, decl2
 
-    xincl = incl * d2rad
-    xdecl = decl * d2rad
+    ! Convert North to cartesian-X.
+    decl2 = mod(450.d0 - decl,  360.d0)
+    incl2 = -incl
+
+    xincl = incl2 * d2rad
+    xdecl = decl2 * d2rad
     xazim = azim * d2rad
 
     a = dcos(xincl) * dcos(xdecl - xazim)
