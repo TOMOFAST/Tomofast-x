@@ -95,7 +95,7 @@ subroutine dircos(incl, decl, azim, a, b, c)
 
     ! Convert North to cartesian-X.
     decl2 = mod(450.d0 - decl,  360.d0)
-    incl2 = -incl
+    incl2 = incl
 
     xincl = incl2 * d2rad
     xdecl = decl2 * d2rad
