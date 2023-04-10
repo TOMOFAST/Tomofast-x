@@ -205,7 +205,7 @@ subroutine data_write(this, name_prefix, which, myrank)
   write(10, *) this%ndata
 
   if (this%ncomponents == 3) then
-    write(20, *) "x,y,z,mx,my,mz"
+    write(20, *) "x,y,z,bx,by,bz"
   else
     write(20, *) "x,y,z,f"
   endif
