@@ -210,6 +210,9 @@ subroutine data_write(this, name_prefix, which, myrank)
     write(20, *) "x,y,z,f"
   endif
 
+  ! Format for csv file.
+  101 format(*(g0,:,","))
+
   ! Write data.
   do i = 1, this%ndata
     X = this%X(i)
@@ -226,9 +229,9 @@ subroutine data_write(this, name_prefix, which, myrank)
 
     ! Note: flip the Z-axis for Paraview.
     if (this%ncomponents == 3) then
-      write(20, *) X, ",", Y, ",", -Z, ",", val(1), ",", val(2), ",", -val(3)
+      write(20, 101) X, Y, -Z, val(1), val(2), -val(3)
     else
-      write(20, *) X, ", ", Y, ", ", -Z, ", ", val
+      write(20, 101) X, Y, -Z, val
     endif
   enddo
 
