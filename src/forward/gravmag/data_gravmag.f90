@@ -193,7 +193,7 @@ subroutine data_write(this, name_prefix, which, myrank)
   if (myrank /= 0) return
 
   file_name  = trim(path_output)//'/'//name_prefix//'data.txt'
-  file_name2 = trim(path_output)//'/'//name_prefix//'data_csv.txt'
+  file_name2 = trim(path_output)//'/'//name_prefix//'data.csv'
 
   print *, 'Writing data to file '//trim(file_name)
 
@@ -203,7 +203,12 @@ subroutine data_write(this, name_prefix, which, myrank)
 
   ! Writing a header line.
   write(10, *) this%ndata
-  write(20, *) "x,y,z,f"
+
+  if (this%ncomponents == 3) then
+    write(20, *) "x,y,z,mx,my,mz"
+  else
+    write(20, *) "x,y,z,f"
+  endif
 
   ! Write data.
   do i = 1, this%ndata
@@ -218,8 +223,13 @@ subroutine data_write(this, name_prefix, which, myrank)
     endif
 
     write(10, *) X, Y, Z, val
+
     ! Note: flip the Z-axis for Paraview.
-    write(20, *) X, ", ", Y, ", ", -Z, ", ", val
+    if (this%ncomponents == 3) then
+      write(20, *) X, ",", Y, ",", -Z, ",", val(1), ",", val(2), ",", -val(3)
+    else
+      write(20, *) X, ", ", Y, ", ", -Z, ", ", val
+    endif
   enddo
 
   close(10)
