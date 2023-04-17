@@ -341,6 +341,11 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   if (myrank == 0) print *, 'nnz_total = ', nnz_total
   if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
 
+  ! Sanity check.
+  if (sum(sensit_nnz) /= nnz_total) then
+    call exit_MPI("Wrong nnz_total in calculate_and_write_sensit!", myrank, 0)
+  endif
+
   !---------------------------------------------------------------------------------------------
   ! Calculate the kernel compression error.
   !---------------------------------------------------------------------------------------------
@@ -357,7 +362,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   ! Perform the nnz load balancing among CPUs.
   !---------------------------------------------------------------------------------------------
-  call get_load_balancing_nelements(nelements_total, sensit_nnz, nnz_total, &
+  call get_load_balancing_nelements(nelements_total, sensit_nnz, &
                                     nnz_at_cpu_new, nelements_at_cpu_new, myrank, nbproc)
 
   if (myrank == 0) then
@@ -424,11 +429,10 @@ end subroutine calculate_and_write_sensit
 ! Calculate new partitioning for the nnz and nelements at every CPU for the load balancing.
 ! The load balancing aims to have the same number of nnz at every CPU, which require using different nelements at CPUs.
 !=======================================================================================================================
-subroutine get_load_balancing_nelements(nelements_total, sensit_nnz, nnz_total, &
+subroutine get_load_balancing_nelements(nelements_total, sensit_nnz, &
                                         nnz_at_cpu_new, nelements_at_cpu_new, myrank, nbproc)
   integer, intent(in) :: nelements_total
   integer(kind=8), intent(in) :: sensit_nnz(nelements_total)
-  integer(kind=8), intent(in) :: nnz_total
   integer, intent(in) :: myrank, nbproc
 
   integer, intent(out) :: nelements_at_cpu_new(nbproc)
@@ -436,28 +440,38 @@ subroutine get_load_balancing_nelements(nelements_total, sensit_nnz, nnz_total, 
 
   integer :: cpu, p
   integer :: nelements_new
-  integer(kind=8) :: nnz_new
+  integer(kind=8) :: nnz_total, nnz_new
+  integer(kind=8) :: nnz_at_cpu_best(nbproc)
 
-  nnz_at_cpu_new(:) = nnz_total / int(nbproc, 8)
+  nnz_total = sum(sensit_nnz)
+
+  nnz_at_cpu_best(:) = nnz_total / int(nbproc, 8)
   ! Last rank gets the remaining elements.
-  nnz_at_cpu_new(nbproc) = nnz_at_cpu_new(nbproc) + mod(nnz_total, int(nbproc, 8))
+  nnz_at_cpu_best(nbproc) = nnz_at_cpu_best(nbproc) + mod(nnz_total, int(nbproc, 8))
 
   cpu = 1
   nnz_new = 0
   nelements_new = 0
+  nnz_at_cpu_new = 0
 
   do p = 1, nelements_total
     nnz_new = nnz_new + sensit_nnz(p)
     nelements_new = nelements_new + 1
 
-    if ((nnz_new >= nnz_at_cpu_new(cpu) .and. cpu < nbproc) .or. p == nelements_total) then
+    if ((sum(sensit_nnz(1:p)) >= sum(nnz_at_cpu_best(1:cpu)) .and. cpu < nbproc) .or. p == nelements_total) then
       nnz_at_cpu_new(cpu) = nnz_new
       nelements_at_cpu_new(cpu) = nelements_new
+
       nnz_new = 0
       nelements_new = 0
       cpu = cpu + 1
     endif
   enddo
+
+  ! Sanity check: test that all cpus got elements allocated.
+  if (cpu /= nbproc + 1) then
+    call exit_MPI("Wrong cpu in get_load_balancing_nelements!", myrank, 0)
+  endif
 
   if (sum(nnz_at_cpu_new) /= nnz_total) then
     call exit_MPI("Wrong nnz_at_cpu_new in get_load_balancing_nelements!", myrank, 0)
