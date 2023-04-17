@@ -176,7 +176,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(myrank))
   filename_full = trim(path_output)//"/SENSIT/"//filename
 
-  print *, 'Writing the sensitivity to file ', trim(filename_full)
+  if (myrank == 0) print *, 'Writing the sensitivity to file ', trim(filename_full)
 
   open(77, file=trim(filename_full), status='replace', access='stream', form='unformatted', action='write', &
        iostat=ierr, iomsg=msg)
@@ -365,11 +365,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   call get_load_balancing_nelements(nelements_total, sensit_nnz, &
                                     nnz_at_cpu_new, nelements_at_cpu_new, myrank, nbproc)
 
-  if (myrank == 0) then
-    print *, 'nnz_at_cpu_new: ', nnz_at_cpu_new
-    print *, 'nelements_at_cpu_new: ', nelements_at_cpu_new
-  endif
-
   nelements_new = nelements_at_cpu_new(myrank + 1)
 
   !---------------------------------------------------------------------------------------------
@@ -548,7 +543,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
       filename_full = trim(path_output)//"/SENSIT/"//filename
     endif
 
-    if (myrank == 0) print *, 'Reading the sensitivity file ', trim(filename_full)
+    if (myrank == 0 .and. rank == 0) print *, 'Reading the sensitivity file ', trim(filename_full)
 
     open(78, file=trim(filename_full), status='old', access='stream', form='unformatted', action='read', &
          iostat=ierr, iomsg=msg)
