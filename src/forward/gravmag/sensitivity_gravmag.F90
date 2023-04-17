@@ -190,7 +190,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   nelements_total = par%nx * par%ny * par%nz
 
   if (par%compression_type > 0) then
-    nel_compressed = max(int(par%compression_rate * nelements_total), 1)
+    nel_compressed = int(par%compression_rate * nelements_total)
   else
     nel_compressed = nelements_total
   endif
@@ -260,7 +260,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
           call quicksort(sensit_line_sorted, 1, nelements_total)
 
           ! Calculate the wavelet threshold corresponding to the desired compression rate.
-          p = nelements_total - nel_compressed + 1
+          p = nelements_total - nel_compressed
           threshold = abs(sensit_line_sorted(p))
 
           if (threshold < 1.d-30) then
@@ -271,7 +271,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
           nel = 0
           do p = 1, nelements_total
-            if (abs(sensit_line_full(p, k, d)) >= threshold) then
+            if (abs(sensit_line_full(p, k, d)) > threshold .or. par%compression_rate >= 1.0) then
               ! Store sensitivity elements greater than the wavelet threshold.
               nel = nel + 1
               sensit_columns(nel) = p
