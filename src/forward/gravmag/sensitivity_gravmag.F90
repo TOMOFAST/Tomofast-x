@@ -260,8 +260,13 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
           call quicksort(sensit_line_sorted, 1, nelements_total)
 
           ! Calculate the wavelet threshold corresponding to the desired compression rate.
-          p = nelements_total - nel_compressed
-          threshold = abs(sensit_line_sorted(p))
+          if (nel_compressed >= nelements_total) then
+            ! Taking all elements.
+            threshold = -1.d0
+          else
+            p = nelements_total - nel_compressed
+            threshold = abs(sensit_line_sorted(p))
+          endif
 
           if (threshold < 1.d-30) then
             ! Keep small threshold to avoid extremely small values, because when MATRIX_PRECISION is 4 bytes real
@@ -271,7 +276,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
           nel = 0
           do p = 1, nelements_total
-            if (abs(sensit_line_full(p, k, d)) > threshold .or. par%compression_rate >= 1.0) then
+            if (abs(sensit_line_full(p, k, d)) > threshold) then
               ! Store sensitivity elements greater than the wavelet threshold.
               nel = nel + 1
               sensit_columns(nel) = p
