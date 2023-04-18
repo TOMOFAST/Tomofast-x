@@ -435,7 +435,7 @@ subroutine get_load_balancing_nelements(nelements_total, sensit_nnz, &
 
   integer :: cpu, p
   integer :: nelements_new
-  integer(kind=8) :: nnz_total, nnz_new
+  integer(kind=8) :: nnz_total, nnz_new, sum_sensit_nnz
   integer(kind=8) :: nnz_at_cpu_best(nbproc)
 
   nnz_total = sum(sensit_nnz)
@@ -448,12 +448,14 @@ subroutine get_load_balancing_nelements(nelements_total, sensit_nnz, &
   nnz_new = 0
   nelements_new = 0
   nnz_at_cpu_new = 0
+  sum_sensit_nnz = 0
 
   do p = 1, nelements_total
     nnz_new = nnz_new + sensit_nnz(p)
+    sum_sensit_nnz = sum_sensit_nnz + sensit_nnz(p)
     nelements_new = nelements_new + 1
 
-    if ((sum(sensit_nnz(1:p)) >= sum(nnz_at_cpu_best(1:cpu)) .and. cpu < nbproc) .or. p == nelements_total) then
+    if ((sum_sensit_nnz >= sum(nnz_at_cpu_best(1:cpu)) .and. (cpu < nbproc)) .or. p == nelements_total) then
       nnz_at_cpu_new(cpu) = nnz_new
       nelements_at_cpu_new(cpu) = nelements_new
 
