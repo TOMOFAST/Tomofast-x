@@ -73,13 +73,14 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, b, x, myran
     call exit_MPI("Wrong matrix size in lsqr_solve! Exiting.", myrank, 0)
   endif
 
-  if (allocated(matrix%lsqr_var) .and. size(matrix%lsqr_var) == nelements) then
-    calculateVariance = .true.
+  calculateVariance = .false.
+  if (allocated(matrix%lsqr_var)) then
+    if (size(matrix%lsqr_var) == nelements) then
+      calculateVariance = .true.
 
-    ! Initialize variance array.
-    matrix%lsqr_var = 0.d0
-  else
-    calculateVariance = .false.
+      ! Initialize variance array.
+      matrix%lsqr_var = 0.d0
+    endif
   endif
 
   ! Allocate memory.
