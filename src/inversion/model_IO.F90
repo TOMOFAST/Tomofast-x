@@ -390,7 +390,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
-                                       nx / 2, nx / 2, 1, ny, 1, nz, &
+                                       nx / 2 + 1, nx / 2 + 1, 1, ny, 1, nz, &
                                        .true.)
 
   ! Write the y-profile of the model.
@@ -399,7 +399,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
-                                       1, nx, ny / 2, ny / 2, 1, nz, &
+                                       1, nx, ny / 2 + 1, ny / 2 + 1, 1, nz, &
                                        .true.)
 
   ! Write the z-profile of the model.
@@ -408,7 +408,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
-                                       1, nx, 1, ny, nz / 2, nz / 2, &
+                                       1, nx, 1, ny, nz / 2 + 1, nz / 2 + 1, &
                                        .true.)
 end subroutine model_write_paraview
 
