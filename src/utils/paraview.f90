@@ -29,6 +29,7 @@ module paraview
 
   public :: visualisation_paraview_legogrid
   public :: visualisation_paraview_struct_grid
+  public :: visualisation_paraview_points
 
   private :: index_included
 
@@ -57,7 +58,7 @@ function index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2) re
 end function index_included
 
 !=======================================================================================================================
-! This subroutine writes the file in (legacy) VTK format used for Paraview visualization.
+! Writes the model in binary VTK format for Paraview visualization.
 ! A slice of the full model can be specified via i1, i2, j1, j2, k1, k2 grid indexes.
 ! The Paraview structured grid datastructure is used, which allows additional analysis in Paraview (like contours).
 !=======================================================================================================================
@@ -195,12 +196,9 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomp
 end subroutine visualisation_paraview_struct_grid
 
 !====================================================================================================================
-! This subroutine writes the file in (legacy) VTK format used for Paraview visualization.
+! Writes the model in binary VTK format for Paraview visualization.
 ! A slice of the full model can be specified via i1, i2, j1, j2, k1, k2 grid indexes.
 ! An arbitrary "lego" grid is considered.
-!
-! VO: Converted the ASCII version to binary using logics of the code of Renato N. Elias:
-!     http://www.nacad.ufrj.br/~rnelias/paraview/VTKFormats.f90
 !====================================================================================================================
 subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncomponents, val, X1, Y1, Z1, X2, Y2, Z2, &
                                            i_index, j_index, k_index, &
@@ -395,5 +393,135 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
   deallocate(cell_type)
 
 end subroutine visualisation_paraview_legogrid
+
+!====================================================================================================================
+! Writes the data points in binary VTK format for Paraview visualization.
+!====================================================================================================================
+subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, val, X, Y, Z, INVERT_Z_AXIS)
+  integer, intent(in) :: myrank
+  integer, intent(in) :: ndata, ncomponents
+  real(kind=CUSTOM_REAL), intent(in) :: val(ncomponents, ndata)
+  real(kind=CUSTOM_REAL), intent(in) :: X(ndata), Y(ndata), Z(ndata)
+  logical, intent(in) :: INVERT_Z_AXIS
+  ! Output file name.
+  character(len=*), intent(in) :: filename
+
+  character(len=256) :: filename_full
+  character(len=256) :: msg
+  integer :: ierr
+  integer :: p
+
+  real(kind=4), allocatable :: xyzgrid(:, :)
+  real(kind=4), allocatable :: point_data(:, :)
+  integer, allocatable :: cell_indexes(:, :)
+  integer, allocatable :: cell_type(:)
+
+  character :: lf*1, str1*8, str2*8
+  lf = char(10) ! line feed character
+
+  ! Create a directory.
+  call execute_command_line('mkdir -p '//trim(path_output)//"/Paraview/")
+
+  filename_full = trim(path_output)//"/Paraview/"//filename
+
+  open(333, file=filename_full, status='replace', access='stream', form='unformatted', action='write', &
+       iostat=ierr, iomsg=msg)
+
+  if (ierr /= 0) call exit_MPI("Error with writing the VTK file! path="&
+                               //trim(filename_full)//", iomsg="//msg, myrank, ierr)
+
+  !-----------------------------------------------------------------
+  ! Write a header.
+  !-----------------------------------------------------------------
+  write(333) '# vtk DataFile Version 3.0'//lf
+  write(333) 'TOMOFAST-X'//lf
+  write(333) 'BINARY'//lf
+  write(333) 'DATASET UNSTRUCTURED_GRID'//lf//lf
+
+  write(str1(1:8),'(i8)') ndata
+  write(333) 'POINTS '//str1//' FLOAT'//lf
+
+  !-----------------------------------------------------------------
+  ! Allocate memory.
+  !-----------------------------------------------------------------
+  allocate(xyzgrid(3, ndata), stat=ierr)
+  allocate(point_data(ncomponents, ndata), stat=ierr)
+  allocate(cell_indexes(2, ndata), stat=ierr)
+  allocate(cell_type(ndata), stat=ierr)
+
+  !-----------------------------------------------------------------
+  ! Build lego-grid.
+  !-----------------------------------------------------------------
+  xyzgrid(1, :) = real(X, 4)
+  xyzgrid(2, :) = real(Y, 4)
+  xyzgrid(3, :) = real(Z, 4)
+
+  if (INVERT_Z_AXIS) then
+    xyzgrid(3, :) = - xyzgrid(3, :)
+  endif
+
+  ! Write the grid to a file.
+  write(333) xyzgrid
+
+  !-------------------------------------------------------------------
+  ! Generate elements.
+  !-------------------------------------------------------------------
+  do p = 1, ndata
+    cell_indexes(1, p) = 1
+    cell_indexes(2, p) = p - 1
+  enddo
+
+  write(str1(1:8),'(i8)') ndata
+  write(str2(1:8),'(i8)') 2 * ndata
+  write(333) lf//lf//'CELLS '//str1//' '//str2//lf
+
+  write(333) cell_indexes
+
+  !-------------------------------------------------------------------
+  ! Write cell types.
+  !-------------------------------------------------------------------
+  write(str1(1:8),'(i8)') ndata
+  write(333) lf//lf//'CELL_TYPES '//str1//lf
+
+  ! VTK_VERTEX = 1
+  cell_type = 1
+
+  write(333) cell_type
+
+  !-------------------------------------------------------------------
+  ! Generate element data values.
+  !-------------------------------------------------------------------
+  write(str1(1:8),'(i8)') ndata
+
+  write(333) lf//lf//'POINT_DATA '//str1//lf
+
+  if (ncomponents == 1) then
+  ! Scalar data.
+    write(333) 'SCALARS F FLOAT'//lf
+    write(333) 'LOOKUP_TABLE default'//lf
+
+  else if (ncomponents == 3) then
+  ! Vector data.
+    write(333) 'VECTORS vectors FLOAT'//lf
+  endif
+
+  point_data = real(val, 4)
+
+  if (ncomponents == 3) then
+    if (INVERT_Z_AXIS) then
+      point_data(3, :) = - point_data(3, :)
+    endif
+  endif
+
+  write(333) point_data
+
+  close(333)
+
+  deallocate(xyzgrid)
+  deallocate(point_data)
+  deallocate(cell_indexes)
+  deallocate(cell_type)
+
+end subroutine visualisation_paraview_points
 
 end module paraview

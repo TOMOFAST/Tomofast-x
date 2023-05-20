@@ -22,6 +22,7 @@ module data_gravmag
   use global_typedefs
   use mpi_tools, only: exit_MPI
   use string
+  use paraview
 
   implicit none
 
@@ -237,6 +238,19 @@ subroutine data_write(this, name_prefix, which, myrank)
 
   close(10)
   close(20)
+
+  !------------------------------------------------------------------------------------
+  ! Write data in VTK format for Paraview.
+  !------------------------------------------------------------------------------------
+  file_name  = 'data_'//name_prefix(1:len(name_prefix) - 1)//'.vtk'
+
+  if (which == 1) then
+    call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
+                                       this%val_meas, this%X, this%Y, this%Z, .true.)
+  else
+    call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
+                                       this%val_calc, this%X, this%Y, this%Z, .true.)
+  endif
 
 end subroutine data_write
 
