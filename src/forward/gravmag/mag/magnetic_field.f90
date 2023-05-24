@@ -91,15 +91,15 @@ subroutine dircos(incl, decl, azim, a, b, c)
 
   ! Convert North to cartesian X-axis.
   decl2 = mod(450.d0 - decl,  360.d0)
-  incl2 = incl
+  incl2 = -incl
 
   xincl = incl2 * d2rad
   xdecl = decl2 * d2rad
   xazim = azim * d2rad
 
-  a = dcos(xincl) * dcos(xdecl - xazim)
-  b = dcos(xincl) * dsin(xdecl - xazim)
-  c = dsin(xincl)
+  a = cos(xincl) * cos(xdecl - xazim)
+  b = cos(xincl) * sin(xdecl - xazim)
+  c = sin(xincl)
 
 end subroutine dircos
 

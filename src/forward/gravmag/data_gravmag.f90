@@ -216,10 +216,10 @@ subroutine data_write(this, name_prefix, which, myrank)
 
   if (which == 1) then
     call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
-                                       this%val_meas, this%X, this%Y, this%Z, .true.)
+                                       this%val_meas, this%X, this%Y, this%Z)
   else
     call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
-                                       this%val_calc, this%X, this%Y, this%Z, .true.)
+                                       this%val_calc, this%X, this%Y, this%Z)
   endif
 
 end subroutine data_write

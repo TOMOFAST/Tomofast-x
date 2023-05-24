@@ -64,8 +64,7 @@ end function index_included
 !=======================================================================================================================
 subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomponents, val, X1, Y1, Z1, X2, Y2, Z2, &
                                            i_index, j_index, k_index, &
-                                           i1, i2, j1, j2, k1, k2, &
-                                           INVERT_Z_AXIS)
+                                           i1, i2, j1, j2, k1, k2)
   ! MPI rank of this process.
   integer, intent(in) :: myrank
   ! Total number of cells.
@@ -77,7 +76,6 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomp
   real(kind=CUSTOM_REAL), intent(in) :: X2(nelements), Y2(nelements), Z2(nelements)
   integer, intent(in) :: i_index(nelements), j_index(nelements), k_index(nelements)
   integer, intent(in) :: i1, i2, j1, j2, k1, k2
-  logical, intent(in) :: INVERT_Z_AXIS
   ! Output file name.
   character(len=*), intent(in) :: filename
 
@@ -90,7 +88,6 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomp
 
   real(kind=4), allocatable :: point_centers(:, :)
   real(kind=4), allocatable :: point_data(:, :)
-  real(kind=4) :: z_sign
 
   character :: lf*1, str1*8, str2*8, str3*8
   ! Line feed character.
@@ -139,12 +136,6 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomp
   !-------------------------------------------------------------------
   ! Build the grid.
   !-------------------------------------------------------------------
-  if (INVERT_Z_AXIS) then
-    z_sign = -1.0
-  else
-    z_sign = 1.0
-  endif
-
   j = 0
   do p = 1, nelements
     if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
@@ -154,15 +145,7 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomp
       point_centers(2, j) = real(0.5 * (Y1(p) + Y2(p)))
       point_centers(3, j) = real(0.5 * (Z1(p) + Z2(p)))
 
-      ! Flip the Z-axis of the grid.
-      point_centers(3, j) = z_sign * point_centers(3, j)
-
       point_data(:, j) = real(val(p, :), 4)
-
-      if (ncomponents == 3) then
-        ! Flip the Z-axis of a vector.
-        point_data(3, j) = z_sign * point_data(3, j)
-      endif
     endif
   enddo
 
@@ -202,8 +185,7 @@ end subroutine visualisation_paraview_struct_grid
 !====================================================================================================================
 subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncomponents, val, X1, Y1, Z1, X2, Y2, Z2, &
                                            i_index, j_index, k_index, &
-                                           i1, i2, j1, j2, k1, k2, &
-                                           INVERT_Z_AXIS)
+                                           i1, i2, j1, j2, k1, k2)
   ! MPI rank of this process.
   integer, intent(in) :: myrank
   ! Total number of cells.
@@ -215,7 +197,6 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
   real(kind=CUSTOM_REAL), intent(in) :: X2(nelements), Y2(nelements), Z2(nelements)
   integer, intent(in) :: i_index(nelements), j_index(nelements), k_index(nelements)
   integer, intent(in) :: i1, i2, j1, j2, k1, k2
-  logical, intent(in) :: INVERT_Z_AXIS
   ! Output file name.
   character(len=*), intent(in) :: filename
 
@@ -226,7 +207,6 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
   integer :: npoints, nelements_slice
   integer :: i, j, p
   real(kind=CUSTOM_REAL) :: xyzgrid(3, 8)
-  real(kind=CUSTOM_REAL) :: Z1_p, Z2_p, z_sign
 
   real(kind=4), allocatable :: xyzgrid_all(:, :, :)
   real(kind=4), allocatable :: cell_data(:, :)
@@ -275,64 +255,49 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
   !-----------------------------------------------------------------
   ! Build lego-grid.
   !-----------------------------------------------------------------
-  if (INVERT_Z_AXIS) then
-    z_sign = - 1._CUSTOM_REAL
-  else
-    z_sign = 1._CUSTOM_REAL
-  endif
-
   j = 0
   do p = 1, nelements
     if (index_included(p, i_index, j_index, k_index, i1, i2, j1, j2, k1, k2)) then
       j = j + 1
 
-      ! Flip the Z-axis of the grid.
-      Z1_p = z_sign * Z1(p)
-      Z2_p = z_sign * Z2(p)
-
       ! z = 1
       xyzgrid(1, 1) = X1(p)
       xyzgrid(2, 1) = Y1(p)
-      xyzgrid(3, 1) = Z1_p
+      xyzgrid(3, 1) = Z1(p)
 
       xyzgrid(1, 2) = X2(p)
       xyzgrid(2, 2) = Y1(p)
-      xyzgrid(3, 2) = Z1_p
+      xyzgrid(3, 2) = Z1(p)
 
       xyzgrid(1, 3) = X1(p)
       xyzgrid(2, 3) = Y2(p)
-      xyzgrid(3, 3) = Z1_p
+      xyzgrid(3, 3) = Z1(p)
 
       xyzgrid(1, 4) = X2(p)
       xyzgrid(2, 4) = Y2(p)
-      xyzgrid(3, 4) = Z1_p
+      xyzgrid(3, 4) = Z1(p)
 
       ! z = 2
       xyzgrid(1, 5) = X1(p)
       xyzgrid(2, 5) = Y1(p)
-      xyzgrid(3, 5) = Z2_p
+      xyzgrid(3, 5) = Z2(p)
 
       xyzgrid(1, 6) = X2(p)
       xyzgrid(2, 6) = Y1(p)
-      xyzgrid(3, 6) = Z2_p
+      xyzgrid(3, 6) = Z2(p)
 
       xyzgrid(1, 7) = X1(p)
       xyzgrid(2, 7) = Y2(p)
-      xyzgrid(3, 7) = Z2_p
+      xyzgrid(3, 7) = Z2(p)
 
       xyzgrid(1, 8) = X2(p)
       xyzgrid(2, 8) = Y2(p)
-      xyzgrid(3, 8) = Z2_p
+      xyzgrid(3, 8) = Z2(p)
 
       ! Store the values.
       xyzgrid_all(:, :, j) = real(xyzgrid, 4)
 
       cell_data(:, j) = real(val(p, :), 4)
-
-      if (ncomponents == 3) then
-        ! Flip the Z-axis of a vector.
-        cell_data(3, j) = real(z_sign, 4) * cell_data(3, j)
-      endif
     endif
   enddo
 
@@ -397,12 +362,11 @@ end subroutine visualisation_paraview_legogrid
 !====================================================================================================================
 ! Writes the data points in binary VTK format for Paraview visualization.
 !====================================================================================================================
-subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, val, X, Y, Z, INVERT_Z_AXIS)
+subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, val, X, Y, Z)
   integer, intent(in) :: myrank
   integer, intent(in) :: ndata, ncomponents
   real(kind=CUSTOM_REAL), intent(in) :: val(ncomponents, ndata)
   real(kind=CUSTOM_REAL), intent(in) :: X(ndata), Y(ndata), Z(ndata)
-  logical, intent(in) :: INVERT_Z_AXIS
   ! Output file name.
   character(len=*), intent(in) :: filename
 
@@ -456,10 +420,6 @@ subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, v
   xyzgrid(2, :) = real(Y, 4)
   xyzgrid(3, :) = real(Z, 4)
 
-  if (INVERT_Z_AXIS) then
-    xyzgrid(3, :) = - xyzgrid(3, :)
-  endif
-
   ! Write the grid to a file.
   write(333) xyzgrid
 
@@ -506,12 +466,6 @@ subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, v
   endif
 
   point_data = real(val, 4)
-
-  if (ncomponents == 3) then
-    if (INVERT_Z_AXIS) then
-      point_data(3, :) = - point_data(3, :)
-    endif
-  endif
 
   write(333) point_data
 

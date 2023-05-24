@@ -371,8 +371,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                          model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                          model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                          model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
-                                         1, nx, 1, ny, 1, nz, &
-                                         .true.)
+                                         1, nx, 1, ny, 1, nz)
   endif
 
   ! Write the full model using structured grid.
@@ -381,8 +380,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
-                                       1, nx, 1, ny, 1, nz, &
-                                       .true.)
+                                       1, nx, 1, ny, 1, nz)
 
   ! Write the x-profile of the model.
   filename = trim(name_prefix)//"model3D_half_x.vtk"
@@ -390,8 +388,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
-                                       nx / 2 + 1, nx / 2 + 1, 1, ny, 1, nz, &
-                                       .true.)
+                                       nx / 2 + 1, nx / 2 + 1, 1, ny, 1, nz)
 
   ! Write the y-profile of the model.
   filename = trim(name_prefix)//"model3D_half_y.vtk"
@@ -399,8 +396,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
-                                       1, nx, ny / 2 + 1, ny / 2 + 1, 1, nz, &
-                                       .true.)
+                                       1, nx, ny / 2 + 1, ny / 2 + 1, 1, nz)
 
   ! Write the z-profile of the model.
   filename = trim(name_prefix)//"model3D_half_z.vtk"
@@ -408,8 +404,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
-                                       1, nx, 1, ny, nz / 2 + 1, nz / 2 + 1, &
-                                       .true.)
+                                       1, nx, 1, ny, nz / 2 + 1, nz / 2 + 1)
 end subroutine model_write_paraview
 
 end module model_IO
