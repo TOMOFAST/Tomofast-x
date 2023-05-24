@@ -172,8 +172,8 @@ end subroutine data_read_points_format
 
 !================================================================================================
 ! Writes the data in two formats:
-!   (1) to read by read_data();
-!   (2) for Paraview visualization.
+!   (1) ACSII columns: same as the input data format in Tomofastx.
+!   (2) Binary VTK for Paraview visualization.
 !
 ! which=1 - for measured data,
 ! which=2 - for calculated data.
@@ -188,31 +188,19 @@ subroutine data_write(this, name_prefix, which, myrank)
   real(kind=CUSTOM_REAL) :: X, Y, Z
   real(kind=CUSTOM_REAL) :: val(this%ncomponents)
   integer :: i
-  character(len=512) :: file_name, file_name2
+  character(len=512) :: file_name
 
   ! Write file by master CPU only.
   if (myrank /= 0) return
 
   file_name  = trim(path_output)//'/'//name_prefix//'data.txt'
-  file_name2 = trim(path_output)//'/'//name_prefix//'data.csv'
 
   print *, 'Writing data to file '//trim(file_name)
 
   open(10, file=trim(file_name), access='stream', form='formatted', status='replace', action='write')
-  ! For Paraview.
-  open(20, file=trim(file_name2), access='stream', form='formatted', status='replace', action='write')
 
   ! Writing a header line.
   write(10, *) this%ndata
-
-  if (this%ncomponents == 3) then
-    write(20, *) "x,y,z,bx,by,bz"
-  else
-    write(20, *) "x,y,z,f"
-  endif
-
-  ! Format for csv file.
-  101 format(*(g0,:,","))
 
   ! Write data.
   do i = 1, this%ndata
@@ -227,17 +215,9 @@ subroutine data_write(this, name_prefix, which, myrank)
     endif
 
     write(10, *) X, Y, Z, val
-
-    ! Note: flip the Z-axis for Paraview.
-    if (this%ncomponents == 3) then
-      write(20, 101) X, Y, -Z, val(1), val(2), -val(3)
-    else
-      write(20, 101) X, Y, -Z, val
-    endif
   enddo
 
   close(10)
-  close(20)
 
   !------------------------------------------------------------------------------------
   ! Write data in VTK format for Paraview.
