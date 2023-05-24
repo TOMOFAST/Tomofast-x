@@ -185,8 +185,6 @@ subroutine data_write(this, name_prefix, which, myrank)
   character(len=*), intent(in) :: name_prefix
   integer, intent(in) :: which, myrank
 
-  real(kind=CUSTOM_REAL) :: X, Y, Z
-  real(kind=CUSTOM_REAL) :: val(this%ncomponents)
   integer :: i
   character(len=512) :: file_name
 
@@ -203,19 +201,11 @@ subroutine data_write(this, name_prefix, which, myrank)
   write(10, *) this%ndata
 
   ! Write data.
-  do i = 1, this%ndata
-    X = this%X(i)
-    Y = this%Y(i)
-    Z = this%Z(i)
-
-    if (which == 1) then
-      val = this%val_meas(:, i)
-    else
-      val = this%val_calc(:, i)
-    endif
-
-    write(10, *) X, Y, Z, val
-  enddo
+  if (which == 1) then
+    write(10, *) (this%X(i), this%Y(i), this%Z(i), this%val_meas(:, i), new_line('a'), i = 1, this%ndata)
+  else
+    write(10, *) (this%X(i), this%Y(i), this%Z(i), this%val_calc(:, i), new_line('a'), i = 1, this%ndata)
+  endif
 
   close(10)
 
