@@ -27,12 +27,6 @@ module magnetic_field
   ! Degree to radian.
   double precision, parameter :: d2rad = PI / 180.d0
 
-  ! The vacuum magnetic permeability.
-  double precision, parameter :: mu0 = 4.d0 * PI * 1.d-7
-
-  ! Conversion from tesla to nanotesla.
-  double precision, parameter :: T2nT = 1.d+9
-
   ! Main class.
   type, public :: t_magnetic_field
     private
@@ -97,15 +91,15 @@ subroutine dircos(incl, decl, azim, a, b, c)
 
   ! Convert North to cartesian X-axis.
   decl2 = mod(450.d0 - decl,  360.d0)
-  incl2 = -incl
+  incl2 = incl
 
   xincl = incl2 * d2rad
   xdecl = decl2 * d2rad
   xazim = azim * d2rad
 
-  a = cos(xincl) * cos(xdecl - xazim)
-  b = cos(xincl) * sin(xdecl - xazim)
-  c = sin(xincl)
+  a = dcos(xincl) * dcos(xdecl - xazim)
+  b = dcos(xincl) * dsin(xdecl - xazim)
+  c = dsin(xincl)
 
 end subroutine dircos
 
@@ -188,10 +182,6 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
 
   if (nmodel_components == 1) then
     sensit_line = this%intensity * sensit_line
-
-  else if (nmodel_components == 3) then
-    ! The input magnetisation vector is in A/m and the output data is in nanotesla.
-    sensit_line = (mu0 * T2nT) * sensit_line
   endif
 
   ! Convert to SI.
