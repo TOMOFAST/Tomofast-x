@@ -47,6 +47,7 @@ module problem_loop3d
   public :: solve_problem_loop3d
 
   private :: read_b_RHS
+  private :: write_final_model
 
 contains
 
@@ -107,6 +108,9 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
                   matrix, b_RHS, delta_model, myrank)
   !-------------------------------------------------------------------------------------
 
+  ! Write result to a file.
+  call write_final_model(delta_model, myrank)
+
 end subroutine solve_problem_loop3d
 
 !===================================================================================
@@ -142,6 +146,34 @@ subroutine read_b_RHS(par, b, myrank, nbproc)
   close(78)
 
   if (myrank == 0) print *, "Read Nb =", Nb
+
 end subroutine read_b_RHS
+
+!===================================================================================
+! Writes the final model.
+! TODO: Use this temporariry - to replace with the model class writers.
+!===================================================================================
+subroutine write_final_model(model, myrank)
+  integer, intent(in) :: myrank
+  real(kind=CUSTOM_REAL), intent(in) :: model(:)
+
+  integer :: i, nelements
+  character(len=256) :: filename, filename_full
+
+  if (myrank == 0) then
+    filename = "model_final.txt"
+    filename_full = trim(path_output)//filename
+
+    print *, 'Writing the full model to file ', trim(filename_full)
+
+    open(27, file=trim(filename_full), access='stream', form='formatted', status='replace', action='write')
+
+    ! Write the full model array.
+    nelements = size(model)
+    write(27, *) (model, new_line("A"), i = 1, nelements)
+
+    close(27)
+  endif
+end subroutine write_final_model
 
 end module problem_loop3d
