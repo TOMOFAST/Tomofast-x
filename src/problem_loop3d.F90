@@ -37,6 +37,7 @@ module problem_loop3d
   use inversion_arrays
   use sensitivity_gravmag
   use sparse_matrix
+  use lsqr_solver
   use string, only: str
 
   implicit none
@@ -66,10 +67,9 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
 
   type(t_inversion_arrays) :: iarr
   real(kind=CUSTOM_REAL), allocatable :: b_RHS(:)
+  real(kind=CUSTOM_REAL), allocatable :: delta_model(:)
 
   if (myrank == 0) print *, "Solving loop3d problem."
-
-  allocate(b_RHS(par%ndata), source=0._CUSTOM_REAL, stat=ierr)
 
   ! Read the sensitivity metadata file to define the nnz.
   call read_sensitivity_metadata(par, nnz, nelements, 1, myrank, nbproc)
@@ -77,6 +77,10 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   ! Update the nelements.
   par%nelements = nelements
   ipar%nelements = nelements
+
+  ! Allocate memory.
+  allocate(b_RHS(par%ndata), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(delta_model(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
   if (myrank == 0) print *, "Read nnz, nelements =", nnz, nelements
 
@@ -92,6 +96,16 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
 
   ! Reading the right-hand side vector b.
   call read_b_RHS(par, b_RHS, myrank, nbproc)
+
+  !-------------------------------------------------------------------------------------
+  ! Parallel sparse inversion.
+  !-------------------------------------------------------------------------------------
+  call matrix%finalize(myrank)
+
+  delta_model = 0._CUSTOM_REAL
+  call lsqr_solve(size(b_RHS), size(delta_model), ipar%niter, ipar%rmin, ipar%gamma, &
+                  matrix, b_RHS, delta_model, myrank)
+  !-------------------------------------------------------------------------------------
 
 end subroutine solve_problem_loop3d
 
