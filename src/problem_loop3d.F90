@@ -34,7 +34,9 @@ module problem_loop3d
   use global_typedefs
   use parameters_grav
   use parameters_inversion
+  use inversion_arrays
   use sensitivity_gravmag
+  use sparse_matrix
 
   implicit none
 
@@ -47,20 +49,39 @@ contains
 !===================================================================================
 ! Solves loop3d problem.
 !===================================================================================
-subroutine solve_problem_loop3d(gpar, ipar, myrank, nbproc)
-  type(t_parameters_grav), intent(inout) :: gpar
+subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
+  type(t_parameters_grav), intent(inout) :: par
   type(t_parameters_inversion), intent(inout) :: ipar
   integer, intent(in) :: myrank, nbproc
 
   integer(kind=8) :: nnz
   integer :: nelements
 
+  type(t_sparse_matrix) :: matrix
+  integer :: nl, nl_empty
+
+  type(t_inversion_arrays) :: iarr
+
   if (myrank == 0) print *, "Solving loop3d problem."
 
   ! Read the sensitivity metadata file to define the nnz.
-  call read_sensitivity_metadata(gpar, nnz, nelements, 1, myrank, nbproc)
+  call read_sensitivity_metadata(par, nnz, nelements, 1, myrank, nbproc)
+
+  ! Update the nelements.
+  par%nelements = nelements
+  ipar%nelements = nelements
 
   if (myrank == 0) print *, "Read nnz, nelements =", nnz, nelements
+
+  ! Memory allocation for auxiliarily inversion arrays.
+  call iarr%allocate_aux(par%nelements, par%ndata, par%ndata_components, myrank)
+
+  nl = par%ndata
+  nl_empty = 0
+  call matrix%initialize(nl, par%nelements, nnz, myrank, nl_empty)
+
+  ! Reading the sensitivity kernel and depth weight from files.
+  call read_sensitivity_kernel(par, matrix, iarr%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
 
 end subroutine solve_problem_loop3d
 
