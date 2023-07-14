@@ -34,6 +34,7 @@ module problem_loop3d
   use global_typedefs
   use parameters_grav
   use parameters_inversion
+  use sensitivity_gravmag
 
   implicit none
 
@@ -51,7 +52,15 @@ subroutine solve_problem_loop3d(gpar, ipar, myrank, nbproc)
   type(t_parameters_inversion), intent(inout) :: ipar
   integer, intent(in) :: myrank, nbproc
 
+  integer(kind=8) :: nnz
+  integer :: nelements
+
   if (myrank == 0) print *, "Solving loop3d problem."
+
+  ! Read the sensitivity metadata file to define the nnz.
+  call read_sensitivity_metadata(gpar, nnz, nelements, 1, myrank, nbproc)
+
+  if (myrank == 0) print *, "Read nnz, nelements =", nnz, nelements
 
 end subroutine solve_problem_loop3d
 
