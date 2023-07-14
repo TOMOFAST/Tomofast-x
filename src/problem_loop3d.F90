@@ -37,12 +37,15 @@ module problem_loop3d
   use inversion_arrays
   use sensitivity_gravmag
   use sparse_matrix
+  use string, only: str
 
   implicit none
 
   private
 
   public :: solve_problem_loop3d
+
+  private :: read_b_RHS
 
 contains
 
@@ -56,13 +59,17 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
 
   integer(kind=8) :: nnz
   integer :: nelements
+  integer :: ierr
 
   type(t_sparse_matrix) :: matrix
   integer :: nl, nl_empty
 
   type(t_inversion_arrays) :: iarr
+  real(kind=CUSTOM_REAL), allocatable :: b_RHS(:)
 
   if (myrank == 0) print *, "Solving loop3d problem."
+
+  allocate(b_RHS(par%ndata), source=0._CUSTOM_REAL, stat=ierr)
 
   ! Read the sensitivity metadata file to define the nnz.
   call read_sensitivity_metadata(par, nnz, nelements, 1, myrank, nbproc)
@@ -83,6 +90,44 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   ! Reading the sensitivity kernel and depth weight from files.
   call read_sensitivity_kernel(par, matrix, iarr%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
 
+  ! Reading the right-hand side vector b.
+  call read_b_RHS(par, b_RHS, myrank, nbproc)
+
 end subroutine solve_problem_loop3d
+
+!===================================================================================
+! Reads the right-hand side vector b.
+!===================================================================================
+subroutine read_b_RHS(par, b, myrank, nbproc)
+  type(t_parameters_grav), intent(inout) :: par
+  integer, intent(in) :: myrank, nbproc
+
+  real(kind=CUSTOM_REAL), intent(out) :: b(:)
+
+  integer :: Nb, ierr
+  character(len=256) :: filename, filename_full
+  character(len=256) :: msg
+
+  ! Define the file name.
+  filename = "sensit_grav_"//trim(str(nbproc))//"_b"
+
+  filename_full = trim(par%sensit_path)//filename
+
+  if (myrank == 0) print *, "Reading the right-hand side file ", trim(filename_full)
+
+  ! Open the file.
+  open(78, file=trim(filename_full), form='unformatted', status='old', action='read', access='stream', &
+       iostat=ierr, iomsg=msg)
+
+  if (ierr /= 0) call exit_MPI("Error in opening the right-hand side file! path=" &
+                                //trim(filename_full)//", iomsg="//msg, myrank, ierr)
+
+  read(78) Nb
+  read(78) b
+
+  close(78)
+
+  if (myrank == 0) print *, "Read Nb =", Nb
+end subroutine read_b_RHS
 
 end module problem_loop3d
