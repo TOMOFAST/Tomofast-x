@@ -34,6 +34,7 @@ program program_tomofastx
   use parameters_inversion
   use init_parameters
   use problem_joint_gravmag
+  use problem_loop3d
 
   implicit none
 
@@ -91,6 +92,10 @@ program program_tomofastx
   if (problem_type == 1) then
     ! Gravity and Magnetism problem.
     call solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
+
+  else if (problem_type == 2) then
+    ! Solve Loop 3d problem.
+    call solve_problem_loop3d(gpar, ipar, myrank, nbproc)
   endif
 
   if (myrank == 0) print *, "THE END."

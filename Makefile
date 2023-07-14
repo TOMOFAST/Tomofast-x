@@ -160,7 +160,8 @@ sensitivity_gravmag.F90
 # Main routines.
 SRC_LIST_MAIN = \
 parameters_init.f90 \
-problem_joint_gravmag.F90
+problem_joint_gravmag.F90 \
+problem_loop3d.F90
 
 # Unit tests.
 SRC_LIST_TESTS = \

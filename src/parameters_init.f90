@@ -99,6 +99,8 @@ subroutine get_problem_type(problem_type, myrank)
 
   if (arg == '-j' .or. arg == '-p') then
     problem_type = 1
+  else if (arg == '-l') then
+    problem_type = 2
   else
     call exit_MPI("Unknown problem type! arg ="//arg, myrank, 0)
   endif
