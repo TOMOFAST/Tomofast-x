@@ -170,7 +170,7 @@ subroutine write_final_model(model, myrank)
 
     ! Write the full model array.
     nelements = size(model)
-    write(27, *) (model, new_line("A"), i = 1, nelements)
+    write(27, *) (model(i), new_line("A"), i = 1, nelements)
 
     close(27)
   endif
