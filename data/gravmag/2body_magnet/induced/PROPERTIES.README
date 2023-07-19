@@ -1,0 +1,18 @@
+Cell size: 50m x 50m x 50m
+Dimensions (ncells): 41 x 41 x 20 (easting x northing x depth)
+Inducing field: -60 incl 2 decl 55000nT
+Background: 0.00001 SI
+
+Body 1
+Cell index: 21 15 3 (does not include padding indicies)
+Susceptibility: 0.05 SI
+Q factor: 0
+
+Body 2
+Cell index: 21 25 3 (does not include padding indicies)
+Susceptibility: 0.1 SI
+Q factor: 0
+
+E-W padding: 13 (26)
+N-S padding: 13 (26)
+RL padding: 10

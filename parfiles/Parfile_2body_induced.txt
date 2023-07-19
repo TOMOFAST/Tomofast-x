@@ -1,0 +1,81 @@
+===================================================================================
+GLOBAL
+===================================================================================
+global.outputFolderPath       = ./output/2body_induced/
+global.description            = 2-body induced magnetisation example
+
+===================================================================================
+MODEL GRID parameters
+===================================================================================
+# nx ny nz
+# mag
+modelGrid.size                      = 67 67 30
+modelGrid.magn.file                 = ./data/gravmag/2body_magnet/induced/meshgrid_padded_2depth_true.txt
+modelGrid.magn.nModelComponents     = 3
+
+===================================================================================
+DATA parameters
+===================================================================================
+forward.data.magn.nData               = 1681
+forward.data.magn.dataGridFile        = ./data/gravmag/2body_magnet/induced/dummy.obs
+forward.data.magn.dataValuesFile      = ./output/2body_induced/mag_calc_read_data.txt
+forward.data.magn.nDataComponents     = 1
+
+===================================================================================
+MAGNETIC FIELD constants
+===================================================================================
+forward.magneticField.inclination            = -60.0
+forward.magneticField.declination            = 2.0
+forward.magneticField.intensity_nT           = 55000.
+forward.magneticField.XaxisDeclination       = 0.d0
+
+===================================================================================
+DEPTH WEIGHTING
+===================================================================================
+# 1-depth weight, 2-distance weight.
+forward.depthWeighting.type                = 2
+forward.depthWeighting.magn.power          = 3.0
+forward.depthWeighting.magn.beta           = 1.5d0
+
+===================================================================================
+SENSITIVITY KERNEL
+===================================================================================
+# 0-calculate the sensitivity, 1-read from files at the specified folder.
+sensit.readFromFiles                = 0
+sensit.folderPath                   = 
+
+===================================================================================
+MATRIX COMPRESSION
+===================================================================================
+# 0-none, 1-wavelet compression.
+forward.matrixCompression.type                       = 1
+# The minimum compressed sensitivity absolute value.
+forward.matrixCompression.rate                       = 0.3 
+
+===================================================================================
+STARTING MODEL
+===================================================================================
+# 1-set value, 2-read from file.
+inversion.startingModel.type                = 1
+inversion.startingModel.magn.value          = 0.1000000E-02
+
+===================================================================================
+INVERSION parameters
+===================================================================================
+inversion.nMajorIterations            = 2
+inversion.nMinorIterations            = 100
+inversion.minResidual                 = 0.1000000E-12
+inversion.writeModelEveryNiter        = 0
+
+===================================================================================
+MODEL DAMPING (m - m_prior)
+===================================================================================
+inversion.modelDamping.grav.weight       = 0.0
+inversion.modelDamping.magn.weight       = 0.1000000E-07
+
+===================================================================================
+JOINT INVERSION parameters
+===================================================================================
+inversion.joint.grav.problemWeight           = 0.0
+inversion.joint.magn.problemWeight           = 1.0
+inversion.joint.magn.columnWeightMultiplier  = 1.d0
