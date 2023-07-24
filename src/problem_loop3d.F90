@@ -193,7 +193,7 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   enddo
 
   ! Write result to a file.
-  call write_final_model(delta_model, myrank)
+  call write_final_model(model, myrank)
 
 end subroutine solve_problem_loop3d
 
