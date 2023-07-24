@@ -93,6 +93,8 @@ module sparse_matrix
 
     procedure, public, pass :: allocate_variance_array => sparse_matrix_allocate_variance_array
 
+    procedure, public, pass :: mult_rows => sparse_matrix_mult_rows
+
     procedure, private, pass :: validate => sparse_matrix_validate
 
     procedure, private, pass :: allocate_arrays => sparse_matrix_allocate_arrays
@@ -575,5 +577,22 @@ subroutine sparse_matrix_allocate_variance_array(this, nelements, myrank)
     call exit_MPI("Dynamic memory allocation error in sparse_matrix_allocate_variance_array!", myrank, ierr)
 
 end subroutine sparse_matrix_allocate_variance_array
+
+!=========================================================================
+! Multiply specified matrix rows by a constant.
+!=========================================================================
+subroutine sparse_matrix_mult_rows(this, row_start, row_end, val)
+  class(t_sparse_matrix), intent(inout) :: this
+  integer, intent(in) :: row_start, row_end
+  real(kind=CUSTOM_REAL), intent(in) :: val
+
+  integer(kind=8) :: k_start, k_end
+
+  k_start = this%ijl(row_start)
+  k_end = this%ijl(row_end + 1) - 1
+
+  this%sa(k_start:k_end) = real(val, MATRIX_PRECISION) * this%sa(k_start:k_end)
+
+end subroutine sparse_matrix_mult_rows
 
 end module sparse_matrix

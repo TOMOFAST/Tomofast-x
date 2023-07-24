@@ -142,6 +142,9 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
 
   if (myrank == 0) print *, 'Na =', Na
 
+  ! Apply the ADMM weight to the Q-matrix.
+  call matrix%mult_rows(Na + 1, par%ndata, ipar%rho_ADMM(1))
+
   ! Starting model.
   model = 0.d0
 
@@ -157,7 +160,8 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
     !-------------------------------------------------------------------------------------
     ! Calculate the ADMM constraints.
     !-------------------------------------------------------------------------------------
-    Qx%val(:, 1) = Mx(Na + 1 : par%ndata)
+    ! Note we scale back the ADMM weight as we want to apply constraints on the original Qx.
+    Qx%val(:, 1) = Mx(Na + 1 : par%ndata) / ipar%rho_ADMM(1)
 
     call admm_method%iterate_admm_arrays(Qx%nlithos, &
                                          Qx%min_local_bound, Qx%max_local_bound, &
@@ -170,7 +174,7 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
     b(1:Na) = b0(1:Na) - Mx(1:Na)
 
     ! ADMM constraints.
-    b(Na + 1 : par%ndata) = - (Qx%val(:, 1) - x0_ADMM)
+    b(Na + 1 : par%ndata) = - ipar%rho_ADMM(1) * (Qx%val(:, 1) - x0_ADMM)
 
     !-------------------------------------------------------------------------------------
     ! Calculate the costs.
