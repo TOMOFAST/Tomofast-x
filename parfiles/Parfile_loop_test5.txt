@@ -26,7 +26,6 @@ INVERSION parameters
 ===================================================================================
 inversion.nMajorIterations          = 20
 inversion.nMinorIterations          = 1000
-inversion.writeModelEveryNiter      = 0
 inversion.minResidual               = 1.d-13
 
 ==================================================================================
@@ -35,4 +34,3 @@ DISJOINT INTERVAL BOUND constraints (ADMM)
 inversion.admm.enableADMM               = 1
 inversion.admm.nLithologies             = 1
 inversion.admm.grav.boundsFile          = data/loop/test5/bounds.txt
-inversion.admm.grav.weight              = 1.
