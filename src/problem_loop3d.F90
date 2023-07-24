@@ -66,7 +66,7 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   integer :: nelements
   integer :: ierr
   integer :: Na, it
-  real(kind=CUSTOM_REAL) :: cost
+  real(kind=CUSTOM_REAL) :: cost, cost_admm
 
   type(t_sparse_matrix) :: matrix
   integer :: nl, nl_empty
@@ -180,9 +180,10 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
     ! Calculate the costs.
     !-------------------------------------------------------------------------------------
     cost = norm2(b(1:Na)) / norm2(b0(1:Na))
+    cost_admm = norm2(Qx%val(:, 1) - x0_ADMM) / norm2(Qx%val(:, 1))
 
     print *, 'cost (data+reg) =', cost
-    print *, 'cost (ADMM) =', norm2(b(Na + 1 : par%ndata))
+    print *, 'cost (ADMM) =', cost_admm
 
     !-------------------------------------------------------------------------------------
     ! Parallel sparse inversion.

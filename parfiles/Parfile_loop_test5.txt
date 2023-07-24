@@ -24,8 +24,8 @@ sensit.folderPath                   = data/loop/test5/
 ===================================================================================
 INVERSION parameters
 ===================================================================================
-inversion.nMajorIterations          = 20
-inversion.nMinorIterations          = 1000
+inversion.nMajorIterations          = 50
+inversion.nMinorIterations          = 200
 inversion.minResidual               = 1.d-13
 
 ==================================================================================
@@ -34,4 +34,4 @@ DISJOINT INTERVAL BOUND constraints (ADMM)
 inversion.admm.enableADMM               = 1
 inversion.admm.nLithologies             = 1
 inversion.admm.grav.boundsFile          = data/loop/test5/bounds.txt
-inversion.admm.grav.weight              = 1.
+inversion.admm.grav.weight              = 0.1
