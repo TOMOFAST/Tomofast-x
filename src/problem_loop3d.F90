@@ -38,6 +38,8 @@ module problem_loop3d
   use sensitivity_gravmag
   use sparse_matrix
   use lsqr_solver
+  use model
+  use model_IO
   use string, only: str
 
   implicit none
@@ -66,6 +68,7 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   type(t_sparse_matrix) :: matrix
   integer :: nl, nl_empty
 
+  type(t_model) :: model
   type(t_inversion_arrays) :: iarr
   real(kind=CUSTOM_REAL), allocatable :: b_RHS(:)
   real(kind=CUSTOM_REAL), allocatable :: delta_model(:)
@@ -87,6 +90,13 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
 
   ! Memory allocation for auxiliarily inversion arrays.
   call iarr%allocate_aux(par%nelements, par%ndata, par%ndata_components, myrank)
+
+  ! Reading the ADMM bounds.
+  if (ipar%admm_type > 0) then
+    call model%initialize(ipar%nelements, ipar%nmodel_components, myrank, nbproc)
+    call model%allocate_bound_arrays(ipar%nlithos, myrank)
+    call read_bound_constraints(model, ipar%bounds_ADMM_file(1), myrank, nbproc)
+  endif
 
   nl = par%ndata
   nl_empty = 0
@@ -141,11 +151,11 @@ subroutine read_b_RHS(par, b, myrank, nbproc)
                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
   read(78) Nb
-  read(78) b
+  if (myrank == 0) print *, "Read Nb =", Nb
+
+  read(78) b(1:Nb)
 
   close(78)
-
-  if (myrank == 0) print *, "Read Nb =", Nb
 
 end subroutine read_b_RHS
 

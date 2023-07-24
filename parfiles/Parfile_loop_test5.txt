@@ -1,0 +1,38 @@
+===================================================================================
+GLOBAL
+===================================================================================
+global.outputFolderPath     = output/loop_test5/
+global.description          = Loop test 5 with constraints
+
+===================================================================================
+MODEL GRID parameters
+===================================================================================
+# nx ny nz
+modelGrid.size                      = 1 1 12420
+
+===================================================================================
+DATA parameters
+===================================================================================
+forward.data.grav.nData             = 72180
+
+===================================================================================
+SENSITIVITY KERNEL
+===================================================================================
+sensit.readFromFiles                = 1
+sensit.folderPath                   = data/loop/test5/
+
+===================================================================================
+INVERSION parameters
+===================================================================================
+inversion.nMajorIterations          = 60
+inversion.nMinorIterations          = 100
+inversion.writeModelEveryNiter      = 0
+inversion.minResidual               = 1.d-13
+
+==================================================================================
+DISJOINT INTERVAL BOUND constraints (ADMM)
+==================================================================================
+inversion.admm.enableADMM               = 1
+inversion.admm.nLithologies             = 1
+inversion.admm.grav.boundsFile          = data/loop/test5/bounds.txt
+inversion.admm.grav.weight              = 1.
