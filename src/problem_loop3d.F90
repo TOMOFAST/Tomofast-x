@@ -65,13 +65,13 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   integer(kind=8) :: nnz
   integer :: nelements
   integer :: ierr
-  integer :: Na
+  integer :: Na, it
+  real(kind=CUSTOM_REAL) :: cost
 
   type(t_sparse_matrix) :: matrix
   integer :: nl, nl_empty
 
   type(t_model) :: Qx
-  type(t_inversion_arrays) :: iarr
   type(t_admm_method) :: admm_method
   real(kind=CUSTOM_REAL), allocatable :: x0_ADMM(:)
   real(kind=CUSTOM_REAL), allocatable :: b0(:)
@@ -79,6 +79,7 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   real(kind=CUSTOM_REAL), allocatable :: Mx(:)
   real(kind=CUSTOM_REAL), allocatable :: model(:)
   real(kind=CUSTOM_REAL), allocatable :: delta_model(:)
+  real(kind=CUSTOM_REAL), allocatable :: column_weight(:)
 
   if (myrank == 0) print *, "Solving loop3d problem."
 
@@ -107,9 +108,7 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   allocate(Mx(par%ndata), source=0._CUSTOM_REAL, stat=ierr)
   allocate(model(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
   allocate(delta_model(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
-
-  ! Memory allocation for auxiliarily inversion arrays.
-  call iarr%allocate_aux(par%nelements, par%ndata, par%ndata_components, myrank)
+  allocate(column_weight(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
   ! Reading the ADMM bounds.
   if (ipar%admm_type > 0) then
@@ -132,7 +131,7 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   call matrix%initialize(nl, par%nelements, nnz, myrank, nl_empty)
 
   ! Reading the sensitivity kernel and depth weight from files.
-  call read_sensitivity_kernel(par, matrix, iarr%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
+  call read_sensitivity_kernel(par, matrix, column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
   call matrix%finalize(myrank)
 
   ! Reading the right-hand side vector b.
@@ -141,38 +140,57 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   ! Size of the A-matrix (in a big matrix with A and Q vertically stacked).
   Na = par%ndata - ipar%nelements_total
 
+  if (myrank == 0) print *, 'Na =', Na
+
   ! Starting model.
   model = 0.d0
 
-  ! Calculate the forward problem.
-  ! TODO: Can reuse the b-array for Mx.
-  call matrix%mult_vector(model, Mx)
+  ! Major inversion loop.
+  do it = 1, ipar%ninversions
 
-  !-------------------------------------------------------------------------------------
-  ! Calculate the ADMM constraints.
-  !-------------------------------------------------------------------------------------
-  Qx%val(:, 1) = Mx(Na + 1 : par%ndata)
+    if (myrank == 0) print *, 'it =', it
 
-  call admm_method%iterate_admm_arrays(Qx%nlithos, &
-                                       Qx%min_local_bound, Qx%max_local_bound, &
-                                       Qx%val(:, 1), x0_ADMM, myrank)
+    ! Calculate the forward problem.
+    ! TODO: Can reuse the b-array for Mx.
+    call matrix%mult_vector(model, Mx)
 
-  !-------------------------------------------------------------------------------------
-  ! Build the right-hand side part.
-  !-------------------------------------------------------------------------------------
-  ! Data residual part (including the smoothing term).
-  b(1:Na) = b0(1:Na) - Mx(1:Na)
+    !-------------------------------------------------------------------------------------
+    ! Calculate the ADMM constraints.
+    !-------------------------------------------------------------------------------------
+    Qx%val(:, 1) = Mx(Na + 1 : par%ndata)
 
-  ! ADMM constraints.
-  b(Na + 1 : par%ndata) = - (Qx%val(:, 1) - x0_ADMM)
+    call admm_method%iterate_admm_arrays(Qx%nlithos, &
+                                         Qx%min_local_bound, Qx%max_local_bound, &
+                                         Qx%val(:, 1), x0_ADMM, myrank)
 
-  !-------------------------------------------------------------------------------------
-  ! Parallel sparse inversion.
-  !-------------------------------------------------------------------------------------
-  delta_model = 0._CUSTOM_REAL
-  call lsqr_solve(size(b), size(delta_model), ipar%niter, ipar%rmin, ipar%gamma, &
-                  matrix, b, delta_model, myrank)
-  !-------------------------------------------------------------------------------------
+    !-------------------------------------------------------------------------------------
+    ! Build the right-hand side part.
+    !-------------------------------------------------------------------------------------
+    ! Data residual part (including the smoothing term).
+    b(1:Na) = b0(1:Na) - Mx(1:Na)
+
+    ! ADMM constraints.
+    b(Na + 1 : par%ndata) = - (Qx%val(:, 1) - x0_ADMM)
+
+    !-------------------------------------------------------------------------------------
+    ! Calculate the costs.
+    !-------------------------------------------------------------------------------------
+    cost = norm2(b(1:Na)) / norm2(b0(1:Na))
+
+    print *, 'cost (data+reg) =', cost
+    print *, 'cost (ADMM) =', norm2(b(Na + 1 : par%ndata))
+
+    !-------------------------------------------------------------------------------------
+    ! Parallel sparse inversion.
+    !-------------------------------------------------------------------------------------
+    delta_model = 0._CUSTOM_REAL
+    call lsqr_solve(size(b), size(delta_model), ipar%niter, ipar%rmin, ipar%gamma, &
+                    matrix, b, delta_model, myrank)
+    !-------------------------------------------------------------------------------------
+
+    ! Update the model.
+    model = model + delta_model
+  enddo
 
   ! Write result to a file.
   call write_final_model(delta_model, myrank)

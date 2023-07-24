@@ -24,8 +24,8 @@ sensit.folderPath                   = data/loop/test5/
 ===================================================================================
 INVERSION parameters
 ===================================================================================
-inversion.nMajorIterations          = 60
-inversion.nMinorIterations          = 100
+inversion.nMajorIterations          = 20
+inversion.nMinorIterations          = 1000
 inversion.writeModelEveryNiter      = 0
 inversion.minResidual               = 1.d-13
 
