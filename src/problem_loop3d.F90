@@ -52,6 +52,7 @@ module problem_loop3d
   private :: read_b_RHS
   private :: write_final_model
   private :: read_Q_size
+  private :: write_paraview_model
 
 contains
 
@@ -67,7 +68,6 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   integer :: nelements
   integer :: ierr
   integer :: A_size, Q_size, it
-  integer :: i, j, k, p
   real(kind=CUSTOM_REAL) :: cost, cost_admm, cost2
   character(len=256) :: filename_full
 
@@ -158,7 +158,7 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   !------------------------------------------------------------------
   ! Reading the Lachlan's solution.
   !------------------------------------------------------------------
-!  filename_full = "data/loop/test5/values.txt"
+!  filename_full = "data/loop/test6/values.txt"
 !
 !  ! Open the file.
 !  open(80, file=trim(filename_full), form='formatted', status='old', action='read', access='stream', &
@@ -229,42 +229,49 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   ! Write result to a file.
   call write_final_model(model, myrank)
 
-  !------------------------------------------------------------------------
-  ! Visualize the solution
-  !------------------------------------------------------------------------
-!  ! TODO: pass via Parfile -- need to adjust sensitivity & weight input data.
-!  ipar%nx = 23
-!  ipar%ny = 30
-!  ipar%nz = 18
-!
-!  call Qx%grid_full%allocate(ipar%nx, ipar%ny, ipar%nz, myrank)
-!
-!  ! Init grid.
-!  ! TODO: Read from a file instead.
-!  p = 1
-!  do k = 1, ipar%nz
-!    do j = 1, ipar%ny
-!      do i = 1, ipar%nx
-!        Qx%grid_full%X1(p) = dble(i)
-!        Qx%grid_full%X2(p) = dble(i + 1)
-!        Qx%grid_full%Y1(p) = dble(j)
-!        Qx%grid_full%Y2(p) = dble(j + 1)
-!        Qx%grid_full%Z1(p) = dble(k)
-!        Qx%grid_full%Z2(p) = dble(k + 1)
-!
-!        Qx%grid_full%i_(p) = i
-!        Qx%grid_full%j_(p) = j
-!        Qx%grid_full%k_(p) = k
-!        p = p + 1
-!      enddo
-!    enddo
-!  enddo
-!
-!  Qx%val(:, 1) = model
-!  call model_write(Qx, "loop", .true., .false., myrank, nbproc)
-  !------------------------------------------------------------------------
+  ! Write models for paraview.
+  call write_paraview_model(ipar, model, myrank, nbproc)
 
 end subroutine solve_problem_loop3d
+
+!===================================================================================
+! Reads the right-hand side vector b.
+!===================================================================================
+subroutine write_paraview_model(ipar, val, myrank, nbproc)
+  type(t_parameters_inversion), intent(in) :: ipar
+  real(kind=CUSTOM_REAL), intent(in) :: val(:)
+  integer, intent(in) :: myrank, nbproc
+
+  type(t_model) :: vmodel
+  integer :: i, j, k, p
+
+  call vmodel%initialize(ipar%nelements, 1, myrank, nbproc)
+  call vmodel%grid_full%allocate(ipar%nx, ipar%ny, ipar%nz, myrank)
+
+  ! Init a dummy grid.
+  p = 1
+  do k = 1, ipar%nz
+    do j = 1, ipar%ny
+      do i = 1, ipar%nx
+        vmodel%grid_full%X1(p) = dble(i)
+        vmodel%grid_full%X2(p) = dble(i + 1)
+        vmodel%grid_full%Y1(p) = dble(j)
+        vmodel%grid_full%Y2(p) = dble(j + 1)
+        vmodel%grid_full%Z1(p) = dble(k)
+        vmodel%grid_full%Z2(p) = dble(k + 1)
+
+        vmodel%grid_full%i_(p) = i
+        vmodel%grid_full%j_(p) = j
+        vmodel%grid_full%k_(p) = k
+        p = p + 1
+      enddo
+    enddo
+  enddo
+
+  vmodel%val(:, 1) = val
+  call model_write(vmodel, "loop", .true., .false., myrank, nbproc)
+
+end subroutine write_paraview_model
 
 !===================================================================================
 ! Reads the right-hand side vector b.
