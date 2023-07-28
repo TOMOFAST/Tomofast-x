@@ -51,6 +51,7 @@ module problem_loop3d
 
   private :: read_b_RHS
   private :: write_final_model
+  private :: read_Q_size
 
 contains
 
@@ -65,8 +66,10 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   integer(kind=8) :: nnz
   integer :: nelements
   integer :: ierr
-  integer :: Na, it
-  real(kind=CUSTOM_REAL) :: cost, cost_admm
+  integer :: A_size, Q_size, it
+  integer :: i, j, k, p
+  real(kind=CUSTOM_REAL) :: cost, cost_admm, cost2
+  character(len=256) :: filename_full
 
   type(t_sparse_matrix) :: matrix
   integer :: nl, nl_empty
@@ -112,15 +115,19 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
 
   ! Reading the ADMM bounds.
   if (ipar%admm_type > 0) then
-    call Qx%initialize(ipar%nelements, ipar%nmodel_components, myrank, nbproc)
+    ! Read the size of the Q matrix (number of rows).
+    Q_size = read_Q_size(ipar%bounds_ADMM_file(1), myrank)
+    if (myrank == 0) print *, 'Q_size =', Q_size
+
+    call Qx%initialize(Q_size, 1, myrank, nbproc)
     call Qx%allocate_bound_arrays(ipar%nlithos, myrank)
     call read_bound_constraints(Qx, ipar%bounds_ADMM_file(1), myrank, nbproc)
   endif
 
   ! Init the ADMM arrays.
   if (ipar%admm_type > 0) then
-    call admm_method%initialize(par%nelements, myrank)
-    allocate(x0_ADMM(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
+    call admm_method%initialize(Q_size, myrank)
+    allocate(x0_ADMM(Q_size), source=0._CUSTOM_REAL, stat=ierr)
   endif
 
   !-------------------------------------------------------------------------------------
@@ -138,15 +145,31 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   call read_b_RHS(par, b0, myrank, nbproc)
 
   ! Size of the A-matrix (in a big matrix with A and Q vertically stacked).
-  Na = par%ndata - ipar%nelements_total
+  A_size = par%ndata - Q_size
 
-  if (myrank == 0) print *, 'Na =', Na
+  if (myrank == 0) print *, 'A_size =', A_size
 
   ! Apply the ADMM weight to the Q-matrix.
-  call matrix%mult_rows(Na + 1, par%ndata, ipar%rho_ADMM(1))
+  call matrix%mult_rows(A_size + 1, par%ndata, ipar%rho_ADMM(1))
 
   ! Starting model.
   model = 0.d0
+
+  !------------------------------------------------------------------
+  ! Reading the Lachlan's solution.
+  !------------------------------------------------------------------
+!  filename_full = "data/loop/test5/values.txt"
+!
+!  ! Open the file.
+!  open(80, file=trim(filename_full), form='formatted', status='old', action='read', access='stream', &
+!       iostat=ierr)
+!
+!  if (ierr /= 0) call exit_MPI("Error in opening the solution file!" &
+!                                //trim(filename_full), myrank, ierr)
+!
+!  read(80, *) model
+!  close(80)
+  !-------------------------------------------------------------------
 
   ! Major inversion loop.
   do it = 1, ipar%ninversions
@@ -161,7 +184,7 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
     ! Calculate the ADMM constraints.
     !-------------------------------------------------------------------------------------
     ! Note we scale back the ADMM weight as we want to apply constraints on the original Qx.
-    Qx%val(:, 1) = Mx(Na + 1 : par%ndata) / ipar%rho_ADMM(1)
+    Qx%val(:, 1) = Mx(A_size + 1 : par%ndata) / ipar%rho_ADMM(1)
 
     call admm_method%iterate_admm_arrays(Qx%nlithos, &
                                          Qx%min_local_bound, Qx%max_local_bound, &
@@ -171,16 +194,22 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
     ! Build the right-hand side part.
     !-------------------------------------------------------------------------------------
     ! Data residual part (including the smoothing term).
-    b(1:Na) = b0(1:Na) - Mx(1:Na)
+    b(1:A_size) = b0(1:A_size) - Mx(1:A_size)
 
     ! ADMM constraints.
-    b(Na + 1 : par%ndata) = - ipar%rho_ADMM(1) * (Qx%val(:, 1) - x0_ADMM)
+    b(A_size + 1 : par%ndata) = - ipar%rho_ADMM(1) * (Qx%val(:, 1) - x0_ADMM)
 
     !-------------------------------------------------------------------------------------
     ! Calculate the costs.
     !-------------------------------------------------------------------------------------
-    cost = norm2(b(1:Na)) / norm2(b0(1:Na))
-    cost_admm = norm2(Qx%val(:, 1) - x0_ADMM) / norm2(Qx%val(:, 1))
+    cost = norm2(b(1:A_size)) / norm2(b0(1:A_size))
+
+    cost2 = norm2(Qx%val(:, 1))
+    if (cost2 > 0) then
+      cost_admm = norm2(Qx%val(:, 1) - x0_ADMM) / cost2
+    else
+      cost_admm = 0.d0
+    endif
 
     print *, 'cost (data+reg) =', cost
     print *, 'cost (ADMM) =', cost_admm
@@ -199,6 +228,41 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
 
   ! Write result to a file.
   call write_final_model(model, myrank)
+
+  !------------------------------------------------------------------------
+  ! Visualize the solution
+  !------------------------------------------------------------------------
+!  ! TODO: pass via Parfile -- need to adjust sensitivity & weight input data.
+!  ipar%nx = 23
+!  ipar%ny = 30
+!  ipar%nz = 18
+!
+!  call Qx%grid_full%allocate(ipar%nx, ipar%ny, ipar%nz, myrank)
+!
+!  ! Init grid.
+!  ! TODO: Read from a file instead.
+!  p = 1
+!  do k = 1, ipar%nz
+!    do j = 1, ipar%ny
+!      do i = 1, ipar%nx
+!        Qx%grid_full%X1(p) = dble(i)
+!        Qx%grid_full%X2(p) = dble(i + 1)
+!        Qx%grid_full%Y1(p) = dble(j)
+!        Qx%grid_full%Y2(p) = dble(j + 1)
+!        Qx%grid_full%Z1(p) = dble(k)
+!        Qx%grid_full%Z2(p) = dble(k + 1)
+!
+!        Qx%grid_full%i_(p) = i
+!        Qx%grid_full%j_(p) = j
+!        Qx%grid_full%k_(p) = k
+!        p = p + 1
+!      enddo
+!    enddo
+!  enddo
+!
+!  Qx%val(:, 1) = model
+!  call model_write(Qx, "loop", .true., .false., myrank, nbproc)
+  !------------------------------------------------------------------------
 
 end subroutine solve_problem_loop3d
 
@@ -264,5 +328,23 @@ subroutine write_final_model(model, myrank)
     close(27)
   endif
 end subroutine write_final_model
+
+!===================================================================================
+! Reads the size of Q matrix (the number of rows).
+!===================================================================================
+function read_Q_size(file_name, myrank) result(Q_size)
+  character(len=*), intent(in) :: file_name
+  integer, intent(in) :: myrank
+  integer :: Q_size, nlithos, ierr
+  character(len=256) :: msg
+
+  open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
+  if (ierr /= 0) call exit_MPI("Error in opening the bound constraints file! path=" &
+                 //file_name//" iomsg="//msg, myrank, ierr)
+
+  read(10, *, iostat=ierr) Q_size, nlithos
+  close(10)
+
+end function read_Q_size
 
 end module problem_loop3d
