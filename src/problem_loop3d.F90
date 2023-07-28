@@ -68,8 +68,9 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   integer :: nelements
   integer :: ierr
   integer :: A_size, Q_size, it
-  real(kind=CUSTOM_REAL) :: cost, cost_admm, cost2
-  character(len=256) :: filename_full
+  real(kind=CUSTOM_REAL) :: cost_data1, cost_data2, cost_data
+  real(kind=CUSTOM_REAL) :: cost_admm1, cost_admm2, cost_admm
+  real(kind=CUSTOM_REAL) :: RMS_data
 
   type(t_sparse_matrix) :: matrix
   integer :: nl, nl_empty
@@ -177,7 +178,7 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
     if (myrank == 0) print *, 'it =', it
 
     ! Calculate the forward problem.
-    ! TODO: Can reuse the b-array for Mx.
+    ! Note: Can reuse the b-array for Mx.
     call matrix%mult_vector(model, Mx)
 
     !-------------------------------------------------------------------------------------
@@ -202,17 +203,28 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
     !-------------------------------------------------------------------------------------
     ! Calculate the costs.
     !-------------------------------------------------------------------------------------
-    cost = norm2(b(1:A_size)) / norm2(b0(1:A_size))
+    cost_data1 = norm2(b(1:A_size))
+    cost_data2 = norm2(b0(1:A_size))
 
-    cost2 = norm2(admm_method%z)
-    if (cost2 > 0) then
-      cost_admm = norm2(Qx%val(:, 1) - admm_method%z) / cost2
-    else
-      cost_admm = 0.d0
+    ! Calculate the relative cost of the data+reg term.
+    cost_data = -1.d0
+    if (cost_data2 > 0.d0) cost_data = cost_data1 / cost_data2
+
+    ! Calculate the RMS of the data+reg term.
+    RMS_data = sqrt(cost_data1 / A_size)
+
+    cost_admm1 = norm2(Qx%val(:, 1) - admm_method%z)
+    cost_admm2 = norm2(admm_method%z)
+
+    ! Calculate the relative cost of the ADMM term.
+    cost_admm = -1.d0
+    if (cost_admm2 > 0.d0) cost_admm = cost_admm1 / cost_admm2
+
+    if (myrank == 0) then
+      print *, 'cost (data+reg) =', cost_data
+      print *, 'RMS (data+reg) =', RMS_data
+      print *, 'cost (ADMM) =', cost_admm
     endif
-
-    print *, 'cost (data+reg) =', cost
-    print *, 'cost_new (ADMM) =', cost_admm
 
     !-------------------------------------------------------------------------------------
     ! Parallel sparse inversion.
