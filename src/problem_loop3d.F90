@@ -204,15 +204,15 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
     !-------------------------------------------------------------------------------------
     cost = norm2(b(1:A_size)) / norm2(b0(1:A_size))
 
-    cost2 = norm2(Qx%val(:, 1))
+    cost2 = norm2(admm_method%z)
     if (cost2 > 0) then
-      cost_admm = norm2(Qx%val(:, 1) - x0_ADMM) / cost2
+      cost_admm = norm2(Qx%val(:, 1) - admm_method%z) / cost2
     else
       cost_admm = 0.d0
     endif
 
     print *, 'cost (data+reg) =', cost
-    print *, 'cost (ADMM) =', cost_admm
+    print *, 'cost_new (ADMM) =', cost_admm
 
     !-------------------------------------------------------------------------------------
     ! Parallel sparse inversion.
