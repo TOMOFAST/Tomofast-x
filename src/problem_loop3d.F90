@@ -69,8 +69,8 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   integer :: ierr
   integer :: A_size, Q_size, it
   real(kind=CUSTOM_REAL) :: cost_data1, cost_data2, cost_data
+  real(kind=CUSTOM_REAL) :: model_norm, cost_data_model
   real(kind=CUSTOM_REAL) :: cost_admm1, cost_admm2, cost_admm
-  real(kind=CUSTOM_REAL) :: RMS_data
 
   type(t_sparse_matrix) :: matrix
   integer :: nl, nl_empty
@@ -205,13 +205,15 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
     !-------------------------------------------------------------------------------------
     cost_data1 = norm2(b(1:A_size))
     cost_data2 = norm2(b0(1:A_size))
+    model_norm = norm2(model)
 
     ! Calculate the relative cost of the data+reg term.
     cost_data = -1.d0
     if (cost_data2 > 0.d0) cost_data = cost_data1 / cost_data2
 
-    ! Calculate the RMS of the data+reg term.
-    RMS_data = sqrt(cost_data1 / A_size)
+    ! Calculate the relative cost of the data+reg term - scaled by the model norm.
+    cost_data_model = -1.d0
+    if (model_norm > 0.d0) cost_data_model = cost_data1 / model_norm
 
     cost_admm1 = norm2(Qx%val(:, 1) - admm_method%z)
     cost_admm2 = norm2(admm_method%z)
@@ -222,7 +224,7 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
 
     if (myrank == 0) then
       print *, 'cost (data+reg) =', cost_data
-      print *, 'RMS (data+reg) =', RMS_data
+      print *, 'cost2 (data+reg) =', cost_data_model
       print *, 'cost (ADMM) =', cost_admm
     endif
 
