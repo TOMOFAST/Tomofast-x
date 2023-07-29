@@ -238,8 +238,11 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
     model = model + delta_model
   enddo
 
-  ! Write result to a file.
-  call write_final_model(model, myrank)
+  ! Write solution to a file.
+  call write_final_model(model, "model_final.txt", myrank)
+
+  ! Write constraints Qx to a file.
+  call write_final_model(Qx%val(:, 1), "Qx_final.txt", myrank)
 
   ! Write models for paraview.
   call write_paraview_model(ipar, model, myrank, nbproc)
@@ -325,18 +328,18 @@ end subroutine read_b_RHS
 ! Writes the final model.
 ! TODO: Use this temporariry - to replace with the model class writers.
 !===================================================================================
-subroutine write_final_model(model, myrank)
+subroutine write_final_model(model, filename, myrank)
   integer, intent(in) :: myrank
+  character(len=*), intent(in) :: filename
   real(kind=CUSTOM_REAL), intent(in) :: model(:)
 
   integer :: i, nelements
-  character(len=256) :: filename, filename_full
+  character(len=256) :: filename_full
 
   if (myrank == 0) then
-    filename = "model_final.txt"
-    filename_full = trim(path_output)//filename
+    filename_full = trim(path_output)//trim(filename)
 
-    print *, 'Writing the full model to file ', trim(filename_full)
+    print *, 'Writing data to file ', trim(filename_full)
 
     open(27, file=trim(filename_full), access='stream', form='formatted', status='replace', action='write')
 
