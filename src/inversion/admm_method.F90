@@ -27,8 +27,6 @@ module admm_method
   private
 
   type, public :: t_admm_method
-    private
-
     integer :: nelements
 
     real(kind=CUSTOM_REAL), allocatable :: z(:)

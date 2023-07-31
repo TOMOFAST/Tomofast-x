@@ -73,15 +73,8 @@ module joint_inverse_problem
     ! Cross gradient data.
     type(t_cross_gradient) :: cross_grad
 
-    ! ADMM method (stores data arrays).
-    ! NOTE: gcc 4.9.2 has problems with this array.
-    ! E.g. if the destructor in t_admm_method is commented, the code won't compile (gfc_conv_descriptor_data_get error).
-    ! With destructor available it leads to memory segfault during the finalization.
-    ! The problem is probably solved in gcc 5.3.0 according to comments from gcc forum.
-    ! Avoid using this array for now for back compatibility.
-    !type(t_admm_method) :: admm_method(2)
-    type(t_admm_method) :: admm_method_1
-    type(t_admm_method) :: admm_method_2
+    ! ADMM method (stores auxiliary arrays).
+    type(t_admm_method) :: admm_method
 
     ! ADMM term cost.
     real(kind=CUSTOM_REAL) :: admm_cost
@@ -235,8 +228,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     nnz = nnz + 1 * par%nelements
     nl_empty = nl_empty + par%nelements_total - par%nelements
 
-    call this%admm_method_1%initialize(par%nelements, myrank)
-    call this%admm_method_2%initialize(par%nelements, myrank)
+    call this%admm_method%initialize(par%nelements, myrank)
   endif
 
   if (this%add_clustering) then
@@ -408,14 +400,14 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
 
     if (solve_gravity_only) then
       i = 1
-      call this%admm_method_1%iterate_admm_arrays(model(i)%nlithos, &
-                                                  model(i)%min_local_bound, model(i)%max_local_bound, &
-                                                  model(i)%val, this%x0_ADMM, myrank)
+      call this%admm_method%iterate_admm_arrays(model(i)%nlithos, &
+                                                model(i)%min_local_bound, model(i)%max_local_bound, &
+                                                model(i)%val, this%x0_ADMM, myrank)
     else if (solve_mag_only) then
       i = 2
-      call this%admm_method_2%iterate_admm_arrays(model(i)%nlithos, &
-                                                  model(i)%min_local_bound, model(i)%max_local_bound, &
-                                                  model(i)%val, this%x0_ADMM, myrank)
+      call this%admm_method%iterate_admm_arrays(model(i)%nlithos, &
+                                                model(i)%min_local_bound, model(i)%max_local_bound, &
+                                                model(i)%val, this%x0_ADMM, myrank)
     endif
 
     if (solve_gravity_only .or. solve_mag_only) then
@@ -432,10 +424,10 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
                        model(i)%val(:, 1), this%x0_ADMM, param_shift(i), myrank, nbproc)
 
       ! Calculate the ADMM cost in parallel.
-      call calculate_cost(size(model(i)%val(:, 1)), model(i)%val(:, 1), this%x0_ADMM, cost, .true., nbproc)
+      call calculate_cost(par%nelements, this%admm_method%z, model(i)%val(:, 1), cost, .true., nbproc)
       this%admm_cost = sqrt(cost)
 
-      if (myrank == 0) print *, "ADMM cost |x - x0| / |x| =", this%admm_cost
+      if (myrank == 0) print *, "ADMM cost |x - z| / |z| =", this%admm_cost
       if (myrank == 0) print *, 'nel (with ADMM) = ', this%matrix%get_number_elements()
 
     else
