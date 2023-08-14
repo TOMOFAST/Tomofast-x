@@ -46,6 +46,7 @@ module sensitivity_gravmag
   private :: apply_column_weight
   private :: test_grid_cell_order
   private :: get_load_balancing_nelements
+  private :: read_depth_weight
 
   character(len=4) :: SUFFIX(2) = ["grav", "magn"]
 
@@ -487,14 +488,12 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
   ! Sensitivity matrix.
   type(t_sparse_matrix), intent(inout) :: sensit_matrix
+  ! Depth weight.
   real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements)
 
   ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
   real(kind=MATRIX_PRECISION), allocatable :: sensit_compressed(:)
-
-  ! The full column weight.
-  real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
 
   real(kind=CUSTOM_REAL) :: comp_rate
   integer(kind=8) :: nnz_total
@@ -508,7 +507,6 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   integer(kind=8) :: nnz
   integer :: column
   integer :: param_shift(2)
-  integer :: nx_read, ny_read, nz_read, weight_type_read
 
   param_shift(1) = 0
   param_shift(2) = par%nelements * par%nmodel_components
@@ -520,7 +518,6 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
   allocate(sensit_columns(par%nelements), source=0, stat=ierr)
   allocate(sensit_compressed(par%nelements), source=0._MATRIX_PRECISION, stat=ierr)
-  allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in read_sensitivity_kernel!", myrank, ierr)
 
@@ -629,6 +626,9 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
   call sensit_matrix%finalize_part(myrank)
 
+  deallocate(sensit_columns)
+  deallocate(sensit_compressed)
+
   !---------------------------------------------------------------------------------------------
   ! Calculate the read kernel compression rate.
   !---------------------------------------------------------------------------------------------
@@ -650,39 +650,80 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
     filename_full = trim(path_output)//"/SENSIT/"//filename
   endif
 
-  if (myrank == 0) print *, "Reading the depth weight file ", trim(filename_full)
-
-  ! Open the file.
-  open(78, file=trim(filename_full), form='unformatted', status='old', action='read', access='stream', &
-       iostat=ierr, iomsg=msg)
-
-  if (ierr /= 0) call exit_MPI("Error in opening the depth weight file! path=" &
-                                //trim(filename_full)//", iomsg="//msg, myrank, ierr)
-
-  read(78) nx_read, ny_read, nz_read, ndata_read, weight_type_read
-  read(78) column_weight_full
-
-  close(78)
-
-  if (myrank == 0) print *, "Depth weight type (read) =", weight_type_read
-
-  ! Consistency check.
-  if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
-      ndata_read /= par%ndata) then
-    call exit_MPI("Sensitivity weight file dimensions do not match the Parfile!", myrank, 0)
-  endif
-
-  ! Extract the column weight for the current rank.
-  column_weight = column_weight_full(nsmaller + 1 : nsmaller + par%nelements)
-
+  call read_depth_weight(par, filename_full, column_weight, myrank, nbproc)
   !---------------------------------------------------------------------------------------------
-  deallocate(sensit_columns)
-  deallocate(sensit_compressed)
-  deallocate(column_weight_full)
 
   if (myrank == 0) print *, 'Finished reading the sensitivity kernel.'
 
 end subroutine read_sensitivity_kernel
+
+!=============================================================================================
+! Reads the depth weight.
+!=============================================================================================
+subroutine read_depth_weight(par, filename, column_weight, myrank, nbproc)
+  class(t_parameters_base), intent(in) :: par
+  character(len=*), intent(in) :: filename
+  integer, intent(in) :: myrank, nbproc
+
+  real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements)
+
+  integer :: nelements_total
+  integer :: nx_read, ny_read, nz_read, ndata_read, weight_type_read
+  integer :: ierr
+  character(len=256) :: msg
+
+  ! Displacement for mpi_scatterv.
+  integer :: displs(nbproc)
+  ! The number of elements on every CPU for mpi_scatterv.
+  integer :: nelements_at_cpu(nbproc)
+
+  ! The full column weight.
+  real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
+
+  if (myrank == 0) print *, "Reading the depth weight file ", trim(filename)
+
+  nelements_total = par%nx * par%ny * par%nz
+
+  ! Allocate the full array on master rank only.
+  if (myrank == 0) then
+    allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  else
+    ! Fortran standard requires that allocatable array is allocated when passing by argument.
+    allocate(column_weight_full(1), source=0._CUSTOM_REAL, stat=ierr)
+  endif
+
+  ! Read the full array by master rank only.
+  if (myrank == 0) then
+
+    ! Open the file.
+    open(78, file=trim(filename), form='unformatted', status='old', action='read', access='stream', &
+         iostat=ierr, iomsg=msg)
+
+    if (ierr /= 0) call exit_MPI("Error in opening the depth weight file! path=" &
+                                  //trim(filename)//", iomsg="//msg, myrank, ierr)
+
+    read(78) nx_read, ny_read, nz_read, ndata_read, weight_type_read
+    read(78) column_weight_full
+
+    close(78)
+
+    if (myrank == 0) print *, "Depth weight type (read) =", weight_type_read
+
+    ! Consistency check.
+    if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
+        ndata_read /= par%ndata) then
+      call exit_MPI("Sensitivity weight file dimensions do not match the Parfile!", myrank, 0)
+    endif
+  endif
+
+  ! Partitioning for MPI_Scatterv.
+  call get_mpi_partitioning(par%nelements, displs, nelements_at_cpu, myrank, nbproc)
+
+  ! Scatter the depth weight to all CPUs.
+  call MPI_Scatterv(column_weight_full, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
+                    column_weight, par%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
+end subroutine read_depth_weight
 
 !=============================================================================================
 ! Reads the sensitivity kernel metadata and defines the nnz for re-reading the kernel.
