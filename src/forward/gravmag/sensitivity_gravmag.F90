@@ -518,8 +518,8 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   !---------------------------------------------------------------------------------------------
   nelements_total = par%nx * par%ny * par%nz
 
-  allocate(sensit_columns(nelements_total), source=0, stat=ierr)
-  allocate(sensit_compressed(nelements_total), source=0._MATRIX_PRECISION, stat=ierr)
+  allocate(sensit_columns(par%nelements), source=0, stat=ierr)
+  allocate(sensit_compressed(par%nelements), source=0._MATRIX_PRECISION, stat=ierr)
   allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in read_sensitivity_kernel!", myrank, ierr)
@@ -581,6 +581,11 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
           ! Make sure the data is stored in the correct order.
           if (idata /= idata_glob) then
             call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, 0)
+          endif
+
+          ! Sanity check for nel.
+          if (nel > par%nelements) then
+            call exit_MPI("Wrong nel in read_sensitivity_kernel!", myrank, 0)
           endif
 
           ! Sanity check for the model component index.
