@@ -46,6 +46,7 @@ module sensitivity_gravmag
   private :: apply_column_weight
   private :: test_grid_cell_order
   private :: get_load_balancing_nelements
+  private :: get_nel_compressed
   private :: read_depth_weight
 
   character(len=4) :: SUFFIX(2) = ["grav", "magn"]
@@ -94,6 +95,24 @@ function test_grid_cell_order(par, grid) result(res)
     endif
   enddo
 end function test_grid_cell_order
+
+!===============================================================================================================
+! Calculates the number of elements in the compressed sensitivity line.
+!===============================================================================================================
+pure function get_nel_compressed(par) result(nel_compressed)
+  class(t_parameters_base), intent(in) :: par
+  integer :: nel_compressed
+  integer :: nelements_total
+
+  nelements_total = par%nx * par%ny * par%nz
+
+  if (par%compression_type > 0) then
+    nel_compressed = int(par%compression_rate * nelements_total)
+  else
+    nel_compressed = nelements_total
+  endif
+
+end function get_nel_compressed
 
 !===============================================================================================================
 ! Calculates the sensitivity kernel (parallelized by data) and writes it to files.
@@ -190,11 +209,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   !---------------------------------------------------------------------------------------------
   nelements_total = par%nx * par%ny * par%nz
 
-  if (par%compression_type > 0) then
-    nel_compressed = int(par%compression_rate * nelements_total)
-  else
-    nel_compressed = nelements_total
-  endif
+  nel_compressed = get_nel_compressed(par)
   if (myrank == 0) print *, 'nel_compressed =', nel_compressed
 
   allocate(sensit_line_full(nelements_total, par%nmodel_components, par%ndata_components), source=0._CUSTOM_REAL, stat=ierr)
@@ -498,7 +513,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   real(kind=CUSTOM_REAL) :: comp_rate
   integer(kind=8) :: nnz_total
   integer :: i, j, k, p, d, nsmaller, ierr
-  integer :: rank, nelements_total
+  integer :: rank, nelements_total, nel_compressed
   character(len=256) :: filename, filename_full
   character(len=256) :: msg
 
@@ -514,16 +529,17 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   !---------------------------------------------------------------------------------------------
   ! Allocate memory.
   !---------------------------------------------------------------------------------------------
-  nelements_total = par%nx * par%ny * par%nz
+  nel_compressed = get_nel_compressed(par)
 
-  allocate(sensit_columns(nelements_total), source=0, stat=ierr)
-  allocate(sensit_compressed(nelements_total), source=0._MATRIX_PRECISION, stat=ierr)
+  allocate(sensit_columns(nel_compressed), source=0, stat=ierr)
+  allocate(sensit_compressed(nel_compressed), source=0._MATRIX_PRECISION, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in read_sensitivity_kernel!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
   ! Reading the sensitivity kernel files.
   !---------------------------------------------------------------------------------------------
+  nelements_total = par%nx * par%ny * par%nz
 
   ! The number of elements on CPUs with rank smaller than myrank.
   nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
@@ -578,6 +594,11 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
           ! Make sure the data is stored in the correct order.
           if (idata /= idata_glob) then
             call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, 0)
+          endif
+
+          ! Sanity check for the nel.
+          if (nel > nel_compressed) then
+            call exit_MPI("Wrong number of elements in read_sensitivity_kernel!", myrank, 0)
           endif
 
           ! Sanity check for the model component index.
