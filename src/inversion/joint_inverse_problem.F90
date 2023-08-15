@@ -60,7 +60,6 @@ module joint_inverse_problem
 
     ! Auxiliary arrays for the ADMM method.
     real(kind=CUSTOM_REAL), allocatable :: x0_ADMM(:)
-    real(kind=CUSTOM_REAL), allocatable :: weight_ADMM(:)
 
     integer :: nelements_total
 
@@ -259,7 +258,6 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   if (par%admm_type > 0) then
     allocate(this%x0_ADMM(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
-    allocate(this%weight_ADMM(par%nelements), source=1._CUSTOM_REAL, stat=ierr)
   endif
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize!", myrank, ierr)
