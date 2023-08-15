@@ -293,8 +293,15 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   ! Allocate memory.
   allocate(delta_model(ipar%nelements, ipar%nmodel_components, 2), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(delta_data(1)%val(ipar%ndata_components(1), ipar%ndata(1)), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(delta_data(2)%val(ipar%ndata_components(2), ipar%ndata(2)), source=0._CUSTOM_REAL, stat=ierr)
+
+  do i = 1, 2
+    if (SOLVE_PROBLEM(i)) then
+      allocate(delta_data(i)%val(ipar%ndata_components(i), ipar%ndata(i)), source=0._CUSTOM_REAL, stat=ierr)
+    else
+      ! Allocate 1 element not to have unallocated arrays.
+      allocate(delta_data(i)%val(ipar%ndata_components(i), 1), source=0._CUSTOM_REAL, stat=ierr)
+    endif
+  enddo
 
   !******************************************************************************************
   ! Loop over different prior models.
