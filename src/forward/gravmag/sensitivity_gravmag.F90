@@ -688,11 +688,6 @@ subroutine read_depth_weight(par, filename, column_weight, myrank, nbproc)
   integer :: ierr
   character(len=256) :: msg
 
-  ! Displacement for mpi_scatterv.
-  integer :: displs(nbproc)
-  ! The number of elements on every CPU for mpi_scatterv.
-  integer :: nelements_at_cpu(nbproc)
-
   ! The full column weight.
   real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
 
@@ -732,12 +727,8 @@ subroutine read_depth_weight(par, filename, column_weight, myrank, nbproc)
     endif
   endif
 
-  ! Partitioning for MPI_Scatterv.
-  call get_mpi_partitioning(par%nelements, displs, nelements_at_cpu, myrank, nbproc)
-
   ! Scatter the depth weight to all CPUs.
-  call MPI_Scatterv(column_weight_full, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
-                    column_weight, par%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call scatter_full_array(par%nelements, column_weight_full, column_weight, myrank, nbproc)
 
 end subroutine read_depth_weight
 
