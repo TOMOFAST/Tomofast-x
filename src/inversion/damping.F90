@@ -97,12 +97,12 @@ end subroutine damping_initialize
 subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
                        model, model_ref, param_shift, myrank, nbproc, local_weight)
   class(t_damping), intent(inout) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
-  real(kind=CUSTOM_REAL), intent(in) :: model(:)
-  real(kind=CUSTOM_REAL), intent(in) :: model_ref(:)
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(this%nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: model(this%nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: model_ref(this%nelements)
   integer, intent(in) :: nrows, param_shift
   integer, intent(in) :: myrank, nbproc
-  real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(:)
+  real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(this%nelements)
 
   type(t_sparse_matrix), intent(inout) :: matrix
   real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(nrows)
@@ -219,9 +219,9 @@ end subroutine damping_add
 !=============================================================================================
 subroutine damping_add_RHS(this, b_RHS, model_diff, myrank, nbproc, local_weight)
   class(t_damping), intent(in) :: this
-  real(kind=CUSTOM_REAL), intent(in) :: model_diff(:)
+  real(kind=CUSTOM_REAL), intent(in) :: model_diff(this%nelements)
   integer, intent(in) :: myrank, nbproc
-  real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(:)
+  real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(this%nelements)
 
   real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(this%nelements_total)
 
