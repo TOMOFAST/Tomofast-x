@@ -161,28 +161,17 @@ subroutine model_allocate_damping_gradient_arrays(this, myrank)
 end subroutine model_allocate_damping_gradient_arrays
 
 !=================================================================================
-! Distribute the grid and the prior model among CPUs.
+! Distribute the full model among CPUs.
 !=================================================================================
 subroutine model_distribute(this, myrank, nbproc)
   class(t_model), intent(inout) :: this
   integer, intent(in) :: myrank, nbproc
-
-  ! Displacement for mpi_scatterv.
-  integer :: displs(nbproc)
-  ! The number of elements on every CPU for mpi_scatterv.
-  integer :: nelements_at_cpu(nbproc)
-  integer :: ierr, k
-
-  ! Partitioning for MPI_Scatterv.
-  call get_mpi_partitioning(this%nelements, displs, nelements_at_cpu, myrank, nbproc)
+  integer :: k
 
   do k = 1, this%ncomponents
-    call MPI_Scatterv(this%val_full(:, k), nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
-                      this%val(:, k), this%nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+    ! Scatter the local array parts.
+    call scatter_full_array(this%nelements, this%val_full(:, k), this%val(:, k), myrank, nbproc)
   enddo
-
-  if (ierr /= 0) call exit_MPI("Error in MPI_Scatterv in model_distribute!", myrank, ierr)
-
 end subroutine model_distribute
 
 !======================================================================================================
