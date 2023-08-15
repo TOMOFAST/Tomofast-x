@@ -230,7 +230,6 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
   real(kind=CUSTOM_REAL), allocatable :: model_scaled(:, :)
   real(kind=CUSTOM_REAL), allocatable :: model_scaled_full(:)
   integer :: i, k, ierr
-  integer :: nsmaller
 
   allocate(model_scaled(this%nelements, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
 
@@ -249,22 +248,29 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
     if (nbproc > 1) then
     ! Parallel version.
 
-      ! Allocate memory for the full model.
-      allocate(model_scaled_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+      ! Allocate memory for the full model on the master rank only.
+      if (myrank == 0) then
+        allocate(model_scaled_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+      else
+        ! Fortran standard requires that allocatable array is allocated when passing by argument.
+        allocate(model_scaled_full(1), source=0._CUSTOM_REAL, stat=ierr)
+      endif
+
       if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_calculate_data!", myrank, ierr)
 
-      nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
-
       do k = 1, this%ncomponents
-        ! Gather the full model from all processors.
-        call get_full_array(model_scaled(:, k), this%nelements, model_scaled_full, .true., myrank, nbproc)
+        ! Gather the full model from all processors to the master rank.
+        call get_full_array(model_scaled(:, k), this%nelements, model_scaled_full, .false., myrank, nbproc)
 
-        ! Compress the full model.
-        call forward_wavelet(model_scaled_full, this%grid_full%nx, this%grid_full%ny, this%grid_full%nz, compression_type)
+        if (myrank == 0) then
+          ! Compress the full model.
+          call forward_wavelet(model_scaled_full, this%grid_full%nx, this%grid_full%ny, this%grid_full%nz, compression_type)
+        endif
 
-        ! Extract the local model part.
-        model_scaled(:, k) = model_scaled_full(nsmaller + 1 : nsmaller + this%nelements)
+        ! Scatter the local array parts.
+        call scatter_full_array(this%nelements, model_scaled_full, model_scaled(:, k), myrank, nbproc)
       enddo
+
       deallocate(model_scaled_full)
 
     else
