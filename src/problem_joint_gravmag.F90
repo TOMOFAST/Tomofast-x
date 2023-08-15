@@ -491,6 +491,17 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     ! Write data calculated from final model.
     if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_final_', 2, myrank)
     if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_final_', 2, myrank)
+
+    ! Calculate final data residual.
+    do i = 1, 2
+      if (SOLVE_PROBLEM(i)) then
+        data(i)%val_calc = data(i)%val_meas - data(i)%val_calc
+      endif
+    enddo
+
+    ! Write final data residual.
+    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_misfit_final_', 2, myrank)
+    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_misfit_final_', 2, myrank)
 #endif
 
 #ifndef SUPPRESS_OUTPUT
