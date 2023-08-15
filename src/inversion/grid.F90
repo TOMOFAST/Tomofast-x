@@ -64,7 +64,8 @@ module grid
     procedure, public, pass :: get_Xmax => grid_get_Xmax
     procedure, public, pass :: get_Ymin => grid_get_Ymin
     procedure, public, pass :: get_Ymax => grid_get_Ymax
-
+    procedure, public, pass :: get_Zmin => grid_get_Zmin
+    procedure, public, pass :: get_Zmax => grid_get_Zmax
 
   end type t_grid
 
@@ -305,5 +306,25 @@ pure function grid_get_Ymax(this) result(res)
 
   res = maxval(this%Y2)
 end function grid_get_Ymax
+
+!================================================================================================
+! Get the minimum Z-coordinate of the grid.
+!================================================================================================
+pure function grid_get_Zmin(this) result(res)
+  class(t_grid), intent(in) :: this
+  real(kind=CUSTOM_REAL) :: res
+
+  res = minval(this%Z1)
+end function grid_get_Zmin
+
+!================================================================================================
+! Get the maximum Z-coordinate of the grid.
+!================================================================================================
+pure function grid_get_Zmax(this) result(res)
+  class(t_grid), intent(in) :: this
+  real(kind=CUSTOM_REAL) :: res
+
+  res = maxval(this%Z2)
+end function grid_get_Zmax
 
 end module grid
