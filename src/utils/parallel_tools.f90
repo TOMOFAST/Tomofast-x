@@ -35,6 +35,7 @@ module parallel_tools
   public :: get_full_array
   public :: get_full_array_in_place
   public :: get_full_array_in_place2
+  public :: scatter_full_array
 
 contains
 
@@ -242,5 +243,31 @@ subroutine get_full_array_in_place2(nelements, array, myrank, nbproc)
   if (ierr /= 0) call exit_MPI("MPI error in get_full_array_in_place2!", myrank, ierr)
 
 end subroutine get_full_array_in_place2
+
+!======================================================================================================
+! Scatters the full array among CPUs to smaller arrays of size nelements.
+!======================================================================================================
+subroutine scatter_full_array(nelements, array_full, array, myrank, nbproc)
+  integer, intent(in) :: nelements
+  integer, intent(in) :: myrank, nbproc
+  real(kind=CUSTOM_REAL), intent(in) :: array_full(*)
+  real(kind=CUSTOM_REAL), intent(out) :: array(*)
+
+  ! Displacement for MPI_Gatherv.
+  integer :: displs(nbproc)
+  ! The number of elements on every CPU for MPI_Gatherv.
+  integer :: nelements_at_cpu(nbproc)
+  integer :: ierr
+
+  ! Partitioning for MPI_Scatterv.
+  call get_mpi_partitioning(nelements, displs, nelements_at_cpu, myrank, nbproc)
+
+  ! Scatter the depth weight to all CPUs.
+  call MPI_Scatterv(array_full, nelements_at_cpu, displs, CUSTOM_MPI_TYPE, &
+                    array, nelements, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
+  if (ierr /= 0) call exit_MPI("MPI error in scatter_full_array!", myrank, ierr)
+
+end subroutine scatter_full_array
 
 end module parallel_tools

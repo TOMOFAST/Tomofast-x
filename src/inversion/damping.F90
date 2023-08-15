@@ -135,18 +135,26 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
     if (nbproc > 1) then
     ! Parallel version.
 
-      ! Allocate memory for the full model.
-      allocate(model_diff_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+      ! Allocate the full array on master rank only.
+      if (myrank == 0) then
+        allocate(model_diff_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+      else
+        ! Fortran standard requires that allocatable array is allocated when passing by argument.
+        allocate(model_diff_full(1), source=0._CUSTOM_REAL, stat=ierr)
+      endif
+
       if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in damping_add!", myrank, ierr)
 
-      ! Gather the full model from all processors.
-      call get_full_array(model_diff, this%nelements, model_diff_full, .true., myrank, nbproc)
+      ! Gather the full model from all processors to the master rank.
+      call get_full_array(model_diff, this%nelements, model_diff_full, .false., myrank, nbproc)
 
-      ! Transform to wavelet domain.
-      call forward_wavelet(model_diff_full, this%nx, this%ny, this%nz, this%compression_type)
+      if (myrank == 0) then
+        ! Transform to wavelet domain.
+        call forward_wavelet(model_diff_full, this%nx, this%ny, this%nz, this%compression_type)
+      endif
 
-      ! Extract the local model part.
-      model_diff = model_diff_full(nsmaller + 1 : nsmaller + this%nelements)
+      ! Scatter the local array parts.
+      call scatter_full_array(this%nelements, model_diff_full, model_diff, myrank, nbproc)
 
       deallocate(model_diff_full)
 
