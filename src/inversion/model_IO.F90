@@ -61,7 +61,7 @@ subroutine model_read(model, file_name, myrank, nbproc)
   integer :: i_, j_, k_
 
   if (myrank == 0) then
-  ! Reading the full model by master CPU only.
+  ! Reading the full model by the master CPU only.
     print *, 'Reading model from file ', trim(file_name)
 
     open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
@@ -93,15 +93,8 @@ subroutine model_read(model, file_name, myrank, nbproc)
     close(10)
   endif
 
-  ! Broadcast the full model to all CPUs.
-  call MPI_Bcast(model%val_full, model%nelements_total * model%ncomponents, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-  if (ierr /= 0) call exit_MPI("Error in MPI_Bcast in model_read!", myrank, ierr)
-
   ! Distribute the model values among CPUs.
   call model%distribute(myrank, nbproc)
-
-  model%full_model_updated = .true.
 
 end subroutine model_read
 

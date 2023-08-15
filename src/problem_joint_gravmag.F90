@@ -89,6 +89,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   character(len=256) :: mag_prior_model_filename
 
   logical :: SOLVE_PROBLEM(2)
+  logical :: allocate_full_model_on_all_cpus(2)
   integer(kind=8) :: nnz(2)
   integer :: nelements_new
 
@@ -106,6 +107,19 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     SOLVE_PROBLEM(i) = (ipar%problem_weight(i) /= 0.d0)
     if (myrank == 0) print *, "SOLVE_PROBLEM("//trim(str(i))//") = ", SOLVE_PROBLEM(i)
   enddo
+
+  ! Define if we need to allocatye the full model array on all CPUs.
+  ! Allocate it only when cross-gradient, damping gradient, or clustering constraints are used.
+  allocate_full_model_on_all_cpus = .false.
+  do i = 1, 2
+    if (SOLVE_PROBLEM(i)) then
+      if (ipar%cross_grad_weight /= 0.d0 .or. ipar%beta(i) /= 0.d0 .or. ipar%clustering_weight_glob(i) /= 0.d0) then
+        allocate_full_model_on_all_cpus(i) = .true.
+      endif
+    endif
+  enddo
+
+  if (myrank == 0) print *, "allocate_full_model_on_all_cpus =", allocate_full_model_on_all_cpus
 
   nnz = 0
   cost_data = 0._CUSTOM_REAL
@@ -210,8 +224,10 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! MODEL ALLOCATION -----------------------------------------------------------------------------------
 
   ! Allocate memory for the model.
-  if (SOLVE_PROBLEM(1)) call model(1)%initialize(ipar%nelements, ipar%nmodel_components, myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call model(2)%initialize(ipar%nelements, ipar%nmodel_components, myrank, nbproc)
+  if (SOLVE_PROBLEM(1)) &
+    call model(1)%initialize(ipar%nelements, ipar%nmodel_components, allocate_full_model_on_all_cpus(1), myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) &
+    call model(2)%initialize(ipar%nelements, ipar%nmodel_components, allocate_full_model_on_all_cpus(2), myrank, nbproc)
 
   !-----------------------------------------------------------------------------------------------------
   ! Writing the column weight for Paraview visualisation.
@@ -601,10 +617,8 @@ subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
 
   if (model_type == 1) then
     ! Setting homogeneous starting value.
-    model%val_full = model_val
     model%val = model_val
-
-    model%full_model_updated = .true.
+    if (myrank == 0) model%val_full = model_val
 
   else if (model_type == 2) then
     ! Reading from file.

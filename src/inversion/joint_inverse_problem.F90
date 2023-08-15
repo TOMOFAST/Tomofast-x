@@ -302,7 +302,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   real(kind=CUSTOM_REAL) :: cost
   logical :: solve_gravity_only
   logical :: solve_mag_only
-  integer :: nsmaller
   real(kind=CUSTOM_REAL) :: norm_power
 
   logical :: SOLVE_PROBLEM(2)
@@ -477,20 +476,18 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   if (par%compression_type > 0) then
   ! Applying the Inverse Wavelet Transform.
     if (nbproc > 1) then
-    ! Parallel version.
-      nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
-
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) then
-          ! Note: use val_full for storage here, as we overwrite it later anyway.
-          model(i)%full_model_updated = .false.
-
           do k = 1, par%nmodel_components
-            call get_full_array(delta_model(:, k, i), par%nelements, model(i)%val_full(:, k), .true., myrank, nbproc)
-            call inverse_wavelet(model(i)%val_full(:, k), par%nx, par%ny, par%nz, par%compression_type)
 
-            ! Extract the local model update.
-            delta_model(:, k, i) = model(i)%val_full(nsmaller + 1 : nsmaller + par%nelements, k)
+            call get_full_array(delta_model(:, k, i), par%nelements, model(i)%val_full(:, k), .false., myrank, nbproc)
+
+            if (myrank == 0) then
+              call inverse_wavelet(model(i)%val_full(:, k), par%nx, par%ny, par%nz, par%compression_type)
+            endif
+
+            ! Scatter the local model parts.
+            call scatter_full_array(par%nelements, model(i)%val_full(:, k), delta_model(:, k, i), myrank, nbproc)
           enddo
         endif
       enddo

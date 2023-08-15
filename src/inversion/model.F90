@@ -63,9 +63,6 @@ module model
     ! The number of model components.
     integer :: ncomponents
 
-    ! Flag to check if the full model has been updated (to the state of the local model).
-    logical :: full_model_updated
-
   contains
     private
 
@@ -89,8 +86,9 @@ contains
 !================================================================================================
 ! Initialization.
 !================================================================================================
-subroutine model_initialize(this, nelements, ncomponents, myrank, nbproc)
+subroutine model_initialize(this, nelements, ncomponents, allocate_full_model_on_all_cpus, myrank, nbproc)
   class(t_model), intent(inout) :: this
+  logical, intent(in) :: allocate_full_model_on_all_cpus
   integer, intent(in) :: nelements, ncomponents, myrank, nbproc
 
   integer :: ierr
@@ -102,14 +100,22 @@ subroutine model_initialize(this, nelements, ncomponents, myrank, nbproc)
 
   this%nelements = nelements
   this%nelements_total = get_total_number_elements(nelements, myrank, nbproc)
-
   this%ncomponents = ncomponents
-
-  this%full_model_updated = .true.
 
   ierr = 0
 
-  allocate(this%val_full(this%nelements_total, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
+  if (allocate_full_model_on_all_cpus) then
+  ! Allocate the full model array on all cpus.
+    allocate(this%val_full(this%nelements_total, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
+  else
+  ! Allocate the full model array on the master cpu only.
+    if (myrank == 0) then
+      allocate(this%val_full(this%nelements_total, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
+    else
+      allocate(this%val_full(1, 1), source=0._CUSTOM_REAL, stat=ierr)
+    endif
+  endif
+
   allocate(this%val(this%nelements, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%val_prior(this%nelements, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
 
@@ -188,8 +194,6 @@ subroutine model_update(this, delta_model)
 
   this%val = this%val + delta_model
 
-  this%full_model_updated = .false.
-
 end subroutine model_update
 
 !======================================================================================================
@@ -204,11 +208,6 @@ subroutine model_update_full(this, broadcast, myrank, nbproc)
   do k = 1, this%ncomponents
     call get_full_array(this%val(:, k), this%nelements, this%val_full(:, k), broadcast, myrank, nbproc)
   enddo
-
-  if (broadcast) then
-    this%full_model_updated = .true.
-  endif
-
 end subroutine model_update_full
 
 !======================================================================================================

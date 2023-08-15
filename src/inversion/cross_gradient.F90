@@ -183,9 +183,9 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
   real(kind=CUSTOM_REAL) :: val1, val2
   logical :: on_left_boundary, on_right_boundary
 
-  ! Update the full models (if required).
-  if (.not. model1%full_model_updated) call model1%update_full(.true., myrank, nbproc)
-  if (.not. model2%full_model_updated) call model2%update_full(.true., myrank, nbproc)
+  ! Update the full models.
+  call model1%update_full(.true., myrank, nbproc)
+  call model2%update_full(.true., myrank, nbproc)
 
   ! Set the number of derivatives.
   nderiv = this%get_num_deriv(der_type)

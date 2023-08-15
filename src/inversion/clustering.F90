@@ -416,9 +416,9 @@ subroutine clustering_add(this, model1, model2, column_weight1, column_weight2, 
   integer :: row_beg, row_end, nsmaller
   integer :: i, p, ind
 
-  ! Update the full models (if required).
-  if (.not. model1%full_model_updated) call model1%update_full(.true., myrank, nbproc)
-  if (.not. model2%full_model_updated) call model2%update_full(.true., myrank, nbproc)
+  ! Update the full models.
+  call model1%update_full(.true., myrank, nbproc)
+  call model2%update_full(.true., myrank, nbproc)
 
   ! Calculate 'Cp-weights'.
   do i = 1, 2
