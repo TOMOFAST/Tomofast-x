@@ -90,6 +90,7 @@ module joint_inverse_problem
     private
 
     procedure, public, pass :: initialize => joint_inversion_initialize
+    procedure, public, pass :: initialize2 => joint_inversion_initialize2
     procedure, public, pass :: reset => joint_inversion_reset
     procedure, public, pass :: solve => joint_inversion_solve
 
@@ -242,8 +243,6 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   ierr = 0
 
-  allocate(this%b_RHS(this%matrix%get_total_row_number()), source=0._CUSTOM_REAL, stat=ierr)
-
   if (par%compression_type == 0) then
     ! Calculate solution variance only for the non-compressed problem, as it does not work with wavelet compression.
     call this%matrix%allocate_variance_array(2 * par%nelements, myrank)
@@ -263,6 +262,25 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize!", myrank, ierr)
 
 end subroutine joint_inversion_initialize
+
+!==================================================================================================
+! Remaining memory allocations.
+! Split memory allocations to reduce the total memory footprint.
+! Call this after reading the sensitivity kernel where some temporary buffer arrays are allocated.
+!==================================================================================================
+subroutine joint_inversion_initialize2(this, myrank)
+  class(t_joint_inversion), intent(inout) :: this
+  integer, intent(in) :: myrank
+  integer :: nl, ierr
+
+  ! Total number of matrix rows.
+  nl = this%matrix%get_total_row_number()
+
+  allocate(this%b_RHS(nl), source=0._CUSTOM_REAL, stat=ierr)
+
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize2!", myrank, ierr)
+
+end subroutine joint_inversion_initialize2
 
 !=====================================================================================
 ! Resets the joint inversion.

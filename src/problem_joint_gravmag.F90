@@ -221,6 +221,11 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) &
     call read_sensitivity_kernel(mpar, jinv%matrix, iarr(2)%column_weight, ipar%problem_weight(2), 2, myrank, nbproc)
 
+  ! RHS ALLOCATION -----------------------------------------------------------------------------------
+
+  ! Allocate the right-hand side array.
+  call jinv%initialize2(myrank)
+
   ! MODEL ALLOCATION -----------------------------------------------------------------------------------
 
   ! Allocate memory for the model.
