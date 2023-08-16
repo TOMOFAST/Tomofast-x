@@ -281,7 +281,7 @@ subroutine joint_inversion_initialize2(this, myrank)
 
   call mpi_allreduce(mem_loc, mem, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
-  if (myrank == 0) print *, "Allocating RHS, memory (GB) =", dble(mem) / 1024**3
+  if (myrank == 0) print *, "Allocating the RHS, memory (GB) =", mem / 1024**3
 
   allocate(this%b_RHS(nl), source=0._CUSTOM_REAL, stat=ierr)
 

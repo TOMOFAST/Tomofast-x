@@ -554,7 +554,7 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
 
   call mpi_allreduce(mem_loc, mem, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
-  if (myrank == 0) print *, "Allocating matrix, memory (GB) =", dble(mem) / 1024**3
+  if (myrank == 0) print *, "Allocating the matrix, memory (GB) =", mem / 1024**3
 
   allocate(this%sa(this%nnz), source=0._MATRIX_PRECISION, stat=ierr)
   allocate(this%ijl(this%nl_nonempty_allocated + 1), source=int(0, 8), stat=ierr)
