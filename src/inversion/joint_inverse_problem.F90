@@ -272,9 +272,16 @@ subroutine joint_inversion_initialize2(this, myrank)
   class(t_joint_inversion), intent(inout) :: this
   integer, intent(in) :: myrank
   integer :: nl, ierr
+  real(kind=CUSTOM_REAL) :: mem, mem_loc
 
   ! Total number of matrix rows.
   nl = this%matrix%get_total_row_number()
+
+  mem_loc = kind(this%b_RHS) * nl
+
+  call mpi_allreduce(mem_loc, mem, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+  if (myrank == 0) print *, "Allocating RHS, memory (GB) =", dble(mem) / 1024**3
 
   allocate(this%b_RHS(nl), source=0._CUSTOM_REAL, stat=ierr)
 

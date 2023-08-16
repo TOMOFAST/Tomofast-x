@@ -20,7 +20,7 @@
 !========================================================================================
 module sparse_matrix
 
-  use global_typedefs, only: CUSTOM_REAL, MATRIX_PRECISION
+  use global_typedefs
   use mpi_tools, only: exit_MPI
   use string, only: str
 
@@ -541,12 +541,20 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
   class(t_sparse_matrix), intent(inout) :: this
   integer, intent(in) :: myrank
   integer :: ierr
+  real(kind=CUSTOM_REAL) :: mem, mem_loc
 
   if (this%nnz < 0 .or. this%nl <= 0) then
     call exit_MPI("Wrong sizes in sparse_matrix_allocate_arrays!", myrank, 0)
   endif
 
-  ierr = 0
+  mem_loc = kind(this%sa) * this%nnz + &
+            kind(this%ijl) * (this%nl_nonempty_allocated + 1) + &
+            kind(this%ija) * this%nnz + &
+            kind(this%rowptr) * this%nl_nonempty_allocated
+
+  call mpi_allreduce(mem_loc, mem, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+  if (myrank == 0) print *, "Allocating matrix, memory (GB) =", dble(mem) / 1024**3
 
   allocate(this%sa(this%nnz), source=0._MATRIX_PRECISION, stat=ierr)
   allocate(this%ijl(this%nl_nonempty_allocated + 1), source=int(0, 8), stat=ierr)
