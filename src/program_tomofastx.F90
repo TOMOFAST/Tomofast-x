@@ -34,6 +34,7 @@ program program_tomofastx
   use parameters_inversion
   use init_parameters
   use problem_joint_gravmag
+  use memory_tools
 
   implicit none
 
@@ -48,6 +49,8 @@ program program_tomofastx
   type(t_parameters_inversion) :: ipar
   ! Type of problem to solve.
   integer :: problem_type
+  ! Memory usage.
+  real(kind=CUSTOM_REAL) :: memory
 
   !----------------------------------------------------------------------------
   ! These initializations will work for both serial (no MPI) and parallel runs,
@@ -68,7 +71,10 @@ program program_tomofastx
 
   !----------------------------------------------------------------------------
   ! INITIALIZATION.
-  if (myrank == 0) print *, "Started Tomofast-x, version >= v.1.6.4"
+  if (myrank == 0) print *, "Started Tomofast-x, version >= v.1.6.5"
+
+  memory = get_max_mem_usage()
+  if (myrank == 0) print *, "MEMORY USED (start) [GB] =", memory
 
   if (command_argument_count() /= 2) then
     if (myrank == 0) print *, "Usage: tomofastx -p <Parfile_path>"
@@ -92,6 +98,9 @@ program program_tomofastx
     ! Gravity and Magnetism problem.
     call solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   endif
+
+  memory = get_max_mem_usage()
+  if (myrank == 0) print *, "MEMORY USED (end) [GB] =", memory
 
   if (myrank == 0) print *, "THE END."
 

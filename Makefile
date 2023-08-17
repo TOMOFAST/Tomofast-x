@@ -126,6 +126,7 @@ string.f90 \
 noise.f90 \
 paraview.f90 \
 parallel_tools.f90 \
+memory_tools.f90 \
 wavelet_transform.F90 \
 sort.f90
 

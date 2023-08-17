@@ -45,6 +45,7 @@ module problem_joint_gravmag
   use data_gravmag
   use string, only: str
   use model_IO
+  use memory_tools
 
   implicit none
 
@@ -100,6 +101,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   real(kind=CUSTOM_REAL), allocatable :: delta_model(:, :, :)
   ! Data change (update) at inversion iteration.
   type(t_real2d) :: delta_data(2)
+  ! Memory usage.
+  real(kind=CUSTOM_REAL) :: memory
 
   if (myrank == 0) print *, "Solving problem joint grav/mag."
 
@@ -137,6 +140,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call read_model_grid(model(1)%grid_full, ipar%nmodel_components, gpar%model_files(1), myrank)
   if (SOLVE_PROBLEM(2)) call read_model_grid(model(2)%grid_full, ipar%nmodel_components, mpar%model_files(1), myrank)
 
+  memory = get_max_mem_usage()
+  if (myrank == 0) print *, "MEMORY USED (model grid) [GB] =", memory
+
   ! (II) DATA ALLOCATION. -----------------------------------------------------------------
 
   if (myrank == 0) print *, "(II) DATA ALLOCATION."
@@ -149,9 +155,12 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call data(1)%read_grid(gpar%data_grid_file, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%read_grid(mpar%data_grid_file, myrank)
 
-  ! (III) SENSITIVITY MATRIX ALLOCATION  ---------------------------------------------------
+  memory = get_max_mem_usage()
+  if (myrank == 0) print *, "MEMORY USED (data grid) [GB] =", memory
 
-  if (myrank == 0) print *, "(III) SENSITIVITY MATRIX ALLOCATION."
+  ! (III) SENSITIVITY MATRIX CALCULATION  ---------------------------------------------------
+
+  if (myrank == 0) print *, "(III) SENSITIVITY MATRIX CALCULATION."
 
   ! Memory allocation for auxiliarily inversion arrays.
   if (SOLVE_PROBLEM(1)) call iarr(1)%allocate_aux(ipar%nelements, ipar%ndata(1), ipar%ndata_components(1), myrank)
@@ -208,9 +217,14 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     endif
   endif
 
-  ! SENSITIVITY KERNEL ALLOCATION ------------------------------------------------------------------------
+  memory = get_max_mem_usage()
+  if (myrank == 0) print *, "MEMORY USED (sensit calc) [GB] =", memory
 
-  ! Allocate the sensitivity kernel.
+  ! (IV) MATRIX ALLOCATION  ------------------------------------------------------------------------------
+
+  if (myrank == 0) print *, "(IV) MATRIX ALLOCATION."
+
+  ! Allocate the sensitivity matrix.
   call jinv%initialize(ipar, nnz(1) + nnz(2), myrank)
 
   ! READING THE SENSITIVITY KERNEL ----------------------------------------------------------------------
@@ -220,6 +234,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     call read_sensitivity_kernel(gpar, jinv%matrix, iarr(1)%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) &
     call read_sensitivity_kernel(mpar, jinv%matrix, iarr(2)%column_weight, ipar%problem_weight(2), 2, myrank, nbproc)
+
+  memory = get_max_mem_usage()
+  if (myrank == 0) print *, "MEMORY USED (sensit read) [GB] =", memory
 
   ! RHS ALLOCATION -----------------------------------------------------------------------------------
 
@@ -420,6 +437,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (myrank == 0) &
       open(FILE_COSTS, file=trim(path_output)//'/costs.txt', access='stream', form='formatted', status='replace', action='write')
 #endif
+
+    memory = get_max_mem_usage()
+    if (myrank == 0) print *, "MEMORY USED (major loop start) [GB] =", memory
 
     ! Major inversion loop.
     do it = 1, ipar%ninversions
