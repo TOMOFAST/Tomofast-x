@@ -59,6 +59,9 @@ program program_tomofastx
   call MPI_COMM_RANK(MPI_COMM_WORLD, myrank, ierr)
   call MPI_COMM_SIZE(MPI_COMM_WORLD, nbproc, ierr)
 
+  memory = get_max_mem_usage()
+  if (myrank == 0) print *, "MEMORY USED (mpi init) [GB] =", memory
+
   !----------------------------------------------------------------------------
   ! UNIT TESTING.
   ! The routine runtests will check if unit tests are requested (if a file ftnunit.run exists).
@@ -72,9 +75,6 @@ program program_tomofastx
   !----------------------------------------------------------------------------
   ! INITIALIZATION.
   if (myrank == 0) print *, "Started Tomofast-x, version >= v.1.6.5"
-
-  memory = get_max_mem_usage()
-  if (myrank == 0) print *, "MEMORY USED (start) [GB] =", memory
 
   if (command_argument_count() /= 2) then
     if (myrank == 0) print *, "Usage: tomofastx -p <Parfile_path>"
