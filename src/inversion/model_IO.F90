@@ -189,7 +189,6 @@ subroutine read_bound_constraints(model, file_name, myrank, nbproc)
 
   integer :: ierr, nsmaller, ind, i, nelements_read, nlithos_read
   character(len=256) :: msg
-  character(len=200) :: dummy_line
 
   if (myrank == 0) print *, 'Reading local bound constraints from file ', trim(file_name)
 
@@ -227,7 +226,8 @@ subroutine read_bound_constraints(model, file_name, myrank, nbproc)
       if (ierr /= 0) &
         call exit_MPI("Problem with reading the bound constraints for pixel i = "//str(i), myrank, ierr)
     else
-      read(10, '(A)', iostat=ierr) dummy_line
+      ! Skip line.
+      read(10, *)
     endif
 
     if (i > nsmaller + model%nelements) then
