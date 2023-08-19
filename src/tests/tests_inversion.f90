@@ -208,6 +208,10 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
 
   model2%grid_full = model1%grid_full
 
+  ! Scatter the full model as we update the full model inside cross_gradient_calculate() from its local parts.
+  call model1%distribute(myrank, nbproc)
+  call model2%distribute(myrank, nbproc)
+
   call cross_grad%initialize(nx, ny, nz, nelements, myrank)
 
   call matrix%initialize(3 * nelements_total, 2 * nelements, &
