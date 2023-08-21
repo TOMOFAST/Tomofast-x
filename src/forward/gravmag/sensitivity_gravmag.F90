@@ -378,7 +378,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
     open(77, file=trim(filename_full), form='formatted', status='replace', action='write')
 
-    write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, MATRIX_PRECISION
+    write(77, *) par%nx, par%ny, par%nz, par%ndata
+    write(77, *) nbproc, MATRIX_PRECISION, par%depth_weighting_type
     write(77, *) par%compression_type, comp_error
     write(77, *) par%nmodel_components, par%ndata_components
     write(77, *) nnz_total
@@ -829,7 +830,7 @@ subroutine read_sensitivity_metadata(par, nbproc_sensit, problem_type, myrank)
   character(len=256) :: msg
   integer :: nx_read, ny_read, nz_read, ndata_read
   integer :: nmodel_components_read, ndata_components_read
-  integer :: compression_type_read
+  integer :: compression_type_read, weight_type_read
   integer :: precision_read
   real(kind=CUSTOM_REAL) :: comp_error
 
@@ -852,7 +853,8 @@ subroutine read_sensitivity_metadata(par, nbproc_sensit, problem_type, myrank)
     if (ierr /= 0) call exit_MPI("Error in opening the sensitivity metadata file! path=" &
                                   //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
-    read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_sensit, precision_read
+    read(78, *) nx_read, ny_read, nz_read, ndata_read
+    read(78, *) nbproc_sensit, precision_read, weight_type_read
     read(78, *) compression_type_read, comp_error
     read(78, *) nmodel_components_read, ndata_components_read
 
@@ -860,7 +862,7 @@ subroutine read_sensitivity_metadata(par, nbproc_sensit, problem_type, myrank)
 
     ! Consistency check.
     if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
-        ndata_read /= par%ndata .or. &
+        ndata_read /= par%ndata .or. weight_type_read /= par%depth_weighting_type .or. &
         nmodel_components_read /= par%nmodel_components .or. ndata_components_read /= par%ndata_components) then
       call exit_MPI("Sensitivity metadata file info does not match the Parfile!", myrank, 0)
     endif
