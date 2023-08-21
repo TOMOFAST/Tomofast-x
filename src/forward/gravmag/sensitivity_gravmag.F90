@@ -421,6 +421,24 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   endif
 
   !---------------------------------------------------------------------------------------------
+  ! Write the sensit_nnz (to calculate load balancing for any number of CPUs).
+  !---------------------------------------------------------------------------------------------
+  if (myrank == 0) then
+    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_nnz"
+    filename_full = trim(path_output)//"/SENSIT/"//filename
+
+    print *, 'Writing the sensit_nnz to file ', trim(filename_full)
+
+    open(77, file=trim(filename_full), form='unformatted', status='replace', action='write', access='stream')
+
+    write(77) nelements_total
+    write(77) sensit_nnz
+
+    close(77)
+  endif
+
+
+  !---------------------------------------------------------------------------------------------
   ! Return the nnz for the current CPU.
   nnz = nnz_at_cpu_new(myrank + 1)
 
