@@ -356,16 +356,11 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       cycle
     endif
 
-    if (myrank == 0 .and. i > 1) print *, '-------------------------------------------------------'
-
     if (myrank == 0) print *, 'Adding joint problem #', i, ' weight =', par%problem_weight(i)
 
     ! Adding the right-hand side only, as the sensitivity was added when reading the kernel from files.
     this%b_RHS(line_start(i):line_end(i)) = par%problem_weight(i) * arr(i)%residuals
 
-    cost = sum(this%b_RHS(line_start(i):line_end(i))**2)
-
-    if (myrank == 0) print *, 'misfit term cost = ', cost
     if (myrank == 0) print *, 'nel = ', this%matrix%get_number_elements()
 
     if (this%add_damping(i)) then
@@ -403,8 +398,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       if (myrank == 0) print *, 'nel (with damping_gradient) = ', this%matrix%get_number_elements()
     endif
   enddo
-
-  if (myrank == 0) print *, '-------------------------------------------------------'
 
   ! ***** ADMM method *****
 
