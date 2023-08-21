@@ -397,7 +397,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
     open(77, file=trim(filename_full), form='unformatted', status='replace', action='write', access='stream')
 
-    write(77) par%nx, par%ny, par%nz, par%ndata, par%depth_weighting_type
+    write(77) nelements_total
     write(77) column_weight_full
 
     close(77)
@@ -769,8 +769,7 @@ subroutine read_depth_weight(par, filename, column_weight, myrank, nbproc)
 
   real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements)
 
-  integer :: nelements_total
-  integer :: nx_read, ny_read, nz_read, ndata_read, weight_type_read
+  integer :: nelements_total, nelements_total_read
   integer :: ierr
   character(len=256) :: msg
 
@@ -799,17 +798,14 @@ subroutine read_depth_weight(par, filename, column_weight, myrank, nbproc)
     if (ierr /= 0) call exit_MPI("Error in opening the depth weight file! path=" &
                                   //trim(filename)//", iomsg="//msg, myrank, ierr)
 
-    read(78) nx_read, ny_read, nz_read, ndata_read, weight_type_read
+    read(78) nelements_total_read
     read(78) column_weight_full
 
     close(78)
 
-    if (myrank == 0) print *, "Depth weight type (read) =", weight_type_read
-
     ! Consistency check.
-    if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
-        ndata_read /= par%ndata) then
-      call exit_MPI("Sensitivity weight file dimensions do not match the Parfile!", myrank, 0)
+    if (nelements_total_read /= nelements_total) then
+      call exit_MPI("Depth weight file header does not match the Parfile!", myrank, 0)
     endif
   endif
 
