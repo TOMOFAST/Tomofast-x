@@ -42,6 +42,7 @@ module sensitivity_gravmag
   public :: calculate_and_write_sensit
   public :: read_sensitivity_kernel
   public :: read_sensitivity_metadata
+  public :: calculate_new_partitioning
 
   private :: apply_column_weight
   private :: test_grid_cell_order
@@ -507,6 +508,77 @@ subroutine get_load_balancing_nelements(nelements_total, sensit_nnz, &
     call exit_MPI("Wrong nnz_at_cpu_new in get_load_balancing_nelements!", myrank, 0)
   endif
 end subroutine get_load_balancing_nelements
+
+!=======================================================================================================================
+! Calculate new partitioning for the load balancing using the sensit_nnz from file.
+!=======================================================================================================================
+subroutine calculate_new_partitioning(par, nnz, nelements_new, problem_type, myrank, nbproc)
+  class(t_parameters_base), intent(in) :: par
+  integer, intent(in) :: problem_type
+  integer, intent(in) :: myrank, nbproc
+
+  integer(kind=8), intent(out) :: nnz
+  integer, intent(out) :: nelements_new
+
+  integer(kind=8) :: nnz_at_cpu(nbproc)
+  integer :: nelements_at_cpu_new(nbproc)
+
+  character(len=256) :: filename, filename_full
+  character(len=256) :: msg
+  integer :: ierr
+  integer :: nelements_total, nelements_total_read
+
+  integer, allocatable :: sensit_nnz(:)
+
+  if (myrank == 0) then
+
+    nelements_total = par%nx * par%ny * par%nz
+
+    ! Memory allocation.
+    allocate(sensit_nnz(nelements_total), source=0, stat=ierr)
+
+    if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_new_partitioning!", myrank, ierr)
+
+    ! Form the file name.
+    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_nnz"
+    filename_full = trim(path_output)//"/SENSIT/"//filename
+
+    if (myrank == 0) print *, 'Reading the sensit_nnz file ', trim(filename_full)
+
+    ! Open the file.
+    open(78, file=trim(filename_full), status='old', access='stream', form='unformatted', action='read', &
+         iostat=ierr, iomsg=msg)
+
+    if (ierr /= 0) call exit_MPI("Error in opening the sensitivity file! path=" &
+                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
+
+    ! Reading the file header.
+    read(78) nelements_total_read
+
+    ! Consistency check.
+    if (nelements_total_read /= nelements_total) then
+      call exit_MPI("Wrong file header in calculate_new_partitioning!", myrank, 0)
+    endif
+
+    read(78) sensit_nnz
+
+    close(78)
+
+    ! Calculate the load balancing.
+    call get_load_balancing_nelements(nelements_total, sensit_nnz, nnz_at_cpu, nelements_at_cpu_new, myrank, nbproc)
+
+    deallocate(sensit_nnz)
+
+  endif ! myrank == 0
+
+  call MPI_Bcast(nnz_at_cpu, nbproc, MPI_INTEGER8, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(nelements_at_cpu_new, nbproc, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+
+  ! Return the parameters for the current rank.
+  nnz = nnz_at_cpu(myrank + 1)
+  nelements_new = nelements_at_cpu_new(myrank + 1)
+
+end subroutine calculate_new_partitioning
 
 !==================================================================================================================
 ! Reads the sensitivity kernel from files,
