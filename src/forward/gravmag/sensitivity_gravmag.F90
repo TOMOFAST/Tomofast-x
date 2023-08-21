@@ -154,7 +154,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   real(kind=MATRIX_PRECISION), allocatable :: sensit_compressed(:)
 
   ! To calculate the partitioning for balanced memory loading among CPUs.
-  integer(kind=8), allocatable :: sensit_nnz(:)
+  integer, allocatable :: sensit_nnz(:)
 
   real(kind=CUSTOM_REAL) :: cost_full, cost_compressed
   real(kind=CUSTOM_REAL) :: cost_full_loc, cost_compressed_loc
@@ -219,7 +219,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   allocate(sensit_columns(nel_compressed), source=0, stat=ierr)
   allocate(sensit_compressed(nel_compressed), source=0._MATRIX_PRECISION, stat=ierr)
 
-  allocate(sensit_nnz(nelements_total), source=int(0, 8), stat=ierr)
+  allocate(sensit_nnz(nelements_total), source=0, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
@@ -346,7 +346,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
   close(77)
 
-  call mpi_allreduce(MPI_IN_PLACE, sensit_nnz, nelements_total, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+  call mpi_allreduce(MPI_IN_PLACE, sensit_nnz, nelements_total, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
 
   !---------------------------------------------------------------------------------------------
   ! Calculate the kernel compression rate.
@@ -437,7 +437,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     close(77)
   endif
 
-
   !---------------------------------------------------------------------------------------------
   ! Return the nnz for the current CPU.
   nnz = nnz_at_cpu_new(myrank + 1)
@@ -461,7 +460,7 @@ end subroutine calculate_and_write_sensit
 subroutine get_load_balancing_nelements(nelements_total, sensit_nnz, &
                                         nnz_at_cpu_new, nelements_at_cpu_new, myrank, nbproc)
   integer, intent(in) :: nelements_total
-  integer(kind=8), intent(in) :: sensit_nnz(nelements_total)
+  integer, intent(in) :: sensit_nnz(nelements_total)
   integer, intent(in) :: myrank, nbproc
 
   integer, intent(out) :: nelements_at_cpu_new(nbproc)
