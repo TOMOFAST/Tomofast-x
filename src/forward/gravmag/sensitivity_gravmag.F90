@@ -325,7 +325,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
         ! Sanity check.
         if (nnz_data < 0) then
-          call exit_MPI("Integer overflow in nnz_data! Reduce the compression rate or increase the number of CPUs.", myrank, 0)
+          call exit_MPI("Integer overflow in nnz_data!", myrank, 0)
         endif
 
         ! Write the sensitivity line to file.
@@ -388,7 +388,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! Write the metadata file, with nnz info for re-reading sensitivity from files.
   !---------------------------------------------------------------------------------------------
   if (myrank == 0) then
-    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_meta.dat"
+    filename = "sensit_"//SUFFIX(problem_type)//"_meta.txt"
     filename_full = trim(path_output)//"/SENSIT/"//filename
 
     print *, 'Writing the sensitivity metadata to file ', trim(filename_full)
@@ -398,8 +398,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
     write(77, *) par%nx, par%ny, par%nz, par%ndata, nbproc, MATRIX_PRECISION
     write(77, *) par%compression_type, comp_error
     write(77, *) par%nmodel_components, par%ndata_components
-    write(77, *) nnz_at_cpu_new
-    write(77, *) nelements_at_cpu_new
+    write(77, *) nnz_total
 
     close(77)
   endif
@@ -408,7 +407,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! Write the depth weight.
   !---------------------------------------------------------------------------------------------
   if (myrank == 0) then
-    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_weight"
+    filename = "sensit_"//SUFFIX(problem_type)//"_weight"
     filename_full = trim(path_output)//"/SENSIT/"//filename
 
     print *, 'Writing the depth weight to file ', trim(filename_full)
@@ -425,7 +424,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   ! Write the sensit_nnz (to calculate load balancing for any number of CPUs).
   !---------------------------------------------------------------------------------------------
   if (myrank == 0) then
-    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_nnz"
+    filename = "sensit_"//SUFFIX(problem_type)//"_nnz"
     filename_full = trim(path_output)//"/SENSIT/"//filename
 
     print *, 'Writing the sensit_nnz to file ', trim(filename_full)
@@ -540,8 +539,13 @@ subroutine calculate_new_partitioning(par, nnz, nelements_new, problem_type, myr
     if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_new_partitioning!", myrank, ierr)
 
     ! Form the file name.
-    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_nnz"
-    filename_full = trim(path_output)//"/SENSIT/"//filename
+    filename = "sensit_"//SUFFIX(problem_type)//"_nnz"
+
+    if (par%sensit_read /= 0) then
+      filename_full = trim(par%sensit_path)//filename
+    else
+      filename_full = trim(path_output)//"/SENSIT/"//filename
+    endif
 
     if (myrank == 0) print *, 'Reading the sensit_nnz file ', trim(filename_full)
 
@@ -578,6 +582,11 @@ subroutine calculate_new_partitioning(par, nnz, nelements_new, problem_type, myr
   nnz = nnz_at_cpu(myrank + 1)
   nelements_new = nelements_at_cpu_new(myrank + 1)
 
+  if (myrank == 0) then
+    print *, "nelements_at_cpu_new =", nelements_at_cpu_new
+    print *, "nnz_at_cpu =", nnz_at_cpu
+  endif
+
 end subroutine calculate_new_partitioning
 
 !==================================================================================================================
@@ -607,6 +616,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   character(len=256) :: msg
 
   integer :: ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
+  integer :: nbproc_sensit
   integer :: idata, nel, idata_glob, model_component, data_component
   integer(kind=8) :: nnz
   integer :: column
@@ -626,8 +636,16 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in read_sensitivity_kernel!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
+  ! Read sensitivity metadata and retrieve nbproc_sensit.
+  !---------------------------------------------------------------------------------------------
+  call read_sensitivity_metadata(par, nbproc_sensit, problem_type, myrank)
+
+  if (myrank == 0) print *, "nbproc_sensit =", nbproc_sensit
+
+  !---------------------------------------------------------------------------------------------
   ! Reading the sensitivity kernel files.
   !---------------------------------------------------------------------------------------------
+
   nelements_total = par%nx * par%ny * par%nz
 
   ! The number of elements on CPUs with rank smaller than myrank.
@@ -637,9 +655,9 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   nnz = 0
 
   ! Loop over the MPI ranks (as the sensitivity kernel is stored parallelized by data in a separate file for each rank).
-  do rank = 0, nbproc - 1
+  do rank = 0, nbproc_sensit - 1
     ! Form the file name (containing the MPI rank).
-    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(rank))
+    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc_sensit))//"_"//trim(str(rank))
 
     if (par%sensit_read /= 0) then
       filename_full = trim(par%sensit_path)//filename
@@ -660,7 +678,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
     ! Consistency check.
     if (ndata_read /= par%ndata .or. nelements_total_read /= nelements_total &
-        .or. myrank_read /= rank .or. nbproc_read /= nbproc) then
+        .or. myrank_read /= rank .or. nbproc_read /= nbproc_sensit) then
       call exit_MPI("Wrong file header in read_sensitivity_kernel!", myrank, 0)
     endif
 
@@ -747,7 +765,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   ! Read the depth weight
   !---------------------------------------------------------------------------------------------
   ! Define the file name.
-  filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_weight"
+  filename = "sensit_"//SUFFIX(problem_type)//"_weight"
 
   if (par%sensit_read /= 0) then
     filename_full = trim(par%sensit_path)//filename
@@ -821,70 +839,70 @@ subroutine read_depth_weight(par, filename, column_weight, myrank, nbproc)
 
 end subroutine read_depth_weight
 
-!=============================================================================================
-! Reads the sensitivity kernel metadata and defines the nnz for re-reading the kernel.
-!=============================================================================================
-subroutine read_sensitivity_metadata(par, nnz, nelements_new, problem_type, myrank, nbproc)
+!=====================================================================================================
+! Reads the sensitivity kernel metadata and retrieve nbproc used to calculate the sensitivity kernel.
+!=====================================================================================================
+subroutine read_sensitivity_metadata(par, nbproc_sensit, problem_type, myrank)
   class(t_parameters_base), intent(in) :: par
   integer, intent(in) :: problem_type
-  integer, intent(in) :: myrank, nbproc
+  integer, intent(in) :: myrank
 
-  integer(kind=8), intent(out) :: nnz
-  integer, intent(out) :: nelements_new
+  integer, intent(out) :: nbproc_sensit
 
-  integer(kind=8) :: nnz_at_cpu(nbproc)
-  integer :: nelements_at_cpu_new(nbproc)
   integer :: ierr
   character(len=256) :: filename, filename_full
   character(len=256) :: msg
-  integer :: nx_read, ny_read, nz_read, ndata_read, nbproc_read
+  integer :: nx_read, ny_read, nz_read, ndata_read
   integer :: nmodel_components_read, ndata_components_read
   integer :: compression_type_read
   integer :: precision_read
   real(kind=CUSTOM_REAL) :: comp_error
 
   ! Define the file name.
-  filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_meta.dat"
-  filename_full = trim(par%sensit_path)//filename
+  filename = "sensit_"//SUFFIX(problem_type)//"_meta.txt"
 
-  if (myrank == 0) print *, "Reading the sensitivity metadata file ", trim(filename_full)
-
-  ! Open the file.
-  open(78, file=trim(filename_full), form='formatted', status='old', action='read', iostat=ierr, iomsg=msg)
-
-  if (ierr /= 0) call exit_MPI("Error in opening the sensitivity metadata file! path=" &
-                                //trim(filename_full)//", iomsg="//msg, myrank, ierr)
-
-  read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read, precision_read
-  read(78, *) compression_type_read, comp_error
-  read(78, *) nmodel_components_read, ndata_components_read
-
-  if (myrank == 0) print *, "COMPRESSION ERROR (read) =", comp_error
-
-  ! Consistency check.
-  if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
-      ndata_read /= par%ndata .or. nbproc_read /= nbproc .or. &
-      nmodel_components_read /= par%nmodel_components .or. ndata_components_read /= par%ndata_components) then
-    call exit_MPI("Sensitivity metadata file info does not match the Parfile!", myrank, 0)
+  if (par%sensit_read /= 0) then
+    filename_full = trim(par%sensit_path)//filename
+  else
+    filename_full = trim(path_output)//"/SENSIT/"//filename
   endif
 
-  if (compression_type_read /= par%compression_type) then
-    call exit_MPI("Compression type is inconsistent!", myrank, 0)
+  if (myrank == 0) then
+
+    print *, "Reading the sensitivity metadata file ", trim(filename_full)
+
+    ! Open the file.
+    open(78, file=trim(filename_full), form='formatted', status='old', action='read', iostat=ierr, iomsg=msg)
+
+    if (ierr /= 0) call exit_MPI("Error in opening the sensitivity metadata file! path=" &
+                                  //trim(filename_full)//", iomsg="//msg, myrank, ierr)
+
+    read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_sensit, precision_read
+    read(78, *) compression_type_read, comp_error
+    read(78, *) nmodel_components_read, ndata_components_read
+
+    if (myrank == 0) print *, "COMPRESSION ERROR (read) =", comp_error
+
+    ! Consistency check.
+    if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
+        ndata_read /= par%ndata .or. &
+        nmodel_components_read /= par%nmodel_components .or. ndata_components_read /= par%ndata_components) then
+      call exit_MPI("Sensitivity metadata file info does not match the Parfile!", myrank, 0)
+    endif
+
+    if (compression_type_read /= par%compression_type) then
+      call exit_MPI("Compression type is inconsistent!", myrank, 0)
+    endif
+
+    ! Matrix precision consistency check.
+    if (precision_read /= MATRIX_PRECISION) then
+      call exit_MPI("Matrix precision is not consistent!", myrank, 0)
+    endif
+
+    close(78)
   endif
 
-  ! Matrix precision consistency check.
-  if (precision_read /= MATRIX_PRECISION) then
-    call exit_MPI("Matrix precision is not consistent!", myrank, 0)
-  endif
-
-  read(78, *) nnz_at_cpu
-  read(78, *) nelements_at_cpu_new
-
-  close(78)
-
-  ! Return the parameters for the current rank.
-  nnz = nnz_at_cpu(myrank + 1)
-  nelements_new = nelements_at_cpu_new(myrank + 1)
+  call MPI_Bcast(nbproc_sensit, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 end subroutine read_sensitivity_metadata
 

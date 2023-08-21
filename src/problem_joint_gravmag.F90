@@ -182,11 +182,11 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     if (SOLVE_PROBLEM(2)) call calculate_and_write_sensit(mpar, model(2)%grid_full, data(2), iarr(2)%column_weight, &
                                                           nnz(2), nelements_new, myrank, nbproc)
-  else
-    ! Read the sensitivity metadata file to define the nnz.
-    if (SOLVE_PROBLEM(1)) call read_sensitivity_metadata(gpar, nnz(1), nelements_new, 1, myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call read_sensitivity_metadata(mpar, nnz(2), nelements_new, 2, myrank, nbproc)
   endif
+
+  ! Calculate new partitioning for the load balancing.
+  if (SOLVE_PROBLEM(1)) call calculate_new_partitioning(gpar, nnz(1), nelements_new, 1, myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call calculate_new_partitioning(mpar, nnz(2), nelements_new, 2, myrank, nbproc)
 
   ! TODO: Need to do something about nelements_new for cross-gradient case, as there will be different values for grav and mag,
   ! but the model should have the same partitioning for both grav and mag.
