@@ -118,18 +118,12 @@ end function get_nel_compressed
 !===============================================================================================================
 ! Calculates the sensitivity kernel (parallelized by data) and writes it to files.
 !===============================================================================================================
-subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, nelements_new, myrank, nbproc)
+subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid_full
   type(t_data), intent(in) :: data
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(par%nelements)
   integer, intent(in) :: myrank, nbproc
-
-  ! The number of non-zero elements (on current CPU) in the sensitivity kernel parallelized by model.
-  ! We need this number for reading the sensitivity later from files, for invere problem.
-  ! As the inverse problem is parallelized by model, and calculations here are parallelized by data.
-  integer(kind=8), intent(out) :: nnz
-  integer, intent(out) :: nelements_new
 
   type(t_magnetic_field) :: mag_field
   integer :: i, k, p, d, nel, ierr
@@ -142,9 +136,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   integer(kind=8) :: nnz_total
   real(kind=CUSTOM_REAL) :: threshold
   character(len=256) :: msg
-
-  integer :: nelements_at_cpu_new(nbproc)
-  integer(kind=8) :: nnz_at_cpu_new(nbproc)
 
   ! Sensitivity matrix row.
   real(kind=CUSTOM_REAL), allocatable :: sensit_line_full(:, :, :)
@@ -377,15 +368,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
   if (myrank == 0) print *, 'COMPRESSION ERROR = ', comp_error
 
   !---------------------------------------------------------------------------------------------
-  ! Perform the nnz load balancing among CPUs.
-  !---------------------------------------------------------------------------------------------
-  call get_load_balancing_nelements(nelements_total, sensit_nnz, &
-                                    nnz_at_cpu_new, nelements_at_cpu_new, myrank, nbproc)
-
-  nelements_new = nelements_at_cpu_new(myrank + 1)
-
-  !---------------------------------------------------------------------------------------------
-  ! Write the metadata file, with nnz info for re-reading sensitivity from files.
+  ! Write the metadata file.
   !---------------------------------------------------------------------------------------------
   if (myrank == 0) then
     filename = "sensit_"//SUFFIX(problem_type)//"_meta.txt"
@@ -436,10 +419,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, nnz, 
 
     close(77)
   endif
-
-  !---------------------------------------------------------------------------------------------
-  ! Return the nnz for the current CPU.
-  nnz = nnz_at_cpu_new(myrank + 1)
 
   !---------------------------------------------------------------------------------------------
   deallocate(sensit_line_full)

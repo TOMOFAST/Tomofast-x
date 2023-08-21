@@ -178,20 +178,15 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     ! Calculate and write the sensitivity kernel to files.
     if (SOLVE_PROBLEM(1)) call calculate_and_write_sensit(gpar, model(1)%grid_full, data(1), iarr(1)%column_weight, &
-                                                          nnz(1), nelements_new, myrank, nbproc)
+                                                          myrank, nbproc)
 
     if (SOLVE_PROBLEM(2)) call calculate_and_write_sensit(mpar, model(2)%grid_full, data(2), iarr(2)%column_weight, &
-                                                          nnz(2), nelements_new, myrank, nbproc)
+                                                          myrank, nbproc)
   endif
 
   ! Calculate new partitioning for the load balancing.
   if (SOLVE_PROBLEM(1)) call calculate_new_partitioning(gpar, nnz(1), nelements_new, 1, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call calculate_new_partitioning(mpar, nnz(2), nelements_new, 2, myrank, nbproc)
-
-  ! TODO: Need to do something about nelements_new for cross-gradient case, as there will be different values for grav and mag,
-  ! but the model should have the same partitioning for both grav and mag.
-  ! 1. We can pass outside the sensit_nnz from 'calculate_and_write_sensit' for both problems, and then calculate the load balancing using both kernels.
-  ! 2. Another much simpler possibility is to choose nelements_new from one of the problems, and adjust the nnz to max(nnz_grav, nnz_mag).
 
   ! Update the nelements for the nnz load balancing.
   if (SOLVE_PROBLEM(1)) gpar%nelements = nelements_new
