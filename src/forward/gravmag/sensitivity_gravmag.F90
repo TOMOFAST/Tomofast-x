@@ -147,6 +147,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
   ! To calculate the partitioning for balanced memory loading among CPUs.
   integer, allocatable :: sensit_nnz(:)
+  integer(kind=8) :: sensit_nnz_sum
 
   real(kind=CUSTOM_REAL) :: cost_full, cost_compressed
   real(kind=CUSTOM_REAL) :: cost_full_loc, cost_compressed_loc
@@ -350,7 +351,12 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   if (myrank == 0) print *, 'COMPRESSION RATE = ', comp_rate
 
   ! Sanity check.
-  if (sum(sensit_nnz) /= nnz_total) then
+  sensit_nnz_sum = 0
+  do p = 1, nelements_total
+    ! Calculate sum using loop as sum() returns the same type as an array hence leads to overflow.
+    sensit_nnz_sum = sensit_nnz_sum + sensit_nnz(p)
+  enddo
+  if (sensit_nnz_sum /= nnz_total) then
     call exit_MPI("Wrong nnz_total in calculate_and_write_sensit!", myrank, 0)
   endif
 
