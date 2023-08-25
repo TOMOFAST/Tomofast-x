@@ -184,13 +184,13 @@ subroutine parameters_inversion_broadcast(this, myrank)
   if (this%admm_type == 1 .and. this%admm_bound_type == 1) then
     ! They get allocated in init_parameters on the master rank. Allocate for all ranks.
     if (.not. allocated(this%admm_bounds(1)%val)) then
-      allocate(this%admm_bounds(1)%val(2 * this%nlithos + 1), source=0._CUSTOM_REAL)
+      allocate(this%admm_bounds(1)%val(2 * this%nlithos), source=0._CUSTOM_REAL)
     endif
     if (.not. allocated(this%admm_bounds(2)%val)) then
-      allocate(this%admm_bounds(2)%val(2 * this%nlithos + 1), source=0._CUSTOM_REAL)
+      allocate(this%admm_bounds(2)%val(2 * this%nlithos), source=0._CUSTOM_REAL)
     endif
-    call MPI_Bcast(this%admm_bounds(1)%val, 2 * this%nlithos + 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-    call MPI_Bcast(this%admm_bounds(2)%val, 2 * this%nlithos + 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+    call MPI_Bcast(this%admm_bounds(1)%val, 2 * this%nlithos, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+    call MPI_Bcast(this%admm_bounds(2)%val, 2 * this%nlithos, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   endif
 
   ! ADMM parameters (for dynamic weight adjustment).

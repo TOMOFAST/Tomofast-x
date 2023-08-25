@@ -74,7 +74,7 @@ ADMM constraints
 ===================================================================================
 inversion.admm.enableADMM           = 1
 inversion.admm.nLithologies         = 3
-inversion.admm.grav.bounds          = -20. 90. 220. 20. 130. 260. 1.
+inversion.admm.grav.bounds          = -20. 90. 220. 20. 130. 260.
 inversion.admm.grav.weight          = 1.d-5
 
 ===================================================================================

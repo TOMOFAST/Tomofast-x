@@ -76,7 +76,7 @@ DISJOINT INTERVAL BOUND constraints (ADMM)
 ==================================================================================
 inversion.admm.enableADMM               = 1
 inversion.admm.nLithologies             = 1
-inversion.admm.magn.bounds              = 0. 1. 1.
+inversion.admm.magn.bounds              = 0. 1.
 inversion.admm.magn.weight              = 100.
 
 inversion.admm.dataCostThreshold        = 1.e-4

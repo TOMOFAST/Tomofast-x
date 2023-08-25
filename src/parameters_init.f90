@@ -662,12 +662,12 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
         call print_arg(myrank, parname, ipar%nlithos)
 
       case("inversion.admm.grav.bounds")
-        allocate(ipar%admm_bounds(1)%val(2 * ipar%nlithos + 1), source=0._CUSTOM_REAL)
+        allocate(ipar%admm_bounds(1)%val(2 * ipar%nlithos), source=0._CUSTOM_REAL)
         read(10, *) ipar%admm_bounds(1)%val
         call print_arg(myrank, parname, ipar%admm_bounds(1)%val)
 
       case("inversion.admm.magn.bounds")
-        allocate(ipar%admm_bounds(2)%val(2 * ipar%nlithos + 1), source=0._CUSTOM_REAL)
+        allocate(ipar%admm_bounds(2)%val(2 * ipar%nlithos), source=0._CUSTOM_REAL)
         read(10, *) ipar%admm_bounds(2)%val
         call print_arg(myrank, parname, ipar%admm_bounds(2)%val)
 

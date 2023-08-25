@@ -664,8 +664,8 @@ subroutine set_model_bounds(ipar, model, problem_type, myrank, nbproc)
     do i = 1, model%nelements
       model%min_bound(:, i) = ipar%admm_bounds(problem_type)%val(1 : ipar%nlithos)
       model%max_bound(:, i) = ipar%admm_bounds(problem_type)%val(ipar%nlithos + 1 : 2 * ipar%nlithos)
-      model%bound_weight(i) = ipar%admm_bounds(problem_type)%val(2 * ipar%nlithos + 1)
     enddo
+    model%bound_weight(:) = 1.d0
   else
     ! Local bounds - read from file.
     call read_bound_constraints(model, ipar%bounds_ADMM_file(problem_type), myrank, nbproc)
