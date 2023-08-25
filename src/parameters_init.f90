@@ -375,6 +375,7 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
   integer :: itmp
   integer :: symbol_index, i
   integer :: ios
+  logical :: global_bounds_defined
 
   ! The name of the Parfile should be passed in via the command line.
   call get_command_argument(2, parfile_name)
@@ -385,6 +386,8 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
 
   open(unit=10, file=parfile_name, status='old', iostat=itmp, action='read')
   if (itmp /= 0) call exit_MPI("Parfile """ // trim(parfile_name) // """ cannot be opened!", myrank, 0)
+
+  global_bounds_defined = .false.
 
   !---------------------------------------------------------------------------------
   ! Reading parameter values from Parfile.
@@ -665,11 +668,13 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
         allocate(ipar%admm_bounds(1)%val(2 * ipar%nlithos), source=0._CUSTOM_REAL)
         read(10, *) ipar%admm_bounds(1)%val
         call print_arg(myrank, parname, ipar%admm_bounds(1)%val)
+        global_bounds_defined = .true.
 
       case("inversion.admm.magn.bounds")
         allocate(ipar%admm_bounds(2)%val(2 * ipar%nlithos), source=0._CUSTOM_REAL)
         read(10, *) ipar%admm_bounds(2)%val
         call print_arg(myrank, parname, ipar%admm_bounds(2)%val)
+        global_bounds_defined = .true.
 
       case("inversion.admm.grav.boundsFile")
         call read_filename(10, ipar%bounds_ADMM_file(1))
@@ -766,6 +771,13 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
 
     end select
   enddo
+
+  ! Sanity check.
+  if (ipar%admm_type == 1 .and. ipar%admm_bound_type == 1) then
+    if (.not. global_bounds_defined) then
+      call exit_MPI("Global admm bounds are not defined! They must be defined in the Parfile.", myrank, 0)
+    endif
+  endif
 
   print *, "Finished reading the file."
 
