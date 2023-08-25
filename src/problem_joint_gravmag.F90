@@ -662,9 +662,9 @@ subroutine set_model_bounds(ipar, model, problem_type, myrank, nbproc)
   if (ipar%admm_bound_type == 1) then
     ! Global bounds - define from Parfile parameters.
     do i = 1, model%nelements
-      model%min_local_bound(:, i) = ipar%admm_bounds(problem_type)%val(1 : ipar%nlithos)
-      model%max_local_bound(:, i) = ipar%admm_bounds(problem_type)%val(ipar%nlithos + 1 : 2 * ipar%nlithos)
-      model%local_bound_constraints_weight(i) = ipar%admm_bounds(problem_type)%val(2 * ipar%nlithos + 1)
+      model%min_bound(:, i) = ipar%admm_bounds(problem_type)%val(1 : ipar%nlithos)
+      model%max_bound(:, i) = ipar%admm_bounds(problem_type)%val(ipar%nlithos + 1 : 2 * ipar%nlithos)
+      model%bound_weight(i) = ipar%admm_bounds(problem_type)%val(2 * ipar%nlithos + 1)
     enddo
   else
     ! Local bounds - read from file.

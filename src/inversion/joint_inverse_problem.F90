@@ -415,13 +415,11 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
 
     if (solve_gravity_only) then
       i = 1
-      call this%admm_method%iterate_admm_arrays(model(i)%nlithos, &
-                                                model(i)%min_local_bound, model(i)%max_local_bound, &
+      call this%admm_method%iterate_admm_arrays(model(i)%nlithos, model(i)%min_bound, model(i)%max_bound, &
                                                 model(i)%val, this%x0_ADMM, myrank)
     else if (solve_mag_only) then
       i = 2
-      call this%admm_method%iterate_admm_arrays(model(i)%nlithos, &
-                                                model(i)%min_local_bound, model(i)%max_local_bound, &
+      call this%admm_method%iterate_admm_arrays(model(i)%nlithos, model(i)%min_bound, model(i)%max_bound, &
                                                 model(i)%val, this%x0_ADMM, myrank)
     endif
 
