@@ -109,6 +109,10 @@ module parameters_inversion
 
     ! 0 - no admm, 1 - with admm.
     integer :: admm_type
+    ! 1 - global, 1 - local.
+    integer :: admm_bound_type
+    ! ADMM bounds for the global bound type.
+    type(t_real1d) :: admm_bounds(2)
     ! Number of lithologies.
     integer :: nlithos
     character(len=256) :: bounds_ADMM_file(2)
@@ -132,7 +136,7 @@ contains
 ! MPI broadcast parameters that are read from a Parfile.
 !==================================================================================
 subroutine parameters_inversion_broadcast(this, myrank)
-  class(t_parameters_inversion), intent(in) :: this
+  class(t_parameters_inversion), intent(inout) :: this
   integer, intent(in) :: myrank
   integer :: ierr
 
@@ -172,9 +176,22 @@ subroutine parameters_inversion_broadcast(this, myrank)
 
   ! ADMM parameters.
   call MPI_Bcast(this%admm_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%admm_bound_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%nlithos, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%bounds_ADMM_file, 512, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%rho_ADMM, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
+  if (this%admm_type == 1 .and. this%admm_bound_type == 1) then
+    ! They get allocated in init_parameters on the master rank. Allocate for all ranks.
+    if (.not. allocated(this%admm_bounds(1)%val)) then
+      allocate(this%admm_bounds(1)%val(2 * this%nlithos + 1), source=0._CUSTOM_REAL)
+    endif
+    if (.not. allocated(this%admm_bounds(2)%val)) then
+      allocate(this%admm_bounds(2)%val(2 * this%nlithos + 1), source=0._CUSTOM_REAL)
+    endif
+    call MPI_Bcast(this%admm_bounds(1)%val, 2 * this%nlithos + 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+    call MPI_Bcast(this%admm_bounds(2)%val, 2 * this%nlithos + 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  endif
 
   ! ADMM parameters (for dynamic weight adjustment).
   call MPI_Bcast(this%data_cost_threshold_ADMM, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)

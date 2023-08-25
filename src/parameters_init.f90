@@ -42,7 +42,7 @@ module init_parameters
 
   ! For overloading the 'print_arg' function.
   interface print_arg
-    module procedure print_arg_int, print_arg_dbl, print_arg_str
+    module procedure print_arg_int, print_arg_dbl, print_arg_dblarr, print_arg_str
   end interface
 
 contains
@@ -65,6 +65,14 @@ subroutine print_arg_dbl(myrank, name, value)
 
   if (myrank == 0) print *, trim(name)//" =", value
 end subroutine print_arg_dbl
+!-----------------------------------------------
+subroutine print_arg_dblarr(myrank, name, value)
+  character(len=128), intent(in) :: name
+  real(kind=CUSTOM_REAL), intent(in) :: value(:)
+  integer, intent(in) :: myrank
+
+  if (myrank == 0) print *, trim(name)//" =", value
+end subroutine print_arg_dblarr
 !-----------------------------------------------
 subroutine print_arg_str(myrank, name, value)
   character(len=128), intent(in) :: name
@@ -317,7 +325,8 @@ subroutine set_default_parameters(gpar, mpar, ipar)
 
   ! ADMM constraints.
   ipar%admm_type = 0 ! 0-no admm, 1-enable admm
-  ipar%nlithos = 5
+  ipar%admm_bound_type = 1 ! 1-global, 2-local from file
+  ipar%nlithos = 1
   ipar%bounds_ADMM_file(1) = "NILL"
   ipar%bounds_ADMM_file(2) = "NILL"
   ipar%rho_ADMM(1) = 1.d-7
@@ -644,9 +653,23 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
         read(10, *) ipar%admm_type
         call print_arg(myrank, parname, ipar%admm_type)
 
+      case("inversion.admm.boundType")
+        read(10, *) ipar%admm_bound_type
+        call print_arg(myrank, parname, ipar%admm_bound_type)
+
       case("inversion.admm.nLithologies")
         read(10, *) ipar%nlithos
         call print_arg(myrank, parname, ipar%nlithos)
+
+      case("inversion.admm.grav.bounds")
+        allocate(ipar%admm_bounds(1)%val(2 * ipar%nlithos + 1), source=0._CUSTOM_REAL)
+        read(10, *) ipar%admm_bounds(1)%val
+        call print_arg(myrank, parname, ipar%admm_bounds(1)%val)
+
+      case("inversion.admm.magn.bounds")
+        allocate(ipar%admm_bounds(2)%val(2 * ipar%nlithos + 1), source=0._CUSTOM_REAL)
+        read(10, *) ipar%admm_bounds(2)%val
+        call print_arg(myrank, parname, ipar%admm_bounds(2)%val)
 
       case("inversion.admm.grav.boundsFile")
         call read_filename(10, ipar%bounds_ADMM_file(1))

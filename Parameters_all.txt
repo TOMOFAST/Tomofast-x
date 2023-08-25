@@ -121,7 +121,11 @@ DISJOINT INTERVAL BOUND constraints (ADMM)
 https://doi.org/10.1190/geo2019-0633.1
 ===================================================================================
 inversion.admm.enableADMM              = 0
-inversion.admm.nLithologies            = 5
+# 1 - global from "bounds" parameter, 2 -local from file.
+inversion.admm.boundType               = 1
+inversion.admm.nLithologies            = 1
+inversion.admm.grav.bounds             = None
+inversion.admm.magn.bounds             = None
 inversion.admm.grav.boundsFile         = None
 inversion.admm.magn.boundsFile         = None
 inversion.admm.grav.weight             = 1.d-7

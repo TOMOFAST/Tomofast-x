@@ -55,6 +55,7 @@ module problem_joint_gravmag
 
   private :: calculate_model_costs
   private :: set_model
+  private :: set_model_bounds
   private :: adjust_admm_weight
   private :: calculate_residual
   private :: exit_loop
@@ -270,13 +271,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! SETTING THE ADMM BOUNDS -----------------------------------------------------------------------------
 
   if (ipar%admm_type > 0) then
-    do i = 1, 2
-      if (SOLVE_PROBLEM(i)) then
-        ! Reading min/max ADMM bounds from file.
-        call model(i)%allocate_bound_arrays(ipar%nlithos, myrank)
-        call read_bound_constraints(model(i), ipar%bounds_ADMM_file(i), myrank, nbproc)
-      endif
-    enddo
+    if (SOLVE_PROBLEM(1)) call set_model_bounds(ipar, model(1), 1, myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call set_model_bounds(ipar, model(2), 2, myrank, nbproc)
   endif
 
   ! SETTING damping gradient weights --------------------------------------------------------------------
@@ -649,6 +645,33 @@ subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
   endif
 end subroutine set_model
 
+!========================================================================================
+! Sets the model bounds.
+!========================================================================================
+subroutine set_model_bounds(ipar, model, problem_type, myrank, nbproc)
+  type(t_parameters_inversion), intent(in) :: ipar
+  integer, intent(in) :: problem_type
+  integer, intent(in) :: myrank, nbproc
+  type(t_model), intent(inout) :: model
+
+  integer :: i
+
+  ! Allocate bound arrays.
+  call model%allocate_bound_arrays(ipar%nlithos, myrank)
+
+  if (ipar%admm_bound_type == 1) then
+    ! Global bounds - define from Parfile parameters.
+    do i = 1, model%nelements
+      model%min_local_bound(:, i) = ipar%admm_bounds(problem_type)%val(1 : ipar%nlithos)
+      model%max_local_bound(:, i) = ipar%admm_bounds(problem_type)%val(ipar%nlithos + 1 : 2 * ipar%nlithos)
+      model%local_bound_constraints_weight(i) = ipar%admm_bounds(problem_type)%val(2 * ipar%nlithos + 1)
+    enddo
+  else
+    ! Local bounds - read from file.
+    call read_bound_constraints(model, ipar%bounds_ADMM_file(problem_type), myrank, nbproc)
+  endif
+
+end subroutine set_model_bounds
 !========================================================================================
 ! Calcualte data residual.
 ! Note: utilize conversion 2D to 1D array via subroutine interface.

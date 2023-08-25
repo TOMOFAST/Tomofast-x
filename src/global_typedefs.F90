@@ -54,6 +54,11 @@ module global_typedefs
   ! Tolerance for comparing real numbers in unit tests.
   real(kind=CUSTOM_REAL), parameter :: tol = merge(1.e-12_CUSTOM_REAL, 1.e-6_CUSTOM_REAL, MATRIX_PRECISION == SIZE_DOUBLE)
 
+  ! An auxiliarily type that stores a 1D array.
+  type t_real1d
+    real(kind=CUSTOM_REAL), allocatable :: val(:)
+  end type t_real1d
+
   ! An auxiliarily type that stores a 2D array.
   type t_real2d
     real(kind=CUSTOM_REAL), allocatable :: val(:, :)
