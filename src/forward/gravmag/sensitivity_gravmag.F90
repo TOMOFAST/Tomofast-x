@@ -353,7 +353,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   ! Sanity check.
   sensit_nnz_sum = 0
   do p = 1, nelements_total
-    ! Calculate sum using loop as sum() returns the same type as an array hence leads to overflow.
+    ! Calculate sum using loop because sum() returns the same type as an array hence leads to overflow.
     sensit_nnz_sum = sensit_nnz_sum + sensit_nnz(p)
   enddo
   if (sensit_nnz_sum /= nnz_total) then
@@ -457,7 +457,12 @@ subroutine get_load_balancing_nelements(nelements_total, sensit_nnz, &
   integer(kind=8) :: nnz_total, nnz_new, sum_sensit_nnz
   integer(kind=8) :: nnz_at_cpu_best(nbproc)
 
-  nnz_total = sum(sensit_nnz)
+  ! Calculate nnz_total.
+  nnz_total = 0
+  do p = 1, nelements_total
+    ! Calculate sum using loop because sum() returns the same type as an array hence leads to overflow.
+    nnz_total = nnz_total + sensit_nnz(p)
+  enddo
 
   nnz_at_cpu_best(:) = nnz_total / int(nbproc, 8)
   ! Last rank gets the remaining elements.
