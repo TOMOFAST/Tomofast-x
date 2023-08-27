@@ -142,7 +142,7 @@ subroutine test_wavelet_diagonal_matrix(myrank, nbproc)
 
   real(kind=CUSTOM_REAL), allocatable :: a(:)
   integer :: nrows, ncolumns
-  integer :: i, j
+  integer :: j
   integer :: nx, ny, nz, nnz
 
   if (myrank > 0) continue
