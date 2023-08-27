@@ -187,8 +187,10 @@ subroutine read_bound_constraints(model, file_name, myrank, nbproc)
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank, nbproc
 
-  integer :: ierr, nsmaller, ind, i, nelements_read, nlithos_read
+  integer :: ierr, nsmaller, ind, i, j
+  integer :: nelements_read, nlithos_read
   character(len=256) :: msg
+  real(kind=CUSTOM_REAL) :: model_bounds(2 * model%nlithos)
 
   if (myrank == 0) print *, 'Reading local bound constraints from file ', trim(file_name)
 
@@ -220,11 +222,22 @@ subroutine read_bound_constraints(model, file_name, myrank, nbproc)
   do i = 1, model%nelements_total
     if (i > nsmaller .and. i <= nsmaller + model%nelements) then
       ind = i - nsmaller
-      read(10, *, iostat=ierr) &
-        model%min_bound(:, ind), model%max_bound(:, ind), model%bound_weight(ind)
+      read(10, *, iostat=ierr) model_bounds, model%bound_weight(ind)
 
-      if (ierr /= 0) &
+      if (ierr /= 0) then
         call exit_MPI("Problem with reading the bound constraints for pixel i = "//str(i), myrank, ierr)
+      endif
+
+      model%min_bound(:, ind) = model_bounds(1::2)
+      model%max_bound(:, ind) = model_bounds(2::2)
+
+      ! Sanity check.
+      do j = 1, model%nlithos
+        if (model%min_bound(j, ind) > model%max_bound(j, ind)) then
+          call exit_MPI("Wrong admm bounds: define bounds as: min1 max1 ... minN maxN.", myrank, ind)
+        endif
+      enddo
+
     else
       ! Skip line.
       read(10, *)
