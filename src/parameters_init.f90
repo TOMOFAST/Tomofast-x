@@ -665,16 +665,22 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
         call print_arg(myrank, parname, ipar%nlithos)
 
       case("inversion.admm.grav.bounds")
-        allocate(ipar%admm_bounds(1)%val(2 * ipar%nlithos), source=0._CUSTOM_REAL)
-        read(10, *) ipar%admm_bounds(1)%val
-        call print_arg(myrank, parname, ipar%admm_bounds(1)%val)
-        global_bounds_defined = .true.
+        if (ipar%admm_type == 1 .and. ipar%admm_bound_type == 1) then
+        ! Read these only when the global bound type is used.
+          allocate(ipar%admm_bounds(1)%val(2 * ipar%nlithos), source=0._CUSTOM_REAL)
+          read(10, *) ipar%admm_bounds(1)%val
+          call print_arg(myrank, parname, ipar%admm_bounds(1)%val)
+          global_bounds_defined = .true.
+        endif
 
       case("inversion.admm.magn.bounds")
-        allocate(ipar%admm_bounds(2)%val(2 * ipar%nlithos), source=0._CUSTOM_REAL)
-        read(10, *) ipar%admm_bounds(2)%val
-        call print_arg(myrank, parname, ipar%admm_bounds(2)%val)
-        global_bounds_defined = .true.
+        if (ipar%admm_type == 1 .and. ipar%admm_bound_type == 1) then
+        ! Read these only when the global bound type is used.
+          allocate(ipar%admm_bounds(2)%val(2 * ipar%nlithos), source=0._CUSTOM_REAL)
+          read(10, *) ipar%admm_bounds(2)%val
+          call print_arg(myrank, parname, ipar%admm_bounds(2)%val)
+          global_bounds_defined = .true.
+        endif
 
       case("inversion.admm.grav.boundsFile")
         call read_filename(10, ipar%bounds_ADMM_file(1))
