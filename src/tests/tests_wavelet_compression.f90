@@ -140,7 +140,7 @@ end subroutine test_wavelet_calculate_data
 subroutine test_wavelet_diagonal_matrix(myrank, nbproc)
   integer, intent(in) :: myrank, nbproc
 
-  real(kind=CUSTOM_REAL), allocatable :: A(:, :)
+  real(kind=CUSTOM_REAL), allocatable :: a(:)
   integer :: nrows, ncolumns
   integer :: i, j
   integer :: nx, ny, nz, nnz
@@ -158,28 +158,27 @@ subroutine test_wavelet_diagonal_matrix(myrank, nbproc)
   ! A square matrix.
   nrows = ncolumns
 
-  allocate(A(ncolumns, nrows))
+  allocate(a(ncolumns))
+  nnz = 0
 
-  ! Define the diagonal matrix.
-  A = 0.d0
-  do i = 1, ncolumns
-    A(i, i) = 1.d0
-  enddo
-
-  ! Wavelet transform the matrix rows, transforming matrix to the wavelet domain: A --> A_w
   do j = 1, nrows
-    call Haar3D(A(:, j), nx, ny, nz)
-  enddo
+    ! Define the diagonal matrix row.
+    a = 0.d0
+    a(j) = 1.d0
 
-  ! The number of non-zero elements in the matrix.
-  nnz = count(A /= 0.d0)
+    ! Wavelet transform the matrix rows, transforming matrix to the wavelet domain: A --> A_w
+    call Haar3D(a, nx, ny, nz)
+
+    ! The number of non-zero elements in the matrix.
+    nnz = nnz + count(a /= 0.d0)
+  enddo
 
   print *, 'nnz =', nnz
 
   ! The test result was taken from execution of this test.
   call assert_equal_int(nnz, 46656, "nnz /= 46656 in test_wavelet_diagonal_matrix!")
 
-  deallocate(A)
+  deallocate(a)
 end subroutine test_wavelet_diagonal_matrix
 
 !=============================================================================================
