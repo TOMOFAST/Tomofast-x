@@ -767,7 +767,7 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
         call print_arg(myrank, parname, ipar%clustering_constraints_type)
 
       case default
-        read(10, *, iostat=ios) line
+        read(10, *, iostat=ios)
 
     end select
   enddo
