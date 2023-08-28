@@ -725,6 +725,11 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
             endif
           enddo
 
+          ! Sanity check.
+          if (istart == 0) then
+            call exit_MPI("No matrix elements found for the cpu!", myrank, 0)
+          endif
+
           ! Determine iend index (for the matrix elements corresponding to the current cpu).
           iend = nel
           do j = istart, nel
@@ -733,11 +738,6 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
               exit
             endif
           enddo
-
-          ! Sanity check.
-          if (istart == 0) then
-            call exit_MPI("No matrix elements found for the cpu!", myrank, 0)
-          endif
 
           ! Column index shift.
           index_shift = param_shift(problem_type) + (k - 1) * par%nelements - nsmaller
