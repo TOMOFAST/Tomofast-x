@@ -156,21 +156,10 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   ! Starting model.
   model = 0.d0
 
-  !------------------------------------------------------------------
-  ! Reading the Lachlan's solution.
-  !------------------------------------------------------------------
-!  filename_full = "data/loop/test6/values.txt"
-!
-!  ! Open the file.
-!  open(80, file=trim(filename_full), form='formatted', status='old', action='read', access='stream', &
-!       iostat=ierr)
-!
-!  if (ierr /= 0) call exit_MPI("Error in opening the solution file!" &
-!                                //trim(filename_full), myrank, ierr)
-!
-!  read(80, *) model
-!  close(80)
-  !-------------------------------------------------------------------
+  ! Create the costs file.
+  if (myrank == 0) then
+    open(10, file=trim(path_output)//'/costs.txt', access='stream', form='formatted', status='replace', action='write')
+  endif
 
   ! Major inversion loop.
   do it = 1, ipar%ninversions
@@ -212,8 +201,11 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
     if (cost_data2 > 0.d0) cost_data = cost_data1 / cost_data2
 
     ! Calculate the relative cost of the data+reg term - scaled by the model norm.
-    cost_data_model = -1.d0
-    if (model_norm > 0.d0) cost_data_model = cost_data1 / model_norm
+    if (model_norm > 0.d0) then
+      cost_data_model = cost_data1 / model_norm
+    else
+      cost_data_model = 0.d0
+    endif
 
     cost_admm1 = norm2(Qx%val(:, 1) - admm_method%z)
     cost_admm2 = norm2(admm_method%z)
@@ -226,6 +218,9 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
       print *, 'cost (data+reg) =', cost_data
       print *, 'cost2 (data+reg) =', cost_data_model
       print *, 'cost (ADMM) =', cost_admm
+
+      ! Write costs to file.
+      write(10, *) it, cost_data, cost_data_model, cost_admm
     endif
 
     !-------------------------------------------------------------------------------------
@@ -239,6 +234,8 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
     ! Update the model.
     model = model + delta_model
   enddo
+
+  if (myrank == 0) close(10)
 
   ! Write solution to a file.
   call write_final_model(model, "model_final.txt", myrank)
@@ -328,7 +325,6 @@ end subroutine read_b_RHS
 
 !===================================================================================
 ! Writes the final model.
-! TODO: Use this temporariry - to replace with the model class writers.
 !===================================================================================
 subroutine write_final_model(model, filename, myrank)
   integer, intent(in) :: myrank
