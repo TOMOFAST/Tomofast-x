@@ -73,6 +73,7 @@ module sparse_matrix
     procedure, public, pass :: finalize_part => sparse_matrix_finalize_part
 
     procedure, public, pass :: add => sparse_matrix_add
+    procedure, public, pass :: add_row => sparse_matrix_add_row
     procedure, public, pass :: new_row => sparse_matrix_new_row
     procedure, public, pass :: add_empty_rows => sparse_matrix_add_empty_rows
     procedure, public, pass :: add_matrix => sparse_matrix_add_matrix
@@ -269,6 +270,28 @@ subroutine sparse_matrix_add(this, value, column, myrank)
   this%ija(this%nel) = column
 
 end subroutine sparse_matrix_add
+
+!=========================================================================
+! Adds one matrix row.
+!=========================================================================
+subroutine sparse_matrix_add_row(this, values, columns, myrank)
+  class(t_sparse_matrix), intent(inout) :: this
+  real(kind=MATRIX_PRECISION), intent(in) :: values(:)
+  integer, intent(in) :: columns(:)
+  integer, intent(in) :: myrank
+  integer :: nel_add
+
+  nel_add = size(values)
+
+  ! Sanity check.
+ if (this%nel + nel_add > this%nnz) &
+    call exit_MPI("Error in total number of elements in sparse_matrix_add_row!", myrank, 0)
+
+  this%sa(this%nel + 1 : this%nel + nel_add) = values
+  this%ija(this%nel + 1 : this%nel + nel_add) = columns
+  this%nel = this%nel + nel_add
+
+end subroutine sparse_matrix_add_row
 
 !=========================================================================
 ! Adds a new row.
