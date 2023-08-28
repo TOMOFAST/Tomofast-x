@@ -274,14 +274,12 @@ end subroutine sparse_matrix_add
 !=========================================================================
 ! Adds one matrix row.
 !=========================================================================
-subroutine sparse_matrix_add_row(this, values, columns, myrank)
+subroutine sparse_matrix_add_row(this, nel_add, values, columns, myrank)
   class(t_sparse_matrix), intent(inout) :: this
-  real(kind=MATRIX_PRECISION), intent(in) :: values(:)
-  integer, intent(in) :: columns(:)
+  integer, intent(in) :: nel_add
+  real(kind=MATRIX_PRECISION), intent(in) :: values(nel_add)
+  integer, intent(in) :: columns(nel_add)
   integer, intent(in) :: myrank
-  integer :: nel_add
-
-  nel_add = size(values)
 
   ! Sanity check.
  if (this%nel + nel_add > this%nnz) &

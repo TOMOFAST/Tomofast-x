@@ -749,7 +749,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
           sensit_compressed(istart:iend) = sensit_compressed(istart:iend) * real(problem_weight, MATRIX_PRECISION)
 
           ! Add a complete matrix row.
-          call sensit_matrix%add_row(sensit_compressed(istart:iend), sensit_columns(istart:iend), myrank)
+          call sensit_matrix%add_row(iend - istart + 1, sensit_compressed(istart:iend), sensit_columns(istart:iend), myrank)
 
           ! Number of nonzero elements.
           nnz = nnz + iend - istart + 1
