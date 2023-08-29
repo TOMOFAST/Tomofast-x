@@ -26,6 +26,9 @@ module lsqr_solver
   use mpi_tools, only: exit_MPI
   use sparse_matrix
 
+  use parallel_tools
+  use wavelet_transform
+
   implicit none
 
   private
@@ -43,10 +46,13 @@ contains
 ! As lsqr_solve, but with sensitivity kernel separated from the constraints matrix.
 !======================================================================================
 subroutine lsqr_solve_sensit(nlines, nelements, niter, rmin, gamma, &
-                             matrix_sensit, matrix_cons, u, x, myrank)
+                             matrix_sensit, matrix_cons, u, x, &
+                             SOLVE_PROBLEM, nx, ny, nz, compression_type, myrank, nbproc)
   integer, intent(in) :: nlines, nelements, niter
   real(kind=CUSTOM_REAL), intent(in) :: rmin, gamma
-  integer, intent(in) :: myrank
+  logical, intent(in) :: SOLVE_PROBLEM(2)
+  integer, intent(in) :: nx, ny, nz, compression_type
+  integer, intent(in) :: myrank, nbproc
   type(t_sparse_matrix), intent(inout) :: matrix_sensit
   type(t_sparse_matrix), intent(inout) :: matrix_cons
 
@@ -64,6 +70,10 @@ subroutine lsqr_solve_sensit(nlines, nelements, niter, rmin, gamma, &
   integer :: nlines_sensit
 
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w
+
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: v2
+  ! Full v for one of the problems.
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: v1_full
 
   if (myrank == 0) print *, 'Entered subroutine lsqr_solve_sensit, gamma =', gamma
 
@@ -90,6 +100,14 @@ subroutine lsqr_solve_sensit(nlines, nelements, niter, rmin, gamma, &
   allocate(v(nelements))
   allocate(w(nelements))
 
+  allocate(v2(nelements), source=0._CUSTOM_REAL)
+
+  if (myrank == 0) then
+    allocate(v1_full(nx * ny * nz), source=0._CUSTOM_REAL)
+  else
+    allocate(v1_full(1), source=0._CUSTOM_REAL)
+  endif
+
   ! Required by the algorithm.
   x = 0._CUSTOM_REAL
 
@@ -108,7 +126,26 @@ subroutine lsqr_solve_sensit(nlines, nelements, niter, rmin, gamma, &
   b1 = beta
 
   ! Compute v = Ht.u.
-  call matrix_sensit%trans_mult_vector(u(1 : nlines_sensit), v)
+  call matrix_sensit%trans_mult_vector(u(1 : nlines_sensit), v2)
+
+  ! Convert v from wavelet domain. --------------------------------------------------------
+  if (SOLVE_PROBLEM(1)) then
+    call get_full_array(v2(1 : nelements / 2), nelements / 2, v1_full, .false., myrank, nbproc)
+    if (myrank == 0) then
+      call inverse_wavelet(v1_full, nx, ny, nz, compression_type)
+    endif
+    call scatter_full_array(nelements / 2, v1_full, v2(1 : nelements / 2), myrank, nbproc)
+  endif
+
+  if (SOLVE_PROBLEM(2)) then
+    call get_full_array(v2(nelements / 2 + 1 : nelements), nelements / 2, v1_full, .false., myrank, nbproc)
+    if (myrank == 0) then
+      call inverse_wavelet(v1_full, nx, ny, nz, compression_type)
+    endif
+    call scatter_full_array(nelements / 2, v1_full, v2(nelements / 2 + 1 : nelements), myrank, nbproc)
+  endif
+  !-------------------------------------------------------------------------------------
+  v = v2
 
   call matrix_cons%add_trans_mult_vector(u(nlines_sensit + 1 : nlines), v)
 
@@ -137,8 +174,27 @@ subroutine lsqr_solve_sensit(nlines, nelements, niter, rmin, gamma, &
       u = 0._CUSTOM_REAL
     endif
 
+    ! Convert v to wavelet domain. --------------------------------------------------------
+    if (SOLVE_PROBLEM(1)) then
+      call get_full_array(v(1 : nelements / 2), nelements / 2, v1_full, .false., myrank, nbproc)
+      if (myrank == 0) then
+        call forward_wavelet(v1_full, nx, ny, nz, compression_type)
+      endif
+      call scatter_full_array(nelements / 2, v1_full, v2(1 : nelements / 2), myrank, nbproc)
+    endif
+
+    if (SOLVE_PROBLEM(2)) then
+      call get_full_array(v(nelements / 2 + 1 : nelements), nelements / 2, v1_full, .false., myrank, nbproc)
+      if (myrank == 0) then
+        call forward_wavelet(v1_full, nx, ny, nz, compression_type)
+      endif
+      call scatter_full_array(nelements / 2, v1_full, v2(nelements / 2 + 1 : nelements), myrank, nbproc)
+    endif
+    !-------------------------------------------------------------------------------------
+
     ! u = u + H_loc.v
-    call matrix_sensit%add_mult_vector(v, u(1 : nlines_sensit))
+    call matrix_sensit%add_mult_vector(v2, u(1 : nlines_sensit))
+    !call matrix_sensit%add_mult_vector(v, u(1 : nlines_sensit))
 
     call matrix_cons%add_mult_vector(v, u(nlines_sensit + 1 : nlines))
 
@@ -157,7 +213,27 @@ subroutine lsqr_solve_sensit(nlines, nelements, niter, rmin, gamma, &
     v = - beta * v
 
     ! Compute v = v + Ht.u.
-    call matrix_sensit%add_trans_mult_vector(u(1 : nlines_sensit), v)
+    !call matrix_sensit%add_trans_mult_vector(u(1 : nlines_sensit), v)
+    call matrix_sensit%trans_mult_vector(u(1 : nlines_sensit), v2)
+
+    ! Convert v from wavelet domain. --------------------------------------------------------
+    if (SOLVE_PROBLEM(1)) then
+      call get_full_array(v2(1 : nelements / 2), nelements / 2, v1_full, .false., myrank, nbproc)
+      if (myrank == 0) then
+        call inverse_wavelet(v1_full, nx, ny, nz, compression_type)
+      endif
+      call scatter_full_array(nelements / 2, v1_full, v2(1 : nelements / 2), myrank, nbproc)
+    endif
+
+    if (SOLVE_PROBLEM(2)) then
+      call get_full_array(v2(nelements / 2 + 1 : nelements), nelements / 2, v1_full, .false., myrank, nbproc)
+      if (myrank == 0) then
+        call inverse_wavelet(v1_full, nx, ny, nz, compression_type)
+      endif
+      call scatter_full_array(nelements / 2, v1_full, v2(nelements / 2 + 1 : nelements), myrank, nbproc)
+    endif
+    !-------------------------------------------------------------------------------------
+    v = v + v2
 
     call matrix_cons%add_trans_mult_vector(u(nlines_sensit + 1 : nlines), v)
 

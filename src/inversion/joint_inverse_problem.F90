@@ -482,7 +482,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   delta_model = 0._CUSTOM_REAL
   if (par%method == 1) then
     call lsqr_solve_sensit(size(this%b_RHS), size(delta_model), par%niter, par%rmin, par%gamma, &
-                           this%matrix_sensit, this%matrix_cons, this%b_RHS, delta_model, myrank)
+                           this%matrix_sensit, this%matrix_cons, this%b_RHS, delta_model, &
+                           SOLVE_PROBLEM, par%nx, par%ny, par%nz, par%compression_type, myrank, nbproc)
   else
     call exit_MPI("Unknown solver type!", myrank, 0)
   endif
@@ -491,44 +492,44 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   ! Calculate data update using unscaled delta model (in wavelet domain).
   ! As we have both the compressed kernel and delta model, and the problem is linear.
   !-------------------------------------------------------------------------------------
-  do i = 1, 2
-    if (SOLVE_PROBLEM(i)) then
-      call calculate_data_unscaled(par%nelements, par%nmodel_components, delta_model(:, :, i), this%matrix_sensit, &
-           par%problem_weight(i), par%ndata(i), par%ndata_components(i), delta_data(i)%val, &
-           line_start(i), param_shift(i), myrank)
-    endif
-  enddo
+!  do i = 1, 2
+!    if (SOLVE_PROBLEM(i)) then
+!      call calculate_data_unscaled(par%nelements, par%nmodel_components, delta_model(:, :, i), this%matrix_sensit, &
+!           par%problem_weight(i), par%ndata(i), par%ndata_components(i), delta_data(i)%val, &
+!           line_start(i), param_shift(i), myrank)
+!    endif
+!  enddo
 
   !-------------------------------------------------------------------------------------
   ! Unscale the model update.
   !-------------------------------------------------------------------------------------
-  if (par%compression_type > 0) then
-  ! Applying the Inverse Wavelet Transform.
-    if (nbproc > 1) then
-      do i = 1, 2
-        if (SOLVE_PROBLEM(i)) then
-          do k = 1, par%nmodel_components
-
-            call get_full_array(delta_model(:, k, i), par%nelements, model(i)%val_full(:, k), .false., myrank, nbproc)
-
-            if (myrank == 0) then
-              call inverse_wavelet(model(i)%val_full(:, k), par%nx, par%ny, par%nz, par%compression_type)
-            endif
-
-            ! Scatter the local model parts.
-            call scatter_full_array(par%nelements, model(i)%val_full(:, k), delta_model(:, k, i), myrank, nbproc)
-          enddo
-        endif
-      enddo
-
-    else
-    ! Serial version.
-      do k = 1, par%nmodel_components
-        if (SOLVE_PROBLEM(1)) call inverse_wavelet(delta_model(:, k, 1), par%nx, par%ny, par%nz, par%compression_type)
-        if (SOLVE_PROBLEM(2)) call inverse_wavelet(delta_model(:, k, 2), par%nx, par%ny, par%nz, par%compression_type)
-      enddo
-    endif
-  endif
+!  if (par%compression_type > 0) then
+!  ! Applying the Inverse Wavelet Transform.
+!    if (nbproc > 1) then
+!      do i = 1, 2
+!        if (SOLVE_PROBLEM(i)) then
+!          do k = 1, par%nmodel_components
+!
+!            call get_full_array(delta_model(:, k, i), par%nelements, model(i)%val_full(:, k), .false., myrank, nbproc)
+!
+!            if (myrank == 0) then
+!              call inverse_wavelet(model(i)%val_full(:, k), par%nx, par%ny, par%nz, par%compression_type)
+!            endif
+!
+!            ! Scatter the local model parts.
+!            call scatter_full_array(par%nelements, model(i)%val_full(:, k), delta_model(:, k, i), myrank, nbproc)
+!          enddo
+!        endif
+!      enddo
+!
+!    else
+!    ! Serial version.
+!      do k = 1, par%nmodel_components
+!        if (SOLVE_PROBLEM(1)) call inverse_wavelet(delta_model(:, k, 1), par%nx, par%ny, par%nz, par%compression_type)
+!        if (SOLVE_PROBLEM(2)) call inverse_wavelet(delta_model(:, k, 2), par%nx, par%ny, par%nz, par%compression_type)
+!      enddo
+!    endif
+!  endif
 
   if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements, par%nmodel_components, delta_model(:, :, 1), arr(1)%column_weight)
   if (SOLVE_PROBLEM(2)) call rescale_model(par%nelements, par%nmodel_components, delta_model(:, :, 2), arr(2)%column_weight)

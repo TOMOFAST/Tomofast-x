@@ -472,8 +472,14 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
 
       ! Calculate new data. Using the data update as the grav/mag problems are linear.
-      if (SOLVE_PROBLEM(1)) data(1)%val_calc = data(1)%val_calc + delta_data(1)%val
-      if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data(2)%val
+      !if (SOLVE_PROBLEM(1)) data(1)%val_calc = data(1)%val_calc + delta_data(1)%val
+      !if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data(2)%val
+
+      do i = 1, 2
+        if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
+          ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
+          line_start(i), param_shift(i), myrank, nbproc)
+      enddo
 
 #ifndef SUPPRESS_OUTPUT
       ! Write costs (for the previous iteration).

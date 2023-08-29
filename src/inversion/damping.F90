@@ -129,45 +129,45 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
   ! The number of elements on CPUs with rank smaller than myrank.
   nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
 
-  if (this%compression_type > 0) then
-  ! Transform the model difference to the wavelet domain.
-
-    if (nbproc > 1) then
-    ! Parallel version.
-
-      ! Allocate the full array on master rank only.
-      if (myrank == 0) then
-        allocate(model_diff_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-      else
-        ! Fortran standard requires that allocatable array is allocated when passing by argument.
-        allocate(model_diff_full(1), source=0._CUSTOM_REAL, stat=ierr)
-      endif
-
-      if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in damping_add!", myrank, ierr)
-
-      ! Gather the full model from all processors to the master rank.
-      call get_full_array(model_diff, this%nelements, model_diff_full, .false., myrank, nbproc)
-
-      if (myrank == 0) then
-        ! Transform to wavelet domain.
-        call forward_wavelet(model_diff_full, this%nx, this%ny, this%nz, this%compression_type)
-      endif
-
-      ! Scatter the local array parts.
-      call scatter_full_array(this%nelements, model_diff_full, model_diff, myrank, nbproc)
-
-      deallocate(model_diff_full)
-
-    else
-    ! Serial version.
-      ! Transform to wavelet domain.
-      call forward_wavelet(model_diff, this%nx, this%ny, this%nz, this%compression_type)
-    endif
-
-    if (this%norm_power /= 2.d0) then
-      call exit_MPI("Lp-norm with p /= 2 is not supported with matrix compression yet!", myrank, 0)
-    endif
-  endif
+!  if (this%compression_type > 0) then
+!  ! Transform the model difference to the wavelet domain.
+!
+!    if (nbproc > 1) then
+!    ! Parallel version.
+!
+!      ! Allocate the full array on master rank only.
+!      if (myrank == 0) then
+!        allocate(model_diff_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+!      else
+!        ! Fortran standard requires that allocatable array is allocated when passing by argument.
+!        allocate(model_diff_full(1), source=0._CUSTOM_REAL, stat=ierr)
+!      endif
+!
+!      if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in damping_add!", myrank, ierr)
+!
+!      ! Gather the full model from all processors to the master rank.
+!      call get_full_array(model_diff, this%nelements, model_diff_full, .false., myrank, nbproc)
+!
+!      if (myrank == 0) then
+!        ! Transform to wavelet domain.
+!        call forward_wavelet(model_diff_full, this%nx, this%ny, this%nz, this%compression_type)
+!      endif
+!
+!      ! Scatter the local array parts.
+!      call scatter_full_array(this%nelements, model_diff_full, model_diff, myrank, nbproc)
+!
+!      deallocate(model_diff_full)
+!
+!    else
+!    ! Serial version.
+!      ! Transform to wavelet domain.
+!      call forward_wavelet(model_diff, this%nx, this%ny, this%nz, this%compression_type)
+!    endif
+!
+!    if (this%norm_power /= 2.d0) then
+!      call exit_MPI("Lp-norm with p /= 2 is not supported with matrix compression yet!", myrank, 0)
+!    endif
+!  endif
   !---------------------------------------------------------------------
 
   ! First matrix row (in the big matrix) of the damping matrix that will be added.
@@ -193,7 +193,6 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
     endif
 
     call matrix%add(value, param_shift + i, myrank)
-
   enddo
 
   ! Add empty lines.
