@@ -31,11 +31,219 @@ module lsqr_solver
   private
 
   public :: lsqr_solve
+  public :: lsqr_solve_sensit
 
   private :: normalize
   private :: apply_soft_thresholding
 
 contains
+
+!======================================================================================
+! LSQR solver for a sparse matrix.
+! As lsqr_solve, but with sensitivity kernel separated from the constraints matrix.
+!======================================================================================
+subroutine lsqr_solve_sensit(nlines, nelements, niter, rmin, gamma, &
+                             matrix_sensit, matrix_cons, u, x, myrank)
+  integer, intent(in) :: nlines, nelements, niter
+  real(kind=CUSTOM_REAL), intent(in) :: rmin, gamma
+  integer, intent(in) :: myrank
+  type(t_sparse_matrix), intent(inout) :: matrix_sensit
+  type(t_sparse_matrix), intent(inout) :: matrix_cons
+
+  real(kind=CUSTOM_REAL), intent(inout) :: x(nelements)
+  ! Use the right-hand side for solver calculations to avoid memory allocation.
+  real(kind=CUSTOM_REAL), intent(inout) :: u(nlines)
+
+  ! Local variables.
+  integer :: iter, ierr
+  real(kind=CUSTOM_REAL) :: alpha, beta, rho, rhobar, phi, phibar, theta
+  real(kind=CUSTOM_REAL) :: b1, c, r, s, t1, t2
+  real(kind=CUSTOM_REAL) :: rho_inv
+  ! Flag for calculating variance.
+  !logical :: calculateVariance
+  integer :: nlines_sensit
+
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w
+
+  if (myrank == 0) print *, 'Entered subroutine lsqr_solve_sensit, gamma =', gamma
+
+  ! Sanity check.
+  if (matrix_sensit%get_total_row_number() + matrix_cons%get_total_row_number() /= nlines .or. &
+      matrix_sensit%get_ncolumns() /= nelements .or. &
+      matrix_cons%get_ncolumns() /= nelements) then
+    call exit_MPI("Wrong matrix sizes in lsqr_solve_sensit! Exiting.", myrank, 0)
+  endif
+
+  nlines_sensit = matrix_sensit%get_total_row_number()
+
+!  calculateVariance = .false.
+!  if (allocated(matrix%lsqr_var)) then
+!    if (size(matrix%lsqr_var) == nelements) then
+!      calculateVariance = .true.
+!
+!      ! Initialize variance array.
+!      matrix%lsqr_var = 0.d0
+!    endif
+!  endif
+
+  ! Allocate memory.
+  allocate(v(nelements))
+  allocate(w(nelements))
+
+  ! Required by the algorithm.
+  x = 0._CUSTOM_REAL
+
+  ! Right-hand side check.
+  if (norm2(u) == 0.d0) then
+    if (myrank == 0) print *, "WARNING: |b| = 0, the model is exact!"
+    return
+  end if
+
+  ! Normalize u and initialize beta.
+  call normalize(nlines, u, beta, .false., ierr)
+  if (ierr /= 0) then
+    call exit_MPI("Could not normalize initial u, zero denominator!", myrank, 0)
+  endif
+
+  b1 = beta
+
+  ! Compute v = Ht.u.
+  call matrix_sensit%trans_mult_vector(u(1 : nlines_sensit), v)
+
+  call matrix_cons%add_trans_mult_vector(u(nlines_sensit + 1 : nlines), v)
+
+  ! Normalize v and initialize alpha.
+  call normalize(nelements, v, alpha, .true., ierr)
+  if (ierr /= 0) then
+    call exit_MPI("Could not normalize initial v, zero denominator!", myrank, 0)
+  endif
+
+  rhobar = alpha
+  phibar = beta
+  w = v
+
+  iter = 1
+  r = 1._CUSTOM_REAL
+
+  ! Use an exit (threshold) criterion in case we can exit the loop before reaching the max iteration count.
+  do while (iter <= niter .and. r > rmin)
+
+    !---------------------------------------------------------------
+    ! Compute u = - alpha.u + H.v in parallel.
+    !---------------------------------------------------------------
+    if (myrank == 0) then
+      u = - alpha * u
+    else
+      u = 0._CUSTOM_REAL
+    endif
+
+    ! u = u + H_loc.v
+    call matrix_sensit%add_mult_vector(v, u(1 : nlines_sensit))
+
+    call matrix_cons%add_mult_vector(v, u(nlines_sensit + 1 : nlines))
+
+    ! Sum partial results from all ranks: u = (- alpha.u + Hv_loc1) + Hv_loc2 + ... + Hv_locN = - alpha.u + Hv.
+    call MPI_Allreduce(MPI_IN_PLACE, u, nlines, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    !---------------------------------------------------------------
+
+    ! Normalize u and update beta.
+    call normalize(nlines, u, beta, .false., ierr)
+    if (ierr /= 0) then
+      ! Found an exact solution. Happens in the unit test test_lsqr_underdetermined_2.
+      if (myrank == 0) print *, 'WARNING: u = 0. Possibly found an exact solution in the LSQR solver!'
+    endif
+
+    ! Scale v.
+    v = - beta * v
+
+    ! Compute v = v + Ht.u.
+    call matrix_sensit%add_trans_mult_vector(u(1 : nlines_sensit), v)
+
+    call matrix_cons%add_trans_mult_vector(u(nlines_sensit + 1 : nlines), v)
+
+    ! Normalize v and update alpha.
+    call normalize(nelements, v, alpha, .true., ierr)
+    if (ierr /= 0) then
+      ! Found an exact solution. Happens in the unit test test_method_of_weights_1.
+      if (myrank == 0) print *, 'WARNING: v = 0. Possibly found an exact solution in the LSQR solver!'
+    endif
+
+    ! Compute scalars for updating the solution.
+    rho = sqrt(rhobar * rhobar + beta * beta)
+
+    ! Sanity check (avoid zero division).
+    if (rho == 0._CUSTOM_REAL) then
+      print *, 'WARNING: rho = 0. Exiting.'
+      exit
+    endif
+
+    ! Compute scalars for updating the solution.
+    rho_inv = 1.d0 / rho
+
+    c       = rhobar * rho_inv
+    s       = beta * rho_inv
+    theta   = s * alpha
+    rhobar  = - c * alpha
+    phi     = c * phibar
+    phibar  = s * phibar
+    t1      = phi * rho_inv
+    t2      = - theta * rho_inv
+
+!    if (calculateVariance) then
+!      ! Calculate solution variance (see Paige & Saunders 1982, page 53).
+!      matrix%lsqr_var = matrix%lsqr_var + (rho_inv * w)**2
+!    endif
+
+    ! Update the current solution x (w is an auxiliary array in order to compute the solution).
+    x = t1 * w + x
+    w = t2 * w + v
+
+    if (gamma /= 0._CUSTOM_REAL) then
+    ! Soft thresholding.
+      call apply_soft_thresholding(x, nelements, gamma)
+
+      ! Approximate residual.
+      r = phibar / b1
+    else
+      ! Norm of the relative residual.
+      r = phibar / b1
+    endif
+
+#ifndef SUPPRESS_OUTPUT
+    ! Commented as this badly affects the performance.
+    !if (mod(iter, 10) == 0) then
+    !  if (myrank == 0) print *, 'it, r =', iter, r
+    !endif
+#endif
+
+    ! To avoid floating point exception of denormal value.
+    if (abs(rhobar) < 1.e-30) then
+      if (myrank == 0) print *, 'WARNING: Small rhobar! Possibly algorithm has converged, exiting the loop.'
+      exit
+    endif
+
+    iter = iter + 1
+  enddo
+
+!  if (calculateVariance) then
+!    ! Scale with data residual (see the bottom of the page 53 in Paige & Saunders 1982).
+!    ! Note, we are using that phibar = ||Ax - b||
+!    if (matrix%tag > 1) then
+!      matrix%lsqr_var = phibar**2 * matrix%lsqr_var
+!    else
+!    ! First major iteration (stored in matrix%tag). Scale with original residual to calculate the prior variance.
+!      matrix%lsqr_var = b1**2 * matrix%lsqr_var
+!    endif
+!    ! Calculate the standard error (s_i).
+!    matrix%lsqr_var = sqrt(matrix%lsqr_var)
+!  endif
+
+  if (myrank == 0) print *, 'End of subroutine lsqr_solve, r =', r, ' iter =', iter - 1
+
+  deallocate(v)
+  deallocate(w)
+
+end subroutine lsqr_solve_sensit
 
 !================================================================================
 ! LSQR solver for a sparse matrix.

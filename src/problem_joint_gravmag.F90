@@ -227,9 +227,11 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   ! Reading the sensitivity kernel and depth weight from files.
   if (SOLVE_PROBLEM(1)) &
-    call read_sensitivity_kernel(gpar, jinv%matrix, iarr(1)%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
+    call read_sensitivity_kernel(gpar, jinv%matrix_sensit, iarr(1)%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) &
-    call read_sensitivity_kernel(mpar, jinv%matrix, iarr(2)%column_weight, ipar%problem_weight(2), 2, myrank, nbproc)
+    call read_sensitivity_kernel(mpar, jinv%matrix_sensit, iarr(2)%column_weight, ipar%problem_weight(2), 2, myrank, nbproc)
+
+  call jinv%matrix_sensit%finalize(myrank)
 
   memory = get_max_mem_usage()
   if (myrank == 0) print *, "MEMORY USED (sensit read) [GB] =", memory
@@ -295,7 +297,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   !-------------------------------------------------------------------------------------------------------
   ! Calculate the data from the read model.
   do i = 1, 2
-    if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix, &
+    if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
       ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
       line_start(i), param_shift(i), myrank, nbproc)
   enddo
@@ -376,7 +378,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the prior model.
     do i = 1, 2
-      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix, &
+      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
         ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
         line_start(i), param_shift(i), myrank, nbproc)
     enddo
@@ -400,7 +402,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the starting model.
     do i = 1, 2
-      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix, &
+      if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
         ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
         line_start(i), param_shift(i), myrank, nbproc)
     enddo

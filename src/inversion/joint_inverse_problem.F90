@@ -48,8 +48,12 @@ module joint_inverse_problem
   type, public :: t_joint_inversion
     private
 
-    ! Matrix that stores both of the joint problems and constraints (e.g. cross-gradient part).
-    type(t_sparse_matrix), public :: matrix
+    ! Matrix that stores sensitivity kernel(s).
+    type(t_sparse_matrix), public :: matrix_sensit
+
+    ! Matrix that stores constraints.
+    type(t_sparse_matrix), public :: matrix_cons
+
     ! Right hand side (corresponding to the matrix).
     real(kind=CUSTOM_REAL), allocatable :: b_RHS(:)
 
@@ -182,17 +186,17 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   !--------------------------------------------------------------------------------------
   ! Calculate number of matrix rows and (approx.) non-zero elements.
   !--------------------------------------------------------------------------------------
-  nl = 0
   this%ndata_lines = 0
   do i = 1, 2
     if (par%problem_weight(i) /= 0.d0) then
       ndata_i = par%ndata(i) * par%ndata_components(i)
-      nl = nl + ndata_i
       this%ndata_lines = this%ndata_lines + ndata_i
     endif
   enddo
 
-  nnz = nnz_sensit
+  ! Calcualte nl and nnz for the constraints matrix.
+  nnz = 0
+  nl = 0
 
   do i = 1, 2
     if (this%add_damping(i)) then
@@ -239,14 +243,17 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   !-------------------------------------------------------------------------------------------
   ! MAIN MATRIX MEMORY ALLOCATION.
   !-------------------------------------------------------------------------------------------
-  call this%matrix%initialize(nl, 2 * par%nmodel_components * par%nelements, nnz, myrank, nl_empty)
+  call this%matrix_sensit%initialize(this%ndata_lines, &
+                                     2 * par%nmodel_components * par%nelements, nnz_sensit, myrank, 0)
+
+  call this%matrix_cons%initialize(nl, 2 * par%nmodel_components * par%nelements, nnz, myrank, nl_empty)
 
   ierr = 0
 
-  if (par%compression_type == 0) then
-    ! Calculate solution variance only for the non-compressed problem, as it does not work with wavelet compression.
-    call this%matrix%allocate_variance_array(2 * par%nelements, myrank)
-  endif
+!  if (par%compression_type == 0) then
+!    ! Calculate solution variance only for the non-compressed problem, as it does not work with wavelet compression.
+!    call this%matrix%allocate_variance_array(2 * par%nelements, myrank)
+!  endif
 
   if (this%add_cross_grad) then
     ! Memory allocation for the matrix and right-hand side for the cross-gradient constraints.
@@ -275,7 +282,7 @@ subroutine joint_inversion_initialize2(this, myrank)
   real(kind=CUSTOM_REAL) :: mem, mem_loc
 
   ! Total number of matrix rows.
-  nl = this%matrix%get_total_row_number()
+  nl = this%matrix_sensit%get_total_row_number() + this%matrix_cons%get_total_row_number()
 
   mem_loc = kind(this%b_RHS) * nl
 
@@ -296,7 +303,9 @@ subroutine joint_inversion_reset(this, myrank)
   class(t_joint_inversion), intent(inout) :: this
   integer, intent(in) :: myrank
 
-  call this%matrix%remove_lines(this%ndata_lines, myrank)
+  if (myrank >= 0) continue
+
+  call this%matrix_cons%reset()
   this%b_RHS = 0._CUSTOM_REAL
 
   if (this%add_cross_grad) then
@@ -328,6 +337,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   logical :: solve_gravity_only
   logical :: solve_mag_only
   real(kind=CUSTOM_REAL) :: norm_power
+  integer :: lc
 
   logical :: SOLVE_PROBLEM(2)
 
@@ -338,13 +348,16 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   ncalls = ncalls + 1
 
   ! Store the iteration number.
-  this%matrix%tag = ncalls
+  this%matrix_sensit%tag = ncalls
 
   do i = 1, 2
     SOLVE_PROBLEM(i) = (par%problem_weight(i) /= 0.d0)
   enddo
 
   call this%calculate_matrix_partitioning(par, line_start, line_end, param_shift)
+
+  ! Starting line for constraints.
+  lc = this%ndata_lines + 1
 
   ! ***** Data misfit and damping and damping gradient  *****
 
@@ -361,7 +374,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
     ! Adding the right-hand side only, as the sensitivity was added when reading the kernel from files.
     this%b_RHS(line_start(i):line_end(i)) = par%problem_weight(i) * arr(i)%residuals
 
-    if (myrank == 0) print *, 'nel = ', this%matrix%get_number_elements()
+    if (myrank == 0) print *, 'nel = ', this%matrix_cons%get_number_elements()
 
     if (this%add_damping(i)) then
       if (myrank == 0) print *, 'adding damping with alpha =', par%alpha(i)
@@ -372,12 +385,12 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       ! Adding model damping for each component.
       do k = 1, par%nmodel_components
         damping_param_shift = param_shift(i) + (k - 1) * par%nelements
-        call damping%add(this%matrix, size(this%b_RHS), this%b_RHS, arr(i)%column_weight, &
+        call damping%add(this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), arr(i)%column_weight, &
                          model(i)%val(:, k), model(i)%val_prior(:, k), damping_param_shift, myrank, nbproc)
 
         if (myrank == 0) print *, 'damping term cost = ', damping%get_cost()
       enddo
-      if (myrank == 0) print *, 'nel (with damping) = ', this%matrix%get_number_elements()
+      if (myrank == 0) print *, 'nel (with damping) = ', this%matrix_cons%get_number_elements()
     endif
 
     if (this%add_damping_gradient(i)) then
@@ -387,7 +400,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
 
       do j = 1, 3 ! j is direction (1 = x, 2 = y, 3 = z).
         call damping_gradient%add(model(i), arr(i)%column_weight, model(i)%damping_grad_weight(:, j), &
-                                  this%matrix, size(this%b_RHS), this%b_RHS, param_shift(i), j, myrank, nbproc)
+                                  this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), param_shift(i), j, myrank, nbproc)
 
         cost = damping_gradient%get_cost()
         this%damping_gradient_cost((i - 1) * 3 + j) = cost
@@ -395,7 +408,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
         if (myrank == 0) print *, 'damping_gradient term cost in direction j = ', j, cost
       enddo
 
-      if (myrank == 0) print *, 'nel (with damping_gradient) = ', this%matrix%get_number_elements()
+      if (myrank == 0) print *, 'nel (with damping_gradient) = ', this%matrix_cons%get_number_elements()
     endif
   enddo
 
@@ -433,7 +446,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
                               par%compression_type, par%nx, par%ny, par%nz)
 
       ! Note: with wavelet compression we currently cannot have the local weight.
-      call damping%add(this%matrix, size(this%b_RHS), this%b_RHS, arr(i)%column_weight, &
+      call damping%add(this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), arr(i)%column_weight, &
                        model(i)%val(:, 1), this%x0_ADMM, param_shift(i), myrank, nbproc)
 
       ! Calculate the ADMM cost in parallel.
@@ -441,10 +454,10 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
       this%admm_cost = sqrt(cost)
 
       if (myrank == 0) print *, "ADMM cost |x - z| / |z| =", this%admm_cost
-      if (myrank == 0) print *, 'nel (with ADMM) = ', this%matrix%get_number_elements()
+      if (myrank == 0) print *, 'nel (with ADMM) = ', this%matrix_cons%get_number_elements()
 
     else
-      call this%matrix%add_empty_rows(this%nelements_total, myrank)
+      call this%matrix_cons%add_empty_rows(this%nelements_total, myrank)
     endif
 
   endif
@@ -464,12 +477,12 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   !-------------------------------------------------------------------------------------
   ! Parallel sparse inversion.
   !-------------------------------------------------------------------------------------
-  call this%matrix%finalize(myrank)
+  call this%matrix_cons%finalize(myrank)
 
   delta_model = 0._CUSTOM_REAL
   if (par%method == 1) then
-    call lsqr_solve(size(this%b_RHS), size(delta_model), par%niter, par%rmin, par%gamma, &
-                    this%matrix, this%b_RHS, delta_model, myrank)
+    call lsqr_solve_sensit(size(this%b_RHS), size(delta_model), par%niter, par%rmin, par%gamma, &
+                           this%matrix_sensit, this%matrix_cons, this%b_RHS, delta_model, myrank)
   else
     call exit_MPI("Unknown solver type!", myrank, 0)
   endif
@@ -480,7 +493,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   !-------------------------------------------------------------------------------------
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) then
-      call calculate_data_unscaled(par%nelements, par%nmodel_components, delta_model(:, :, i), this%matrix, &
+      call calculate_data_unscaled(par%nelements, par%nmodel_components, delta_model(:, :, i), this%matrix_sensit, &
            par%problem_weight(i), par%ndata(i), par%ndata_components(i), delta_data(i)%val, &
            line_start(i), param_shift(i), myrank)
     endif
@@ -523,18 +536,18 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   !----------------------------------------------------------------------------------------------------------
   ! Writing grav/mag prior and posterior variance.
   !----------------------------------------------------------------------------------------------------------
-  if (par%compression_type == 0 .and. par%nmodel_components == 1) then
+!  if (par%compression_type == 0 .and. par%nmodel_components == 1) then
     ! Calculate solution variance only for the non-compressed problem, as it does not work with wavelet compression:
     ! When using the wavelet compression the lsqr variance is very different from the non-compressed case,
     ! even for high compression rate of 0.99. Also, the variance numbers do not look correct with compression.
     ! Possibly, we cannot compute the variance this way with wavelet compression (by simply applying the inverse wavelet transform), not sure.
-    if (allocated(this%matrix%lsqr_var) .and. (ncalls == 1 .or. ncalls == par%ninversions)) then
-      if (SOLVE_PROBLEM(1)) &
-        call write_variance(par, this%matrix%lsqr_var(1:par%nelements), arr(1)%column_weight, 1, ncalls, myrank, nbproc)
-      if (SOLVE_PROBLEM(2)) &
-        call write_variance(par, this%matrix%lsqr_var(par%nelements + 1:), arr(2)%column_weight, 2, ncalls, myrank, nbproc)
-    endif
-  endif
+!    if (allocated(this%matrix%lsqr_var) .and. (ncalls == 1 .or. ncalls == par%ninversions)) then
+!      if (SOLVE_PROBLEM(1)) &
+!        call write_variance(par, this%matrix%lsqr_var(1:par%nelements), arr(1)%column_weight, 1, ncalls, myrank, nbproc)
+!      if (SOLVE_PROBLEM(2)) &
+!        call write_variance(par, this%matrix%lsqr_var(par%nelements + 1:), arr(2)%column_weight, 2, ncalls, myrank, nbproc)
+!    endif
+!  endif
 
 end subroutine joint_inversion_solve
 
@@ -641,16 +654,16 @@ subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, model, der
     ! Adding the corresponding cross-gradient SLAE to the main system.
     call this%matrix_B%finalize(myrank)
 
-    ibeg = this%matrix%get_current_row_number() + 1
+    ibeg = this%ndata_lines + this%matrix_cons%get_current_row_number() + 1
 
-    call this%matrix%add_matrix(this%matrix_B, par%cross_grad_weight, myrank)
+    call this%matrix_cons%add_matrix(this%matrix_B, par%cross_grad_weight, myrank)
 
-    iend = this%matrix%get_current_row_number()
+    iend = this%ndata_lines + this%matrix_cons%get_current_row_number()
 
     this%b_RHS(ibeg:iend) = par%cross_grad_weight * this%d_RHS
 
     if (myrank == 0) print *, 'cross-grad term cost = ', sum(this%b_RHS(ibeg:iend)**2)
-    if (myrank == 0) print *, 'nel (with cross-grad) = ', this%matrix%get_number_elements()
+    if (myrank == 0) print *, 'nel (with cross-grad) = ', this%matrix_cons%get_number_elements()
   endif
 
 end subroutine joint_inversion_add_cross_grad_constraints
@@ -664,14 +677,17 @@ subroutine joint_inversion_add_clustering_constraints(this, arr, model, myrank, 
   type(t_model), intent(inout) :: model(2)
   integer, intent(in) :: myrank, nbproc
 
-  integer :: i
+  integer :: i, lc
+
+  ! Starting line for constraints.
+  lc = this%ndata_lines + 1
 
   do i = 1, 2
     call this%clustering%add(model(1), model(2), arr(1)%column_weight, arr(2)%column_weight, &
-                             this%matrix, this%b_RHS, i, myrank, nbproc)
+                             this%matrix_cons, this%b_RHS(lc:), i, myrank, nbproc)
 
     if (myrank == 0) print *, 'clustering term', i, 'cost = ', this%clustering%get_cost(i)
-    if (myrank == 0) print *, 'nel (with clustering) = ', this%matrix%get_number_elements()
+    if (myrank == 0) print *, 'nel (with clustering) = ', this%matrix_cons%get_number_elements()
   enddo
 
 end subroutine joint_inversion_add_clustering_constraints
