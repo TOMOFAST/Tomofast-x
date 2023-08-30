@@ -136,9 +136,9 @@ pure function cross_gradient_get_num_elements(this, der_type) result(res)
 
   res = 3 * this%get_num_deriv(der_type) * 2 * this%nparams_loc
 
-  ! Add this term as derivatives of elements on the boundaries may belong to other CPUs, which leads to more elements.
-  ! Note: this can be optimized by adding a smaller number. But I dunno which, e.g., nparams_loc is not enough (tested).
-  res = res + this%nparams
+  ! Adding a buffer: derivatives of elements on the boundaries can belong to other CPUs, which leads to more elements.
+  ! Note: this can be optimized by using a smaller factor.
+  res = 2 * res
 
 end function cross_gradient_get_num_elements
 
