@@ -165,9 +165,11 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
   ! Compute v = Ht.u.
   call matrix_sensit%trans_mult_vector(u(1 : nlines_sensit), v2)
 
-  ! Convert v2 from wavelet domain.
-  call apply_wavelet_transform(nelements, nx, ny, nz, v2, v1_full, &
-                               .false., compression_type, SOLVE_PROBLEM, myrank, nbproc)
+  if (compression_type > 0) then
+    ! Convert v2 from wavelet domain.
+    call apply_wavelet_transform(nelements, nx, ny, nz, v2, v1_full, &
+                                 .false., compression_type, SOLVE_PROBLEM, myrank, nbproc)
+  endif
 
   v = v2
 
@@ -198,10 +200,13 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
       u = 0._CUSTOM_REAL
     endif
 
-    ! Convert v to wavelet domain.
     v2 = v
-    call apply_wavelet_transform(nelements, nx, ny, nz, v2, v1_full, &
-                                 .true., compression_type, SOLVE_PROBLEM, myrank, nbproc)
+
+    if (compression_type > 0) then
+      ! Convert v to wavelet domain.
+      call apply_wavelet_transform(nelements, nx, ny, nz, v2, v1_full, &
+                                   .true., compression_type, SOLVE_PROBLEM, myrank, nbproc)
+    endif
 
     ! u = u + H_loc.v
     call matrix_sensit%add_mult_vector(v2, u(1 : nlines_sensit))
@@ -225,9 +230,11 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
     ! Compute v = v + Ht.u.
     call matrix_sensit%trans_mult_vector(u(1 : nlines_sensit), v2)
 
-    ! Convert v2 from wavelet domain.
-    call apply_wavelet_transform(nelements, nx, ny, nz, v2, v1_full, &
-                                 .false., compression_type, SOLVE_PROBLEM, myrank, nbproc)
+    if (compression_type > 0) then
+      ! Convert v2 from wavelet domain.
+      call apply_wavelet_transform(nelements, nx, ny, nz, v2, v1_full, &
+                                   .false., compression_type, SOLVE_PROBLEM, myrank, nbproc)
+    endif
 
     v = v + v2
 
