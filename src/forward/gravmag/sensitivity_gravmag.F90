@@ -562,6 +562,7 @@ subroutine calculate_new_partitioning(par, nnz, nelements_new, problem_type, myr
   integer :: nelements_total
 
   integer, allocatable :: sensit_nnz(:)
+  integer, allocatable :: sensit_nnz2(:)
 
   if (myrank == 0) then
 
@@ -572,8 +573,31 @@ subroutine calculate_new_partitioning(par, nnz, nelements_new, problem_type, myr
 
     if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_new_partitioning!", myrank, ierr)
 
-    ! Read sensit_nnz from file.
-    call read_sensit_nnz(par, problem_type, nelements_total, sensit_nnz, myrank)
+    if (problem_type == 3) then
+    ! Joint inversion. Calculate the total sennsit_nnz for both problems.
+
+      ! Memory allocation.
+      allocate(sensit_nnz2(nelements_total), source=0, stat=ierr)
+
+      if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_new_partitioning!", myrank, ierr)
+
+      ! Read sensit_nnz from file for problem 1.
+      call read_sensit_nnz(par, 1, nelements_total, sensit_nnz2, myrank)
+
+      sensit_nnz = sensit_nnz + sensit_nnz2
+
+      ! Read sensit_nnz from file for problem 2.
+      call read_sensit_nnz(par, 2, nelements_total, sensit_nnz2, myrank)
+
+      ! The total sensit_nnz for both problems
+      sensit_nnz = sensit_nnz + sensit_nnz2
+
+      deallocate(sensit_nnz2)
+
+    else
+      ! Read sensit_nnz from file.
+      call read_sensit_nnz(par, problem_type, nelements_total, sensit_nnz, myrank)
+    endif
 
     ! Calculate the load balancing.
     call get_load_balancing_nelements(nelements_total, sensit_nnz, nnz_at_cpu, nelements_at_cpu_new, myrank, nbproc)

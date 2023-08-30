@@ -92,7 +92,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   logical :: SOLVE_PROBLEM(2)
   logical :: allocate_full_model_on_all_cpus(2)
-  integer(kind=8) :: nnz(2)
+  integer(kind=8) :: nnz
   integer :: nelements_new
 
   ! Unit number for cost file handle.
@@ -186,8 +186,14 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   endif
 
   ! Calculate new partitioning for the load balancing.
-  if (SOLVE_PROBLEM(1)) call calculate_new_partitioning(gpar, nnz(1), nelements_new, 1, myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call calculate_new_partitioning(mpar, nnz(2), nelements_new, 2, myrank, nbproc)
+  if (SOLVE_PROBLEM(1) .and. (SOLVE_PROBLEM(2))) then
+  ! Joint inversion.
+    call calculate_new_partitioning(gpar, nnz, nelements_new, 3, myrank, nbproc)
+  else if (SOLVE_PROBLEM(1)) then
+    call calculate_new_partitioning(gpar, nnz, nelements_new, 1, myrank, nbproc)
+  else if (SOLVE_PROBLEM(2)) then
+    call calculate_new_partitioning(mpar, nnz, nelements_new, 2, myrank, nbproc)
+  endif
 
   ! Update the nelements for the nnz load balancing.
   if (SOLVE_PROBLEM(1)) gpar%nelements = nelements_new
@@ -221,7 +227,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (myrank == 0) print *, "(IV) MATRIX ALLOCATION."
 
   ! Allocate the sensitivity matrix.
-  call jinv%initialize(ipar, nnz(1) + nnz(2), myrank)
+  call jinv%initialize(ipar, nnz, myrank)
 
   ! READING THE SENSITIVITY KERNEL ----------------------------------------------------------------------
 
