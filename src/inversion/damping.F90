@@ -115,7 +115,7 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
   !---------------------------------------------------------------------
   ! Calculating the model difference: (m - m_ref), which is used in the right-hand side, and in the Lp norm multiplier.
   real(kind=CUSTOM_REAL), allocatable :: model_diff(:)
-  real(kind=CUSTOM_REAL), allocatable :: model_diff_full(:)
+!  real(kind=CUSTOM_REAL), allocatable :: model_diff_full(:)
 
   allocate(model_diff(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
 

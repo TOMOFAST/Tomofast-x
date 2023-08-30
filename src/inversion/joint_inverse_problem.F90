@@ -318,7 +318,7 @@ end subroutine joint_inversion_reset
 !================================================================================================
 ! Joint inversion of two field.
 !================================================================================================
-subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data, myrank, nbproc)
+subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
   type(t_inversion_arrays), intent(in) :: arr(2)
@@ -326,7 +326,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   integer, intent(in) :: myrank, nbproc
 
   real(kind=CUSTOM_REAL), intent(out) :: delta_model(par%nelements, par%nmodel_components, 2)
-  type(t_real2d), intent(inout) :: delta_data(2)
 
   type(t_damping) :: damping
   type(t_damping_gradient) :: damping_gradient
@@ -487,18 +486,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, delta_data,
   else
     call exit_MPI("Unknown solver type!", myrank, 0)
   endif
-
-  !-------------------------------------------------------------------------------------
-  ! Calculate data update using unscaled delta model (in wavelet domain).
-  ! As we have both the compressed kernel and delta model, and the problem is linear.
-  !-------------------------------------------------------------------------------------
-!  do i = 1, 2
-!    if (SOLVE_PROBLEM(i)) then
-!      call calculate_data_unscaled(par%nelements, par%nmodel_components, delta_model(:, :, i), this%matrix_sensit, &
-!           par%problem_weight(i), par%ndata(i), par%ndata_components(i), delta_data(i)%val, &
-!           line_start(i), param_shift(i), myrank)
-!    endif
-!  enddo
 
   !-------------------------------------------------------------------------------------
   ! Unscale the model update.

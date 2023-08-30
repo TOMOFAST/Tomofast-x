@@ -100,8 +100,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   ! Model change (update) at inversion iteration.
   real(kind=CUSTOM_REAL), allocatable :: delta_model(:, :, :)
-  ! Data change (update) at inversion iteration.
-  type(t_real2d) :: delta_data(2)
   ! Memory usage.
   real(kind=CUSTOM_REAL) :: memory
 
@@ -331,15 +329,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Allocate memory.
   allocate(delta_model(ipar%nelements, ipar%nmodel_components, 2), source=0._CUSTOM_REAL, stat=ierr)
 
-  do i = 1, 2
-    if (SOLVE_PROBLEM(i)) then
-      allocate(delta_data(i)%val(ipar%ndata_components(i), ipar%ndata(i)), source=0._CUSTOM_REAL, stat=ierr)
-    else
-      ! Allocate 1 element not to have unallocated arrays.
-      allocate(delta_data(i)%val(ipar%ndata_components(i), 1), source=0._CUSTOM_REAL, stat=ierr)
-    endif
-  enddo
-
   !******************************************************************************************
   ! Loop over different prior models.
   !******************************************************************************************
@@ -463,7 +452,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       if (it > 1) call jinv%reset(myrank)
 
       ! Solve joint inverse problem.
-      call jinv%solve(ipar, iarr, model, delta_model, delta_data, myrank, nbproc)
+      call jinv%solve(ipar, iarr, model, delta_model, myrank, nbproc)
 
       ! Update the local models.
       if (SOLVE_PROBLEM(1)) call model(1)%update(delta_model(:, :, 1))
@@ -477,10 +466,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
         endif
       endif
 
-      ! Calculate new data. Using the data update as the grav/mag problems are linear.
-      !if (SOLVE_PROBLEM(1)) data(1)%val_calc = data(1)%val_calc + delta_data(1)%val
-      !if (SOLVE_PROBLEM(2)) data(2)%val_calc = data(2)%val_calc + delta_data(2)%val
-
+      ! Calculate new data.
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
           ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
@@ -581,8 +567,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   !******************************
 
   deallocate(delta_model)
-  deallocate(delta_data(1)%val)
-  deallocate(delta_data(2)%val)
 
 end subroutine solve_problem_joint_gravmag
 
