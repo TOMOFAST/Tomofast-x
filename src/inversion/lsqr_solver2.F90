@@ -289,9 +289,6 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
 
   if (myrank == 0) print *, 'End of subroutine lsqr_solve_sensit, r =', r, ' iter =', iter - 1
 
-  deallocate(v)
-  deallocate(w)
-
 end subroutine lsqr_solve_sensit
 
 !================================================================================
