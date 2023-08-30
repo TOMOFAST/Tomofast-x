@@ -164,12 +164,13 @@ end function cross_gradient_get_num_deriv
 ! If the flag add = 'true', then adds cross-gradients to the sparse matrix and right-hand side b_RHS.
 !=====================================================================================================
 subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column_weight2, &
-                                    matrix, b_RHS, add, der_type, myrank, nbproc)
+                                    matrix, b_RHS, add, der_type, glob_weight, myrank, nbproc)
   class(t_cross_gradient), intent(inout) :: this
   type(t_model), intent(inout) :: model1
   type(t_model), intent(inout) :: model2
   real(kind=CUSTOM_REAL), intent(in) :: column_weight1(:)
   real(kind=CUSTOM_REAL), intent(in) :: column_weight2(:)
+  real(kind=CUSTOM_REAL), intent(in) :: glob_weight
   logical, intent(in) :: add
   integer, intent(in) :: der_type
   integer, intent(in) :: myrank, nbproc
@@ -279,7 +280,7 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
       ! Row with x-component.
       call matrix%new_row(myrank)
 
-      b_RHS(matrix%get_current_row_number()) = - tau%val%x
+      b_RHS(matrix%get_current_row_number()) = - tau%val%x * glob_weight
 
       do l = 1, nderiv
         ind1 = tau%ind1(l)%x
@@ -287,13 +288,13 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
 
         if (ind1 > nsmaller .and. ind1 <= nsmaller + this%nparams_loc) then
           ind1 = ind1 - nsmaller
-          val1 = tau%dm1(l)%x * column_weight1(ind1)
+          val1 = tau%dm1(l)%x * column_weight1(ind1) * glob_weight
           call matrix%add(val1, ind1, myrank)
         endif
 
         if (ind2 > nsmaller .and. ind2 <= nsmaller + this%nparams_loc) then
           ind2 = ind2 - nsmaller
-          val2 = tau%dm2(l)%x * column_weight2(ind2)
+          val2 = tau%dm2(l)%x * column_weight2(ind2) * glob_weight
           call matrix%add(val2, ind2 + this%nparams_loc, myrank)
         endif
       enddo
@@ -301,7 +302,7 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
       ! Row with y-component.
       call matrix%new_row(myrank)
 
-      b_RHS(matrix%get_current_row_number()) = - tau%val%y
+      b_RHS(matrix%get_current_row_number()) = - tau%val%y * glob_weight
 
       do l = 1, nderiv
         ind1 = tau%ind1(l)%y
@@ -309,13 +310,13 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
 
         if (ind1 > nsmaller .and. ind1 <= nsmaller + this%nparams_loc) then
           ind1 = ind1 - nsmaller
-          val1 = tau%dm1(l)%y * column_weight1(ind1)
+          val1 = tau%dm1(l)%y * column_weight1(ind1) * glob_weight
           call matrix%add(val1, ind1, myrank)
         endif
 
         if (ind2 > nsmaller .and. ind2 <= nsmaller + this%nparams_loc) then
           ind2 = ind2 - nsmaller
-          val2 = tau%dm2(l)%y * column_weight2(ind2)
+          val2 = tau%dm2(l)%y * column_weight2(ind2) * glob_weight
           call matrix%add(val2, ind2 + this%nparams_loc, myrank)
         endif
       enddo
@@ -323,7 +324,7 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
       ! Row with z-component.
       call matrix%new_row(myrank)
 
-      b_RHS(matrix%get_current_row_number()) = - tau%val%z
+      b_RHS(matrix%get_current_row_number()) = - tau%val%z * glob_weight
 
       do l = 1, nderiv
         ind1 = tau%ind1(l)%z
@@ -331,13 +332,13 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
 
         if (ind1 > nsmaller .and. ind1 <= nsmaller + this%nparams_loc) then
           ind1 = ind1 - nsmaller
-          val1 = tau%dm1(l)%z * column_weight1(ind1)
+          val1 = tau%dm1(l)%z * column_weight1(ind1) * glob_weight
           call matrix%add(val1, ind1, myrank)
         endif
 
         if (ind2 > nsmaller .and. ind2 <= nsmaller + this%nparams_loc) then
           ind2 = ind2 - nsmaller
-          val2 = tau%dm2(l)%z * column_weight2(ind2)
+          val2 = tau%dm2(l)%z * column_weight2(ind2) * glob_weight
           call matrix%add(val2, ind2 + this%nparams_loc, myrank)
         endif
       enddo

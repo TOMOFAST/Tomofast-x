@@ -57,11 +57,6 @@ module joint_inverse_problem
     ! Right hand side (corresponding to the matrix).
     real(kind=CUSTOM_REAL), allocatable :: b_RHS(:)
 
-    ! Matrix of the cross-gradient part.
-    type(t_sparse_matrix) :: matrix_B
-    ! Right hand side for the cross-gradient part.
-    real(kind=CUSTOM_REAL), allocatable :: d_RHS(:)
-
     ! Auxiliary arrays for the ADMM method.
     real(kind=CUSTOM_REAL), allocatable :: x0_ADMM(:)
 
@@ -248,13 +243,6 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   ierr = 0
 
-  if (this%add_cross_grad) then
-    ! Memory allocation for the matrix and right-hand side for the cross-gradient constraints.
-    call this%matrix_B%initialize(3 * par%nelements_total, 2 * par%nelements, &
-                                  int(this%cross_grad%get_num_elements(par%derivative_type), 8), myrank)
-    allocate(this%d_RHS(3 * par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  endif
-
   if (par%admm_type > 0) then
     allocate(this%x0_ADMM(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
   endif
@@ -300,11 +288,6 @@ subroutine joint_inversion_reset(this, myrank)
 
   call this%matrix_cons%reset()
   this%b_RHS = 0._CUSTOM_REAL
-
-  if (this%add_cross_grad) then
-    call this%matrix_B%reset()
-    this%d_RHS = 0._CUSTOM_REAL
-  endif
 
 end subroutine joint_inversion_reset
 
@@ -528,32 +511,21 @@ subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, model, der
   integer, intent(in) :: myrank, nbproc
 
   type(t_vector) :: cost
-  integer :: ibeg, iend
+  integer :: lc
 
   if (myrank == 0) print *, 'Calculating cross gradients. der_type =', der_type
 
+  ! Starting line for constraints.
+  lc = this%ndata_lines + 1
+
   call this%cross_grad%calculate(model(1), model(2), arr(1)%column_weight, arr(2)%column_weight, &
-                                 this%matrix_B, this%d_RHS, this%add_cross_grad, der_type, myrank, nbproc)
+                                 this%matrix_cons, this%b_RHS(lc:), this%add_cross_grad, der_type, &
+                                 par%cross_grad_weight, myrank, nbproc)
 
   cost = this%cross_grad%get_cost()
 
   if (myrank == 0) print *, 'cross-grad cost = ', cost%x + cost%y + cost%z
-
-  if (this%add_cross_grad) then
-    ! Adding the corresponding cross-gradient SLAE to the main system.
-    call this%matrix_B%finalize(myrank)
-
-    ibeg = this%ndata_lines + this%matrix_cons%get_current_row_number() + 1
-
-    call this%matrix_cons%add_matrix(this%matrix_B, par%cross_grad_weight, myrank)
-
-    iend = this%ndata_lines + this%matrix_cons%get_current_row_number()
-
-    this%b_RHS(ibeg:iend) = par%cross_grad_weight * this%d_RHS
-
-    if (myrank == 0) print *, 'cross-grad term cost = ', sum(this%b_RHS(ibeg:iend)**2)
-    if (myrank == 0) print *, 'nel (with cross-grad) = ', this%matrix_cons%get_number_elements()
-  endif
+  if (myrank == 0) print *, 'nel (with cross-grad) = ', this%matrix_cons%get_number_elements()
 
 end subroutine joint_inversion_add_cross_grad_constraints
 

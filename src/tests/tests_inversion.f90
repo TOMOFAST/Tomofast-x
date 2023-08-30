@@ -150,6 +150,7 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
   real(kind=CUSTOM_REAL), allocatable :: b_RHS(:)
   real(kind=CUSTOM_REAL), allocatable :: column_weight1(:)
   real(kind=CUSTOM_REAL), allocatable :: column_weight2(:)
+  real(kind=CUSTOM_REAL) :: glob_weight
   integer :: nx, ny, nz, ncomponents
   integer :: nelements, nelements_total, ierr
   integer :: matrix_nel_loc, matrix_nel_glob
@@ -217,8 +218,10 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
   call matrix%initialize(3 * nelements_total, 2 * nelements, &
                          int(cross_grad%get_num_elements(derivative_type), 8), myrank)
 
+  glob_weight = 1.d0
+
   call cross_grad%calculate(model1, model2, column_weight1, column_weight2, &
-                            matrix, b_RHS, .true., derivative_type, myrank, nbproc)
+                            matrix, b_RHS, .true., derivative_type, glob_weight, myrank, nbproc)
 
   call matrix%finalize(myrank)
 
