@@ -90,8 +90,8 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
   logical, intent(in) :: SOLVE_PROBLEM(2)
   integer, intent(in) :: nelements, nx, ny, nz, compression_type
   integer, intent(in) :: myrank, nbproc
-  type(t_sparse_matrix), intent(inout) :: matrix_sensit
-  type(t_sparse_matrix), intent(inout) :: matrix_cons
+  type(t_sparse_matrix), intent(in) :: matrix_sensit
+  type(t_sparse_matrix), intent(in) :: matrix_cons
 
   real(kind=CUSTOM_REAL), intent(inout) :: x(ncolumns)
   ! Use the right-hand side for solver calculations to avoid memory allocation.
@@ -102,8 +102,6 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
   real(kind=CUSTOM_REAL) :: alpha, beta, rho, rhobar, phi, phibar, theta
   real(kind=CUSTOM_REAL) :: b1, c, r, s, t1, t2
   real(kind=CUSTOM_REAL) :: rho_inv
-  ! Flag for calculating variance.
-  !logical :: calculateVariance
   integer :: nlines_sensit
 
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w
@@ -122,16 +120,6 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
   endif
 
   nlines_sensit = matrix_sensit%get_total_row_number()
-
-!  calculateVariance = .false.
-!  if (allocated(matrix%lsqr_var)) then
-!    if (size(matrix%lsqr_var) == nelements) then
-!      calculateVariance = .true.
-!
-!      ! Initialize variance array.
-!      matrix%lsqr_var = 0.d0
-!    endif
-!  endif
 
   ! Allocate memory.
   allocate(v(ncolumns), source=0._CUSTOM_REAL)
@@ -268,11 +256,6 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
     t1      = phi * rho_inv
     t2      = - theta * rho_inv
 
-!    if (calculateVariance) then
-!      ! Calculate solution variance (see Paige & Saunders 1982, page 53).
-!      matrix%lsqr_var = matrix%lsqr_var + (rho_inv * w)**2
-!    endif
-
     ! Update the current solution x (w is an auxiliary array in order to compute the solution).
     x = t1 * w + x
     w = t2 * w + v
@@ -304,20 +287,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
     iter = iter + 1
   enddo
 
-!  if (calculateVariance) then
-!    ! Scale with data residual (see the bottom of the page 53 in Paige & Saunders 1982).
-!    ! Note, we are using that phibar = ||Ax - b||
-!    if (matrix%tag > 1) then
-!      matrix%lsqr_var = phibar**2 * matrix%lsqr_var
-!    else
-!    ! First major iteration (stored in matrix%tag). Scale with original residual to calculate the prior variance.
-!      matrix%lsqr_var = b1**2 * matrix%lsqr_var
-!    endif
-!    ! Calculate the standard error (s_i).
-!    matrix%lsqr_var = sqrt(matrix%lsqr_var)
-!  endif
-
-  if (myrank == 0) print *, 'End of subroutine lsqr_solve, r =', r, ' iter =', iter - 1
+  if (myrank == 0) print *, 'End of subroutine lsqr_solve_sensit, r =', r, ' iter =', iter - 1
 
   deallocate(v)
   deallocate(w)
@@ -340,7 +310,7 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, u, x, myran
   real(kind=CUSTOM_REAL), intent(in) :: rmin, gamma
   integer, intent(in) :: myrank
 
-  type(t_sparse_matrix), intent(inout) :: matrix
+  type(t_sparse_matrix), intent(in) :: matrix
   real(kind=CUSTOM_REAL), intent(inout) :: x(nelements)
   ! Use the right-hand side for solver calculations to avoid memory allocation.
   real(kind=CUSTOM_REAL), intent(inout) :: u(nlines)
@@ -350,8 +320,6 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, u, x, myran
   real(kind=CUSTOM_REAL) :: alpha, beta, rho, rhobar, phi, phibar, theta
   real(kind=CUSTOM_REAL) :: b1, c, r, s, t1, t2
   real(kind=CUSTOM_REAL) :: rho_inv
-  ! Flag for calculating variance.
-  logical :: calculateVariance
 
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w
 
@@ -361,16 +329,6 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, u, x, myran
   if (matrix%get_total_row_number() /= nlines .or. &
       matrix%get_ncolumns() /= nelements) then
     call exit_MPI("Wrong matrix size in lsqr_solve! Exiting.", myrank, 0)
-  endif
-
-  calculateVariance = .false.
-  if (allocated(matrix%lsqr_var)) then
-    if (size(matrix%lsqr_var) == nelements) then
-      calculateVariance = .true.
-
-      ! Initialize variance array.
-      matrix%lsqr_var = 0.d0
-    endif
   endif
 
   ! Allocate memory.
@@ -470,11 +428,6 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, u, x, myran
     t1      = phi * rho_inv
     t2      = - theta * rho_inv
 
-    if (calculateVariance) then
-      ! Calculate solution variance (see Paige & Saunders 1982, page 53).
-      matrix%lsqr_var = matrix%lsqr_var + (rho_inv * w)**2
-    endif
-
     ! Update the current solution x (w is an auxiliary array in order to compute the solution).
     x = t1 * w + x
     w = t2 * w + v
@@ -505,19 +458,6 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, u, x, myran
 
     iter = iter + 1
   enddo
-
-  if (calculateVariance) then
-    ! Scale with data residual (see the bottom of the page 53 in Paige & Saunders 1982).
-    ! Note, we are using that phibar = ||Ax - b||
-    if (matrix%tag > 1) then
-      matrix%lsqr_var = phibar**2 * matrix%lsqr_var
-    else
-    ! First major iteration (stored in matrix%tag). Scale with original residual to calculate the prior variance.
-      matrix%lsqr_var = b1**2 * matrix%lsqr_var
-    endif
-    ! Calculate the standard error (s_i).
-    matrix%lsqr_var = sqrt(matrix%lsqr_var)
-  endif
 
   if (myrank == 0) print *, 'End of subroutine lsqr_solve, r =', r, ' iter =', iter - 1
 

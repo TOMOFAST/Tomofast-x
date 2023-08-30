@@ -110,8 +110,6 @@ module joint_inverse_problem
 
     procedure, public, nopass :: calculate_matrix_partitioning => joint_inversion_calculate_matrix_partitioning
 
-    procedure, private, nopass :: write_variance
-
   end type t_joint_inversion
 
 contains
@@ -249,11 +247,6 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   call this%matrix_cons%initialize(nl, 2 * par%nmodel_components * par%nelements, nnz, myrank, nl_empty)
 
   ierr = 0
-
-!  if (par%compression_type == 0) then
-!    ! Calculate solution variance only for the non-compressed problem, as it does not work with wavelet compression.
-!    call this%matrix%allocate_variance_array(2 * par%nelements, myrank)
-!  endif
 
   if (this%add_cross_grad) then
     ! Memory allocation for the matrix and right-hand side for the cross-gradient constraints.
@@ -521,99 +514,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
   if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements, par%nmodel_components, delta_model(:, :, 1), arr(1)%column_weight)
   if (SOLVE_PROBLEM(2)) call rescale_model(par%nelements, par%nmodel_components, delta_model(:, :, 2), arr(2)%column_weight)
 
-  !----------------------------------------------------------------------------------------------------------
-  ! Writing grav/mag prior and posterior variance.
-  !----------------------------------------------------------------------------------------------------------
-!  if (par%compression_type == 0 .and. par%nmodel_components == 1) then
-    ! Calculate solution variance only for the non-compressed problem, as it does not work with wavelet compression:
-    ! When using the wavelet compression the lsqr variance is very different from the non-compressed case,
-    ! even for high compression rate of 0.99. Also, the variance numbers do not look correct with compression.
-    ! Possibly, we cannot compute the variance this way with wavelet compression (by simply applying the inverse wavelet transform), not sure.
-!    if (allocated(this%matrix%lsqr_var) .and. (ncalls == 1 .or. ncalls == par%ninversions)) then
-!      if (SOLVE_PROBLEM(1)) &
-!        call write_variance(par, this%matrix%lsqr_var(1:par%nelements), arr(1)%column_weight, 1, ncalls, myrank, nbproc)
-!      if (SOLVE_PROBLEM(2)) &
-!        call write_variance(par, this%matrix%lsqr_var(par%nelements + 1:), arr(2)%column_weight, 2, ncalls, myrank, nbproc)
-!    endif
-!  endif
-
 end subroutine joint_inversion_solve
-
-!=======================================================================================================
-! Writing solution variance to a file.
-!=======================================================================================================
-subroutine write_variance(par, lsqr_var, column_weight, problem_type, ncalls, myrank, nbproc)
-  type(t_parameters_inversion), intent(in) :: par
-  real(kind=CUSTOM_REAL), intent(in) :: lsqr_var(par%nelements)
-  real(kind=CUSTOM_REAL), intent(in) :: column_weight(par%nelements)
-  integer, intent(in) :: problem_type, ncalls
-  integer, intent(in) :: myrank, nbproc
-
-  integer :: ierr
-  integer :: nsmaller
-  character(len=32) :: filename
-  character(len=128) :: filename_full
-
-  real(kind=CUSTOM_REAL), allocatable :: lsqr_var_full(:)
-  real(kind=CUSTOM_REAL), allocatable :: lsqr_var_scaled(:)
-
-  if (myrank == 0) print *, "Writing the variance to a file"
-
-  allocate(lsqr_var_full(par%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(lsqr_var_scaled(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
-
-  if (par%compression_type > 0) then
-  ! Applying the Inverse Wavelet Transform.
-    if (nbproc > 1) then
-      ! Gather full (parallel) vector on the master.
-      call get_full_array(lsqr_var, par%nelements, lsqr_var_full, .true., myrank, nbproc)
-      call inverse_wavelet(lsqr_var_full, par%nx, par%ny, par%nz, par%compression_type)
-
-      nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
-      lsqr_var_scaled = lsqr_var_full(nsmaller + 1 : nsmaller + par%nelements)
-    else
-      lsqr_var_scaled = lsqr_var
-      call inverse_wavelet(lsqr_var_scaled, par%nx, par%ny, par%nz, par%compression_type)
-    endif
-  else
-    lsqr_var_scaled = lsqr_var
-  endif
-
-  ! Rescale with depth weight.
-  call rescale_model(par%nelements, par%nmodel_components, lsqr_var_scaled, column_weight)
-
-  ! Gather full (parallel) vector on the master.
-  call get_full_array(lsqr_var_scaled, par%nelements, lsqr_var_full, .false., myrank, nbproc)
-
-  if (myrank == 0) then
-  ! Writing variance by master CPU.
-
-    if (ncalls == 1) then
-      filename = "/lsqr_std_prior"
-    else
-      filename = "/lsqr_std_posterior"
-    endif
-
-    if (problem_type == 1) then
-    ! Writing grav variance to file.
-      filename_full = trim(trim(path_output)//trim(filename)//"_grav.txt")
-    else
-    ! Writing mag variance to file.
-      filename_full = trim(trim(path_output)//trim(filename)//"_mag.txt")
-    endif
-
-    open(27, file=trim(filename_full), form='formatted', status='replace', action='write')
-
-    write(27, *) par%nelements_total
-    write(27, *) lsqr_var_full
-
-    close(27)
-  endif
-
-  deallocate(lsqr_var_full)
-  deallocate(lsqr_var_scaled)
-
-end subroutine write_variance
 
 !=======================================================================================================
 ! Adds the cross-gradient constraints to the least square system.

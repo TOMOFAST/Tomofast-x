@@ -92,8 +92,6 @@ module sparse_matrix
     procedure, public, pass :: get_number_elements => sparse_matrix_get_number_elements
     procedure, public, pass :: get_nnz => sparse_matrix_get_nnz
 
-    procedure, public, pass :: allocate_variance_array => sparse_matrix_allocate_variance_array
-
     procedure, private, pass :: validate => sparse_matrix_validate
 
     procedure, private, pass :: allocate_arrays => sparse_matrix_allocate_arrays
@@ -587,22 +585,5 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
   endif
 
 end subroutine sparse_matrix_allocate_arrays
-
-!=========================================================================
-! Allocates dynamic array to store solution variance.
-!=========================================================================
-subroutine sparse_matrix_allocate_variance_array(this, nelements, myrank)
-  class(t_sparse_matrix), intent(inout) :: this
-  integer, intent(in) :: nelements, myrank
-  integer :: ierr
-
-  ierr = 0
-
-  allocate(this%lsqr_var(nelements), source=0._CUSTOM_REAL, stat=ierr)
-
-  if (ierr /= 0) &
-    call exit_MPI("Dynamic memory allocation error in sparse_matrix_allocate_variance_array!", myrank, ierr)
-
-end subroutine sparse_matrix_allocate_variance_array
 
 end module sparse_matrix
