@@ -118,9 +118,11 @@ subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, myrank)
 
   ierr = 0
 
-  if (.not. allocated(this%cross_grad)) allocate(this%cross_grad(this%nparams), stat=ierr)
+  if (myrank == 0) then
+    allocate(this%cross_grad(this%nparams), stat=ierr)
 
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in cross_gradient_initialize!", myrank, ierr)
+    if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in cross_gradient_initialize!", myrank, ierr)
+  endif
 
 end subroutine cross_gradient_initialize
 
@@ -261,8 +263,10 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
     ! Normalization.
     !call this%normalize_tau(tau, model1, model2, i, j, k, myrank)
 
-    ! Store cross gradient vector magnitude.
-    this%cross_grad(p) = tau%val%get_norm()
+    if (myrank == 0) then
+      ! Store cross gradient vector magnitude.
+      this%cross_grad(p) = tau%val%get_norm()
+    endif
 
     ! Calculate the cost.
     this%cost%x = this%cost%x + tau%val%x**2
@@ -357,13 +361,13 @@ end function cross_gradient_get_cost
 !==================================================================================================
 ! Returns the cross-gradient vector at every model pixel.
 !==================================================================================================
-pure function cross_gradient_get_magnitude(this) result(res)
+pure subroutine cross_gradient_get_magnitude(this, cross_grad)
   class(t_cross_gradient), intent(in) :: this
-  real(kind=CUSTOM_REAL) :: res(this%nparams)
+  real(kind=CUSTOM_REAL), intent(out) :: cross_grad(this%nparams)
 
-  res = this%cross_grad
+  cross_grad = this%cross_grad
 
-end function cross_gradient_get_magnitude
+end subroutine cross_gradient_get_magnitude
 
 !==================================================================================================
 ! Calculates the discretized cross-gradients function (and corresponding matrix column indexes)

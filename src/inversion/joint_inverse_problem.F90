@@ -683,11 +683,11 @@ end subroutine joint_inversion_add_clustering_constraints
 !==================================================================================================
 ! Returns the cross-gradient vector magnitude at every model pixel.
 !==================================================================================================
-pure subroutine joint_inversion_get_cross_grad(this, res)
+pure subroutine joint_inversion_get_cross_grad(this, cross_grad)
   class(t_joint_inversion), intent(in) :: this
-  real(kind=CUSTOM_REAL), intent(out) :: res(this%nelements_total)
+  real(kind=CUSTOM_REAL), intent(out) :: cross_grad(this%nelements_total)
 
-  res = this%cross_grad%get_magnitude()
+  call this%cross_grad%get_magnitude(cross_grad)
 
 end subroutine joint_inversion_get_cross_grad
 
