@@ -138,6 +138,7 @@ model.F90 \
 model_IO.F90 \
 parameters_inversion.f90 \
 inversion_arrays.f90 \
+wavelet_utils.F90 \
 lsqr_solver2.F90 \
 damping.F90 \
 gradient.F90 \

@@ -15,7 +15,7 @@
 !=============================================================================
 ! Least Square (LSQR) solver parallelized by the model parameters.
 !
-! This solver is unit tested in tests_lsqr.f90 and in tests_method_of_weights.f90.
+! This solver is unit tested in tests_lsqr.f90.
 ! The unit tests are available for serial and parallel versions.
 !
 ! Vitaliy Ogarko, UWA, CET, Australia.
@@ -25,9 +25,7 @@ module lsqr_solver
   use global_typedefs
   use mpi_tools, only: exit_MPI
   use sparse_matrix
-
-  use parallel_tools
-  use wavelet_transform
+  use wavelet_utils
 
   implicit none
 
@@ -38,48 +36,8 @@ module lsqr_solver
 
   private :: normalize
   private :: apply_soft_thresholding
-  private :: apply_wavelet_transform
 
 contains
-
-!======================================================================================
-! Apply forward/inverse transfrom to the solver model.
-!======================================================================================
-subroutine apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v, model_full, FWD, &
-                                   compression_type, SOLVE_PROBLEM, myrank, nbproc)
-  integer, intent(in) :: nelements, nx, ny, nz, ncomponents
-  logical, intent(in) :: FWD
-  integer, intent(in) :: compression_type
-  logical, intent(in) :: SOLVE_PROBLEM(2)
-  integer, intent(in) :: myrank, nbproc
-
-  ! Buffer for wavelet transform.
-  real(kind=CUSTOM_REAL), intent(inout) :: model_full(nx * ny * nz)
-  ! Converted to/from wavelet domain result.
-  real(kind=CUSTOM_REAL), intent(inout) :: v(nelements, ncomponents, 2)
-
-  integer :: i, k
-
-  do i = 1, 2
-    if (SOLVE_PROBLEM(i)) then
-      ! Loop over the model components.
-      do k = 1, ncomponents
-        call get_full_array(v(:, k, i), nelements, model_full, .false., myrank, nbproc)
-
-        if (myrank == 0) then
-          if (FWD) then
-            call forward_wavelet(model_full, nx, ny, nz, compression_type)
-          else
-            call inverse_wavelet(model_full, nx, ny, nz, compression_type)
-          endif
-        endif
-
-        call scatter_full_array(nelements, model_full, v(:, k, i), myrank, nbproc)
-      enddo
-    endif
-  enddo
-
-end subroutine apply_wavelet_transform
 
 !======================================================================================
 ! LSQR solver for a sparse matrix.
