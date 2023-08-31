@@ -58,13 +58,14 @@ module joint_inverse_problem
     real(kind=CUSTOM_REAL), allocatable :: b_RHS(:)
 
     ! Auxiliary arrays for the ADMM method.
-    real(kind=CUSTOM_REAL), allocatable :: x0_ADMM(:)
+    type(t_real1d) :: x0_ADMM(2)
 
     integer :: nelements_total
 
-    ! Flags to switch off the use of some terms (for debugging).
+    ! Flags for adding various constraints.
     logical :: add_damping(2)
     logical :: add_damping_gradient(2)
+    logical :: add_admm(2)
     logical, public :: add_cross_grad
     logical, public :: add_clustering
 
@@ -72,7 +73,7 @@ module joint_inverse_problem
     type(t_cross_gradient) :: cross_grad
 
     ! ADMM method (stores auxiliary arrays).
-    type(t_admm_method) :: admm_method
+    type(t_admm_method) :: admm_method(2)
 
     ! ADMM term cost.
     real(kind=CUSTOM_REAL) :: admm_cost
@@ -152,11 +153,21 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     this%add_clustering = .true.
   endif
 
+  if (par%admm_type > 0) then
+    do i = 1, 2
+      if (par%problem_weight(i) /= 0.d0) then
+        this%add_admm(i) = .true.
+      else
+        this%add_admm(i) = .false.
+      endif
+    enddo
+  endif
+
   this%nelements_total = par%nelements_total
 
   if (myrank == 0) then
-    print *, 'add_damping1 =', this%add_damping(1)
-    print *, 'add_damping2 =', this%add_damping(2)
+    print *, 'add_damping =', this%add_damping
+    print *, 'add_admm =', this%add_admm
     print *, 'add_cross_grad, add_clustering =', this%add_cross_grad, this%add_clustering
     print *, 'myrank, ndata1, nelements1 =', myrank, par%ndata(1), par%nelements
     print *, 'myrank, ndata2, nelements2 =', myrank, par%ndata(2), par%nelements
@@ -219,14 +230,15 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     endif
   endif
 
-  if (par%admm_type > 0) then
-    ! Add only one ADMM constraint at a time.
-    nl = nl + 1 * par%nelements_total
-    nnz = nnz + 1 * par%nelements
-    nl_empty = nl_empty + par%nelements_total - par%nelements
+  do i = 1, 2
+    if (this%add_admm(i)) then
+      nl = nl + par%nelements_total
+      nnz = nnz + par%nelements
+      nl_empty = nl_empty + par%nelements_total - par%nelements
 
-    call this%admm_method%initialize(par%nelements, myrank)
-  endif
+      call this%admm_method(i)%initialize(par%nelements, myrank)
+    endif
+  enddo
 
   if (this%add_clustering) then
     nl = nl + 2 * par%nelements_total
@@ -243,9 +255,11 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   ierr = 0
 
-  if (par%admm_type > 0) then
-    allocate(this%x0_ADMM(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
-  endif
+  do i = 1, 2
+    if (this%add_admm(i)) then
+      allocate(this%x0_ADMM(i)%val(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
+    endif
+  enddo
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize!", myrank, ierr)
 
@@ -309,8 +323,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
   integer :: line_start(2), line_end(2), param_shift(2)
   integer :: damping_param_shift
   real(kind=CUSTOM_REAL) :: cost
-  logical :: solve_gravity_only
-  logical :: solve_mag_only
   real(kind=CUSTOM_REAL) :: norm_power
   integer :: lc
 
@@ -388,31 +400,10 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
   enddo
 
   ! ***** ADMM method *****
-
-  if (par%admm_type > 0) then
-
-    solve_gravity_only = .false.
-    solve_mag_only = .false.
-
-    if (par%problem_weight(1) /= 0.d0 .and. par%problem_weight(2) == 0.d0) then
-      solve_gravity_only = .true.
-
-    else if (par%problem_weight(1) == 0.d0 .and. par%problem_weight(2) /= 0.d0) then
-      solve_mag_only = .true.
-    endif
-
-    if (solve_gravity_only) then
-      i = 1
-      call this%admm_method%iterate_admm_arrays(model(i)%nlithos, model(i)%min_bound, model(i)%max_bound, &
-                                                model(i)%val, this%x0_ADMM, myrank)
-    else if (solve_mag_only) then
-      i = 2
-      call this%admm_method%iterate_admm_arrays(model(i)%nlithos, model(i)%min_bound, model(i)%max_bound, &
-                                                model(i)%val, this%x0_ADMM, myrank)
-    endif
-
-    if (solve_gravity_only .or. solve_mag_only) then
-    ! Add ADMM constraints only in separate (single) inversions.
+  do i = 1, 2
+    if (this%add_admm(i)) then
+      call this%admm_method(i)%iterate_admm_arrays(model(i)%nlithos, model(i)%min_bound, model(i)%max_bound, &
+                                                   model(i)%val, this%x0_ADMM(i)%val, myrank)
 
       ! Use the L2 norm for the ADMM constraints.
       norm_power = 2.0d0
@@ -422,20 +413,16 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
 
       ! Note: with wavelet compression we currently cannot have the local weight.
       call damping%add(this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), arr(i)%column_weight, &
-                       model(i)%val(:, 1), this%x0_ADMM, param_shift(i), myrank, nbproc)
+                       model(i)%val(:, 1), this%x0_ADMM(i)%val, param_shift(i), myrank, nbproc)
 
       ! Calculate the ADMM cost in parallel.
-      call calculate_cost(par%nelements, this%admm_method%z, model(i)%val(:, 1), cost, .true., nbproc)
+      call calculate_cost(par%nelements, this%admm_method(i)%z, model(i)%val(:, 1), cost, .true., nbproc)
       this%admm_cost = sqrt(cost)
 
       if (myrank == 0) print *, "ADMM cost |x - z| / |z| =", this%admm_cost
       if (myrank == 0) print *, 'nel (with ADMM) = ', this%matrix_cons%get_number_elements()
-
-    else
-      call this%matrix_cons%add_empty_rows(this%nelements_total, myrank)
     endif
-
-  endif
+  enddo
 
   ! ***** Cross-gradient *****
 
