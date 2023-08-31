@@ -45,34 +45,37 @@ contains
 !======================================================================================
 ! Apply forward/inverse transfrom to the solver model.
 !======================================================================================
-subroutine apply_wavelet_transform(nelements, nx, ny, nz, v, v_full, FWD, &
+subroutine apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v, model_full, FWD, &
                                    compression_type, SOLVE_PROBLEM, myrank, nbproc)
-  integer, intent(in) :: nelements, nx, ny, nz
+  integer, intent(in) :: nelements, nx, ny, nz, ncomponents
   logical, intent(in) :: FWD
   integer, intent(in) :: compression_type
   logical, intent(in) :: SOLVE_PROBLEM(2)
   integer, intent(in) :: myrank, nbproc
 
   ! Buffer for wavelet transform.
-  real(kind=CUSTOM_REAL), intent(inout) :: v_full(nx * ny * nz)
+  real(kind=CUSTOM_REAL), intent(inout) :: model_full(nx * ny * nz)
   ! Converted to/from wavelet domain result.
-  real(kind=CUSTOM_REAL), intent(inout) :: v(nelements, 2)
+  real(kind=CUSTOM_REAL), intent(inout) :: v(nelements, ncomponents, 2)
 
-  integer :: i
+  integer :: i, k
 
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) then
-      call get_full_array(v(:, i), nelements, v_full, .false., myrank, nbproc)
+      ! Loop over the model components.
+      do k = 1, ncomponents
+        call get_full_array(v(:, k, i), nelements, model_full, .false., myrank, nbproc)
 
-      if (myrank == 0) then
-        if (FWD) then
-          call forward_wavelet(v_full, nx, ny, nz, compression_type)
-        else
-          call inverse_wavelet(v_full, nx, ny, nz, compression_type)
+        if (myrank == 0) then
+          if (FWD) then
+            call forward_wavelet(model_full, nx, ny, nz, compression_type)
+          else
+            call inverse_wavelet(model_full, nx, ny, nz, compression_type)
+          endif
         endif
-      endif
 
-      call scatter_full_array(nelements, v_full, v(:, i), myrank, nbproc)
+        call scatter_full_array(nelements, model_full, v(:, k, i), myrank, nbproc)
+      enddo
     endif
   enddo
 
@@ -84,11 +87,11 @@ end subroutine apply_wavelet_transform
 !======================================================================================
 subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
                              matrix_sensit, matrix_cons, u, x, &
-                             SOLVE_PROBLEM, nelements, nx, ny, nz, compression_type, myrank, nbproc)
+                             SOLVE_PROBLEM, nelements, nx, ny, nz, ncomponents, compression_type, myrank, nbproc)
   integer, intent(in) :: nlines, ncolumns, niter
   real(kind=CUSTOM_REAL), intent(in) :: rmin, gamma
   logical, intent(in) :: SOLVE_PROBLEM(2)
-  integer, intent(in) :: nelements, nx, ny, nz, compression_type
+  integer, intent(in) :: nelements, nx, ny, nz, ncomponents, compression_type
   integer, intent(in) :: myrank, nbproc
   type(t_sparse_matrix), intent(in) :: matrix_sensit
   type(t_sparse_matrix), intent(in) :: matrix_cons
@@ -107,7 +110,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w
 
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v2
-  ! Full v for one of the problems.
+  ! Buffer for the full model (for one problem and one component), for wavelet transform.
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v1_full
 
   if (myrank == 0) print *, 'Entered subroutine lsqr_solve_sensit, gamma =', gamma
@@ -155,7 +158,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
 
   if (compression_type > 0) then
     ! Convert v2 from wavelet domain.
-    call apply_wavelet_transform(nelements, nx, ny, nz, v2, v1_full, &
+    call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
                                  .false., compression_type, SOLVE_PROBLEM, myrank, nbproc)
   endif
 
@@ -192,7 +195,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
 
     if (compression_type > 0) then
       ! Convert v to wavelet domain.
-      call apply_wavelet_transform(nelements, nx, ny, nz, v2, v1_full, &
+      call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
                                    .true., compression_type, SOLVE_PROBLEM, myrank, nbproc)
     endif
 
@@ -220,7 +223,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
 
     if (compression_type > 0) then
       ! Convert v2 from wavelet domain.
-      call apply_wavelet_transform(nelements, nx, ny, nz, v2, v1_full, &
+      call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
                                    .false., compression_type, SOLVE_PROBLEM, myrank, nbproc)
     endif
 

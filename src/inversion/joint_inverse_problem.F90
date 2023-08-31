@@ -458,7 +458,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
   if (par%method == 1) then
     call lsqr_solve_sensit(size(this%b_RHS), size(delta_model), par%niter, par%rmin, par%gamma, &
                            this%matrix_sensit, this%matrix_cons, this%b_RHS, delta_model, &
-                           SOLVE_PROBLEM, par%nelements, par%nx, par%ny, par%nz, par%compression_type, myrank, nbproc)
+                           SOLVE_PROBLEM, par%nelements, par%nx, par%ny, par%nz, par%nmodel_components, &
+                           par%compression_type, myrank, nbproc)
   else
     call exit_MPI("Unknown solver type!", myrank, 0)
   endif
