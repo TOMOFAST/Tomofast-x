@@ -23,7 +23,7 @@ module damping
   use mpi_tools, only: exit_MPI
   use sparse_matrix
   use parallel_tools
-  use wavelet_transform
+  use wavelet_utils
 
   implicit none
 
@@ -95,12 +95,13 @@ end subroutine damping_initialize
 ! Tested in unit_tests.f90 in test_damping_identity_matrix().
 !===========================================================================================
 subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
-                       model, model_ref, param_shift, myrank, nbproc, local_weight)
+                       model, model_ref, param_shift, WAVELET_DOMAIN, myrank, nbproc, local_weight)
   class(t_damping), intent(inout) :: this
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(this%nelements)
   real(kind=CUSTOM_REAL), intent(in) :: model(this%nelements)
   real(kind=CUSTOM_REAL), intent(in) :: model_ref(this%nelements)
   integer, intent(in) :: nrows, param_shift
+  logical, intent(in) :: WAVELET_DOMAIN
   integer, intent(in) :: myrank, nbproc
   real(kind=CUSTOM_REAL), optional, intent(in) :: local_weight(this%nelements)
 
@@ -111,11 +112,12 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
   integer :: row_beg, row_end
   integer :: ierr
   real(kind=CUSTOM_REAL) :: value
+  logical :: SOLVE_PROBLEM(1)
 
   !---------------------------------------------------------------------
   ! Calculating the model difference: (m - m_ref), which is used in the right-hand side, and in the Lp norm multiplier.
   real(kind=CUSTOM_REAL), allocatable :: model_diff(:)
-!  real(kind=CUSTOM_REAL), allocatable :: model_diff_full(:)
+  real(kind=CUSTOM_REAL), allocatable :: model_diff_full(:)
 
   allocate(model_diff(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
@@ -126,52 +128,27 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
     model_diff(i) = model_diff(i) / column_weight(i)
   enddo
 
-  ! The number of elements on CPUs with rank smaller than myrank.
-  nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
+  if (this%compression_type > 0 .and. WAVELET_DOMAIN) then
+    ! Transform the model difference to the wavelet domain.
+    SOLVE_PROBLEM = .true.
 
-!  if (this%compression_type > 0) then
-!  ! Transform the model difference to the wavelet domain.
-!
-!    if (nbproc > 1) then
-!    ! Parallel version.
-!
-!      ! Allocate the full array on master rank only.
-!      if (myrank == 0) then
-!        allocate(model_diff_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-!      else
-!        ! Fortran standard requires that allocatable array is allocated when passing by argument.
-!        allocate(model_diff_full(1), source=0._CUSTOM_REAL, stat=ierr)
-!      endif
-!
-!      if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in damping_add!", myrank, ierr)
-!
-!      ! Gather the full model from all processors to the master rank.
-!      call get_full_array(model_diff, this%nelements, model_diff_full, .false., myrank, nbproc)
-!
-!      if (myrank == 0) then
-!        ! Transform to wavelet domain.
-!        call forward_wavelet(model_diff_full, this%nx, this%ny, this%nz, this%compression_type)
-!      endif
-!
-!      ! Scatter the local array parts.
-!      call scatter_full_array(this%nelements, model_diff_full, model_diff, myrank, nbproc)
-!
-!      deallocate(model_diff_full)
-!
-!    else
-!    ! Serial version.
-!      ! Transform to wavelet domain.
-!      call forward_wavelet(model_diff, this%nx, this%ny, this%nz, this%compression_type)
-!    endif
-!
-!    if (this%norm_power /= 2.d0) then
-!      call exit_MPI("Lp-norm with p /= 2 is not supported with matrix compression yet!", myrank, 0)
-!    endif
-!  endif
-  !---------------------------------------------------------------------
+    if (myrank == 0) then
+      ! Allocate a buffer for wavelet transform on the master rank only.
+      allocate(model_diff_full(this%nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+    else
+      allocate(model_diff_full(1), source=0._CUSTOM_REAL, stat=ierr)
+    endif
+
+    call apply_wavelet_transform(this%nelements, this%nx, this%ny, this%nz, 1, &
+                                 model_diff, model_diff_full, &
+                                 .true., this%compression_type, 1, SOLVE_PROBLEM, myrank, nbproc)
+  endif
 
   ! First matrix row (in the big matrix) of the damping matrix that will be added.
   row_beg = matrix%get_current_row_number() + 1
+
+  ! The number of elements on CPUs with rank smaller than myrank.
+  nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
 
   ! Add empty lines.
   call matrix%add_empty_rows(nsmaller, myrank)

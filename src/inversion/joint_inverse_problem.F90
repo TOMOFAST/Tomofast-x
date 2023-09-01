@@ -36,7 +36,7 @@ module joint_inverse_problem
   use clustering
   use damping_gradient
   use parallel_tools
-  use wavelet_transform
+  use wavelet_utils
   use costs
 
   implicit none
@@ -85,6 +85,9 @@ module joint_inverse_problem
     type(t_clustering), public :: clustering
 
     integer :: ndata_lines
+
+    ! Flag defining if we solve inversion in the wavelet domain for the model vector.
+    logical :: WAVELET_DOMAIN
 
   contains
     private
@@ -185,6 +188,15 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   this%admm_cost = 0.d0
   this%damping_gradient_cost = 0.d0
+
+  ! Determine if we perform inversion using wavelet domain for the model update vector.
+  this%WAVELET_DOMAIN = .true.
+  if (this%add_cross_grad .or. this%add_clustering .or. &
+      this%add_damping_gradient(1) .or. this%add_damping_gradient(2)) then
+    this%WAVELET_DOMAIN = .false.
+  endif
+
+  if (myrank == 0) print *, 'WAVELET_DOMAIN =', this%WAVELET_DOMAIN
 
   !--------------------------------------------------------------------------------------
   ! Calculate number of matrix rows and (approx.) non-zero elements.
@@ -324,8 +336,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
   real(kind=CUSTOM_REAL) :: cost
   real(kind=CUSTOM_REAL) :: norm_power
   integer :: lc
-
   logical :: SOLVE_PROBLEM(2)
+  integer :: buffer_index
 
   ! The number of times this subroutine has been called.
   ! This is effectively the major loop iteration number.
@@ -372,7 +384,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
       do k = 1, par%nmodel_components
         damping_param_shift = param_shift(i) + (k - 1) * par%nelements
         call damping%add(this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), arr(i)%column_weight, &
-                         model(i)%val(:, k), model(i)%val_prior(:, k), damping_param_shift, myrank, nbproc)
+                         model(i)%val(:, k), model(i)%val_prior(:, k), damping_param_shift, &
+                         this%WAVELET_DOMAIN, myrank, nbproc)
 
         if (myrank == 0) print *, 'damping term cost = ', damping%get_cost()
       enddo
@@ -412,7 +425,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
 
       ! Note: with wavelet compression we currently cannot have the local weight.
       call damping%add(this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), arr(i)%column_weight, &
-                       model(i)%val(:, 1), this%x0_ADMM(i)%val, param_shift(i), myrank, nbproc)
+                       model(i)%val(:, 1), this%x0_ADMM(i)%val, param_shift(i), &
+                       this%WAVELET_DOMAIN, myrank, nbproc)
 
       ! Calculate the ADMM cost in parallel.
       call calculate_cost(par%nelements, this%admm_method(i)%z, model(i)%val(:, 1), cost, .true., nbproc)
@@ -445,42 +459,25 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
     call lsqr_solve_sensit(size(this%b_RHS), size(delta_model), par%niter, par%rmin, par%gamma, &
                            this%matrix_sensit, this%matrix_cons, this%b_RHS, delta_model, &
                            SOLVE_PROBLEM, par%nelements, par%nx, par%ny, par%nz, par%nmodel_components, &
-                           par%compression_type, myrank, nbproc)
+                           par%compression_type, .not. this%WAVELET_DOMAIN, myrank, nbproc)
   else
     call exit_MPI("Unknown solver type!", myrank, 0)
   endif
 
   !-------------------------------------------------------------------------------------
-  ! Unscale the model update.
+  ! Convert the model update to original variables.
   !-------------------------------------------------------------------------------------
-!  if (par%compression_type > 0) then
-!  ! Applying the Inverse Wavelet Transform.
-!    if (nbproc > 1) then
-!      do i = 1, 2
-!        if (SOLVE_PROBLEM(i)) then
-!          do k = 1, par%nmodel_components
-!
-!            call get_full_array(delta_model(:, k, i), par%nelements, model(i)%val_full(:, k), .false., myrank, nbproc)
-!
-!            if (myrank == 0) then
-!              call inverse_wavelet(model(i)%val_full(:, k), par%nx, par%ny, par%nz, par%compression_type)
-!            endif
-!
-!            ! Scatter the local model parts.
-!            call scatter_full_array(par%nelements, model(i)%val_full(:, k), delta_model(:, k, i), myrank, nbproc)
-!          enddo
-!        endif
-!      enddo
-!
-!    else
-!    ! Serial version.
-!      do k = 1, par%nmodel_components
-!        if (SOLVE_PROBLEM(1)) call inverse_wavelet(delta_model(:, k, 1), par%nx, par%ny, par%nz, par%compression_type)
-!        if (SOLVE_PROBLEM(2)) call inverse_wavelet(delta_model(:, k, 2), par%nx, par%ny, par%nz, par%compression_type)
-!      enddo
-!    endif
-!  endif
+  if (par%compression_type > 0 .and. this%WAVELET_DOMAIN) then
+    ! Index for the full model buffer.
+    buffer_index = merge(1, 2, SOLVE_PROBLEM(1) .eqv. .true.)
 
+    ! Convert the model update from the wavelet domain.
+    call apply_wavelet_transform(par%nelements, par%nx, par%ny, par%nz, par%nmodel_components, &
+                                 delta_model, model(buffer_index)%val_full(:, 1), &
+                                 .false., par%compression_type, 2, SOLVE_PROBLEM, myrank, nbproc)
+  endif
+
+  ! Apply the inverse depth weighting.
   if (SOLVE_PROBLEM(1)) call rescale_model(par%nelements, par%nmodel_components, delta_model(:, :, 1), arr(1)%column_weight)
   if (SOLVE_PROBLEM(2)) call rescale_model(par%nelements, par%nmodel_components, delta_model(:, :, 2), arr(2)%column_weight)
 

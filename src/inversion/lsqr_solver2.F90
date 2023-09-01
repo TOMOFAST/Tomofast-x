@@ -45,11 +45,13 @@ contains
 !======================================================================================
 subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
                              matrix_sensit, matrix_cons, u, x, &
-                             SOLVE_PROBLEM, nelements, nx, ny, nz, ncomponents, compression_type, myrank, nbproc)
+                             SOLVE_PROBLEM, nelements, nx, ny, nz, ncomponents, compression_type, &
+                             WAVELET_DOMAIN, myrank, nbproc)
   integer, intent(in) :: nlines, ncolumns, niter
   real(kind=CUSTOM_REAL), intent(in) :: rmin, gamma
   logical, intent(in) :: SOLVE_PROBLEM(2)
   integer, intent(in) :: nelements, nx, ny, nz, ncomponents, compression_type
+  logical, intent(in) :: WAVELET_DOMAIN
   integer, intent(in) :: myrank, nbproc
   type(t_sparse_matrix), intent(in) :: matrix_sensit
   type(t_sparse_matrix), intent(in) :: matrix_cons
@@ -114,7 +116,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
   ! Compute v = Ht.u.
   call matrix_sensit%trans_mult_vector(u(1 : nlines_sensit), v2)
 
-  if (compression_type > 0) then
+  if (compression_type > 0 .and. WAVELET_DOMAIN) then
     ! Convert v2 from wavelet domain.
     call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
                                  .false., compression_type, 2, SOLVE_PROBLEM, myrank, nbproc)
@@ -151,7 +153,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
 
     v2 = v
 
-    if (compression_type > 0) then
+    if (compression_type > 0 .and. WAVELET_DOMAIN) then
       ! Convert v to wavelet domain.
       call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
                                    .true., compression_type, 2, SOLVE_PROBLEM, myrank, nbproc)
@@ -179,7 +181,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
     ! Compute v = v + Ht.u.
     call matrix_sensit%trans_mult_vector(u(1 : nlines_sensit), v2)
 
-    if (compression_type > 0) then
+    if (compression_type > 0 .and. WAVELET_DOMAIN) then
       ! Convert v2 from wavelet domain.
       call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
                                    .false., compression_type, 2, SOLVE_PROBLEM, myrank, nbproc)
