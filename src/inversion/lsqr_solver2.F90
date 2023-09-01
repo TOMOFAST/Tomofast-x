@@ -117,7 +117,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
   if (compression_type > 0) then
     ! Convert v2 from wavelet domain.
     call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
-                                 .false., compression_type, SOLVE_PROBLEM, myrank, nbproc)
+                                 .false., compression_type, 2, SOLVE_PROBLEM, myrank, nbproc)
   endif
 
   v = v2
@@ -154,7 +154,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
     if (compression_type > 0) then
       ! Convert v to wavelet domain.
       call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
-                                   .true., compression_type, SOLVE_PROBLEM, myrank, nbproc)
+                                   .true., compression_type, 2, SOLVE_PROBLEM, myrank, nbproc)
     endif
 
     ! u = u + H_loc.v
@@ -182,7 +182,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
     if (compression_type > 0) then
       ! Convert v2 from wavelet domain.
       call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
-                                   .false., compression_type, SOLVE_PROBLEM, myrank, nbproc)
+                                   .false., compression_type, 2, SOLVE_PROBLEM, myrank, nbproc)
     endif
 
     v = v + v2

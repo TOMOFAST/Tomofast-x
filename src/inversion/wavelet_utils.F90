@@ -35,21 +35,22 @@ contains
 ! Apply forward/inverse transfrom to the parallel model vector.
 !======================================================================================
 subroutine apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v, model_full, FWD, &
-                                   compression_type, SOLVE_PROBLEM, myrank, nbproc)
+                                   compression_type, nproblems, SOLVE_PROBLEM, myrank, nbproc)
   integer, intent(in) :: nelements, nx, ny, nz, ncomponents
   logical, intent(in) :: FWD
   integer, intent(in) :: compression_type
-  logical, intent(in) :: SOLVE_PROBLEM(2)
+  integer, intent(in) :: nproblems
+  logical, intent(in) :: SOLVE_PROBLEM(nproblems)
   integer, intent(in) :: myrank, nbproc
 
   ! Buffer for wavelet transform.
   real(kind=CUSTOM_REAL), intent(inout) :: model_full(nx * ny * nz)
   ! Converted to/from wavelet domain result.
-  real(kind=CUSTOM_REAL), intent(inout) :: v(nelements, ncomponents, 2)
+  real(kind=CUSTOM_REAL), intent(inout) :: v(nelements, ncomponents, nproblems)
 
   integer :: i, k
 
-  do i = 1, 2
+  do i = 1, nproblems
     if (SOLVE_PROBLEM(i)) then
       ! Loop over the model components.
       do k = 1, ncomponents
