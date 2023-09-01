@@ -423,7 +423,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
       call damping%initialize(par%nelements, par%rho_ADMM(i), par%problem_weight(i), norm_power, &
                               par%compression_type, par%nx, par%ny, par%nz)
 
-      ! Note: with wavelet compression we currently cannot have the local weight.
       call damping%add(this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), arr(i)%column_weight, &
                        model(i)%val(:, 1), this%x0_ADMM(i)%val, param_shift(i), &
                        this%WAVELET_DOMAIN, myrank, nbproc)
