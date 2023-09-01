@@ -153,12 +153,11 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     this%add_clustering = .true.
   endif
 
+  this%add_admm = .false.
   if (par%admm_type > 0) then
     do i = 1, 2
       if (par%problem_weight(i) /= 0.d0) then
         this%add_admm(i) = .true.
-      else
-        this%add_admm(i) = .false.
       endif
     enddo
   endif
