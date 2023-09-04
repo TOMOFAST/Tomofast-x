@@ -56,6 +56,11 @@ forward.depthWeighting.magn.power          = 3.0d0
 forward.depthWeighting.magn.beta           = 1.d0
 forward.depthWeighting.magn.Z0             = 0.d0
 
+# Local depth weight multipliers.
+forward.depthWeighting.applyLocalWeights   = 0
+forward.depthWeighting.grav.file           = None
+forward.depthWeighting.magn.file           = None
+
 ===================================================================================
 SENSITIVITY KERNEL
 ===================================================================================

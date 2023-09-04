@@ -72,6 +72,10 @@ module parameters_gravmag
     ! Empirical constant (Z-shift) for depth weighting type #1.
     real(kind=CUSTOM_REAL) :: Z0
 
+    ! Local depth weight preconditioning.
+    integer :: apply_local_weights
+    character(len=256) :: local_weight_file
+
     !------ Matrix compression ---------------------------------------------
     ! Parameters for reduction of the memory requirements (to store the sensitivity matrix).
     ! 0 -none, 1 - wavelet
@@ -118,6 +122,9 @@ subroutine parameters_base_broadcast(this, myrank)
   call MPI_Bcast(this%depth_weighting_power, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%depth_weighting_beta, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%Z0, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
+  call MPI_Bcast(this%apply_local_weights, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%local_weight_file, 256, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
 
   call MPI_Bcast(this%compression_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%compression_rate, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)

@@ -517,6 +517,19 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
         read(10, *) mpar%Z0
         call print_arg(myrank, parname, mpar%Z0)
 
+      case("forward.depthWeighting.applyLocalWeights")
+        read(10, *) gpar%apply_local_weights
+        call print_arg(myrank, parname, gpar%apply_local_weights)
+        mpar%apply_local_weights = gpar%apply_local_weights
+
+      case("forward.depthWeighting.grav.file")
+        call read_filename(10, gpar%local_weight_file)
+        call print_arg(myrank, parname, gpar%local_weight_file)
+
+      case("forward.depthWeighting.magn.file")
+        call read_filename(10, mpar%local_weight_file)
+        call print_arg(myrank, parname, mpar%local_weight_file)
+
       ! SENSITIVITY KERNEL parameters -----------------------
 
       case("sensit.readFromFiles")
