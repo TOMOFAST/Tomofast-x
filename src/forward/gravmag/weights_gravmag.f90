@@ -33,6 +33,7 @@ module weights_gravmag
   private
 
   public :: calculate_depth_weight
+  public :: apply_local_depth_weighting
 
   private :: normalize_depth_weight
   private :: calc_depth_weight_pixel
@@ -200,16 +201,16 @@ end function calc_depth_weight_pixel
 !===================================================================================
 ! Normalizes the depth weight.
 !===================================================================================
-subroutine normalize_depth_weight(damping_weight, myrank, nbproc)
+subroutine normalize_depth_weight(depth_weight, myrank, nbproc)
   integer, intent(in) :: myrank, nbproc
 
-  real(kind=CUSTOM_REAL), intent(inout) :: damping_weight(:)
+  real(kind=CUSTOM_REAL), intent(inout) :: depth_weight(:)
 
   integer :: ierr
   real(kind=CUSTOM_REAL) :: norm, norm_glob
 
   ! Find the maximum value in the depth weight array.
-  norm = maxval(damping_weight)
+  norm = maxval(depth_weight)
   if (nbproc > 1) then
     call mpi_allreduce(norm, norm_glob, 1, CUSTOM_MPI_TYPE, MPI_MAX, MPI_COMM_WORLD, ierr)
     norm = norm_glob
@@ -217,11 +218,72 @@ subroutine normalize_depth_weight(damping_weight, myrank, nbproc)
 
   if (norm /= 0) then
     ! Normalize.
-    damping_weight = damping_weight / norm
+    depth_weight = depth_weight / norm
   else
-    call exit_MPI("Zero damping weight norm! Exiting.", myrank, 0)
+    call exit_MPI("Zero depth weight norm! Exiting.", myrank, 0)
   endif
 
 end subroutine normalize_depth_weight
+
+!===================================================================================
+! Precondition the depth weight with local weights read from file.
+!===================================================================================
+subroutine apply_local_depth_weighting(par, column_weight, myrank, nbproc)
+  class(t_parameters_base), intent(in) :: par
+  integer, intent(in) :: myrank, nbproc
+  real(kind=CUSTOM_REAL), intent(inout) :: column_weight(par%nelements)
+
+  character(len=256) :: msg
+  integer :: ierr
+  integer :: i, ind
+  integer :: nsmaller, nelements_total, nelements_read
+  real(kind=CUSTOM_REAL) :: local_weight
+
+  if (par%apply_local_weight > 0) then
+
+    open(10, file=trim(par%local_weight_file), status='old', action='read', iostat=ierr, iomsg=msg)
+    if (ierr /= 0) call exit_MPI("Error in opening the local weight file! path=" &
+                   //par%local_weight_file//" iomsg="//msg, myrank, ierr)
+
+    read(10, *, iostat=ierr) nelements_read
+
+    nelements_total = par%nx * par%ny * par%nz
+
+    ! Sanity check.
+    if (nelements_total /= nelements_read) &
+      call exit_MPI("The local weight is not correctly defined!", myrank, 0)
+
+    ! The number of elements on CPUs with rank smaller than myrank.
+    nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
+
+    ! Reading local weights from file.
+    do i = 1, nelements_total
+      if (i > nsmaller .and. i <= nsmaller + par%nelements) then
+        read(10, *, iostat=ierr) local_weight
+
+        if (ierr /= 0) &
+          call exit_MPI("Problem with reading the local weight!", myrank, ierr)
+
+        ind = i - nsmaller
+
+        ! Apply local weight.
+        if (local_weight /= 0.d0) then
+          ! Divide the column weight which makes the depth weight multiplied.
+          column_weight(ind) = column_weight(ind) / local_weight
+        else
+          call exit_MPI("Zero local weight in apply_local_depth_weighting!", myrank, ierr)
+        endif
+      else
+        ! Skip the line.
+        read(10, *)
+      endif
+
+      if (i > nsmaller + par%nelements) then
+        exit
+      endif
+    enddo
+  endif
+
+end subroutine apply_local_depth_weighting
 
 end module weights_gravmag

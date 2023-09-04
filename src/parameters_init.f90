@@ -517,10 +517,10 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
         read(10, *) mpar%Z0
         call print_arg(myrank, parname, mpar%Z0)
 
-      case("forward.depthWeighting.applyLocalWeights")
-        read(10, *) gpar%apply_local_weights
-        call print_arg(myrank, parname, gpar%apply_local_weights)
-        mpar%apply_local_weights = gpar%apply_local_weights
+      case("forward.depthWeighting.applyLocalWeight")
+        read(10, *) gpar%apply_local_weight
+        call print_arg(myrank, parname, gpar%apply_local_weight)
+        mpar%apply_local_weight = gpar%apply_local_weight
 
       case("forward.depthWeighting.grav.file")
         call read_filename(10, gpar%local_weight_file)

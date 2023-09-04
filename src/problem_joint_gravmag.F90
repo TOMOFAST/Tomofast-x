@@ -167,13 +167,17 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   !-------------------------------------------------------------------------------------------------------
   if (gpar%sensit_read == 0) then
-    ! Calculates the depth weights.
+    ! Calculates the depth weight.
     if (SOLVE_PROBLEM(1)) call calculate_depth_weight(gpar, iarr(1), model(1)%grid_full, data(1), myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call calculate_depth_weight(mpar, iarr(2), model(2)%grid_full, data(2), myrank, nbproc)
 
     ! Precondition the column weights (to balance the columns in joint inversion).
     if (SOLVE_PROBLEM(1)) iarr(1)%column_weight = ipar%column_weight_multiplier(1) * iarr(1)%column_weight
     if (SOLVE_PROBLEM(2)) iarr(2)%column_weight = ipar%column_weight_multiplier(2) * iarr(2)%column_weight
+
+    ! Precondition the depth weight with local weights.
+    if (SOLVE_PROBLEM(1)) call apply_local_depth_weighting(gpar, iarr(1)%column_weight, myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call apply_local_depth_weighting(mpar, iarr(2)%column_weight, myrank, nbproc)
 
     ! Calculate and write the sensitivity kernel to files.
     if (SOLVE_PROBLEM(1)) call calculate_and_write_sensit(gpar, model(1)%grid_full, data(1), iarr(1)%column_weight, &
