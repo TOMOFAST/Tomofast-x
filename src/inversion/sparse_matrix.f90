@@ -562,7 +562,7 @@ subroutine sparse_matrix_allocate_arrays(this, myrank)
   integer :: ierr
   real(kind=CUSTOM_REAL) :: mem, mem_loc
 
-  if (this%nnz < 0 .or. this%nl <= 0) then
+  if (this%nnz < 0 .or. this%nl < 0) then
     call exit_MPI("Wrong sizes in sparse_matrix_allocate_arrays!", myrank, 0)
   endif
 
