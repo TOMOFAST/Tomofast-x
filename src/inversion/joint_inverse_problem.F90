@@ -325,7 +325,8 @@ subroutine joint_inversion_reset(this, myrank)
 end subroutine joint_inversion_reset
 
 !================================================================================================
-! Joint inversion of two field.
+! Joint inversion of two problems.
+! It is also used for single inversions.
 !================================================================================================
 subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
