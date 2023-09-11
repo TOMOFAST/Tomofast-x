@@ -127,8 +127,6 @@ subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix
     j = model%grid_full%j_(p)
     k = model%grid_full%k_(p)
 
-    call matrix%new_row(myrank)
-
     gradient_fwd = get_grad(model%val_full(:, 1), model%grid_full, i, j, k, FWD_TYPE)
     !gradient_bwd = get_grad(model%val_full(:, 1), model%grid_full, i, j, k, BWD_TYPE)
 
@@ -145,6 +143,7 @@ subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix
         !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
         !ind(2) = model%grid_full%get_ind(i - 1, j, k) ! f(i - 1, j, k)
         !gradient_val = gradient_bwd%x
+        call matrix%new_row(myrank)
         cycle
       endif
 
@@ -159,6 +158,7 @@ subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix
         !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
         !ind(2) = model%grid_full%get_ind(i, j - 1, k) ! f(i, j - 1, k)
         !gradient_val = gradient_bwd%y
+        call matrix%new_row(myrank)
         cycle
       endif
 
@@ -173,6 +173,7 @@ subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix
         !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
         !ind(2) = model%grid_full%get_ind(i, j, k - 1) ! f(i, j, k - 1)
         !gradient_val = gradient_bwd%z
+        call matrix%new_row(myrank)
         cycle
       endif
 
@@ -192,6 +193,8 @@ subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix
         call matrix%add(val(i), param_shift + ind(i), myrank)
       endif
     enddo
+
+    call matrix%new_row(myrank)
 
     ! Setting the right-hand side.
     b_RHS(matrix%get_current_row_number()) = - this%problem_weight * this%beta * gradient_val * local_weight(p)

@@ -35,6 +35,8 @@ module sparse_matrix
     integer(kind=8), private :: nnz
     ! Actual number of nonzero elements.
     integer(kind=8), private :: nel
+    ! Last number of elements (when adding a new row).
+    integer(kind=8), private :: nel_last
     ! Total number of rows.
     integer, private :: nl
     ! Total actual number of non-empty rows.
@@ -112,6 +114,7 @@ subroutine sparse_matrix_initialize(this, nl, ncolumns, nnz, myrank, nl_empty)
   this%nl_current = 0
   this%nl_current_all = 0
   this%nel = 0
+  this%nel_last = 0
   this%nl_nonempty = 0
 
   this%nl = nl
@@ -138,6 +141,7 @@ pure subroutine sparse_matrix_reset(this)
   this%nl_current = 0
   this%nl_current_all = 0
   this%nel = 0
+  this%nel_last = 0
   this%nl_nonempty = 0
 
   if (allocated(this%sa)) then
@@ -194,13 +198,18 @@ subroutine sparse_matrix_finalize(this, myrank)
                   //"nl_current="//str(this%nl_current)//new_line('a') &
                   //"nl="//str(this%nl), myrank, 0)
 
+  ! Sanity check.
+  if (this%nel_last /= this%nel) then
+    call exit_MPI("Elements were added to the matrix after calling new_row() and before calling finalize()!", myrank, 0)
+  endif
+
   this%ijl(this%nl_current + 1) = this%nel + 1
 
   this%nl_nonempty = this%nl_current
 
   if (this%nl_nonempty < this%nl_nonempty_allocated) then
-    print *, "Note: there are more non-empty rows allocated than the actual number:", &
-             this%nl_nonempty, this%nl_nonempty_allocated, this%nl
+    if (myrank == 0) print *, "Note: there are more non-empty rows allocated than the actual number:", &
+                              this%nl_nonempty, this%nl_nonempty_allocated, this%nl
   endif
 
   call this%validate(myrank)
@@ -302,12 +311,17 @@ subroutine sparse_matrix_new_row(this, myrank)
                   //"nl_current="//str(this%nl_current)//new_line('a') &
                   //"nl="//str(this%nl), myrank, 0)
 
-  this%nl_current = this%nl_current + 1
-  this%ijl(this%nl_current) = this%nel + 1
-
-  ! To exclude empty rows.
   this%nl_current_all = this%nl_current_all + 1
-  this%rowptr(this%nl_current) = this%nl_current_all
+
+  ! Store only non-empty rows.
+  if (this%nel > this%nel_last) then
+    this%nl_current = this%nl_current + 1
+    this%ijl(this%nl_current) = this%nel_last + 1
+
+    this%rowptr(this%nl_current) = this%nl_current_all
+
+    this%nel_last = this%nel
+  endif
 
 end subroutine sparse_matrix_new_row
 

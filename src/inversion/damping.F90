@@ -155,8 +155,6 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
 
   ! Add lines with damping.
   do i = 1, this%nelements
-    call matrix%new_row(myrank)
-
     value = this%alpha * this%problem_weight
 
     if (this%norm_power /= 2.d0) then
@@ -170,6 +168,7 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
     endif
 
     call matrix%add(value, param_shift + i, myrank)
+    call matrix%new_row(myrank)
   enddo
 
   ! Add empty lines.

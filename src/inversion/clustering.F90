@@ -440,8 +440,6 @@ subroutine clustering_add(this, model1, model2, column_weight1, column_weight2, 
   ! Add matrix lines (Jacobian).
   do p = 1, this%nelements_total
 
-    call matrix%new_row(myrank)
-
     model_val(1) = model1%val_full(p, 1)
     model_val(2) = model2%val_full(p, 1)
 
@@ -471,6 +469,7 @@ subroutine clustering_add(this, model1, model2, column_weight1, column_weight2, 
         call matrix%add(matrix_val(2), ind + this%nelements, myrank)
       endif
     endif
+    call matrix%new_row(myrank)
 
     ! Calculate function value.
     if (this%optimization_type == 1) then

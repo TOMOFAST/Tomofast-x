@@ -278,9 +278,6 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
     ! Adding to the matrix and right-hand-side.
 
       ! Row with x-component.
-      call matrix%new_row(myrank)
-
-      b_RHS(matrix%get_current_row_number()) = - tau%val%x * glob_weight
 
       do l = 1, nderiv
         ind1 = tau%ind1(l)%x
@@ -298,11 +295,10 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
           call matrix%add(val2, ind2 + this%nparams_loc, myrank)
         endif
       enddo
+      call matrix%new_row(myrank)
+      b_RHS(matrix%get_current_row_number()) = - tau%val%x * glob_weight
 
       ! Row with y-component.
-      call matrix%new_row(myrank)
-
-      b_RHS(matrix%get_current_row_number()) = - tau%val%y * glob_weight
 
       do l = 1, nderiv
         ind1 = tau%ind1(l)%y
@@ -320,11 +316,10 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
           call matrix%add(val2, ind2 + this%nparams_loc, myrank)
         endif
       enddo
+      call matrix%new_row(myrank)
+      b_RHS(matrix%get_current_row_number()) = - tau%val%y * glob_weight
 
       ! Row with z-component.
-      call matrix%new_row(myrank)
-
-      b_RHS(matrix%get_current_row_number()) = - tau%val%z * glob_weight
 
       do l = 1, nderiv
         ind1 = tau%ind1(l)%z
@@ -342,8 +337,10 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
           call matrix%add(val2, ind2 + this%nparams_loc, myrank)
         endif
       enddo
-    endif
+      call matrix%new_row(myrank)
+      b_RHS(matrix%get_current_row_number()) = - tau%val%z * glob_weight
 
+    endif
   enddo
 
 end subroutine cross_gradient_calculate

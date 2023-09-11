@@ -78,10 +78,10 @@ subroutine test_normalize_columns(myrank, nbproc)
 
   ! Copy values from A to the sparse matrix.
   do j = 1, nrows
-    call matrix%new_row(myrank)
     do i = 1, ncolumns
       call matrix%add(A(i, j), i, myrank)
     enddo
+    call matrix%new_row(myrank)
   enddo
 
   call matrix%finalize(myrank)

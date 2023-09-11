@@ -99,11 +99,10 @@ subroutine test_lsqr_determined(myrank, nbproc)
 
   ! Building the matrix with right hand side.
   do j = 1, nrows
-    call matrix%new_row(myrank)
-
     do i = 1, nelements
       call matrix%add(dble(j), i, myrank)
     enddo
+    call matrix%new_row(myrank)
 
     b_RHS(j) = dble(j * nelements_total)
   enddo
@@ -179,8 +178,6 @@ subroutine test_lsqr_overdetermined_1(myrank, nbproc)
 
   ! Building the matrix.
   do i = 1, nrows
-    call matrix%new_row(myrank)
-
     xi = dble(i) / dble(nrows)
 
     if (nbproc == 1) then
@@ -191,6 +188,7 @@ subroutine test_lsqr_overdetermined_1(myrank, nbproc)
     else if (nbproc == 3) then
       call matrix%add(xi**myrank, 1, myrank)
     endif
+    call matrix%new_row(myrank)
 
     b_RHS(i) = b(1) + b(2) * xi + b(3) * xi**2
   enddo
@@ -289,8 +287,6 @@ subroutine test_lsqr_overdetermined_2(myrank, nbproc)
 
   ! Building the sparse matrix.
   do j = 1, nrows
-    call matrix%new_row(myrank)
-
     if (nbproc == 1) then
       do i = 1, ncols
         call matrix%add(a(i, j), i, myrank)
@@ -299,6 +295,8 @@ subroutine test_lsqr_overdetermined_2(myrank, nbproc)
     else if (nbproc == 3) then
       call matrix%add(a(myrank + 1, j), 1, myrank)
     endif
+
+    call matrix%new_row(myrank)
   enddo
 
   call matrix%finalize(myrank)
@@ -410,8 +408,6 @@ subroutine test_lsqr_underdetermined_1(myrank, nbproc)
 
   ! Building the matrix.
   do j = 1, nrows
-    call matrix%new_row(myrank)
-
     if (nbproc == 1) then
       do i = 1, ncols
         call matrix%add(a(i, j), i, myrank)
@@ -420,6 +416,7 @@ subroutine test_lsqr_underdetermined_1(myrank, nbproc)
     else if (nbproc == 3) then
       call matrix%add(a(myrank + 1, j), 1, myrank)
     endif
+    call matrix%new_row(myrank)
   enddo
 
   call matrix%finalize(myrank)
@@ -495,11 +492,10 @@ subroutine test_lsqr_underdetermined_2(myrank, nbproc)
   ! Building the matrix.
   val = 1.d0 / 4.d0
   do j = 1, nrows
-    call matrix%new_row(myrank)
-
     do i = 1, ncols_loc
       call matrix%add(val, i, myrank)
     enddo
+    call matrix%new_row(myrank)
   enddo
 
   call matrix%finalize(myrank)
@@ -574,11 +570,10 @@ subroutine test_lsqr_underdetermined_3(myrank, nbproc)
 
   ! Building the matrix.
   do j = 1, nrows
-    call matrix%new_row(myrank)
-
     do i = 1, ncols_loc
       call matrix%add(a(myrank * ncols_loc + i, j), i, myrank)
     enddo
+    call matrix%new_row(myrank)
   enddo
 
   call matrix%finalize(myrank)

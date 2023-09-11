@@ -721,9 +721,6 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
       ! Loop over data components.
       do d = 1, par%ndata_components
 
-        ! Adding the matrix line.
-        call sensit_matrix%new_row(myrank)
-
         ! Loop over model components.
         do k = 1, par%nmodel_components
 
@@ -795,6 +792,10 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
           nnz = nnz + iend - istart + 1
 
         enddo ! model components loop
+
+        ! Adding the matrix row.
+        call sensit_matrix%new_row(myrank)
+
       enddo ! data components loop
 
     enddo ! data loop
