@@ -70,15 +70,12 @@ module sparse_matrix
 
     procedure, public, pass :: initialize => sparse_matrix_initialize
     procedure, public, pass :: reset => sparse_matrix_reset
-    procedure, public, pass :: remove_lines => sparse_matrix_remove_lines
     procedure, public, pass :: finalize => sparse_matrix_finalize
-    procedure, public, pass :: finalize_part => sparse_matrix_finalize_part
 
     procedure, public, pass :: add => sparse_matrix_add
     procedure, public, pass :: add_row => sparse_matrix_add_row
     procedure, public, pass :: new_row => sparse_matrix_new_row
     procedure, public, pass :: add_empty_rows => sparse_matrix_add_empty_rows
-    procedure, public, pass :: add_matrix => sparse_matrix_add_matrix
 
     procedure, public, pass :: mult_vector => sparse_matrix_mult_vector
     procedure, public, pass :: add_mult_vector => sparse_matrix_add_mult_vector
@@ -154,37 +151,6 @@ pure subroutine sparse_matrix_reset(this)
 end subroutine sparse_matrix_reset
 
 !=========================================================================
-! Remove matrix lines from the bottom.
-!=========================================================================
-subroutine sparse_matrix_remove_lines(this, nlines_to_keep, myrank)
-  class(t_sparse_matrix), intent(inout) :: this
-  integer, intent(in) :: nlines_to_keep, myrank
-
-  integer :: i, row
-
-  this%nl_current_all = nlines_to_keep
-
-  ! Find a non-empty row index corresponding to nlines_to_keep.
-  row = 0
-  do i = 1, this%nl_nonempty
-    if (this%rowptr(i) == nlines_to_keep) then
-      row = i
-      exit
-    endif
-  enddo
-
-  this%nl_current = row
-
-  ! Sanity check.
-  if (this%rowptr(this%nl_current) /= this%nl_current_all) then
-    call exit_MPI("Wrong row index in sparse_matrix_remove_lines!", myrank, 0)
-  endif
-
-  this%nel = this%ijl(this%nl_current + 1) - 1
-
-end subroutine sparse_matrix_remove_lines
-
-!=========================================================================
 ! (1) Stores the index of last element.
 ! (2) Validates the matrix indexes.
 !=========================================================================
@@ -215,22 +181,6 @@ subroutine sparse_matrix_finalize(this, myrank)
   call this%validate(myrank)
 
 end subroutine sparse_matrix_finalize
-
-!============================================================================
-! Stores the index of last element (for the not fully built sparse matrix).
-! To be able to calculate the forward data using the big joint matrix.
-!============================================================================
-subroutine sparse_matrix_finalize_part(this, myrank)
-  class(t_sparse_matrix), intent(inout) :: this
-  integer, intent(in) :: myrank
-
-  this%ijl(this%nl_current + 1) = this%nel + 1
-
-  this%nl_nonempty = this%nl_current
-
-  call this%validate(myrank)
-
-end subroutine sparse_matrix_finalize_part
 
 !============================================================================
 ! Validates the boundaries of column indexes.
@@ -341,31 +291,6 @@ subroutine sparse_matrix_add_empty_rows(this, nrows, myrank)
   enddo
 
 end subroutine sparse_matrix_add_empty_rows
-
-!=================================================================================
-! Add a matrix B in the current matrix A below, so that a resulting matrix C is
-!
-! C = (    A )
-!     ( mu B ), where mu is a weighting factor.
-!=================================================================================
-subroutine sparse_matrix_add_matrix(this, matrix_B, mu, myrank)
-  class(t_sparse_matrix), intent(inout) :: this
-  type(t_sparse_matrix), intent(in) :: matrix_B
-  real(kind=CUSTOM_REAL), intent(in) :: mu
-  integer, intent(in) :: myrank
-
-  integer :: i
-  integer(kind=8) :: k
-
-  do i = 1, matrix_B%nl
-    call this%new_row(myrank)
-
-    do k = matrix_B%ijl(i), matrix_B%ijl(i + 1) - 1
-      call this%add(mu * matrix_B%sa(k), matrix_B%ija(k), myrank)
-    enddo
-  enddo
-
-end subroutine sparse_matrix_add_matrix
 
 !=========================================================================
 ! Computes the product between the sparse matrix and vector x: b = Ax.

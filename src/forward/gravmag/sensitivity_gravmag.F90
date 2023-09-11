@@ -803,8 +803,6 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
     close(78)
   enddo
 
-  call sensit_matrix%finalize_part(myrank)
-
   deallocate(sensit_columns)
   deallocate(sensit_compressed)
 
