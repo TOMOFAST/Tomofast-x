@@ -91,13 +91,13 @@ end function damping_gradient_get_cost
 ! Adding gradient constraints to the matrix and right-hand-side.
 !==================================================================================================================
 subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix, nrows, &
-                                b_RHS, param_shift, direction, myrank, nbproc)
+                                b_RHS, param_shift, direction, icomp, myrank, nbproc)
   class(t_damping_gradient), intent(inout) :: this
   type(t_model), intent(inout) :: model
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   real(kind=CUSTOM_REAL), intent(in) :: local_weight(:)
   integer, intent(in) :: param_shift, nrows
-  integer, intent(in) :: direction
+  integer, intent(in) :: direction, icomp
   integer, intent(in) :: myrank, nbproc
 
   type(t_sparse_matrix), intent(inout) :: matrix
@@ -127,8 +127,8 @@ subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix
     j = model%grid_full%j_(p)
     k = model%grid_full%k_(p)
 
-    gradient_fwd = get_grad(model%val_full(:, 1), model%grid_full, i, j, k, FWD_TYPE)
-    !gradient_bwd = get_grad(model%val_full(:, 1), model%grid_full, i, j, k, BWD_TYPE)
+    gradient_fwd = get_grad(model%val_full(:, icomp), model%grid_full, i, j, k, FWD_TYPE)
+    !gradient_bwd = get_grad(model%val_full(:, icomp), model%grid_full, i, j, k, BWD_TYPE)
 
     ! NOTE: Use only gradient in one direction per time.
 

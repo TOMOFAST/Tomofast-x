@@ -81,7 +81,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   real(kind=CUSTOM_REAL) :: cost_data(2)
   real(kind=CUSTOM_REAL) :: cost_model(2)
-  real(kind=CUSTOM_REAL) :: damping_gradient_cost(6)
+  real(kind=CUSTOM_REAL) :: damping_gradient_cost(3, 2)
 
   integer :: it, i, m, number_prior_models, ierr
   integer :: line_start(2), line_end(2), param_shift(2)
