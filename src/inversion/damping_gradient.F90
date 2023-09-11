@@ -103,7 +103,7 @@ subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix
   type(t_sparse_matrix), intent(inout) :: matrix
   real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(nrows)
 
-  integer :: row_beg, row_end, nsmaller
+  integer :: nsmaller
   integer :: i, j, k, p
   integer :: ind(2)
   real(kind=CUSTOM_REAL) :: val(2), delta, gradient_val
@@ -116,8 +116,7 @@ subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix
   ! Number of parameters on ranks smaller than current one.
   nsmaller = get_nsmaller(this%nelements, myrank, nbproc)
 
-  ! First matrix row (in the big matrix).
-  row_beg = matrix%get_current_row_number() + 1
+  this%cost = 0.d0
 
   ! Add matrix lines (Jacobian).
   do p = 1, this%nelements_total
@@ -198,13 +197,10 @@ subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix
 
     ! Setting the right-hand side.
     b_RHS(matrix%get_current_row_number()) = - this%problem_weight * this%beta * gradient_val * local_weight(p)
+
+    ! Calculate the cost.
+    this%cost = this%cost + gradient_val**2
   enddo
-
-  ! Last matrix row (in the big matrix).
-  row_end = matrix%get_current_row_number()
-
-  ! Calculate the cost.
-  this%cost = sum(b_RHS(row_beg:row_end)**2)
 
 end subroutine damping_gradient_add
 
