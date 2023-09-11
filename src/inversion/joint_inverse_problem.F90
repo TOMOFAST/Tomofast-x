@@ -123,10 +123,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   integer, intent(in) :: myrank
 
   integer :: ierr
-  integer :: i, k, nl, nl_empty, ndata_i
+  integer :: i, k, nl, nl_empty, ndata_i, nl_empty_loc
   integer(kind=8) :: nnz
-
-  nl_empty = 0
 
   do i = 1, 2
     if (par%alpha(i) == 0.d0 .or. par%problem_weight(i) == 0.d0) then
@@ -212,6 +210,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   ! Calcualte nl and nnz for the constraints matrix.
   nnz = 0
   nl = 0
+  nl_empty = 0
+  nl_empty_loc = 0
 
   do i = 1, 2
     if (this%add_damping(i)) then
@@ -226,7 +226,13 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   do i = 1, 2
     if (this%add_damping_gradient(i)) then
       nl = nl + 3 * par%nelements_total
-      nnz = nnz + 3 * 2 * par%nelements
+      nnz = nnz + 6 * par%nelements
+
+      ! Note: we increase a multiplier from 3 to 4 to account for elements from other ranks.
+      nl_empty_loc = 3 * par%nelements_total - 4 * par%nelements
+      if (nl_empty_loc > 0) then
+        nl_empty = nl_empty + nl_empty_loc
+      endif
     endif
   enddo
 
@@ -371,8 +377,6 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
 
     ! Adding the right-hand side only, as the sensitivity was added when reading the kernel from files.
     this%b_RHS(line_start(i):line_end(i)) = par%problem_weight(i) * arr(i)%residuals
-
-    if (myrank == 0) print *, 'nel = ', this%matrix_cons%get_number_elements()
 
     if (this%add_damping(i)) then
       if (myrank == 0) print *, 'adding damping with alpha =', par%alpha(i)

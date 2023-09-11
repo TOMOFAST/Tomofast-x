@@ -173,8 +173,8 @@ subroutine sparse_matrix_finalize(this, myrank)
 
   this%nl_nonempty = this%nl_current
 
-  if (this%nl_nonempty < this%nl_nonempty_allocated) then
-    if (myrank == 0) print *, "Note: there are more non-empty rows allocated than the actual number:", &
+  if (this%nl_nonempty_allocated > this%nl_nonempty) then
+    if (myrank == 0) print *, "nl_nonempty, nl_nonempty_allocated, nl =", &
                               this%nl_nonempty, this%nl_nonempty_allocated, this%nl
   endif
 
