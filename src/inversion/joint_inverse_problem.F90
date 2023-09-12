@@ -239,13 +239,13 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   enddo
 
   if (this%add_cross_grad) then
-    if (par%derivative_type /= 4) then
-      nl = nl + 3 * par%nelements_total
-      nnz = nnz + this%cross_grad%get_num_elements(par%derivative_type)
-    else
-      nl = nl + 6 * par%nelements_total
-      nnz = nnz + this%cross_grad%get_num_elements(1)
-      nnz = nnz + this%cross_grad%get_num_elements(2)
+    nl = nl + 3 * par%nelements_total
+    nnz = nnz + this%cross_grad%get_num_elements(par%derivative_type)
+
+    ! Note: we increase a multiplier from 3 to 9 to account for elements from other ranks.
+    nl_empty_loc = 3 * par%nelements_total - 9 * par%nelements
+    if (nl_empty_loc > 0) then
+      nl_empty = nl_empty + nl_empty_loc
     endif
   endif
 
