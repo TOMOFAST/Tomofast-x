@@ -405,6 +405,9 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
 
       call damping_gradient%initialize(par%beta(i), par%problem_weight(i), par%nx, par%ny, par%nz, par%nelements)
 
+      ! Update the full model.
+      call model(i)%update_full(.true., myrank, nbproc)
+
       ! Adding damping gradient for each component.
       do k = 1, par%nmodel_components
         damping_param_shift = param_shift(i) + (k - 1) * par%nelements
