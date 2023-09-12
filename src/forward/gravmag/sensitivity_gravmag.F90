@@ -762,34 +762,34 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
             endif
           enddo
 
-          ! Sanity check.
-          if (istart == 0) then
-            call exit_MPI("No matrix elements found for the cpu!", myrank, 0)
+          if (istart > 0) then
+          ! Found matrix elements.
+
+            ! Determine iend index (for the matrix elements corresponding to the current cpu).
+            iend = nel
+            do j = istart, nel
+              if (sensit_columns(j) > nsmaller + par%nelements) then
+                iend = j - 1
+                exit
+              endif
+            enddo
+
+            ! Column index shift.
+            index_shift = param_shift(problem_type) + (k - 1) * par%nelements - nsmaller
+
+            ! The column index in a big (joint) parallel sparse matrix.
+            sensit_columns(istart:iend) = sensit_columns(istart:iend) + index_shift
+
+            ! Apply the problem weight.
+            sensit_compressed(istart:iend) = sensit_compressed(istart:iend) * real(problem_weight, MATRIX_PRECISION)
+
+            ! Add a complete matrix row.
+            call sensit_matrix%add_row(iend - istart + 1, sensit_compressed(istart:iend), sensit_columns(istart:iend), myrank)
+
+            ! Number of nonzero elements.
+            nnz = nnz + iend - istart + 1
+
           endif
-
-          ! Determine iend index (for the matrix elements corresponding to the current cpu).
-          iend = nel
-          do j = istart, nel
-            if (sensit_columns(j) > nsmaller + par%nelements) then
-              iend = j - 1
-              exit
-            endif
-          enddo
-
-          ! Column index shift.
-          index_shift = param_shift(problem_type) + (k - 1) * par%nelements - nsmaller
-
-          ! The column index in a big (joint) parallel sparse matrix.
-          sensit_columns(istart:iend) = sensit_columns(istart:iend) + index_shift
-
-          ! Apply the problem weight.
-          sensit_compressed(istart:iend) = sensit_compressed(istart:iend) * real(problem_weight, MATRIX_PRECISION)
-
-          ! Add a complete matrix row.
-          call sensit_matrix%add_row(iend - istart + 1, sensit_compressed(istart:iend), sensit_columns(istart:iend), myrank)
-
-          ! Number of nonzero elements.
-          nnz = nnz + iend - istart + 1
 
         enddo ! model components loop
 
