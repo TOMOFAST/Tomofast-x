@@ -330,7 +330,7 @@ end subroutine sparse_matrix_add_mult_vector
 
 !===============================================================================================
 ! Computes the product between the part of sparse matrix and vector x.
-! The required part of the matrix is specified via: line_start, line_end, param_shift.
+! The required part of the matrix is specified via: line_start and param_shift.
 !===============================================================================================
 subroutine sparse_matrix_part_mult_vector(this, nelements, x, ndata, b, line_start, param_shift, myrank)
   class(t_sparse_matrix), intent(in) :: this
@@ -341,25 +341,27 @@ subroutine sparse_matrix_part_mult_vector(this, nelements, x, ndata, b, line_sta
 
   real(kind=CUSTOM_REAL), intent(out) :: b(ndata)
 
-  integer :: i, l, line_end
+  integer :: i, l, line_end, i_all
   integer(kind=8) :: k
 
   line_end = line_start + ndata - 1
 
   ! Sanity check.
-  if (line_start < 1 .or. line_start > this%nl_current .or. &
-      line_end < 1 .or. line_end > this%nl_current) then
+  if (line_start < 1 .or. line_start > this%nl_current_all .or. &
+      line_end < 1 .or. line_end > this%nl_current_all) then
     call exit_MPI("Wrong line index in sparse_matrix_part_mult_vector!", myrank, 0)
   endif
 
   b = 0._CUSTOM_REAL
 
-  l = 0
-  do i = line_start, line_end
-    l = l + 1
-    do k = this%ijl(i), this%ijl(i + 1) - 1
-      b(l) = b(l) + this%sa(k) * x(this%ija(k) - param_shift)
-    enddo
+  do i = 1, this%nl_nonempty
+    i_all = this%rowptr(i)
+    if (i_all >= line_start .and. i_all <= line_end) then
+      l = i_all - line_start + 1
+      do k = this%ijl(i), this%ijl(i + 1) - 1
+        b(l) = b(l) + this%sa(k) * x(this%ija(k) - param_shift)
+      enddo
+    endif
   enddo
 
 end subroutine sparse_matrix_part_mult_vector
