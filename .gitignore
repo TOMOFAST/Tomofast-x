@@ -32,3 +32,7 @@
 *.app
 
 output/
+data/gravmag/yerrida/grav_observed_data.txt
+data/gravmag/yerrida/grav_start.txt
+data/gravmag/yerrida/Wh.txt
+parfiles/Parfile_yerrida.txt
