@@ -161,10 +161,10 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
       grid%ind(grid%i_(i), grid%j_(i), grid%k_(i)) = i
 
       ! Sanity check.
-      if (grid%X1(i) > grid%X2(i) .or. &
-          grid%Y1(i) > grid%Y2(i) .or. &
-          grid%Z1(i) > grid%Z2(i)) then
-        call exit_MPI("The grid is not correctly defined (X1 > X2 or Y1 > Y2 or Z1 > Z2)!", myrank, 0)
+      if (grid%X1(i) >= grid%X2(i) .or. &
+          grid%Y1(i) >= grid%Y2(i) .or. &
+          grid%Z1(i) >= grid%Z2(i)) then
+        call exit_MPI("The grid is not correctly defined (X1 >= X2 or Y1 >= Y2 or Z1 >= Z2)!", myrank, 0)
       endif
     enddo
     close(10)
