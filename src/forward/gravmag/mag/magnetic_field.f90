@@ -202,12 +202,11 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
         temp_z1(6) = Zdata - width
         temp_z2(6) = Zdata + width
 
-        do j = 1, 6
-            ! Temp magnetic tensor.
-            temp_tx = 0.d0
-            temp_ty = 0.d0
-            temp_tz = 0.d0
+        tx = 0.d0
+        ty = 0.d0
+        tz = 0.d0
 
+        do j = 1, 6
             call this%sharmbox(real(Xdata, SENSIT_REAL), &
                                real(Ydata, SENSIT_REAL), &
                                real(Zdata, SENSIT_REAL), &
