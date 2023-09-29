@@ -127,63 +127,161 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
   real(kind=SENSIT_REAL) :: tx(3), ty(3), tz(3)
   double precision :: mx, my, mz
 
+  integer :: j
+  real(kind=SENSIT_REAL) :: temp_tx(3), temp_ty(3), temp_tz(3)
+  real(kind=SENSIT_REAL) :: temp_x1(6), temp_x2(6), temp_y1(6), temp_y2(6), temp_z1(6), temp_z2(6)
+  real(kind=SENSIT_REAL) :: width, min_clr
+
   do i = 1, nelements
     ! Calculate the magnetic tensor.
-    call this%sharmbox(real(Xdata, SENSIT_REAL), &
-                       real(Ydata, SENSIT_REAL), &
-                       real(Zdata, SENSIT_REAL), &
-                       real(grid%X1(i), SENSIT_REAL), &
-                       real(grid%Y1(i), SENSIT_REAL), &
-                       real(grid%Z1(i), SENSIT_REAL), &
-                       real(grid%X2(i), SENSIT_REAL), &
-                       real(grid%Y2(i), SENSIT_REAL), &
-                       real(grid%Z2(i), SENSIT_REAL), &
-                       tx, ty, tz)
 
-      if (nmodel_components == 1) then
-      ! Susceptibility model.
+    ! Check if the point is inside the model grid.
+    if ((grid%X1(i) < Xdata) .and. (grid%X2(i) > Xdata) .and. &
+        (grid%Y1(i) < Ydata) .and. (grid%Y2(i) > Ydata) .and. &
+        (grid%Z1(i) < Zdata) .and. (grid%Z2(i) > Zdata)) then
 
-        mx = sum(tx * this%magv)
-        my = sum(ty * this%magv)
-        mz = sum(tz * this%magv)
+        ! Default void width.
+        width = 0.1
 
-        if (ndata_components == 1) then
-          sensit_line(i, 1, 1) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
+        ! Drillhole observation point is not guaranteed to be at the enter of the voxel so its face clearance needs to be checked.
+        ! Check if width actually exceeds the observation point's cleareance to each face of the voxel.
+        ! If so, set void width to 50% of the minimum clearance, otherwise the default width is set.
+        min_clr = min(abs(Xdata - grid%X1(i)), abs(Xdata - grid%X2(i)), &
+                      abs(Ydata - grid%Y1(i)), abs(Ydata - grid%Y2(i)), &
+                      abs(Zdata - grid%Z1(i)), abs(Zdata - grid%Z2(i)))
 
-        else if (ndata_components == 3) then
-          sensit_line(i, 1, 1) = mx
-          sensit_line(i, 1, 2) = my
-          sensit_line(i, 1, 3) = mz
+        if (width > min_clr) width = 0.5 * min_clr
 
-        else
-          print *, "Wrong number of data components in magnetic_field_magprism!"
-          stop
-        endif
+        ! Calculate the 6 subvoxels coordinates.
 
-      else if (nmodel_components == 3) then
-      ! Magnetisation model (Mx, My, Mz).
+        ! Top.
+        temp_x1(1) = grid%X1(i)
+        temp_x2(1) = grid%X2(i)
+        temp_y1(1) = grid%Y1(i)
+        temp_y2(1) = grid%Y2(i)
+        temp_z1(1) = grid%Z1(i)
+        temp_z2(1) = Zdata - width
 
-        if (ndata_components == 1) then
-          do k = 1, 3
-            sensit_line(i, k, 1) = tx(k) * this%magv(1) + ty(k) * this%magv(2) + tz(k) * this%magv(3)
-          enddo
+        ! Bottom.
+        temp_x1(2) = grid%X1(i)
+        temp_x2(2) = grid%X2(i)
+        temp_y1(2) = grid%Y1(i)
+        temp_y2(2) = grid%Y2(i)
+        temp_z1(2) = Zdata + width
+        temp_z2(2) = grid%Z2(i)
 
-        else if (ndata_components == 3) then
-          do k = 1, 3
-            sensit_line(i, k, 1) = tx(k)
-            sensit_line(i, k, 2) = ty(k)
-            sensit_line(i, k, 3) = tz(k)
-          enddo
+        ! West.
+        temp_x1(3) = grid%X1(i)
+        temp_x2(3) = Xdata - width
+        temp_y1(3) = grid%Y1(i)
+        temp_y2(3) = grid%Y2(i)
+        temp_z1(3) = Zdata - width
+        temp_z2(3) = Zdata + width
 
-        else
-          print *, "Wrong number of data components in magnetic_field_magprism!"
-          stop
-        endif
+        ! East.
+        temp_x1(4) = Xdata + width
+        temp_x2(4) = grid%X2(i)
+        temp_y1(4) = grid%Y1(i)
+        temp_y2(4) = grid%Y2(i)
+        temp_z1(4) = Zdata - width
+        temp_z2(4) = Zdata + width
+
+        ! South.
+        temp_x1(5) = Xdata - width
+        temp_x2(5) = Xdata + width
+        temp_y1(5) = grid%Y1(i)
+        temp_y2(5) = Ydata - width
+        temp_z1(5) = Zdata - width
+        temp_z2(5) = Zdata + width
+
+        ! North.
+        temp_x1(6) = Xdata - width
+        temp_x2(6) = Xdata + width
+        temp_y1(6) = Ydata + width
+        temp_y2(6) = grid%Y2(i)
+        temp_z1(6) = Zdata - width
+        temp_z2(6) = Zdata + width
+
+        do j = 1, 6
+            ! Temp magnetic tensor.
+            temp_tx = 0.d0
+            temp_ty = 0.d0
+            temp_tz = 0.d0
+
+            call this%sharmbox(real(Xdata, SENSIT_REAL), &
+                               real(Ydata, SENSIT_REAL), &
+                               real(Zdata, SENSIT_REAL), &
+                               real(temp_x1(j), SENSIT_REAL), &
+                               real(temp_y1(j), SENSIT_REAL), &
+                               real(temp_z1(j), SENSIT_REAL), &
+                               real(temp_x2(j), SENSIT_REAL), &
+                               real(temp_y2(j), SENSIT_REAL), &
+                               real(temp_z2(j), SENSIT_REAL), &
+                               temp_tx, temp_ty, temp_tz)
+
+            tx = tx + temp_tx
+            ty = ty + temp_ty
+            tz = tz + temp_tz
+        enddo
+    else
+    ! Point is outside the model grid.
+
+        call this%sharmbox(real(Xdata, SENSIT_REAL), &
+                           real(Ydata, SENSIT_REAL), &
+                           real(Zdata, SENSIT_REAL), &
+                           real(grid%X1(i), SENSIT_REAL), &
+                           real(grid%Y1(i), SENSIT_REAL), &
+                           real(grid%Z1(i), SENSIT_REAL), &
+                           real(grid%X2(i), SENSIT_REAL), &
+                           real(grid%Y2(i), SENSIT_REAL), &
+                           real(grid%Z2(i), SENSIT_REAL), &
+                           tx, ty, tz)
+    endif
+
+    if (nmodel_components == 1) then
+    ! Susceptibility model.
+
+      mx = sum(tx * this%magv)
+      my = sum(ty * this%magv)
+      mz = sum(tz * this%magv)
+
+      if (ndata_components == 1) then
+        sensit_line(i, 1, 1) = mx * this%magv(1) + my * this%magv(2) + mz * this%magv(3)
+
+      else if (ndata_components == 3) then
+        sensit_line(i, 1, 1) = mx
+        sensit_line(i, 1, 2) = my
+        sensit_line(i, 1, 3) = mz
 
       else
-        print *, "Wrong number of model components in magnetic_field_magprism!"
+        print *, "Wrong number of data components in magnetic_field_magprism!"
         stop
       endif
+
+    else if (nmodel_components == 3) then
+    ! Magnetisation model (Mx, My, Mz).
+
+      if (ndata_components == 1) then
+        do k = 1, 3
+          sensit_line(i, k, 1) = tx(k) * this%magv(1) + ty(k) * this%magv(2) + tz(k) * this%magv(3)
+        enddo
+
+      else if (ndata_components == 3) then
+        do k = 1, 3
+          sensit_line(i, k, 1) = tx(k)
+          sensit_line(i, k, 2) = ty(k)
+          sensit_line(i, k, 3) = tz(k)
+        enddo
+
+      else
+        print *, "Wrong number of data components in magnetic_field_magprism!"
+        stop
+      endif
+
+    else
+      print *, "Wrong number of model components in magnetic_field_magprism!"
+      stop
+    endif
   enddo
 
   if (nmodel_components == 1) then
@@ -231,13 +329,8 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
   real(kind=SENSIT_REAL) :: arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8
   real(kind=SENSIT_REAL) :: R1, R2, R3, R4
   real(kind=SENSIT_REAL) :: eps
-  real(kind=SENSIT_REAL) :: four_pi
-  logical :: l_inside
 
   eps = 1.e-8
-  four_pi = 4 * 3.1415926535897932385_SENSIT_REAL
-
-  l_inside = .false.
 
   ! Relative coordinates to obs.
   ! Voxel runs from x1 to x2, y1 to y2, z1 to z2.
@@ -337,27 +430,9 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
             log((ry1 + arg7 + eps) / (ry2 + arg8 + eps)) - &
             log((ry1 + arg5 + eps) / (ry2 + arg6 + eps))
 
-  ! Checking if point is inside the voxel.
-  ! If so, use poisson's relation.
-  if (x0 >= x1 .and. x0 <= x2) then
-    if (y0 >= y1 .and. y0 <= y2) then
-      if (z0 >= z1 .and. z0 <= z2) then
-        l_inside = .true.
-      endif
-    endif
-  endif
-
   ! Filling the rest of the tensor.
   ! ts_zz
-  if (l_inside) then
-    print *, "Observation point inside target voxel!"
-    print *, "Obs: ", x0, y0, z0
-    print *, "Voxel: ", x1, x2, y1, y2, z1, z2
-
-    ts_z(3) = -1 * (ts_x(1) + ts_y(2) + four_pi) ! poisson
-  else
-    ts_z(3) = -1 * (ts_x(1) + ts_y(2)) ! gauss
-  endif
+  ts_z(3) = -1 * (ts_x(1) + ts_y(2)) ! Gauss
 
   ! ts_zy
   ts_z(2) = ts_y(3)
