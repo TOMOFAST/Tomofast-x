@@ -229,8 +229,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
         nl = nl + 3 * par%nelements_total
         nnz = nnz + 6 * par%nelements
 
-        ! Note: we increase a multiplier from 3 to 4 to account for elements from other ranks.
-        nl_empty_loc = 3 * par%nelements_total - 4 * par%nelements
+        ! Note: we increase a multiplier from 3 to 6 to account for elements from other ranks.
+        nl_empty_loc = 3 * par%nelements_total - 6 * par%nelements
         if (nl_empty_loc > 0) then
           nl_empty = nl_empty + nl_empty_loc
         endif
