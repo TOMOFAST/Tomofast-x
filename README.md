@@ -98,8 +98,8 @@ For questions, contact Vitaliy Ogarko via vogarko@gmail.com
 
 ### License
 
-Tomofast-x code is licensed under the MIT license, 
-which allows commercial use but forces users to acknowledge usage of Tomofast-x and to cite the relevant work.
+Tomofast-x code is licensed under the MIT license. 
+We request users to acknowledge usage of Tomofast-x and to cite the relevant work.
 
 
 ### Acknowledgments
