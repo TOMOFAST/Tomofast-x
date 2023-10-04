@@ -99,7 +99,7 @@ For questions, contact Vitaliy Ogarko via vogarko@gmail.com
 ### License
 
 Tomofast-x code is licensed under the MIT license. 
-We request users to acknowledge usage of Tomofast-x and to cite the relevant work.
+We request users to acknowledge the usage of Tomofast-x and to cite the relevant work.
 
 
 ### Acknowledgments
