@@ -53,19 +53,28 @@ end function get_max_mem_usage
 function get_max_mem_usage_proc() result(value)
   character(len=80) :: line
   integer :: ios, fu, value
-  value = -1
+  character(len=80) :: filename
+  logical :: exists
 
-  open(newunit=fu, file='/proc/self/status', action='read')
-  do
-    read(fu, '(a)', iostat=ios) line
-    if (ios /= 0) exit
-    ! Use VmHWM for the maximum used RAM memory. Use VmRSS for the current memory.
-    if(line(1:6) == 'VmHWM:') then
-      read(line(7:), *) value
-      exit
-    endif
-  enddo
-  close(fu)
+  value = 0
+
+  filename = '/proc/self/status'
+
+  inquire(file=filename, exist=exists)
+
+  if (exists) then
+    open(newunit=fu, file=filename, action='read')
+    do
+      read(fu, '(a)', iostat=ios) line
+      if (ios /= 0) exit
+      ! Use VmHWM for the maximum used RAM memory. Use VmRSS for the current memory.
+      if(line(1:6) == 'VmHWM:') then
+        read(line(7:), *) value
+        exit
+      endif
+    enddo
+    close(fu)
+  endif
 end function get_max_mem_usage_proc
 
 end module memory_tools
