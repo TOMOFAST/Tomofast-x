@@ -74,4 +74,4 @@ DISJOINT INTERVAL BOUND constraints (ADMM)
 inversion.admm.enableADMM               = 1
 inversion.admm.nLithologies             = 2
 inversion.admm.grav.bounds              = 0. 0. 400. 400.
-inversion.admm.grav.weight              = 1.d-4
+inversion.admm.grav.weight              = 1.d-5
