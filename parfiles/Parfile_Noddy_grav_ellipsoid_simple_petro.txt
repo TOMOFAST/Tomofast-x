@@ -1,0 +1,77 @@
+===================================================================================
+GLOBAL
+===================================================================================
+global.outputFolderPath     = output/Noddy_grav_ellipsoid_simple_petro
+global.description          = Noddy model: ellipsoid with petrophysical constraints.
+===================================================================================
+MODEL GRID parameters
+===================================================================================
+# nx ny nz
+modelGrid.size                      = 40 40 20
+modelGrid.grav.file                 = data/gravmag/ellipsoid/grav/simple/model_grid.txt
+
+===================================================================================
+DATA parameters
+===================================================================================
+forward.data.grav.nData             = 1600
+forward.data.grav.dataGridFile      = data/gravmag/ellipsoid/grav/simple/data_grid.txt
+forward.data.grav.dataValuesFile    = output/Noddy_grav_ellipsoid_simple_petro/grav_calc_read_data.txt
+
+===================================================================================
+DEPTH WEIGHTING
+===================================================================================
+forward.depthWeighting.type         = 1
+forward.depthWeighting.grav.power   = 2.4d0
+
+===================================================================================
+SENSITIVITY KERNEL
+===================================================================================
+sensit.readFromFiles                = 0
+sensit.folderPath                   = SENSIT/
+
+===================================================================================
+MATRIX COMPRESSION
+===================================================================================
+# 0-none, 1-wavelet compression.
+forward.matrixCompression.type      = 1
+forward.matrixCompression.rate      = 0.30
+
+===================================================================================
+PRIOR MODEL
+===================================================================================
+inversion.priorModel.type           = 1
+inversion.priorModel.grav.value     = 0.d0
+
+===================================================================================
+STARTING MODEL
+===================================================================================
+inversion.startingModel.type        = 1
+inversion.startingModel.grav.value  = 0.d0
+
+===================================================================================
+INVERSION parameters
+===================================================================================
+inversion.nMajorIterations          = 30
+inversion.nMinorIterations          = 100
+inversion.writeModelEveryNiter      = 0
+inversion.minResidual               = 1.d-13
+
+===================================================================================
+MODEL DAMPING (m - m_prior)
+===================================================================================
+inversion.modelDamping.grav.weight  = 1.d-11
+inversion.modelDamping.normPower    = 2.0d0
+
+===================================================================================
+JOINT INVERSION parameters
+===================================================================================
+inversion.joint.grav.problemWeight  = 1.d0
+inversion.joint.magn.problemWeight  = 0.d0
+
+==================================================================================
+DISJOINT INTERVAL BOUND constraints (ADMM)
+==================================================================================
+inversion.admm.enableADMM               = 1
+inversion.admm.nLithologies             = 2
+inversion.admm.grav.bounds              = 0. 0. 400. 400.
+inversion.admm.grav.weight              = 1.d-4
