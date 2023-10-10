@@ -1,0 +1,69 @@
+===================================================================================
+GLOBAL
+===================================================================================
+global.outputFolderPath     = output/Noddy_grav_ellipsoid_fault
+global.description          = Noddy model: ellipsoid with fault.
+===================================================================================
+MODEL GRID parameters
+===================================================================================
+# nx ny nz
+modelGrid.size                      = 40 40 20
+modelGrid.grav.file                 = data/gravmag/ellipsoid/grav/fault/model_grid.txt
+
+===================================================================================
+DATA parameters
+===================================================================================
+forward.data.grav.nData             = 1600
+forward.data.grav.dataGridFile      = data/gravmag/ellipsoid/grav/fault/data_grid.txt
+forward.data.grav.dataValuesFile    = output/Noddy_grav_ellipsoid_fault/grav_calc_read_data.txt
+
+===================================================================================
+DEPTH WEIGHTING
+===================================================================================
+forward.depthWeighting.type         = 1
+forward.depthWeighting.grav.power   = 2.4d0
+
+===================================================================================
+SENSITIVITY KERNEL
+===================================================================================
+sensit.readFromFiles                = 0
+sensit.folderPath                   = SENSIT/
+
+===================================================================================
+MATRIX COMPRESSION
+===================================================================================
+# 0-none, 1-wavelet compression.
+forward.matrixCompression.type      = 1
+forward.matrixCompression.rate      = 0.30
+
+===================================================================================
+PRIOR MODEL
+===================================================================================
+inversion.priorModel.type           = 1
+inversion.priorModel.grav.value     = 0.d0
+
+===================================================================================
+STARTING MODEL
+===================================================================================
+inversion.startingModel.type        = 1
+inversion.startingModel.grav.value  = 0.d0
+
+===================================================================================
+INVERSION parameters
+===================================================================================
+inversion.nMajorIterations          = 2
+inversion.nMinorIterations          = 100
+inversion.writeModelEveryNiter      = 0
+inversion.minResidual               = 1.d-13
+
+===================================================================================
+MODEL DAMPING (m - m_prior)
+===================================================================================
+inversion.modelDamping.grav.weight  = 1.d-11
+inversion.modelDamping.normPower    = 2.0d0
+
+===================================================================================
+JOINT INVERSION parameters
+===================================================================================
+inversion.joint.grav.problemWeight  = 1.d0
+inversion.joint.magn.problemWeight  = 0.d0
