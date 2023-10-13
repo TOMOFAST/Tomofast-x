@@ -1,21 +1,21 @@
 ===================================================================================
 GLOBAL
 ===================================================================================
-global.outputFolderPath     = output/Noddy_mag_ellipsoid_simple
-global.description          = Noddy model: ellipsoid.
+global.outputFolderPath     = output/Noddy_mag_ellipsoid_fault
+global.description          = Noddy model: ellipsoid with fault.
 ===================================================================================
 MODEL GRID parameters
 ===================================================================================
 # nx ny nz
 modelGrid.size                      = 40 40 20
-modelGrid.magn.file                 = data/gravmag/ellipsoid/mag/simple/model_grid.txt
+modelGrid.magn.file                 = data/gravmag/ellipsoid/mag/fault/model_grid.txt
 
 ===================================================================================
 DATA parameters
 ===================================================================================
 forward.data.magn.nData             = 1600
-forward.data.magn.dataGridFile      = data/gravmag/ellipsoid/mag/simple/data_grid.txt
-forward.data.magn.dataValuesFile    = output/Noddy_mag_ellipsoid_simple/mag_calc_read_data.txt
+forward.data.magn.dataGridFile      = data/gravmag/ellipsoid/mag/fault/data_grid.txt
+forward.data.magn.dataValuesFile    = output/Noddy_mag_ellipsoid_fault/mag_calc_read_data.txt
 
 ===================================================================================
 DEPTH WEIGHTING
@@ -75,7 +75,3 @@ inversion.admm.enableADMM               = 1
 inversion.admm.nLithologies             = 1
 inversion.admm.magn.bounds              = 0. 1.
 inversion.admm.magn.weight              = 100.
-
-inversion.admm.dataCostThreshold        = 1.e-4
-inversion.admm.weightMultiplier         = 2.0
-inversion.admm.maxWeight                = 1.e+10
