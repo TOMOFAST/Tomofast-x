@@ -1,0 +1,87 @@
+===================================================================================
+GLOBAL
+==================================================================================
+global.outputFolderPath       = ./output/dh_data/
+global.description            = Drillhole data.
+
+===================================================================================
+MODEL GRID parameters
+===================================================================================
+# nx ny nz
+# mag
+modelGrid.size                      = 24 24 16
+modelGrid.magn.file                 = ./data/gravmag/drillholes/meshgrid_2depth_2prism.txt
+modelGrid.magn.nModelComponents     = 1
+
+===================================================================================
+DATA parameters
+===================================================================================
+forward.data.magn.nData               = 48
+forward.data.magn.dataGridFile        = ./data/gravmag/drillholes/dummy_dh_data.obs
+forward.data.magn.dataValuesFile      = ./output/dh_data/mag_calc_read_data.txt
+forward.data.magn.nDataComponents     = 3
+
+===================================================================================
+MAGNETIC FIELD constants
+===================================================================================
+forward.magneticField.inclination           = 60.0
+forward.magneticField.declination           = 25.0
+forward.magneticField.intensity_nT          = 50000.
+forward.magneticField.XaxisDeclination      = 0.d0
+
+===================================================================================
+DEPTH WEIGHTING
+===================================================================================
+# 1-depth weight, 2-distance weight.
+forward.depthWeighting.type                = 2
+forward.depthWeighting.magn.beta           = 1.d0
+
+===================================================================================
+SENSITIVITY KERNEL
+===================================================================================
+# 0-calculate the sensitivity, 1-read from files at the specified folder.
+sensit.readFromFiles                = 0
+sensit.folderPath                   = 
+
+===================================================================================
+MATRIX COMPRESSION
+===================================================================================
+# 0-none, 1-wavelet compression.
+forward.matrixCompression.type                       = 0
+# The minimum compressed sensitivity absolute value.
+forward.matrixCompression.rate                       = 0.5000000E-01
+
+===================================================================================
+STARTING MODEL
+===================================================================================
+# 1-set value, 2-read from file.
+inversion.startingModel.type                = 1
+inversion.startingModel.magn.value          = 0.1000000E-02
+
+===================================================================================
+INVERSION parameters
+===================================================================================
+inversion.nMajorIterations          = 20
+inversion.nMinorIterations          = 100
+inversion.minResidual               = 0.1000000E-12
+inversion.writeModelEveryNiter      = 0
+
+===================================================================================
+MODEL DAMPING (m - m_prior)
+===================================================================================
+inversion.modelDamping.magn.weight   = 0.1000000E-07
+
+===================================================================================
+JOINT INVERSION parameters
+===================================================================================
+inversion.joint.grav.problemWeight    = 0.0
+inversion.joint.magn.problemWeight    = 1.0
+inversion.joint.magn.columnWeightMultiplier  = 1.d0
+
+===================================================================================
+DISJOINT INTERVAL BOUND constraints (ADMM)
+===================================================================================
+inversion.admm.enableADMM             = 1
+inversion.admm.nLithologies           = 1
+inversion.admm.magn.bounds            = 0. 1.
+inversion.admm.magn.weight            = 1000.0
