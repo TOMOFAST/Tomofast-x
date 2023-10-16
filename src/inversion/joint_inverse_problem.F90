@@ -190,7 +190,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   ! Determine if we perform inversion using wavelet domain for the model update vector.
   this%WAVELET_DOMAIN = .true.
   if (this%add_cross_grad .or. this%add_clustering .or. &
-      this%add_damping_gradient(1) .or. this%add_damping_gradient(2)) then
+      this%add_damping_gradient(1) .or. this%add_damping_gradient(2) .or. &
+      par%norm_power /= 2.d0) then
     this%WAVELET_DOMAIN = .false.
   endif
 
