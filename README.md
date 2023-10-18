@@ -19,7 +19,7 @@ Geosci. Model Dev., 14, 6681–6709, https://doi.org/10.5194/gmd-14-6681-2021
 If you are using the code (or some of its parts) please cite the following two papers:
 
 - V. Ogarko, J. Giraud, R. Martin, and M. Jessell (2021), 
-"Disjoint interval bound constraints using the alternating direction method of multipliers for geologically constrained inversion: Application to gravity data," GEOPHYSICS 86: G1-G11, https://doi.org/10.1190/geo2019-0633.1
+"Disjoint interval bound constraints using the alternating direction method of multipliers for geologically constrained inversion: Application to gravity data" GEOPHYSICS 86: G1-G11, https://doi.org/10.1190/geo2019-0633.1
 
 - J. Giraud, V. Ogarko, R. Martin, M. Jessell, and M. Lindsay (2021),
 "Structural, petrophysical, and geological constraints in potential field inversion using the Tomofast-x v1.0 open-source code", 
@@ -63,6 +63,10 @@ To visualize the final model, open in Paraview the file ``Paraview/grav_final_mo
 For details on other output files, see the User Manual in the ``docs`` folder. 
 
 ### Publications using the code
+
+- J. Giraud, H. Seillé, M. Lindsay, G. Visser, V. Ogarko, and M. Jessell (2023),
+"Utilisation of probabilistic magnetotelluric modelling to constrain magnetic data inversion: proof-of-concept and field application",
+Solid Earth, 14, 43–68, https://doi.org/10.5194/se-14-43-2023
 
 - J. Giraud, V. Ogarko, R. Martin, M. Jessell, and M. Lindsay (2021),
 "Structural, petrophysical, and geological constraints in potential field inversion using the Tomofast-x v1.0 open-source code", 
