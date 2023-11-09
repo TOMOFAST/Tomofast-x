@@ -170,6 +170,8 @@ subroutine data_read_points_format(this, file_name, grid_only, myrank)
     if (ierr /= 0) call exit_MPI("Problem while reading the data file! Verify the number of data components.", myrank, 0)
   enddo
 
+  close(10)
+
 end subroutine data_read_points_format
 
 !================================================================================================
