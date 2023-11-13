@@ -78,10 +78,13 @@ subroutine admm_method_iterate_admm_arrays(this, nlithos, xmin, xmax, x, x0, myr
   real(kind=CUSTOM_REAL), intent(out) :: x0(this%nelements)
 
   real(kind=CUSTOM_REAL) :: arg, mindist, val, closest_boundary
+  real(kind=CUSTOM_REAL) :: lambda
   integer :: i, j
   logical :: inside
 
   if (myrank == 0) print *, 'Calculating the ADMM arrays.'
+
+  lambda = 1.0
 
   ! Calculate z[k + 1] = Pc(x[k + 1] + u[k]).
   do i = 1, this%nelements
@@ -89,44 +92,18 @@ subroutine admm_method_iterate_admm_arrays(this, nlithos, xmin, xmax, x, x0, myr
     ! Calculate the indicator function.
     arg = x(i) + this%u(i)
 
-    !if (arg < xmin(i)) then
-    !  this%z(i) = xmin(i)
-    !
-    !else if (arg > xmax(i)) then
-    !  this%z(i) = xmax(i)
-    !
-    !else
-    !  this%z(i) = arg
-    !endif
+    !-----------------------------------------
+    ! Test 1.
+    if (abs(arg) <= lambda) then
+      this%z(i) = 0.d0
 
-    inside = .false.
-    do j = 1, nlithos
-      ! Check if the value lies inside the bounds.
-      if (xmin(j, i) <= arg .and. arg <= xmax(j, i)) then
-        inside = .true.
-        this%z(i) = arg
-        exit
-      endif
-    enddo
+    else if (arg > lambda) then
+      this%z(i) = arg - lambda
 
-    if (.not. inside) then
-    ! The value lies outside boundaries, so finding the closest boundary.
-      mindist = 1.d30
-      do j = 1, nlithos
-        val = dabs(xmin(j, i) - arg)
-        if (val < mindist) then
-          mindist = val
-          closest_boundary = xmin(j, i)
-        endif
-
-        val = dabs(xmax(j, i) - arg)
-        if (val < mindist) then
-          mindist = val
-          closest_boundary = xmax(j, i)
-        endif
-      enddo
-      this%z(i) = closest_boundary
+    else
+      this%z(i) = arg + lambda
     endif
+
   enddo
 
   ! Calculate u[k + 1] = u[k] + x[k + 1] - z[k + 1].
