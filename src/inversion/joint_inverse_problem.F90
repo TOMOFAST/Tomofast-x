@@ -58,7 +58,8 @@ module joint_inverse_problem
     real(kind=CUSTOM_REAL), allocatable :: b_RHS(:)
 
     ! Auxiliary arrays for the ADMM method.
-    type(t_real1d) :: x0_ADMM(2)
+    !type(t_real1d) :: x0_ADMM(2)
+    type(t_real1d), allocatable :: x0_ADMM(:, :)
 
     integer :: nelements_total
 
@@ -73,7 +74,8 @@ module joint_inverse_problem
     type(t_cross_gradient) :: cross_grad
 
     ! ADMM method (stores auxiliary arrays).
-    type(t_admm_method) :: admm_method(2)
+    !type(t_admm_method) :: admm_method(2)
+    type(t_admm_method), allocatable :: admm_method(:, :)
 
     ! ADMM term cost.
     real(kind=CUSTOM_REAL) :: admm_cost
@@ -250,13 +252,17 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     endif
   endif
 
+  allocate(t_admm_method :: this%admm_method(par%nmodel_components, 2))
+
   do i = 1, 2
     if (this%add_admm(i)) then
-      nl = nl + par%nelements_total
-      nnz = nnz + par%nelements
-      nl_empty = nl_empty + par%nelements_total - par%nelements
+      do k = 1, par%nmodel_components
+        nl = nl + par%nelements_total
+        nnz = nnz + par%nelements
+        nl_empty = nl_empty + par%nelements_total - par%nelements
 
-      call this%admm_method(i)%initialize(par%nelements, myrank)
+        call this%admm_method(k, i)%initialize(par%nelements, myrank)
+      enddo
     endif
   enddo
 
@@ -275,9 +281,13 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   ierr = 0
 
+  allocate(t_real1d :: this%x0_ADMM(par%nmodel_components, 2))
+
   do i = 1, 2
     if (this%add_admm(i)) then
-      allocate(this%x0_ADMM(i)%val(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
+      do k = 1, par%nmodel_components
+        allocate(this%x0_ADMM(k, i)%val(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
+      enddo
     endif
   enddo
 
@@ -433,24 +443,28 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
   ! ***** ADMM method *****
   do i = 1, 2
     if (this%add_admm(i)) then
-      call this%admm_method(i)%iterate_admm_arrays(model(i)%nlithos, model(i)%min_bound, model(i)%max_bound, &
-                                                   model(i)%val, this%x0_ADMM(i)%val, myrank)
+      do k = 1, par%nmodel_components
+        damping_param_shift = param_shift(i) + (k - 1) * par%nelements
 
-      ! Use the L2 norm for the ADMM constraints.
-      norm_power = 2.0d0
+        call this%admm_method(k, i)%iterate_admm_arrays(model(i)%nlithos, model(i)%min_bound, model(i)%max_bound, &
+                                                        model(i)%val(:, k), this%x0_ADMM(k, i)%val, myrank)
 
-      call damping%initialize(par%nelements, par%rho_ADMM(i), par%problem_weight(i), norm_power, &
-                              par%compression_type, par%nx, par%ny, par%nz)
+        ! Use the L2 norm for the ADMM constraints.
+        norm_power = 2.0d0
 
-      call damping%add(this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), arr(i)%column_weight, &
-                       model(i)%val(:, 1), this%x0_ADMM(i)%val, param_shift(i), &
-                       this%WAVELET_DOMAIN, myrank, nbproc)
+        call damping%initialize(par%nelements, par%rho_ADMM(i), par%problem_weight(i), norm_power, &
+                                par%compression_type, par%nx, par%ny, par%nz)
 
-      ! Calculate the ADMM cost in parallel.
-      call calculate_cost(par%nelements, this%admm_method(i)%z, model(i)%val(:, 1), cost, .true., nbproc)
-      this%admm_cost = sqrt(cost)
+        call damping%add(this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), arr(i)%column_weight, &
+                         model(i)%val(:, k), this%x0_ADMM(k, i)%val, damping_param_shift, &
+                         this%WAVELET_DOMAIN, myrank, nbproc)
 
-      if (myrank == 0) print *, "ADMM cost |x - z| / |z| =", this%admm_cost
+        ! Calculate the ADMM cost in parallel.
+        call calculate_cost(par%nelements, this%admm_method(k, i)%z, model(i)%val(:, k), cost, .true., nbproc)
+        this%admm_cost = sqrt(cost)
+
+        if (myrank == 0) print *, "ADMM cost |x - z| / |z| =", this%admm_cost
+      enddo
     endif
   enddo
 

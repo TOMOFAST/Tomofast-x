@@ -41,8 +41,8 @@ forward.depthWeighting.magn.beta           = 1.5d0
 SENSITIVITY KERNEL
 ===================================================================================
 # 0-calculate the sensitivity, 1-read from files at the specified folder.
-sensit.readFromFiles                = 0
-sensit.folderPath                   = 
+sensit.readFromFiles                = 1
+sensit.folderPath                   = ./output/2body_induced/SENSIT/
 
 ===================================================================================
 MATRIX COMPRESSION
@@ -62,7 +62,7 @@ inversion.startingModel.magn.value          = 0.1000000E-02
 ===================================================================================
 INVERSION parameters
 ===================================================================================
-inversion.nMajorIterations            = 2
+inversion.nMajorIterations            = 8
 inversion.nMinorIterations            = 100
 inversion.minResidual                 = 0.1000000E-12
 inversion.writeModelEveryNiter        = 0
@@ -71,7 +71,8 @@ inversion.writeModelEveryNiter        = 0
 MODEL DAMPING (m - m_prior)
 ===================================================================================
 inversion.modelDamping.grav.weight       = 0.0
-inversion.modelDamping.magn.weight       = 0.1000000E-07
+#inversion.modelDamping.magn.weight       = 0.1000000E-07
+inversion.modelDamping.magn.weight       = 0.0
 
 ===================================================================================
 JOINT INVERSION parameters
@@ -79,3 +80,11 @@ JOINT INVERSION parameters
 inversion.joint.grav.problemWeight           = 0.0
 inversion.joint.magn.problemWeight           = 1.0
 inversion.joint.magn.columnWeightMultiplier  = 1.d0
+
+==================================================================================
+DISJOINT INTERVAL BOUND constraints (ADMM)
+==================================================================================
+inversion.admm.enableADMM               = 1
+inversion.admm.nLithologies             = 1
+inversion.admm.magn.bounds              = 0. 1000.
+inversion.admm.magn.weight              = 1.d-4

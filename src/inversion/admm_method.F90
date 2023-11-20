@@ -84,7 +84,7 @@ subroutine admm_method_iterate_admm_arrays(this, nlithos, xmin, xmax, x, x0, myr
 
   if (myrank == 0) print *, 'Calculating the ADMM arrays.'
 
-  lambda = 1.0
+  lambda = 1.d-2
 
   ! Calculate z[k + 1] = Pc(x[k + 1] + u[k]).
   do i = 1, this%nelements
