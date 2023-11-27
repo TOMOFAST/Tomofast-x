@@ -98,7 +98,7 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
                        model, model_ref, param_shift, WAVELET_DOMAIN, myrank, nbproc, local_weight)
   class(t_damping), intent(inout) :: this
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(this%nelements)
-  real(kind=CUSTOM_REAL), intent(in) :: model(this%nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: model(this%nelements, 3)
   real(kind=CUSTOM_REAL), intent(in) :: model_ref(this%nelements)
   integer, intent(in) :: nrows, param_shift
   logical, intent(in) :: WAVELET_DOMAIN
@@ -119,14 +119,23 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
   real(kind=CUSTOM_REAL), allocatable :: model_diff(:)
   real(kind=CUSTOM_REAL), allocatable :: model_diff_full(:)
 
+  real(kind=CUSTOM_REAL) :: model_mag
+
   allocate(model_diff(this%nelements), source=0._CUSTOM_REAL, stat=ierr)
 
-  model_diff = model - model_ref
+  !model_diff = model - model_ref
+
+  do i = 1, this%nelements
+    ! Vector magnutude (squared).
+    model_mag = model(i, 1)**2 + model(i, 2)**2 + model(i, 3)**2
+
+    model_diff(i) = model_mag - model_ref(i)
+  enddo
 
   ! Apply the depth-weighting.
-  do i = 1, this%nelements
-    model_diff(i) = model_diff(i) / column_weight(i)
-  enddo
+!  do i = 1, this%nelements
+!    model_diff(i) = model_diff(i) / column_weight(i)
+!  enddo
 
   if (this%compression_type > 0 .and. WAVELET_DOMAIN) then
     ! Transform the model difference to the wavelet domain.
@@ -155,19 +164,30 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
 
   ! Add lines with damping.
   do i = 1, this%nelements
-    value = this%alpha * this%problem_weight
+!    value = this%alpha * this%problem_weight
+!
+!    if (this%norm_power /= 2.d0) then
+!      ! Apply the Lp norm.
+!      value = value * this%get_norm_multiplier(model_diff(i))
+!    endif
+!
+!    if (present(local_weight)) then
+!      ! Apply local weight, which is equivalent to having local alpha.
+!      value = value * local_weight(i)
+!    endif
 
-    if (this%norm_power /= 2.d0) then
-      ! Apply the Lp norm.
-      value = value * this%get_norm_multiplier(model_diff(i))
-    endif
-
-    if (present(local_weight)) then
-      ! Apply local weight, which is equivalent to having local alpha.
-      value = value * local_weight(i)
-    endif
-
+    ! X-component
+    value = this%alpha * this%problem_weight * 2.d0 * model(i, 1) * column_weight(i)
     call matrix%add(value, param_shift + i, myrank)
+
+    ! Y-component
+    value = this%alpha * this%problem_weight * 2.d0 * model(i, 2) * column_weight(i)
+    call matrix%add(value, param_shift + i + this%nelements, myrank)
+
+    ! Z-component
+    value = this%alpha * this%problem_weight * 2.d0 * model(i, 3) * column_weight(i)
+    call matrix%add(value, param_shift + i + 2 * this%nelements, myrank)
+
     call matrix%new_row(myrank)
   enddo
 
@@ -213,15 +233,15 @@ subroutine damping_add_RHS(this, b_RHS, model_diff, myrank, nbproc, local_weight
   do i = 1, this%nelements
     b_RHS(i) = - this%alpha * this%problem_weight * model_diff(i)
 
-    if (this%norm_power /= 2.d0) then
-      ! Apply the Lp norm.
-      b_RHS(i) = b_RHS(i) * this%get_norm_multiplier(model_diff(i))
-    endif
-
-    if (present(local_weight)) then
-      ! Apply local weight, which is equivalent to having local alpha.
-      b_RHS(i) = b_RHS(i) * local_weight(i)
-    endif
+!    if (this%norm_power /= 2.d0) then
+!      ! Apply the Lp norm.
+!      b_RHS(i) = b_RHS(i) * this%get_norm_multiplier(model_diff(i))
+!    endif
+!
+!    if (present(local_weight)) then
+!      ! Apply local weight, which is equivalent to having local alpha.
+!      b_RHS(i) = b_RHS(i) * local_weight(i)
+!    endif
   enddo
 
   ! Gather full right hand side.

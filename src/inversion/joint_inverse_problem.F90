@@ -194,6 +194,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
       par%norm_power /= 2.d0) then
     this%WAVELET_DOMAIN = .false.
   endif
+  ! TEMPORARY!
+  this%WAVELET_DOMAIN = .false.
 
   if (myrank == 0) print *, 'WAVELET_DOMAIN =', this%WAVELET_DOMAIN
 
@@ -253,7 +255,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   do i = 1, 2
     if (this%add_admm(i)) then
       nl = nl + par%nelements_total
-      nnz = nnz + par%nelements
+      ! ADJUSTED for vectors!
+      nnz = nnz + 3 * par%nelements
       nl_empty = nl_empty + par%nelements_total - par%nelements
 
       call this%admm_method(i)%initialize(par%nelements, myrank)
@@ -443,11 +446,14 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
                               par%compression_type, par%nx, par%ny, par%nz)
 
       call damping%add(this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), arr(i)%column_weight, &
-                       model(i)%val(:, 1), this%x0_ADMM(i)%val, param_shift(i), &
+                       model(i)%val, this%x0_ADMM(i)%val, param_shift(i), &
                        this%WAVELET_DOMAIN, myrank, nbproc)
 
+      ! Use x0_ADMM for temp array to calculate the cost.
+      this%x0_ADMM(i)%val = model(i)%val(:, 1)**2 + model(i)%val(:, 2)**2 + model(i)%val(:, 3)**2
+
       ! Calculate the ADMM cost in parallel.
-      call calculate_cost(par%nelements, this%admm_method(i)%z, model(i)%val(:, 1), cost, .true., nbproc)
+      call calculate_cost(par%nelements, this%admm_method(i)%z, this%x0_ADMM(i)%val, cost, .true., nbproc)
       this%admm_cost = sqrt(cost)
 
       if (myrank == 0) print *, "ADMM cost |x - z| / |z| =", this%admm_cost

@@ -72,65 +72,46 @@ subroutine admm_method_iterate_admm_arrays(this, nlithos, xmin, xmax, x, x0, myr
   integer, intent(in) :: nlithos
   real(kind=CUSTOM_REAL), intent(in) :: xmin(nlithos, this%nelements)
   real(kind=CUSTOM_REAL), intent(in) :: xmax(nlithos, this%nelements)
-  real(kind=CUSTOM_REAL), intent(in) :: x(this%nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: x(this%nelements, 3)
   integer, intent(in) :: myrank
 
   real(kind=CUSTOM_REAL), intent(out) :: x0(this%nelements)
 
   real(kind=CUSTOM_REAL) :: arg, mindist, val, closest_boundary
+  real(kind=CUSTOM_REAL) :: lambda, x_magn
   integer :: i, j
   logical :: inside
 
   if (myrank == 0) print *, 'Calculating the ADMM arrays.'
 
+  lambda = 1.d-2
+
   ! Calculate z[k + 1] = Pc(x[k + 1] + u[k]).
   do i = 1, this%nelements
 
-    ! Calculate the indicator function.
-    arg = x(i) + this%u(i)
+    ! Calculate the vector magnitude (squared).
+    x_magn = x(i, 1)**2 + x(i, 2)**2 + x(i, 3)**2
 
-    !if (arg < xmin(i)) then
-    !  this%z(i) = xmin(i)
-    !
-    !else if (arg > xmax(i)) then
-    !  this%z(i) = xmax(i)
-    !
-    !else
-    !  this%z(i) = arg
-    !endif
+    arg = x_magn + this%u(i)
 
-    inside = .false.
-    do j = 1, nlithos
-      ! Check if the value lies inside the bounds.
-      if (xmin(j, i) <= arg .and. arg <= xmax(j, i)) then
-        inside = .true.
-        this%z(i) = arg
-        exit
-      endif
-    enddo
+    !-----------------------------------------
+    ! Test 1.
+    if (abs(arg) <= lambda) then
+      this%z(i) = 0.d0
 
-    if (.not. inside) then
-    ! The value lies outside boundaries, so finding the closest boundary.
-      mindist = 1.d30
-      do j = 1, nlithos
-        val = dabs(xmin(j, i) - arg)
-        if (val < mindist) then
-          mindist = val
-          closest_boundary = xmin(j, i)
-        endif
+    else if (arg > lambda) then
+      this%z(i) = arg - lambda
 
-        val = dabs(xmax(j, i) - arg)
-        if (val < mindist) then
-          mindist = val
-          closest_boundary = xmax(j, i)
-        endif
-      enddo
-      this%z(i) = closest_boundary
+    else
+      this%z(i) = arg + lambda
     endif
+
+    ! Calculate u[k + 1] = u[k] + x[k + 1] - z[k + 1].
+    this%u(i) = this%u(i) + x_magn - this%z(i)
   enddo
 
   ! Calculate u[k + 1] = u[k] + x[k + 1] - z[k + 1].
-  this%u = this%u + x - this%z
+  !this%u = this%u + x - this%z
 
   x0 = this%z - this%u
 
