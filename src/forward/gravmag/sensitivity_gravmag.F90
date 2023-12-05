@@ -293,6 +293,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
               sensit_compressed(nel) = real(sensit_line_full(p, k, d), MATRIX_PRECISION)
 
               sensit_nnz(p) = sensit_nnz(p) + 1
+
+              cost_compressed_loc = cost_compressed_loc + sensit_line_full(p, k, d)**2
             endif
           enddo
 
@@ -300,8 +302,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
           if (nel > nel_compressed) then
             call exit_MPI("Wrong number of elements in calculate_and_write_sensit!", myrank, 0)
           endif
-
-          cost_compressed_loc = cost_compressed_loc + sum(sensit_compressed(1:nel)**2)
 
         else
         ! No compression.
