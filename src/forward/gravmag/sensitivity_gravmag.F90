@@ -185,7 +185,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   !---------------------------------------------------------------------------------------------
   ! Define the output file.
   !---------------------------------------------------------------------------------------------
-  call execute_command_line('mkdir -p '//trim(path_output)//"/SENSIT/")
+  call execute_command_line('mkdir -p "'//trim(path_output)//'/SENSIT"')
 
   filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(myrank))
   filename_full = trim(path_output)//"/SENSIT/"//filename

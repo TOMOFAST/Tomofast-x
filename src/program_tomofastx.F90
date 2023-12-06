@@ -88,7 +88,7 @@ program program_tomofastx
   call initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
 
   ! Create the output directory. If it already exists there is no problem.
-  if (myrank == 0) call execute_command_line('mkdir -p '//path_output)
+  if (myrank == 0) call execute_command_line('mkdir -p "'//trim(path_output)//'"')
 
   call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 

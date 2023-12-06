@@ -97,7 +97,7 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomp
   lf = char(10)
 
   ! Create a directory.
-  call execute_command_line('mkdir -p '//trim(path_output)//"/Paraview/")
+  call execute_command_line('mkdir -p "'//trim(path_output)//'/Paraview"')
 
   filename_full = trim(path_output)//"/Paraview/"//filename
 
@@ -237,7 +237,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
   lf = char(10) ! line feed character
 
   ! Create a directory.
-  call execute_command_line('mkdir -p '//trim(path_output)//"/Paraview/")
+  call execute_command_line('mkdir -p "'//trim(path_output)//'/Paraview"')
 
   filename_full = trim(path_output)//"/Paraview/"//filename
 
@@ -420,7 +420,7 @@ subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, v
   lf = char(10) ! line feed character
 
   ! Create a directory.
-  call execute_command_line('mkdir -p '//trim(path_output)//"/Paraview/")
+  call execute_command_line('mkdir -p "'//trim(path_output)//'/Paraview"')
 
   filename_full = trim(path_output)//"/Paraview/"//filename
 

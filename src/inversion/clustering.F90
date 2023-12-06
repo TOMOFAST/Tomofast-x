@@ -368,9 +368,8 @@ subroutine clustering_write_data(this, file_name, grid, myrank)
   character(len=256) :: filename_full
 
   if (myrank == 0) then
-  ! Writing by master CPU only.
-
-    call execute_command_line('mkdir -p '//trim(path_output)//"/Voxet/")
+    ! Create a directory.
+    call execute_command_line('mkdir -p "'//trim(path_output)//'/Voxet"')
 
     filename_full = trim(path_output)//"/Voxet/"//file_name
 

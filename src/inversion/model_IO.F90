@@ -329,8 +329,8 @@ subroutine model_write_voxels_format(model, file_name, myrank)
   integer :: i
 
   if (myrank == 0) then
-
-    call execute_command_line('mkdir -p '//trim(path_output)//"/Voxet/")
+    ! Create a directory.
+    call execute_command_line('mkdir -p "'//trim(path_output)//'/Voxet"')
 
     filename_full = trim(path_output)//"/Voxet/"//file_name
 
