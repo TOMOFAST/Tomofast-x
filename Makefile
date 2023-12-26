@@ -38,7 +38,6 @@ endif
 
 # NOTE: When mpiifort is not found (sometimes happens), compile using mpif90 with
 # export OMPI_FC=ifort
-# export OMPI_CC=icc
 
 # NOTE: To check what compiler is used by mpif90, execute
 # mpif90 -v
@@ -46,8 +45,6 @@ endif
 # Use MPI Fortran and C compiler and linker wrappers.
 #FC = mpiifort
 FC = mpif90
-CC = mpicc
-#CC = mpiicc
 
 # obj directory
 OBJDIR = obj
@@ -203,8 +200,6 @@ $(OBJDIR)/%.o: %.F90
 	$(FC) $(FFLAGS) -o $@ -c $<
 $(OBJDIR)/%.o: %.f90
 	$(FC) $(FFLAGS) -o $@ -c $<
-$(OBJDIR)/%.o: %.c
-	$(CC) $(CFLAGS) -o $@ -c $<
 
 
 # Target to build the actual executable.
