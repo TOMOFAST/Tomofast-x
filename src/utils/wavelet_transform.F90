@@ -76,7 +76,7 @@ subroutine Haar3D(s, n1, n2, n3)
   integer, intent(in) :: n1, n2, n3
   real(kind=CUSTOM_REAL), intent(inout) :: s(n1, n2, n3)
 
-  integer :: i, i1, i2, i3, ic, L, il, ig, ngmin, ngmax
+  integer :: i, ic, L, il, ig, ngmin, ngmax
   integer :: istep, step_incr, step2, nscale, ng
 
   ! Loop over the 3 dimensions.
@@ -159,7 +159,7 @@ subroutine iHaar3D(s, n1, n2, n3)
   integer, intent(in) :: n1, n2, n3
   real(kind=CUSTOM_REAL), intent(inout) :: s(n1, n2, n3)
 
-  integer :: i, i1, i2, i3, ic, L, il, ig, ngmin, ngmax
+  integer :: i, ic, L, il, ig, ngmin, ngmax
   integer :: istep, step_incr, step2, nscale, ng
 
   ! Loop over the 3 dimensions.
