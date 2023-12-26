@@ -230,8 +230,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
         nl = nl + 3 * par%nelements_total
         nnz = nnz + 6 * par%nelements
 
-        ! Note: we increase a multiplier from 3 to 6 to account for elements from other ranks.
-        nl_empty_loc = 3 * par%nelements_total - 6 * par%nelements
+        ! Note: we increase a multiplier from 3 to 12 to account for elements from other ranks.
+        nl_empty_loc = 3 * par%nelements_total - 12 * par%nelements
         if (nl_empty_loc > 0) then
           nl_empty = nl_empty + nl_empty_loc
         endif
@@ -243,8 +243,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     nl = nl + 3 * par%nelements_total
     nnz = nnz + this%cross_grad%get_num_elements(par%derivative_type)
 
-    ! Note: we increase a multiplier from 3 to 9 to account for elements from other ranks.
-    nl_empty_loc = 3 * par%nelements_total - 9 * par%nelements
+    ! Note: we increase a multiplier from 3 to 18 to account for elements from other ranks.
+    nl_empty_loc = 3 * par%nelements_total - 18 * par%nelements
     if (nl_empty_loc > 0) then
       nl_empty = nl_empty + nl_empty_loc
     endif
