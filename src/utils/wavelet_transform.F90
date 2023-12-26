@@ -76,73 +76,76 @@ subroutine Haar3D(s, n1, n2, n3)
   integer, intent(in) :: n1, n2, n3
   real(kind=CUSTOM_REAL), intent(inout) :: s(n1, n2, n3)
 
-  integer :: i,i1,i2,i3,ic,L,il,ig,ngmin,ngmax
-  integer :: istep,step_incr,step2,nscale,ng
+  integer :: i, i1, i2, i3, ic, L, il, ig, ngmin, ngmax
+  integer :: istep, step_incr, step2, nscale, ng
 
-! Loop over the 3 dimensions
-  do ic = 1,3
-
-! Loop over the scales
-    if (ic==1) then
+  ! Loop over the 3 dimensions.
+  do ic = 1, 3
+    if (ic == 1) then
       nscale = int(log(real(n1,CUSTOM_REAL))/log(2._CUSTOM_REAL))
       L = n1
-    else if (ic==2) then
+    else if (ic == 2) then
       nscale = int(log(real(n2,CUSTOM_REAL))/log(2._CUSTOM_REAL))
       L = n2
     else
       nscale = int(log(real(n3,CUSTOM_REAL))/log(2._CUSTOM_REAL))
       L = n3
     endif
-    do istep = 1,nscale
+
+    ! Loop over the scales.
+    do istep = 1, nscale
       step_incr = 2**istep
-      ngmin = step_incr/2+1
-      ngmax = ngmin+int((L-ngmin)/step_incr)*step_incr
-      ng = (ngmax-ngmin)/step_incr+1
+      ngmin = step_incr / 2 + 1
+      ngmax = ngmin + int((L - ngmin) / step_incr) * step_incr
+      ng = (ngmax - ngmin) / step_incr + 1
       step2 = step_incr
-!-------------- Predict
+
+      ! Predict.
       ig = ngmin
       il = 1
-      do i = 1,ng
-        if (ic==1) then
-          forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3)-s(il,i2,i3)
-        else if (ic==2) then
-          forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3)-s(i1,il,i3)
+      do i = 1, ng
+        if (ic == 1) then
+          s(ig, :, :) = s(ig, :, :) - s(il, :, :)
+        else if (ic == 2) then
+          s(:, ig, :) = s(:, ig, :) - s(:, il, :)
         else
-          forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig)-s(i1,i2,il)
+          s(:, :, ig) = s(:, :, ig) - s(:, :, il)
         endif
-        il = il+step2
-        ig = ig+step2
+        il = il + step2
+        ig = ig + step2
       enddo
-!------------- Update
+
+      ! Update.
       ig = ngmin
       il = 1
-      do i = 1,ng
-        if (ic==1) then
-          forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3)+s(ig,i2,i3)/2._CUSTOM_REAL
-        else if (ic==2) then
-          forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3)+s(i1,ig,i3)/2._CUSTOM_REAL
+      do i = 1, ng
+        if (ic == 1) then
+          s(il, :, :) = s(il, :, :) + s(ig, :, :) / 2._CUSTOM_REAL
+        else if (ic == 2) then
+          s(:, il, :) = s(:, il, :) + s(:, ig, :) / 2._CUSTOM_REAL
         else
-          forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il)+s(i1,i2,ig)/2._CUSTOM_REAL
+          s(:, :, il) = s(:, :, il) + s(:, :, ig) / 2._CUSTOM_REAL
         endif
-        il = il+step2
-        ig = ig+step2
+        il = il + step2
+        ig = ig + step2
       enddo
-! Normalization
+
+      ! Normalization.
       ig = ngmin
       il = 1
-      do i = 1,ng
-        if (ic==1) then
-          forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3)*sqrt(2._CUSTOM_REAL)
-          forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3)/sqrt(2._CUSTOM_REAL)
-        else if (ic==2) then
-          forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3)*sqrt(2._CUSTOM_REAL)
-          forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3)/sqrt(2._CUSTOM_REAL)
+      do i = 1, ng
+        if (ic == 1) then
+          s(il, :, :) = s(il, :, :) * sqrt(2._CUSTOM_REAL)
+          s(ig, :, :) = s(ig, :, :) / sqrt(2._CUSTOM_REAL)
+        else if (ic == 2) then
+          s(:, il, :) = s(:, il, :) * sqrt(2._CUSTOM_REAL)
+          s(:, ig, :) = s(:, ig, :) / sqrt(2._CUSTOM_REAL)
         else
-          forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il)*sqrt(2._CUSTOM_REAL)
-          forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig)/sqrt(2._CUSTOM_REAL)
+          s(:, :, il) = s(:, :, il) * sqrt(2._CUSTOM_REAL)
+          s(:, :, ig) = s(:, :, ig) / sqrt(2._CUSTOM_REAL)
         endif
-        il = il+step2
-        ig = ig+step2
+        il = il + step2
+        ig = ig + step2
       enddo
     enddo
   enddo
