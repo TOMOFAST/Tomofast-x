@@ -11,8 +11,10 @@
 ===================================================================================
 GLOBAL
 ===================================================================================
-global.outputFolderPath     = output/test/
-global.description          = Your parfile description
+global.outputFolderPath             = output/test/
+global.description                  = Your parfile description
+global.dataUnitsMultiplier          = 1.0
+global.modelUnitsMultiplier         = 1.0
 
 ===================================================================================
 MODEL GRID parameters

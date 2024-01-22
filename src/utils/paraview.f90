@@ -394,15 +394,17 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
 
 end subroutine visualisation_paraview_legogrid
 
-!====================================================================================================================
+!=======================================================================================================================
 ! Writes the data points in binary VTK format for Paraview visualization.
-!====================================================================================================================
-subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, val, X, Y, Z, INVERT_Z_AXIS)
+!=======================================================================================================================
+subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, val, X, Y, Z, INVERT_Z_AXIS, units_mult)
   integer, intent(in) :: myrank
   integer, intent(in) :: ndata, ncomponents
   real(kind=CUSTOM_REAL), intent(in) :: val(ncomponents, ndata)
   real(kind=CUSTOM_REAL), intent(in) :: X(ndata), Y(ndata), Z(ndata)
   logical, intent(in) :: INVERT_Z_AXIS
+  ! Units multiplier.
+  real(kind=CUSTOM_REAL), intent(in) :: units_mult
   ! Output file name.
   character(len=*), intent(in) :: filename
 
@@ -506,6 +508,9 @@ subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, v
   endif
 
   point_data = real(val, 4)
+
+  ! Convert data units.
+  point_data = point_data / units_mult
 
   if (ncomponents == 3) then
     if (INVERT_Z_AXIS) then

@@ -170,6 +170,9 @@ subroutine data_read_points_format(this, file_name, grid_only, myrank)
     if (ierr /= 0) call exit_MPI("Problem while reading the data file! Verify the number of data components.", myrank, 0)
   enddo
 
+  ! Convert input data units.
+  this%val_meas = data_units_mult * this%val_meas
+
   close(10)
 
 end subroutine data_read_points_format
@@ -206,9 +209,9 @@ subroutine data_write(this, name_prefix, which, myrank)
 
   ! Write data.
   if (which == 1) then
-    write(10, *) (this%X(i), this%Y(i), this%Z(i), this%val_meas(:, i), new_line('a'), i = 1, this%ndata)
+    write(10, *) (this%X(i), this%Y(i), this%Z(i), this%val_meas(:, i) / data_units_mult, new_line('a'), i = 1, this%ndata)
   else
-    write(10, *) (this%X(i), this%Y(i), this%Z(i), this%val_calc(:, i), new_line('a'), i = 1, this%ndata)
+    write(10, *) (this%X(i), this%Y(i), this%Z(i), this%val_calc(:, i) / data_units_mult, new_line('a'), i = 1, this%ndata)
   endif
 
   close(10)
@@ -220,10 +223,10 @@ subroutine data_write(this, name_prefix, which, myrank)
 
   if (which == 1) then
     call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
-                                       this%val_meas, this%X, this%Y, this%Z, .true.)
+                                       this%val_meas, this%X, this%Y, this%Z, .true., data_units_mult)
   else
     call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
-                                       this%val_calc, this%X, this%Y, this%Z, .true.)
+                                       this%val_calc, this%X, this%Y, this%Z, .true., data_units_mult)
   endif
 
 end subroutine data_write
