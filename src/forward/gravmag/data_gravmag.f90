@@ -115,6 +115,9 @@ subroutine data_read(this, file_name, myrank)
   if (myrank == 0) then
     print *, 'Reading data from file '//trim(file_name)
     call this%read_points_format(file_name, .false., myrank)
+
+    ! Convert input data units.
+    this%val_meas = this%units_mult * this%val_meas
   endif
 
   ! MPI broadcast data arrays.
@@ -174,9 +177,6 @@ subroutine data_read_points_format(this, file_name, grid_only, myrank)
 
     if (ierr /= 0) call exit_MPI("Problem while reading the data file! Verify the number of data components.", myrank, 0)
   enddo
-
-  ! Convert input data units.
-  this%val_meas = this%units_mult * this%val_meas
 
   close(10)
 
