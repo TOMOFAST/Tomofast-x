@@ -32,6 +32,7 @@ module model_IO
 
   private
 
+  public :: set_model
   public :: model_read
   public :: read_model_grid
   public :: model_write
@@ -45,6 +46,29 @@ module model_IO
   logical, parameter, private :: WRITE_UNSTRUCTURED_GRID_PARAVIEW_MODEL = .false.
 
 contains
+
+!========================================================================================
+! Sets the model values: via constant from Parfile or via reading it from a file.
+!========================================================================================
+subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
+  type(t_model), intent(inout) :: model
+  integer, intent(in) :: model_type, myrank, nbproc
+  real(kind=CUSTOM_REAL), intent(in) :: model_val
+  character(len=256), intent(in) :: model_file
+
+  if (model_type == 1) then
+    ! Setting homogeneous starting value.
+    model%val = model_val
+    if (myrank == 0) model%val_full = model_val
+
+  else if (model_type == 2) then
+    ! Reading from file.
+    call model_read(model, model_file, myrank, nbproc)
+
+  else
+    call exit_MPI("Unknown model type in set_model!", myrank, model_type)
+  endif
+end subroutine set_model
 
 !================================================================================================
 ! Read the model from a file.
