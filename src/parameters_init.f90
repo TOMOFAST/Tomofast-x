@@ -220,7 +220,8 @@ subroutine set_default_parameters(gpar, mpar, ipar)
 
   ! GLOBAL parameters.
   path_output = "output/test/"
-  data_units_mult = 1.d0
+  gpar%data_units_mult = 1.d0
+  mpar%data_units_mult = 1.d0
   gpar%model_units_mult = 1.d0
   mpar%model_units_mult = 1.d0
 
@@ -410,9 +411,13 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
         read(10, '(a)') parfile_description
         call print_arg(myrank, parname, parfile_description)
 
-      case("global.dataUnitsMultiplier")
-        read(10, *) data_units_mult
-        call print_arg(myrank, parname, data_units_mult)
+      case("global.grav.dataUnitsMultiplier")
+        read(10, *) gpar%data_units_mult
+        call print_arg(myrank, parname, gpar%data_units_mult)
+
+      case("global.magn.dataUnitsMultiplier")
+        read(10, *) mpar%data_units_mult
+        call print_arg(myrank, parname, mpar%data_units_mult)
 
       case("global.grav.modelUnitsMultiplier")
         read(10, *) gpar%model_units_mult

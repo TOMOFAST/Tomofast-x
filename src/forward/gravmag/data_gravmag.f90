@@ -34,6 +34,9 @@ module data_gravmag
     integer :: ndata
     integer :: ncomponents
 
+    ! Units multiplier.
+    real(kind=CUSTOM_REAL) :: units_mult
+
     ! Data positions.
     real(kind=CUSTOM_REAL), dimension(:), allocatable :: X, Y, Z
 
@@ -59,13 +62,15 @@ contains
 !============================================================================================================
 ! Initialize data object.
 !============================================================================================================
-subroutine data_initialize(this, ndata, ncomponents, myrank)
+subroutine data_initialize(this, ndata, ncomponents, units_mult, myrank)
   class(t_data), intent(inout) :: this
   integer, intent(in) :: ndata, ncomponents, myrank
+  real(kind=CUSTOM_REAL) :: units_mult
   integer :: ierr
 
   this%ndata = ndata
   this%ncomponents = ncomponents
+  this%units_mult = units_mult
 
   ierr = 0
 
@@ -171,7 +176,7 @@ subroutine data_read_points_format(this, file_name, grid_only, myrank)
   enddo
 
   ! Convert input data units.
-  this%val_meas = data_units_mult * this%val_meas
+  this%val_meas = this%units_mult * this%val_meas
 
   close(10)
 
@@ -209,9 +214,9 @@ subroutine data_write(this, name_prefix, which, myrank)
 
   ! Write data.
   if (which == 1) then
-    write(10, *) (this%X(i), this%Y(i), this%Z(i), this%val_meas(:, i) / data_units_mult, new_line('a'), i = 1, this%ndata)
+    write(10, *) (this%X(i), this%Y(i), this%Z(i), this%val_meas(:, i) / this%units_mult, new_line('a'), i = 1, this%ndata)
   else
-    write(10, *) (this%X(i), this%Y(i), this%Z(i), this%val_calc(:, i) / data_units_mult, new_line('a'), i = 1, this%ndata)
+    write(10, *) (this%X(i), this%Y(i), this%Z(i), this%val_calc(:, i) / this%units_mult, new_line('a'), i = 1, this%ndata)
   endif
 
   close(10)
@@ -223,10 +228,10 @@ subroutine data_write(this, name_prefix, which, myrank)
 
   if (which == 1) then
     call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
-                                       this%val_meas, this%X, this%Y, this%Z, .true., data_units_mult)
+                                       this%val_meas, this%X, this%Y, this%Z, .true., this%units_mult)
   else
     call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
-                                       this%val_calc, this%X, this%Y, this%Z, .true., data_units_mult)
+                                       this%val_calc, this%X, this%Y, this%Z, .true., this%units_mult)
   endif
 
 end subroutine data_write
