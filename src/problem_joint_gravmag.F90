@@ -269,8 +269,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! READING THE READ MODEL (SYNTHETIC) -----------------------------------------------------------------
 
   ! Reading the read model - that is stored in the model grid file.
-  if (SOLVE_PROBLEM(1)) call model_read(model(1), gpar%model_files(1), myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call model_read(model(2), mpar%model_files(1), myrank, nbproc)
+  if (SOLVE_PROBLEM(1)) call set_model(model(1), 2, 0.d0, gpar%model_files(1), myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call set_model(model(2), 2, 0.d0, mpar%model_files(1), myrank, nbproc)
 
 #ifndef SUPPRESS_OUTPUT
   ! Write the model read to a file for Paraview visualization.

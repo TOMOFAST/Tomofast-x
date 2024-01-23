@@ -65,7 +65,7 @@ end function index_included
 subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomponents, val, X1, Y1, Z1, X2, Y2, Z2, &
                                            i_index, j_index, k_index, &
                                            i1, i2, j1, j2, k1, k2, &
-                                           INVERT_Z_AXIS)
+                                           INVERT_Z_AXIS, units_mult)
   ! MPI rank of this process.
   integer, intent(in) :: myrank
   ! Total number of cells.
@@ -78,6 +78,8 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomp
   integer, intent(in) :: i_index(nelements), j_index(nelements), k_index(nelements)
   integer, intent(in) :: i1, i2, j1, j2, k1, k2
   logical, intent(in) :: INVERT_Z_AXIS
+  ! Units multiplier.
+  real(kind=CUSTOM_REAL), intent(in) :: units_mult
   ! Output file name.
   character(len=*), intent(in) :: filename
 
@@ -159,6 +161,9 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomp
 
       point_data(:, j) = real(val(p, :), 4)
 
+      ! Units conversion.
+      point_data(:, j) = point_data(:, j) / units_mult
+
       if (ncomponents == 3) then
         ! Flip the Z-axis of a vector.
         point_data(3, j) = z_sign * point_data(3, j)
@@ -203,7 +208,7 @@ end subroutine visualisation_paraview_struct_grid
 subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncomponents, val, X1, Y1, Z1, X2, Y2, Z2, &
                                            i_index, j_index, k_index, &
                                            i1, i2, j1, j2, k1, k2, &
-                                           INVERT_Z_AXIS)
+                                           INVERT_Z_AXIS, units_mult)
   ! MPI rank of this process.
   integer, intent(in) :: myrank
   ! Total number of cells.
@@ -216,6 +221,8 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
   integer, intent(in) :: i_index(nelements), j_index(nelements), k_index(nelements)
   integer, intent(in) :: i1, i2, j1, j2, k1, k2
   logical, intent(in) :: INVERT_Z_AXIS
+  ! Units multiplier.
+  real(kind=CUSTOM_REAL), intent(in) :: units_mult
   ! Output file name.
   character(len=*), intent(in) :: filename
 
@@ -267,7 +274,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
   ! Allocate memory.
   !-----------------------------------------------------------------
   allocate(xyzgrid_all(3, 8, nelements_slice), stat=ierr)
-  ! Note we need the first dimension equal to the number of components.
+  ! Note that we need the first dimension equal to the number of components.
   allocate(cell_data(ncomponents, nelements_slice), stat=ierr)
   allocate(cell_indexes(9, nelements_slice), stat=ierr)
   allocate(cell_type(nelements_slice), stat=ierr)
@@ -328,6 +335,9 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
       xyzgrid_all(:, :, j) = real(xyzgrid, 4)
 
       cell_data(:, j) = real(val(p, :), 4)
+
+      ! Units conversion.
+      cell_data(:, j) = cell_data(:, j) / units_mult
 
       if (ncomponents == 3) then
         ! Flip the Z-axis of a vector.
