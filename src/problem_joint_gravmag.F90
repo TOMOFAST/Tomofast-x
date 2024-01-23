@@ -253,9 +253,11 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   ! Allocate memory for the model.
   if (SOLVE_PROBLEM(1)) &
-    call model(1)%initialize(ipar%nelements, ipar%nmodel_components, allocate_full_model_on_all_cpus(1), myrank, nbproc)
+    call model(1)%initialize(ipar%nelements, ipar%nmodel_components, allocate_full_model_on_all_cpus(1), &
+                             gpar%model_units_mult, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) &
-    call model(2)%initialize(ipar%nelements, ipar%nmodel_components, allocate_full_model_on_all_cpus(2), myrank, nbproc)
+    call model(2)%initialize(ipar%nelements, ipar%nmodel_components, allocate_full_model_on_all_cpus(2), &
+                             mpar%model_units_mult, myrank, nbproc)
 
   !-----------------------------------------------------------------------------------------------------
   ! Writing the column weight for Paraview visualisation.

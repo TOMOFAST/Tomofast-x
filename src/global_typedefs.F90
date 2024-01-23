@@ -51,9 +51,6 @@ module global_typedefs
   ! A factor to multiply data by on input and output, e.g 1.0E-5 if input is in mGal or 1.0E-6 if input is in um/s2, default = 1.0 (m/s2).
   real(kind=CUSTOM_REAL) :: data_units_mult
 
-  ! A factor to multiply model by on input and output, e.g 1.0E3 if input model is T/m3, default = 1.0 (kg/m3).
-  real(kind=CUSTOM_REAL) :: model_units_mult
-
   ! PI
   real(kind=CUSTOM_REAL), parameter :: PI = 3.1415926535897932385_CUSTOM_REAL
 

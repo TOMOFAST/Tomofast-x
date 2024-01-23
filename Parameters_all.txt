@@ -13,8 +13,13 @@ GLOBAL
 ===================================================================================
 global.outputFolderPath             = output/test/
 global.description                  = Your parfile description
+
+# Units conversion.
 global.dataUnitsMultiplier          = 1.0
-global.modelUnitsMultiplier         = 1.0
+
+# A factor to multiply model by on input and output, e.g 1.0E3 if input model is T/m3, default = 1.0 (kg/m3).
+global.grav.modelUnitsMultiplier    = 1.0
+global.magn.modelUnitsMultiplier    = 1.0
 
 ===================================================================================
 MODEL GRID parameters

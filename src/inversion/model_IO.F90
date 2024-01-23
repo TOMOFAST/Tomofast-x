@@ -70,8 +70,8 @@ subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
   endif
 
   ! Units conversion.
-  model%val = model%val * model_units_mult
-  if (myrank == 0) model%val_full = model%val_full * model_units_mult
+  model%val = model%val * model%units_mult
+  if (myrank == 0) model%val_full = model%val_full * model%units_mult
 
 end subroutine set_model
 
@@ -330,18 +330,16 @@ subroutine model_write(model, name_prefix, gather_full_model, write_voxet, myran
   logical, intent(in) :: gather_full_model, write_voxet
   integer, intent(in) :: myrank, nbproc
 
-  ! Note: model_write function uses values from val_full array.
-
   if (gather_full_model) then
     call model%update_full(.false., myrank, nbproc)
   endif
 
   ! Write the model in vtk format.
-  call model_write_paraview(model, name_prefix, model_units_mult, myrank)
+  call model_write_paraview(model, name_prefix, myrank)
 
   if (write_voxet) then
     ! Write the full model in voxels format.
-    call model_write_voxels_format(model, name_prefix//"voxet_full.txt", model_units_mult, myrank)
+    call model_write_voxels_format(model, name_prefix//"voxet_full.txt", myrank)
   endif
 
 end subroutine model_write
@@ -349,11 +347,9 @@ end subroutine model_write
 !================================================================================================
 ! Write the full model (in voxels format) to file.
 !================================================================================================
-subroutine model_write_voxels_format(model, file_name, units_mult, myrank)
+subroutine model_write_voxels_format(model, file_name, myrank)
   class(t_model), intent(in) :: model
   character(len=*), intent(in) :: file_name
-  ! Units multiplier.
-  real(kind=CUSTOM_REAL), intent(in) :: units_mult
   integer, intent(in) :: myrank
 
   character(len=256) :: filename_full
@@ -373,7 +369,7 @@ subroutine model_write_voxels_format(model, file_name, units_mult, myrank)
 
     ! Write the full model array.
     ! Use the loop instead of writing the whole array to write model components in different columns.
-    write(27, *) (model%val_full(i, :) / units_mult, new_line("A"), i = 1, model%nelements_total)
+    write(27, *) (model%val_full(i, :) / model%units_mult, new_line("A"), i = 1, model%nelements_total)
 
     close(27)
   endif
@@ -383,11 +379,9 @@ end subroutine model_write_voxels_format
 !======================================================================================================
 ! Write the model snapshots in Paraview format for visualization.
 !======================================================================================================
-subroutine model_write_paraview(model, name_prefix, units_mult, myrank)
+subroutine model_write_paraview(model, name_prefix, myrank)
   class(t_model), intent(in) :: model
   character(len=*), intent(in) :: name_prefix
-  ! Units multiplier.
-  real(kind=CUSTOM_REAL), intent(in) :: units_mult
   integer, intent(in) :: myrank
 
   integer :: nx, ny, nz
@@ -412,7 +406,7 @@ subroutine model_write_paraview(model, name_prefix, units_mult, myrank)
                                          model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                          model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
                                          1, nx, 1, ny, 1, nz, &
-                                         .true., units_mult)
+                                         .true., model%units_mult)
   endif
 
   ! Write the full model using structured grid.
@@ -422,7 +416,7 @@ subroutine model_write_paraview(model, name_prefix, units_mult, myrank)
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
                                        1, nx, 1, ny, 1, nz, &
-                                       .true., units_mult)
+                                       .true., model%units_mult)
 
   ! Write the x-profile of the model.
   filename = trim(name_prefix)//"model3D_half_x.vtk"
@@ -431,7 +425,7 @@ subroutine model_write_paraview(model, name_prefix, units_mult, myrank)
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
                                        nx / 2 + 1, nx / 2 + 1, 1, ny, 1, nz, &
-                                       .true., units_mult)
+                                       .true., model%units_mult)
 
   ! Write the y-profile of the model.
   filename = trim(name_prefix)//"model3D_half_y.vtk"
@@ -440,7 +434,7 @@ subroutine model_write_paraview(model, name_prefix, units_mult, myrank)
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
                                        1, nx, ny / 2 + 1, ny / 2 + 1, 1, nz, &
-                                       .true., units_mult)
+                                       .true., model%units_mult)
 
   ! Write the z-profile of the model.
   filename = trim(name_prefix)//"model3D_half_z.vtk"
@@ -449,7 +443,7 @@ subroutine model_write_paraview(model, name_prefix, units_mult, myrank)
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
                                        1, nx, 1, ny, nz / 2 + 1, nz / 2 + 1, &
-                                       .true., units_mult)
+                                       .true., model%units_mult)
 end subroutine model_write_paraview
 
 end module model_IO

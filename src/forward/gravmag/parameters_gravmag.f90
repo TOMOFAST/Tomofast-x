@@ -86,6 +86,9 @@ module parameters_gravmag
     integer :: sensit_read
     character(len=256) :: sensit_path
 
+    ! Model units conversion.
+    real(kind=CUSTOM_REAL) :: model_units_mult
+
   contains
     private
 
@@ -131,6 +134,8 @@ subroutine parameters_base_broadcast(this, myrank)
 
   call MPI_Bcast(this%sensit_read, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%sensit_path, 256, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
+
+  call MPI_Bcast(this%model_units_mult, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("MPI_Bcast error in parameters_base_broadcast!", myrank, ierr)
 

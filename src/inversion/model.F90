@@ -63,6 +63,9 @@ module model
     ! The number of model components.
     integer :: ncomponents
 
+    ! Units multiplier.
+    real(kind=CUSTOM_REAL) :: units_mult
+
   contains
     private
 
@@ -86,10 +89,12 @@ contains
 !================================================================================================
 ! Initialization.
 !================================================================================================
-subroutine model_initialize(this, nelements, ncomponents, allocate_full_model_on_all_cpus, myrank, nbproc)
+subroutine model_initialize(this, nelements, ncomponents, alloc_full_on_all_cpus, &
+                            units_mult, myrank, nbproc)
   class(t_model), intent(inout) :: this
-  logical, intent(in) :: allocate_full_model_on_all_cpus
+  logical, intent(in) :: alloc_full_on_all_cpus
   integer, intent(in) :: nelements, ncomponents, myrank, nbproc
+  real(kind=CUSTOM_REAL), intent(in) :: units_mult
 
   integer :: ierr
 
@@ -102,9 +107,11 @@ subroutine model_initialize(this, nelements, ncomponents, allocate_full_model_on
   this%nelements_total = get_total_number_elements(nelements, myrank, nbproc)
   this%ncomponents = ncomponents
 
+  this%units_mult = units_mult
+
   ierr = 0
 
-  if (allocate_full_model_on_all_cpus) then
+  if (alloc_full_on_all_cpus) then
   ! Allocate the full model array on all cpus.
     allocate(this%val_full(this%nelements_total, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
   else
