@@ -37,6 +37,9 @@ module data_gravmag
     ! Units multiplier.
     real(kind=CUSTOM_REAL) :: units_mult
 
+    ! Direction of the Z-axis (1 = down, -1 = up).
+    integer :: z_axis_dir
+
     ! Data positions.
     real(kind=CUSTOM_REAL), dimension(:), allocatable :: X, Y, Z
 
@@ -62,23 +65,25 @@ contains
 !============================================================================================================
 ! Initialize data object.
 !============================================================================================================
-subroutine data_initialize(this, ndata, ncomponents, units_mult, myrank)
+subroutine data_initialize(this, ndata, ncomponents, units_mult, z_axis_dir, myrank)
   class(t_data), intent(inout) :: this
   integer, intent(in) :: ndata, ncomponents, myrank
   real(kind=CUSTOM_REAL) :: units_mult
+  integer :: z_axis_dir
   integer :: ierr
 
   this%ndata = ndata
   this%ncomponents = ncomponents
   this%units_mult = units_mult
+  this%z_axis_dir = z_axis_dir
 
   ierr = 0
 
-  if (.not. allocated(this%X)) allocate(this%X(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%Y)) allocate(this%Y(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%Z)) allocate(this%Z(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%val_meas)) allocate(this%val_meas(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  if (.not. allocated(this%val_calc)) allocate(this%val_calc(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%X(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Y(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%Z(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val_meas(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%val_calc(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in data_initialize!", myrank, ierr)
 
@@ -118,6 +123,11 @@ subroutine data_read(this, file_name, myrank)
 
     ! Convert input data units.
     this%val_meas = this%units_mult * this%val_meas
+
+    if (this%ncomponents == 3 .and. this%z_axis_dir /= 1) then
+      ! Adjust the Z-axis direction.
+      this%val_meas(3, :) = -this%val_meas(3, :)
+    endif
   endif
 
   ! MPI broadcast data arrays.
@@ -136,6 +146,11 @@ subroutine data_read_grid(this, file_name, myrank)
   if (myrank == 0) then
     print *, 'Reading data grid from file '//trim(file_name)
     call this%read_points_format(file_name, .true., myrank)
+
+    ! Adjust the Z-axis direction.
+    if (this%z_axis_dir /= 1) then
+      this%Z = -this%Z
+    endif
   endif
 
   ! MPI broadcast data arrays.
@@ -165,7 +180,7 @@ subroutine data_read_points_format(this, file_name, grid_only, myrank)
   read(10, *) ndata_in_file
 
   if (ndata_in_file /= this%ndata) &
-    call exit_MPI("The number of data in Parfile differs from the number of data in data file!", myrank, ndata_in_file)
+    call exit_MPI("The number of data in Parfile differs from the data file!", myrank, ndata_in_file)
 
   do i = 1, this%ndata
     if (grid_only) then
@@ -197,41 +212,67 @@ subroutine data_write(this, name_prefix, which, myrank)
   character(len=*), intent(in) :: name_prefix
   integer, intent(in) :: which, myrank
 
-  integer :: i
+  integer :: i, ierr
   character(len=512) :: file_name
+  logical :: INVERT_Z_AXIS
+  ! Temporary array for writing data to file.
+  real(kind=CUSTOM_REAL), allocatable :: val(:, :)
 
-  ! Write file by master CPU only.
-  if (myrank /= 0) return
+  ! Write files by master CPU only.
+  if (myrank == 0) then
+    file_name  = trim(path_output)//'/'//name_prefix//'data.txt'
 
-  file_name  = trim(path_output)//'/'//name_prefix//'data.txt'
+    print *, 'Writing data to file '//trim(file_name)
 
-  print *, 'Writing data to file '//trim(file_name)
+    allocate(val(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
 
-  open(10, file=trim(file_name), access='stream', form='formatted', status='replace', action='write')
+    if (which == 1) then
+      val = this%val_meas
+    else
+      val = this%val_calc
+    endif
 
-  ! Writing a header line.
-  write(10, *) this%ndata
+    ! Units conversion.
+    val = val / this%units_mult
 
-  ! Write data.
-  if (which == 1) then
-    write(10, *) (this%X(i), this%Y(i), this%Z(i), this%val_meas(:, i) / this%units_mult, new_line('a'), i = 1, this%ndata)
-  else
-    write(10, *) (this%X(i), this%Y(i), this%Z(i), this%val_calc(:, i) / this%units_mult, new_line('a'), i = 1, this%ndata)
-  endif
+    if (this%ncomponents == 3  .and. this%z_axis_dir /= 1) then
+      ! Adjust the Z-axis direction.
+      val(3, :) = -val(3, :)
+    endif
 
-  close(10)
+    open(10, file=trim(file_name), access='stream', form='formatted', status='replace', action='write')
 
-  !------------------------------------------------------------------------------------
-  ! Write data in VTK format for Paraview.
-  !------------------------------------------------------------------------------------
-  file_name  = 'data_'//name_prefix(1:len(name_prefix) - 1)//'.vtk'
+    ! Writing a header line.
+    write(10, *) this%ndata
 
-  if (which == 1) then
-    call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
-                                       this%val_meas, this%X, this%Y, this%Z, .true., this%units_mult)
-  else
-    call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
-                                       this%val_calc, this%X, this%Y, this%Z, .true., this%units_mult)
+    if (this%z_axis_dir == 1) then
+      write(10, *) (this%X(i), this%Y(i), this%Z(i), val(:, i), new_line('a'), i = 1, this%ndata)
+    else
+      write(10, *) (this%X(i), this%Y(i), -this%Z(i), val(:, i), new_line('a'), i = 1, this%ndata)
+    endif
+
+    close(10)
+    deallocate(val)
+
+    !------------------------------------------------------------------------------------
+    ! Write data in VTK format for Paraview.
+    !------------------------------------------------------------------------------------
+    file_name  = 'data_'//name_prefix(1:len(name_prefix) - 1)//'.vtk'
+
+    ! Control the Z-axis direction.
+    if (this%z_axis_dir == 1) then
+      INVERT_Z_AXIS = .true.
+    else
+      INVERT_Z_AXIS = .false.
+    endif
+
+    if (which == 1) then
+      call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
+                                         this%val_meas, this%X, this%Y, this%Z, INVERT_Z_AXIS, this%units_mult)
+    else
+      call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
+                                         this%val_calc, this%X, this%Y, this%Z, INVERT_Z_AXIS, this%units_mult)
+    endif
   endif
 
 end subroutine data_write

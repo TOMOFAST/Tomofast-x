@@ -224,6 +224,8 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   mpar%data_units_mult = 1.d0
   gpar%model_units_mult = 1.d0
   mpar%model_units_mult = 1.d0
+  gpar%z_axis_dir = 1
+  mpar%z_axis_dir = 1
 
   ! MODEL GRID parameters.
   gpar%nx = 0
@@ -426,6 +428,11 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
       case("global.magn.modelUnitsMultiplier")
         read(10, *) mpar%model_units_mult
         call print_arg(myrank, parname, mpar%model_units_mult)
+
+      case("global.zAxisDirection")
+        read(10, *) gpar%z_axis_dir
+        call print_arg(myrank, parname, gpar%z_axis_dir)
+        mpar%z_axis_dir = gpar%z_axis_dir
 
       ! MODEL GRID parameters -------------------------------
 

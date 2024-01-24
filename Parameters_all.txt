@@ -22,6 +22,9 @@ global.magn.dataUnitsMultiplier     = 1.0
 global.grav.modelUnitsMultiplier    = 1.0
 global.magn.modelUnitsMultiplier    = 1.0
 
+# Use 1 for depth space (Z-axis down) or -1 for elevation space (Z-axis up).
+global.zAxisDirection               = 1
+
 ===================================================================================
 MODEL GRID parameters
 ===================================================================================
