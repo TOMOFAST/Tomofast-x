@@ -48,7 +48,7 @@ module model_IO
 contains
 
 !========================================================================================
-! Sets the model values: via constant from Parfile or via reading it from a file.
+! Sets the model values: via a constant from Parfile or via reading it from file.
 !========================================================================================
 subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
   type(t_model), intent(inout) :: model
@@ -56,32 +56,40 @@ subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
   real(kind=CUSTOM_REAL), intent(in) :: model_val
   character(len=256), intent(in) :: model_file
 
-  if (model_type == 1) then
-    ! Setting a constant value.
-    model%val = model_val
-    if (myrank == 0) model%val_full = model_val
+  if (myrank == 0) then
+    if (model_type == 1) then
+      ! Setting a constant value.
+      model%val_full = model_val
 
-  else if (model_type == 2) then
-    ! Reading from file.
-    call model_read(model, model_file, myrank, nbproc)
+    else if (model_type == 2) then
+      ! Reading from file.
+      call model_read(model, model_file, myrank)
 
-  else
-    call exit_MPI("Unknown model type in set_model!", myrank, model_type)
+    else
+      call exit_MPI("Unknown model type in set_model!", myrank, model_type)
+    endif
+
+    ! Units conversion.
+    model%val_full = model%val_full * model%units_mult
+
+    if (model%ncomponents == 3  .and. model%grid_full%z_axis_dir /= 1) then
+      ! Flip the Z-axis direction.
+      model%val_full(:, 3) = -model%val_full(:, 3)
+    endif
   endif
 
-  ! Units conversion.
-  model%val = model%val * model%units_mult
-  if (myrank == 0) model%val_full = model%val_full * model%units_mult
+  ! Distribute the model values among CPUs.
+  call model%distribute(myrank, nbproc)
 
 end subroutine set_model
 
 !================================================================================================
 ! Read the model from a file.
 !================================================================================================
-subroutine model_read(model, file_name, myrank, nbproc)
+subroutine model_read(model, file_name, myrank)
   class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: file_name
-  integer, intent(in) :: myrank, nbproc
+  integer, intent(in) :: myrank
 
   integer :: i, nelements_read
   integer :: ierr
@@ -121,9 +129,6 @@ subroutine model_read(model, file_name, myrank, nbproc)
 
     close(10)
   endif
-
-  ! Distribute the model values among CPUs.
-  call model%distribute(myrank, nbproc)
 
 end subroutine model_read
 
@@ -197,6 +202,12 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
       endif
     enddo
     close(10)
+
+    ! Flip the Z-axis direction.
+    if (grid%z_axis_dir /= 1) then
+      grid%Z1 = -grid%Z2
+      grid%Z2 = -grid%Z1
+    endif
 
     print *, 'Xmin, Xmax =', grid%get_Xmin(), grid%get_Xmax()
     print *, 'Ymin, Ymax =', grid%get_Ymin(), grid%get_Ymax()
@@ -330,12 +341,21 @@ subroutine model_write(model, name_prefix, gather_full_model, write_voxet, myran
   logical, intent(in) :: gather_full_model, write_voxet
   integer, intent(in) :: myrank, nbproc
 
+  logical :: INVERT_Z_AXIS
+
   if (gather_full_model) then
     call model%update_full(.false., myrank, nbproc)
   endif
 
+  ! Control the Z-axis direction.
+  if (model%grid_full%z_axis_dir == 1) then
+    INVERT_Z_AXIS = .true.
+  else
+    INVERT_Z_AXIS = .false.
+  endif
+
   ! Write the model in vtk format.
-  call model_write_paraview(model, name_prefix, myrank)
+  call model_write_paraview(model, name_prefix, INVERT_Z_AXIS, myrank)
 
   if (write_voxet) then
     ! Write the full model in voxels format.
@@ -353,7 +373,9 @@ subroutine model_write_voxels_format(model, file_name, myrank)
   integer, intent(in) :: myrank
 
   character(len=256) :: filename_full
-  integer :: i
+  integer :: i, ierr
+  ! Temporary array for writing the model to file.
+  real(kind=CUSTOM_REAL), allocatable :: val_full(:, :)
 
   if (myrank == 0) then
     ! Create a directory.
@@ -363,15 +385,26 @@ subroutine model_write_voxels_format(model, file_name, myrank)
 
     print *, 'Writing the full model to file ', trim(filename_full)
 
+    allocate(val_full(model%nelements_total, model%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
+
+    ! Units conversion.
+    val_full = model%val_full / model%units_mult
+
+    if (model%ncomponents == 3 .and. model%grid_full%z_axis_dir /= 1) then
+      ! Flip the Z-axis direction.
+      val_full(:, 3) = -val_full(:, 3)
+    endif
+
     open(27, file=trim(filename_full), access='stream', form='formatted', status='replace', action='write')
 
     write(27, *) model%nelements_total
 
     ! Write the full model array.
     ! Use the loop instead of writing the whole array to write model components in different columns.
-    write(27, *) (model%val_full(i, :) / model%units_mult, new_line("A"), i = 1, model%nelements_total)
+    write(27, *) (val_full, new_line("A"), i = 1, model%nelements_total)
 
     close(27)
+    deallocate(val_full)
   endif
 
 end subroutine model_write_voxels_format
@@ -379,9 +412,10 @@ end subroutine model_write_voxels_format
 !======================================================================================================
 ! Write the model snapshots in Paraview format for visualization.
 !======================================================================================================
-subroutine model_write_paraview(model, name_prefix, myrank)
+subroutine model_write_paraview(model, name_prefix, INVERT_Z_AXIS, myrank)
   class(t_model), intent(in) :: model
   character(len=*), intent(in) :: name_prefix
+  logical, intent(in) :: INVERT_Z_AXIS
   integer, intent(in) :: myrank
 
   integer :: nx, ny, nz
@@ -406,7 +440,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                          model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                          model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
                                          1, nx, 1, ny, 1, nz, &
-                                         .true., model%units_mult)
+                                         INVERT_Z_AXIS, model%units_mult)
   endif
 
   ! Write the full model using structured grid.
@@ -416,7 +450,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
                                        1, nx, 1, ny, 1, nz, &
-                                       .true., model%units_mult)
+                                       INVERT_Z_AXIS, model%units_mult)
 
   ! Write the x-profile of the model.
   filename = trim(name_prefix)//"model3D_half_x.vtk"
@@ -425,7 +459,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
                                        nx / 2 + 1, nx / 2 + 1, 1, ny, 1, nz, &
-                                       .true., model%units_mult)
+                                       INVERT_Z_AXIS, model%units_mult)
 
   ! Write the y-profile of the model.
   filename = trim(name_prefix)//"model3D_half_y.vtk"
@@ -434,7 +468,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
                                        1, nx, ny / 2 + 1, ny / 2 + 1, 1, nz, &
-                                       .true., model%units_mult)
+                                       INVERT_Z_AXIS, model%units_mult)
 
   ! Write the z-profile of the model.
   filename = trim(name_prefix)//"model3D_half_z.vtk"
@@ -443,7 +477,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
                                        model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
                                        1, nx, 1, ny, nz / 2 + 1, nz / 2 + 1, &
-                                       .true., model%units_mult)
+                                       INVERT_Z_AXIS, model%units_mult)
 end subroutine model_write_paraview
 
 end module model_IO

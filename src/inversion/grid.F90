@@ -41,6 +41,9 @@ module grid
     ! Full grid dimensions.
     integer :: nx, ny, nz
 
+    ! Direction of the Z-axis (1 = down, -1 = up).
+    integer :: z_axis_dir
+
   contains
     private
 
@@ -74,9 +77,9 @@ contains
 !=======================================================================================
 ! Allocate grid arrays.
 !=======================================================================================
-subroutine grid_allocate(this, nx, ny, nz, myrank)
+subroutine grid_allocate(this, nx, ny, nz, z_axis_dir, myrank)
   class(t_grid), intent(inout) :: this
-  integer, intent(in) :: nx, ny, nz, myrank
+  integer, intent(in) :: nx, ny, nz, z_axis_dir, myrank
 
   integer :: nelements_total
   integer :: ierr
@@ -84,6 +87,8 @@ subroutine grid_allocate(this, nx, ny, nz, myrank)
   this%nx = nx
   this%ny = ny
   this%nz = nz
+
+  this%z_axis_dir = z_axis_dir
 
   nelements_total = nx * ny * nz
 

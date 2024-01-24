@@ -125,7 +125,7 @@ subroutine data_read(this, file_name, myrank)
     this%val_meas = this%units_mult * this%val_meas
 
     if (this%ncomponents == 3 .and. this%z_axis_dir /= 1) then
-      ! Adjust the Z-axis direction.
+      ! Flip the Z-axis direction.
       this%val_meas(3, :) = -this%val_meas(3, :)
     endif
   endif
@@ -147,7 +147,7 @@ subroutine data_read_grid(this, file_name, myrank)
     print *, 'Reading data grid from file '//trim(file_name)
     call this%read_points_format(file_name, .true., myrank)
 
-    ! Adjust the Z-axis direction.
+    ! Flip the Z-axis direction.
     if (this%z_axis_dir /= 1) then
       this%Z = -this%Z
     endif
@@ -236,7 +236,7 @@ subroutine data_write(this, name_prefix, which, myrank)
     val = val / this%units_mult
 
     if (this%ncomponents == 3  .and. this%z_axis_dir /= 1) then
-      ! Adjust the Z-axis direction.
+      ! Flip the Z-axis direction.
       val(3, :) = -val(3, :)
     endif
 
