@@ -179,6 +179,17 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(1)) call apply_local_depth_weighting(gpar, iarr(1)%column_weight, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call apply_local_depth_weighting(mpar, iarr(2)%column_weight, myrank, nbproc)
 
+    ! Write the depth weight to file.
+    if (SOLVE_PROBLEM(1)) call write_depth_weight(gpar, iarr(1)%column_weight, myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call write_depth_weight(mpar, iarr(2)%column_weight, myrank, nbproc)
+
+  else if (gpar%sensit_read == 2) then
+    ! Read the depth weight from file.
+    if (SOLVE_PROBLEM(1)) call read_depth_weight(gpar, iarr(1)%column_weight, myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call read_depth_weight(mpar, iarr(2)%column_weight, myrank, nbproc)
+  endif
+
+  if (gpar%sensit_read == 0 .or. gpar%sensit_read == 2) then
     ! Calculate and write the sensitivity kernel to files.
     if (SOLVE_PROBLEM(1)) call calculate_and_write_sensit(gpar, model(1)%grid_full, data(1), iarr(1)%column_weight, &
                                                           myrank, nbproc)
@@ -365,7 +376,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) &
       call set_model(model(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, myrank, nbproc)
 
-    ! TODO: Read values directly to val_prior in set_model(), by setting the flag for the model type.
     ! Set the prior model.
     if (SOLVE_PROBLEM(1)) model(1)%val_prior = model(1)%val
     if (SOLVE_PROBLEM(2)) model(2)%val_prior = model(2)%val

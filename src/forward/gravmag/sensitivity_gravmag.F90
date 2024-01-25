@@ -43,12 +43,14 @@ module sensitivity_gravmag
   public :: read_sensitivity_kernel
   public :: read_sensitivity_metadata
   public :: calculate_new_partitioning
+  public :: write_depth_weight
+  public :: read_depth_weight
 
   private :: apply_column_weight
   private :: test_grid_cell_order
   private :: get_load_balancing_nelements
   private :: get_nel_compressed
-  private :: read_depth_weight
+  private :: read_depth_weight_file
   private :: read_sensit_nnz
 
   character(len=4) :: SUFFIX(2) = ["grav", "magn"]
@@ -395,23 +397,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   endif
 
   !---------------------------------------------------------------------------------------------
-  ! Write the depth weight.
-  !---------------------------------------------------------------------------------------------
-  if (myrank == 0) then
-    filename = "sensit_"//SUFFIX(problem_type)//"_weight"
-    filename_full = trim(path_output)//"/SENSIT/"//filename
-
-    print *, 'Writing the depth weight to file ', trim(filename_full)
-
-    open(77, file=trim(filename_full), form='unformatted', status='replace', action='write', access='stream')
-
-    write(77) nelements_total
-    write(77) column_weight_full
-
-    close(77)
-  endif
-
-  !---------------------------------------------------------------------------------------------
   ! Write the sensit_nnz (to calculate load balancing for any number of CPUs).
   !---------------------------------------------------------------------------------------------
   if (myrank == 0) then
@@ -439,6 +424,60 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   if (myrank == 0) print *, 'Finished calculating the sensitivity kernel.'
 
 end subroutine calculate_and_write_sensit
+
+!=======================================================================================================================
+! Write the depth weight to file.
+!=======================================================================================================================
+subroutine write_depth_weight(par, column_weight, myrank, nbproc)
+  class(t_parameters_base), intent(in) :: par
+  real(kind=CUSTOM_REAL), intent(in) :: column_weight(par%nelements)
+  integer, intent(in) :: myrank, nbproc
+
+  character(len=256) :: filename, filename_full
+  integer :: problem_type, nelements_total
+  integer :: ierr
+  ! The full column weight.
+  real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
+
+  nelements_total = par%nx * par%ny * par%nz
+
+  ! Allocate the full array on master rank only.
+  if (myrank == 0) then
+    allocate(column_weight_full(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  else
+    allocate(column_weight_full(1), source=0._CUSTOM_REAL, stat=ierr)
+  endif
+
+  call get_full_array(column_weight, par%nelements, column_weight_full, .false., myrank, nbproc)
+
+  if (myrank == 0) then
+    ! Define the problem type.
+    select type(par)
+    class is (t_parameters_grav)
+      problem_type = 1
+    class is (t_parameters_mag)
+      problem_type = 2
+    end select
+
+    ! Create the sensit folder.
+    call execute_command_line('mkdir -p "'//trim(path_output)//'/SENSIT"')
+
+    ! The output file name.
+    filename = "sensit_"//SUFFIX(problem_type)//"_weight"
+    filename_full = trim(path_output)//"/SENSIT/"//filename
+
+    print *, 'Writing the depth weight to file ', trim(filename_full)
+
+    open(77, file=trim(filename_full), form='unformatted', status='replace', action='write', access='stream')
+
+    write(77) nelements_total
+    write(77) column_weight_full
+
+    close(77)
+  endif
+
+  deallocate(column_weight_full)
+end subroutine write_depth_weight
 
 !=======================================================================================================================
 ! Calculate new partitioning for the nnz and nelements at every CPU for the load balancing.
@@ -818,6 +857,31 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   !---------------------------------------------------------------------------------------------
   ! Read the depth weight
   !---------------------------------------------------------------------------------------------
+  call read_depth_weight(par, column_weight, myrank, nbproc)
+
+  if (myrank == 0) print *, 'Finished reading the sensitivity kernel.'
+
+end subroutine read_sensitivity_kernel
+
+!=============================================================================================
+! Reads the depth weight.
+!=============================================================================================
+subroutine read_depth_weight(par, column_weight, myrank, nbproc)
+  class(t_parameters_base), intent(in) :: par
+  integer, intent(in) :: myrank, nbproc
+  real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements)
+
+  integer :: problem_type
+  character(len=256) :: filename, filename_full
+
+  ! Define the problem type.
+  select type(par)
+  class is (t_parameters_grav)
+    problem_type = 1
+  class is (t_parameters_mag)
+    problem_type = 2
+  end select
+
   ! Define the file name.
   filename = "sensit_"//SUFFIX(problem_type)//"_weight"
 
@@ -827,21 +891,17 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
     filename_full = trim(path_output)//"/SENSIT/"//filename
   endif
 
-  call read_depth_weight(par, filename_full, column_weight, myrank, nbproc)
-  !---------------------------------------------------------------------------------------------
-
-  if (myrank == 0) print *, 'Finished reading the sensitivity kernel.'
-
-end subroutine read_sensitivity_kernel
+  ! Read the depth weight from file.
+  call read_depth_weight_file(par, filename_full, column_weight, myrank, nbproc)
+end subroutine read_depth_weight
 
 !=============================================================================================
-! Reads the depth weight.
+! Reads the depth weight from file.
 !=============================================================================================
-subroutine read_depth_weight(par, filename, column_weight, myrank, nbproc)
+subroutine read_depth_weight_file(par, filename, column_weight, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   character(len=*), intent(in) :: filename
   integer, intent(in) :: myrank, nbproc
-
   real(kind=CUSTOM_REAL), intent(out) :: column_weight(par%nelements)
 
   integer :: nelements_total, nelements_total_read
@@ -865,7 +925,6 @@ subroutine read_depth_weight(par, filename, column_weight, myrank, nbproc)
 
   ! Read the full array by master rank only.
   if (myrank == 0) then
-
     ! Open the file.
     open(78, file=trim(filename), form='unformatted', status='old', action='read', access='stream', &
          iostat=ierr, iomsg=msg)
@@ -887,7 +946,8 @@ subroutine read_depth_weight(par, filename, column_weight, myrank, nbproc)
   ! Scatter the depth weight to all CPUs.
   call scatter_full_array(par%nelements, column_weight_full, column_weight, myrank, nbproc)
 
-end subroutine read_depth_weight
+  deallocate(column_weight_full)
+end subroutine read_depth_weight_file
 
 !=====================================================================================================
 ! Reads the sensitivity kernel metadata and retrieve nbproc used to calculate the sensitivity kernel.
