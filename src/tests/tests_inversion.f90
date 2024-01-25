@@ -76,7 +76,7 @@ subroutine test_add_damping_identity_matrix(myrank, nbproc)
     return
   endif
 
-  call model%initialize(par%nelements, par%nmodel_components, .true., 1.d0, myrank, nbproc)
+  call model%initialize(par%nelements, par%nmodel_components, .true., 1.d0, "F", myrank, nbproc)
 
   allocate(arr%column_weight(par%nelements), source=0._CUSTOM_REAL)
   allocate(x(par%nelements), source=0._CUSTOM_REAL)
@@ -170,10 +170,10 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
     return
   endif
 
-  call model1%initialize(nelements_total, ncomponents, .true., 1.d0, myrank, nbproc)
+  call model1%initialize(nelements_total, ncomponents, .true., 1.d0, "F", myrank, nbproc)
   call model1%grid_full%allocate(nx, ny, nz, 1, myrank)
 
-  call model2%initialize(nelements_total, ncomponents, .true., 1.d0, myrank, nbproc)
+  call model2%initialize(nelements_total, ncomponents, .true., 1.d0, "F", myrank, nbproc)
   call model2%grid_full%allocate(nx, ny, nz, 1, myrank)
 
   allocate(b_RHS(3 * nelements_total), source=0._CUSTOM_REAL, stat=ierr)

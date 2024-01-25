@@ -65,6 +65,8 @@ module model
 
     ! Units multiplier.
     real(kind=CUSTOM_REAL) :: units_mult
+    ! The model output label in the vtk.
+    character(len=16) :: vtk_label
 
   contains
     private
@@ -90,11 +92,12 @@ contains
 ! Initialization.
 !================================================================================================
 subroutine model_initialize(this, nelements, ncomponents, alloc_full_on_all_cpus, &
-                            units_mult, myrank, nbproc)
+                            units_mult, vtk_label, myrank, nbproc)
   class(t_model), intent(inout) :: this
   logical, intent(in) :: alloc_full_on_all_cpus
   integer, intent(in) :: nelements, ncomponents, myrank, nbproc
   real(kind=CUSTOM_REAL), intent(in) :: units_mult
+  character(len=*), intent(in) :: vtk_label
 
   integer :: ierr
 
@@ -108,6 +111,7 @@ subroutine model_initialize(this, nelements, ncomponents, alloc_full_on_all_cpus
   this%ncomponents = ncomponents
 
   this%units_mult = units_mult
+  this%vtk_label = vtk_label
 
   ierr = 0
 

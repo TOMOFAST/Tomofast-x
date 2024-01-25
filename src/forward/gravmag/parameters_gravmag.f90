@@ -86,12 +86,15 @@ module parameters_gravmag
     integer :: sensit_read
     character(len=256) :: sensit_path
 
+    !------ Other ----------------------------------------------------------
     ! Model units conversion.
     real(kind=CUSTOM_REAL) :: model_units_mult
     ! Data units conversion.
     real(kind=CUSTOM_REAL) :: data_units_mult
     ! Direction of the Z-axis (1 = down, -1 = up).
     integer :: z_axis_dir
+    ! The model output label in the vtk.
+    character(len=16) :: vtk_model_label
 
   contains
     private

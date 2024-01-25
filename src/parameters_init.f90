@@ -38,6 +38,8 @@ module init_parameters
 
   private :: print_arg_int
   private :: print_arg_dbl
+  private :: print_arg_dblarr
+  private :: print_arg_str
   private :: read_filename
 
   ! For overloading the 'print_arg' function.
@@ -76,7 +78,7 @@ end subroutine print_arg_dblarr
 !-----------------------------------------------
 subroutine print_arg_str(myrank, name, value)
   character(len=128), intent(in) :: name
-  character(len=256), intent(in) :: value
+  character(len=*), intent(in) :: value
   integer, intent(in) :: myrank
 
   if (myrank == 0) print *, trim(name)//" =", trim(value)
@@ -226,6 +228,8 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   mpar%model_units_mult = 1.d0
   gpar%z_axis_dir = 1
   mpar%z_axis_dir = 1
+  gpar%vtk_model_label = "rho"
+  mpar%vtk_model_label = "k"
 
   ! MODEL GRID parameters.
   gpar%nx = 0
@@ -801,6 +805,16 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
       case("inversion.clustering.constraintsType")
         read(10, *) ipar%clustering_constraints_type
         call print_arg(myrank, parname, ipar%clustering_constraints_type)
+
+      ! OUTPUT parameters -------------------------------------------------------
+
+      case("output.paraview.grav.modelLabel")
+        read(10, '(a)') gpar%vtk_model_label
+        call print_arg(myrank, parname, gpar%vtk_model_label)
+
+      case("output.paraview.magn.modelLabel")
+        read(10, '(a)') mpar%vtk_model_label
+        call print_arg(myrank, parname, mpar%vtk_model_label)
 
       case default
         read(10, *, iostat=ios)

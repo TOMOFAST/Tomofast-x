@@ -65,7 +65,9 @@ end function index_included
 subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomponents, val, X1, Y1, Z1, X2, Y2, Z2, &
                                            i_index, j_index, k_index, &
                                            i1, i2, j1, j2, k1, k2, &
-                                           INVERT_Z_AXIS, units_mult)
+                                           INVERT_Z_AXIS, units_mult, vtk_label)
+  ! Output file name.
+  character(len=*), intent(in) :: filename
   ! MPI rank of this process.
   integer, intent(in) :: myrank
   ! Total number of cells.
@@ -80,8 +82,7 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomp
   logical, intent(in) :: INVERT_Z_AXIS
   ! Units multiplier.
   real(kind=CUSTOM_REAL), intent(in) :: units_mult
-  ! Output file name.
-  character(len=*), intent(in) :: filename
+  character(len=*), intent(in) :: vtk_label
 
   character(len=256) :: filename_full
   character(len=256) :: msg
@@ -183,12 +184,12 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomp
 
   if (ncomponents == 1) then
   ! Scalar data.
-    write(333) 'SCALARS F FLOAT'//lf
+    write(333) 'SCALARS '//trim(adjustl(vtk_label))//' FLOAT'//lf
     write(333) 'LOOKUP_TABLE default'//lf
 
   else if (ncomponents == 3) then
   ! Vector data.
-    write(333) 'VECTORS vectors FLOAT'//lf
+    write(333) 'VECTORS '//trim(adjustl(vtk_label))//' FLOAT'//lf
   endif
 
   write(333) point_data
@@ -208,7 +209,9 @@ end subroutine visualisation_paraview_struct_grid
 subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncomponents, val, X1, Y1, Z1, X2, Y2, Z2, &
                                            i_index, j_index, k_index, &
                                            i1, i2, j1, j2, k1, k2, &
-                                           INVERT_Z_AXIS, units_mult)
+                                           INVERT_Z_AXIS, units_mult, vtk_label)
+  ! Output file name.
+  character(len=*), intent(in) :: filename
   ! MPI rank of this process.
   integer, intent(in) :: myrank
   ! Total number of cells.
@@ -223,8 +226,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
   logical, intent(in) :: INVERT_Z_AXIS
   ! Units multiplier.
   real(kind=CUSTOM_REAL), intent(in) :: units_mult
-  ! Output file name.
-  character(len=*), intent(in) :: filename
+  character(len=*), intent(in) :: vtk_label
 
   character(len=256) :: filename_full
   character(len=256) :: msg
@@ -258,7 +260,7 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
   ! Write a header.
   !-----------------------------------------------------------------
   write(333) '# vtk DataFile Version 3.0'//lf
-  write(333) 'TOMOFAST-X'//lf
+  write(333) 'Tomofast-x'//lf
   write(333) 'BINARY'//lf
   write(333) 'DATASET UNSTRUCTURED_GRID'//lf//lf
 
@@ -385,12 +387,12 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
 
   if (ncomponents == 1) then
   ! Scalar data.
-    write(333) 'SCALARS F FLOAT'//lf
+    write(333) 'SCALARS '//trim(adjustl(vtk_label))//' FLOAT'//lf
     write(333) 'LOOKUP_TABLE default'//lf
 
   else if (ncomponents == 3) then
   ! Vector data.
-    write(333) 'VECTORS vectors FLOAT'//lf
+    write(333) 'VECTORS '//trim(adjustl(vtk_label))//' FLOAT'//lf
   endif
 
   write(333) cell_data
@@ -446,7 +448,7 @@ subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, v
   ! Write a header.
   !-----------------------------------------------------------------
   write(333) '# vtk DataFile Version 3.0'//lf
-  write(333) 'TOMOFAST-X'//lf
+  write(333) 'Tomofast-x'//lf
   write(333) 'BINARY'//lf
   write(333) 'DATASET UNSTRUCTURED_GRID'//lf//lf
 

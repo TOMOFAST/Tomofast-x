@@ -186,3 +186,7 @@ inversion.clustering.optimizationType    = 2
 inversion.clustering.constraintsType     = 2
 
 ===================================================================================
+OUTPUT
+===================================================================================
+output.paraview.grav.modelLabel          = rho
+output.paraview.magn.modelLabel          = k
