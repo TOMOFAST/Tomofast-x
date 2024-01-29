@@ -425,12 +425,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
   ny = model%grid_full%ny
   nz = model%grid_full%nz
 
-  ! Control the Z-axis direction.
-  if (model%grid_full%z_axis_dir == 1) then
-    INVERT_Z_AXIS = .true.
-  else
-    INVERT_Z_AXIS = .false.
-  endif
+  INVERT_Z_AXIS = .true.
 
   if (WRITE_UNSTRUCTURED_GRID_PARAVIEW_MODEL) then
     ! Write the full model (using unstructured grid format).
