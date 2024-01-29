@@ -145,6 +145,7 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
   integer :: nelements_total
   integer :: ierr
   character(len=256) :: msg
+  real(kind=CUSTOM_REAL) :: tmp
   real(kind=CUSTOM_REAL) :: val(nmodel_components)
 
   if (myrank == 0) then
@@ -205,8 +206,11 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
 
     ! Flip the Z-axis direction.
     if (grid%z_axis_dir /= 1) then
-      grid%Z1 = -grid%Z2
-      grid%Z2 = -grid%Z1
+      do i = 1, nelements_total
+        tmp = grid%Z1(i)
+        grid%Z1(i) = -grid%Z2(i)
+        grid%Z2(i) = -tmp
+      enddo
     endif
 
     print *, 'Xmin, Xmax =', grid%get_Xmin(), grid%get_Xmax()
