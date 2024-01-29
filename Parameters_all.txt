@@ -14,16 +14,22 @@ GLOBAL
 global.outputFolderPath             = output/test/
 global.description                  = Your parfile description.
 
-# A factor to multiply data by on input and output, e.g 1.0E-5 if input is in mGal or 1.0E-6 if input is in um/s2, default = 1.0 (m/s2).
+# A factor to multiply data by on input and divide by on output, e.g 1.0E-5 if input is in mGal or 1.0E-6 if input is in um/s2, default = 1.0 (m/s2).
 global.grav.dataUnitsMultiplier     = 1.0
 global.magn.dataUnitsMultiplier     = 1.0
 
-# A factor to multiply model by on input and output, e.g 1.0E3 if input model is T/m3, default = 1.0 (kg/m3).
+# A factor to multiply model by on input and divide by on output, e.g 1.0E3 if input model is T/m3, default = 1.0 (kg/m3).
 global.grav.modelUnitsMultiplier    = 1.0
 global.magn.modelUnitsMultiplier    = 1.0
 
-# Use 1 for depth space (Z-axis down) or -1 for elevation space (Z-axis up).
+# Use 1 for depth space (Z-axis down) or -1 for elevation space (Z-axis up). Paraview VTKs are always in elevation space.
 global.zAxisDirection               = 1
+
+===================================================================================
+OUTPUT
+===================================================================================
+output.paraview.grav.modelLabel          = rho
+output.paraview.magn.modelLabel          = k
 
 ===================================================================================
 MODEL GRID parameters
@@ -185,8 +191,3 @@ inversion.clustering.optimizationType    = 2
 # 1-global, 2-local.
 inversion.clustering.constraintsType     = 2
 
-===================================================================================
-OUTPUT
-===================================================================================
-output.paraview.grav.modelLabel          = rho
-output.paraview.magn.modelLabel          = k
