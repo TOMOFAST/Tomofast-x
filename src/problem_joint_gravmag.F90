@@ -54,8 +54,6 @@ module problem_joint_gravmag
   public :: solve_problem_joint_gravmag
 
   private :: calculate_model_costs
-  private :: set_model
-  private :: set_model_bounds
   private :: adjust_admm_weight
   private :: calculate_residual
   private :: exit_loop
@@ -638,40 +636,6 @@ subroutine calculate_model_costs(ipar, iarr, model, cost_model, solve_problem, m
   enddo
 end subroutine calculate_model_costs
 
-!========================================================================================
-! Sets the model bounds.
-!========================================================================================
-subroutine set_model_bounds(ipar, model, problem_type, myrank, nbproc)
-  type(t_parameters_inversion), intent(in) :: ipar
-  integer, intent(in) :: problem_type
-  integer, intent(in) :: myrank, nbproc
-  type(t_model), intent(inout) :: model
-
-  integer :: i
-
-  ! Allocate bound arrays.
-  call model%allocate_bound_arrays(ipar%nlithos, myrank)
-
-  if (ipar%admm_bound_type == 1) then
-    ! Global bounds - define from Parfile parameters.
-    do i = 1, model%nelements
-      model%min_bound(:, i) = ipar%admm_bounds(problem_type)%val(1::2)
-      model%max_bound(:, i) = ipar%admm_bounds(problem_type)%val(2::2)
-    enddo
-    model%bound_weight(:) = 1.d0
-
-    ! Sanity check.
-    do i = 1, ipar%nlithos
-      if (model%min_bound(i, 1) > model%max_bound(i, 1)) then
-        call exit_MPI("Wrong admm bounds: define bounds as: min1 max1 ... minN maxN.", myrank, 0)
-      endif
-    enddo
-  else
-    ! Local bounds - read from file.
-    call read_bound_constraints(model, ipar%bounds_ADMM_file(problem_type), myrank, nbproc)
-  endif
-
-end subroutine set_model_bounds
 !========================================================================================
 ! Calcualte data residual.
 ! Note: utilize conversion 2D to 1D array via subroutine interface.

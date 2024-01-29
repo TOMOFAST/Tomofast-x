@@ -27,6 +27,7 @@ module model_IO
   use string
   use model
   use grid
+  use parameters_inversion
 
   implicit none
 
@@ -37,7 +38,8 @@ module model_IO
   public :: read_model_grid
   public :: model_write
 
-  public :: read_bound_constraints
+  public :: set_model_bounds
+  private :: read_bound_constraints
   public :: read_damping_gradient_weights
 
   private :: model_write_voxels_format
@@ -222,6 +224,45 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
   call grid%broadcast(myrank)
 
 end subroutine read_model_grid
+
+!========================================================================================
+! Sets the model bounds (for the ADMM).
+!========================================================================================
+subroutine set_model_bounds(ipar, model, problem_type, myrank, nbproc)
+  type(t_parameters_inversion), intent(in) :: ipar
+  integer, intent(in) :: problem_type
+  integer, intent(in) :: myrank, nbproc
+  type(t_model), intent(inout) :: model
+
+  integer :: i
+
+  ! Allocate bound arrays.
+  call model%allocate_bound_arrays(ipar%nlithos, myrank)
+
+  if (ipar%admm_bound_type == 1) then
+    ! Global bounds - define from Parfile parameters.
+    do i = 1, model%nelements
+      model%min_bound(:, i) = ipar%admm_bounds(problem_type)%val(1::2)
+      model%max_bound(:, i) = ipar%admm_bounds(problem_type)%val(2::2)
+    enddo
+    model%bound_weight(:) = 1.d0
+
+    ! Sanity check.
+    do i = 1, ipar%nlithos
+      if (model%min_bound(i, 1) > model%max_bound(i, 1)) then
+        call exit_MPI("Wrong admm bounds: define bounds as: min1 max1 ... minN maxN.", myrank, 0)
+      endif
+    enddo
+  else
+    ! Local bounds - read from file.
+    call read_bound_constraints(model, ipar%bounds_ADMM_file(problem_type), myrank, nbproc)
+  endif
+
+  ! Units conversion.
+  model%min_bound = model%min_bound * model%units_mult
+  model%max_bound = model%max_bound * model%units_mult
+
+end subroutine set_model_bounds
 
 !==========================================================================================================
 ! Read the local bound constraints (for the ADMM).

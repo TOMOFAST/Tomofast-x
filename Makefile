@@ -129,11 +129,11 @@ sort.f90
 
 # Source files for inversion.
 SRC_LIST_INVERSION = \
+parameters_inversion.f90 \
 sparse_matrix.f90 \
 grid.F90 \
 model.F90 \
 model_IO.F90 \
-parameters_inversion.f90 \
 inversion_arrays.f90 \
 wavelet_utils.F90 \
 lsqr_solver2.F90 \
