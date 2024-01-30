@@ -137,12 +137,10 @@ subroutine initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
     call read_parfile(gpar, mpar, ipar, myrank)
 
     ! Print out if we do this in double or single precision.
-    if (myrank == 0) then
-      if (CUSTOM_REAL == SIZE_DOUBLE) then
-        print *, "precision = DOUBLE"
-      else
-        print *, "precision = SINGLE"
-      endif
+    if (CUSTOM_REAL == SIZE_DOUBLE) then
+      print *, "precision = DOUBLE"
+    else
+      print *, "precision = SINGLE"
     endif
   endif
 
@@ -197,7 +195,6 @@ subroutine initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
     ipar%nelements = nelements
     gpar%nelements = nelements
     mpar%nelements = nelements
-
   endif
 
   !---------------------------------------------------------------------------
@@ -829,7 +826,13 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
     endif
   endif
 
-  print *, "Finished reading the file."
+  ! Sanity check.
+  if (index(trim(adjustl(gpar%vtk_model_label)), " ") > 0 .or. &
+      index(trim(adjustl(mpar%vtk_model_label)), " ") > 0) then
+    call exit_MPI("The vtk model label cannot contain spaces!", myrank, 0)
+  endif
+
+  print *, "Finished reading the parameter file."
 
 end subroutine read_parfile
 
