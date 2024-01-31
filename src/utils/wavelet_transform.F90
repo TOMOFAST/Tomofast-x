@@ -244,7 +244,7 @@ subroutine DaubD43D(s, n1, n2, n3)
   integer, intent(in) :: n1, n2, n3
   real(kind=CUSTOM_REAL), intent(inout) :: s(n1, n2, n3)
 
-  integer :: i, i1, i2, i3, ic, L, il, ig, ngmin, ngmax, ilmax
+  integer :: i, ic, L, il, ig, ngmin, ngmax, ilmax
   integer :: istep, step_incr, step2, nscale, ng
   real(kind=CUSTOM_REAL) :: c0, c1, c2, c3, c4
 
@@ -375,7 +375,7 @@ subroutine iDaubD43D(s, n1, n2, n3)
   integer, intent(in) :: n1, n2, n3
   real(kind=CUSTOM_REAL), intent(inout) :: s(n1, n2, n3)
 
-  integer :: i, i1, i2, i3, ic, L, il, ig, ngmin, ngmax, ilmax
+  integer :: i, ic, L, il, ig, ngmin, ngmax, ilmax
   integer :: istep, step_incr, step2, nscale, ng
   real(kind=CUSTOM_REAL) :: c0, c1, c2, c3, c4
 
@@ -413,14 +413,14 @@ subroutine iDaubD43D(s, n1, n2, n3)
         il = 1
         do i = 1, ng
            if (ic == 1) then
-              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) * c4
-              forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) * c3
+              s(il, :, :) = s(il, :, :) * c4
+              s(ig, :, :) = s(ig, :, :) * c3
            else if (ic == 2) then
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) * c4
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) * c3
+              s(:, il, :) = s(:, il, :) * c4
+              s(:, ig, :) = s(:, ig, :) * c3
            else
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) * c4
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) * c3
+              s(:, :, il) = s(:, :, il) * c4
+              s(:, :, ig) = s(:, :, ig) * c3
            endif
            il = il + step2
            ig = ig + step2
@@ -431,11 +431,11 @@ subroutine iDaubD43D(s, n1, n2, n3)
         il = 1 + (ng - 2) * step2
         do i = 1, ng - 1
            if (ic == 1) then
-              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) + s(ig+step2,i2,i3)
-           else if (ic==2) then
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) + s(i1,ig+step2,i3)
+              s(il, :, :) = s(il, :, :) + s(ig + step2, :, :)
+           else if (ic == 2) then
+              s(:, il, :) = s(:, il, :) + s(:, ig + step2, :)
            else
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) + s(i1,i2,ig+step2)
+              s(:, :, il) = s(:, :, il) + s(:, :, ig + step2)
            endif
            il = il - step2
            ig = ig - step2
@@ -445,11 +445,11 @@ subroutine iDaubD43D(s, n1, n2, n3)
         ig = ngmin
         il = ilmax
         if (ic == 1) then
-          forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) + s(ig,i2,i3)
+          s(il, :, :) = s(il, :, :) + s(ig, :, :)
         else if (ic == 2) then
-          forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) + s(i1,ig,i3)
+          s(:, il, :) = s(:, il, :) + s(:, ig, :)
         else
-          forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) + s(i1,i2,ig)
+          s(:, :, il) = s(:, :, il) + s(:, :, ig)
         endif
 
         ! Predict.
@@ -459,11 +459,11 @@ subroutine iDaubD43D(s, n1, n2, n3)
            il = il - step2
            ig = ig - step2
            if (ic == 1) then
-              forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) + s(il,i2,i3) * c1 + s(il-step2,i2,i3) * c2
+              s(ig, :, :) = s(ig, :, :) + s(il, :, :) * c1 + s(il - step2, :, :) * c2
            else if (ic == 2) then
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) + s(i1,il,i3) * c1 + s(i1,il-step2,i3) * c2
+              s(:, ig, :) = s(:, ig, :) + s(:, il, :) * c1 + s(:, il - step2, :) * c2
            else
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) + s(i1,i2,il) * c1 + s(i1,i2,il-step2) * c2
+              s(:, :, ig) = s(:, :, ig) + s(:, :, il) * c1 + s(:, :, il - step2) * c2
            endif
         enddo
 
@@ -471,11 +471,11 @@ subroutine iDaubD43D(s, n1, n2, n3)
         il = 1
         ig = ngmin
         if (ic == 1) then
-           forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) + s(il,i2,i3) * c1 + s(ilmax,i2,i3) * c2
+           s(ig, :, :) = s(ig, :, :) + s(il, :, :) * c1 + s(ilmax, :, :) * c2
         else if (ic == 2) then
-           forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) + s(i1,il,i3) * c1 + s(i1,ilmax,i3) * c2
+           s(:, ig, :) = s(:, ig, :) + s(:, il, :) * c1 + s(:, ilmax, :) * c2
         else
-           forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) + s(i1,i2,il) * c1 + s(i1,i2,ilmax) * c2
+           s(:, :, ig) = s(:, :, ig) + s(:, :, il) * c1 + s(:, :, ilmax) * c2
         endif
 
         ! Update 1.
@@ -483,11 +483,11 @@ subroutine iDaubD43D(s, n1, n2, n3)
         il = 1
         do i = 1, ng
            if (ic == 1) then
-              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) - s(ig,i2,i3) * c0
-           else if (ic==2) then
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) - s(i1,ig,i3) * c0
+              s(il, :, :) = s(il, :, :) - s(ig, :, :) * c0
+           else if (ic == 2) then
+              s(:, il, :) = s(:, il, :) - s(:, ig, :) * c0
            else
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) - s(i1,i2,ig) * c0
+              s(:, :, il) = s(:, :, il) - s(:, :, ig) * c0
            endif
            il = il + step2
            ig = ig + step2
