@@ -246,6 +246,13 @@ subroutine DaubD43D(s, n1, n2, n3)
 
   integer :: i, i1, i2, i3, ic, L, il, ig, ngmin, ngmax, ilmax
   integer :: istep, step_incr, step2, nscale, ng
+  real(kind=CUSTOM_REAL) :: c0, c1, c2, c3, c4
+
+  c0 = sqrt(3._CUSTOM_REAL)
+  c1 = sqrt(3._CUSTOM_REAL) / 4._CUSTOM_REAL
+  c2 = (sqrt(3._CUSTOM_REAL) - 2._CUSTOM_REAL) / 4._CUSTOM_REAL
+  c3 = (sqrt(3._CUSTOM_REAL) - 1._CUSTOM_REAL) / sqrt(2._CUSTOM_REAL)
+  c4 = (sqrt(3._CUSTOM_REAL) + 1._CUSTOM_REAL) / sqrt(2._CUSTOM_REAL)
 
   ! Loop over the 3 dimensions.
   do ic = 1, 3
@@ -275,11 +282,11 @@ subroutine DaubD43D(s, n1, n2, n3)
         il = 1
         do i = 1, ng
            if (ic == 1) then
-              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) + s(ig,i2,i3) * sqrt(3._CUSTOM_REAL)
+              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) + s(ig,i2,i3) * c0
            else if (ic == 2) then
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) + s(i1,ig,i3) * sqrt(3._CUSTOM_REAL)
+              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) + s(i1,ig,i3) * c0
            else
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) + s(i1,i2,ig) * sqrt(3._CUSTOM_REAL)
+              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) + s(i1,i2,ig) * c0
            endif
            il = il + step2
            ig = ig + step2
@@ -290,28 +297,22 @@ subroutine DaubD43D(s, n1, n2, n3)
         il = 1
         ig = ngmin
         if (ic == 1) then
-           forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) - s(il,i2,i3)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
-              - s(ilmax,i2,i3)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
+           forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) - s(il,i2,i3) * c1 - s(ilmax,i2,i3) * c2
         else if (ic == 2) then
-           forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) - s(i1,il,i3)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
-              - s(i1,ilmax,i3)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
+           forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) - s(i1,il,i3) * c1 - s(i1,ilmax,i3) * c2
         else
-           forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) - s(i1,i2,il)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
-              - s(i1,i2,ilmax)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
+           forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) - s(i1,i2,il) * c1 - s(i1,i2,ilmax) * c2
         endif
 
         ig = ngmin + step2
         il = 1 + step2
         do i = 1, ng - 1
            if (ic == 1) then
-              forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) - s(il,i2,i3)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
-              - s(il-step2,i2,i3)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
+              forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) - s(il,i2,i3) * c1 - s(il-step2,i2,i3) * c2
            else if (ic == 2) then
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) - s(i1,il,i3)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
-              - s(i1,il-step2,i3)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
+              forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) - s(i1,il,i3) * c1 - s(i1,il-step2,i3) * c2
            else
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) - s(i1,i2,il)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
-              - s(i1,i2,il-step2)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
+              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) - s(i1,i2,il) * c1 - s(i1,i2,il-step2) * c2
            endif
            il = il + step2
            ig = ig + step2
@@ -348,14 +349,14 @@ subroutine DaubD43D(s, n1, n2, n3)
         il = 1
         do i = 1, ng
            if (ic == 1) then
-              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) * (sqrt(3._CUSTOM_REAL) - 1._CUSTOM_REAL) /sqrt(2._CUSTOM_REAL)
-              forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) * (sqrt(3._CUSTOM_REAL) + 1._CUSTOM_REAL) /sqrt(2._CUSTOM_REAL)
+              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) * c3
+              forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) * c4
            else if (ic == 2) then
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) * (sqrt(3._CUSTOM_REAL) - 1._CUSTOM_REAL) /sqrt(2._CUSTOM_REAL)
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) * (sqrt(3._CUSTOM_REAL) + 1._CUSTOM_REAL) /sqrt(2._CUSTOM_REAL)
+              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) * c3
+              forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) * c4
            else
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) * (sqrt(3._CUSTOM_REAL) - 1._CUSTOM_REAL) /sqrt(2._CUSTOM_REAL)
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) * (sqrt(3._CUSTOM_REAL) + 1._CUSTOM_REAL) /sqrt(2._CUSTOM_REAL)
+              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) * c3
+              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) * c4
            endif
            il = il + step2
            ig = ig + step2
@@ -376,6 +377,13 @@ subroutine iDaubD43D(s, n1, n2, n3)
 
   integer :: i, i1, i2, i3, ic, L, il, ig, ngmin, ngmax, ilmax
   integer :: istep, step_incr, step2, nscale, ng
+  real(kind=CUSTOM_REAL) :: c0, c1, c2, c3, c4
+
+  c0 = sqrt(3._CUSTOM_REAL)
+  c1 = sqrt(3._CUSTOM_REAL) / 4._CUSTOM_REAL
+  c2 = (sqrt(3._CUSTOM_REAL) - 2._CUSTOM_REAL) / 4._CUSTOM_REAL
+  c3 = (sqrt(3._CUSTOM_REAL) - 1._CUSTOM_REAL) / sqrt(2._CUSTOM_REAL)
+  c4 = (sqrt(3._CUSTOM_REAL) + 1._CUSTOM_REAL) / sqrt(2._CUSTOM_REAL)
 
   ! Loop over the 3 dimensions.
   do ic = 1, 3
@@ -405,14 +413,14 @@ subroutine iDaubD43D(s, n1, n2, n3)
         il = 1
         do i = 1, ng
            if (ic == 1) then
-              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) * (sqrt(3._CUSTOM_REAL) + 1._CUSTOM_REAL) /sqrt(2._CUSTOM_REAL)
-              forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) * (sqrt(3._CUSTOM_REAL) - 1._CUSTOM_REAL) /sqrt(2._CUSTOM_REAL)
+              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) * c4
+              forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) * c3
            else if (ic == 2) then
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) * (sqrt(3._CUSTOM_REAL) + 1._CUSTOM_REAL) /sqrt(2._CUSTOM_REAL)
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) * (sqrt(3._CUSTOM_REAL) - 1._CUSTOM_REAL) /sqrt(2._CUSTOM_REAL)
+              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) * c4
+              forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) * c3
            else
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) * (sqrt(3._CUSTOM_REAL) + 1._CUSTOM_REAL) /sqrt(2._CUSTOM_REAL)
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) * (sqrt(3._CUSTOM_REAL) - 1._CUSTOM_REAL) /sqrt(2._CUSTOM_REAL)
+              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) * c4
+              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) * c3
            endif
            il = il + step2
            ig = ig + step2
@@ -451,14 +459,11 @@ subroutine iDaubD43D(s, n1, n2, n3)
            il = il - step2
            ig = ig - step2
            if (ic == 1) then
-              forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) + s(il,i2,i3)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
-                + s(il-step2,i2,i3)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
+              forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) + s(il,i2,i3) * c1 + s(il-step2,i2,i3) * c2
            else if (ic == 2) then
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) + s(i1,il,i3) *sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
-                + s(i1,il-step2,i3)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
+              forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) + s(i1,il,i3) * c1 + s(i1,il-step2,i3) * c2
            else
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) + s(i1,i2,il) *sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
-                + s(i1,i2,il-step2)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
+              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) + s(i1,i2,il) * c1 + s(i1,i2,il-step2) * c2
            endif
         enddo
 
@@ -466,14 +471,11 @@ subroutine iDaubD43D(s, n1, n2, n3)
         il = 1
         ig = ngmin
         if (ic == 1) then
-           forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) + s(il,i2,i3)*sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
-              + s(ilmax,i2,i3)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
+           forall(i2 = 1:n2, i3 = 1:n3) s(ig,i2,i3) = s(ig,i2,i3) + s(il,i2,i3) * c1 + s(ilmax,i2,i3) * c2
         else if (ic == 2) then
-           forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) + s(i1,il,i3) *sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
-              + s(i1,ilmax,i3)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
+           forall(i1 = 1:n1, i3 = 1:n3) s(i1,ig,i3) = s(i1,ig,i3) + s(i1,il,i3) * c1 + s(i1,ilmax,i3) * c2
         else
-           forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) + s(i1,i2,il) *sqrt(3._CUSTOM_REAL)/4._CUSTOM_REAL &
-              + s(i1,i2,ilmax)*(sqrt(3._CUSTOM_REAL)-2._CUSTOM_REAL)/4._CUSTOM_REAL
+           forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,ig) = s(i1,i2,ig) + s(i1,i2,il) * c1 + s(i1,i2,ilmax) * c2
         endif
 
         ! Update 1.
@@ -481,11 +483,11 @@ subroutine iDaubD43D(s, n1, n2, n3)
         il = 1
         do i = 1, ng
            if (ic == 1) then
-              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) - s(ig,i2,i3) * sqrt(3._CUSTOM_REAL)
+              forall(i2 = 1:n2, i3 = 1:n3) s(il,i2,i3) = s(il,i2,i3) - s(ig,i2,i3) * c0
            else if (ic==2) then
-              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) - s(i1,ig,i3) * sqrt(3._CUSTOM_REAL)
+              forall(i1 = 1:n1, i3 = 1:n3) s(i1,il,i3) = s(i1,il,i3) - s(i1,ig,i3) * c0
            else
-              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) - s(i1,i2,ig) * sqrt(3._CUSTOM_REAL)
+              forall(i1 = 1:n1, i2 = 1:n2) s(i1,i2,il) = s(i1,i2,il) - s(i1,i2,ig) * c0
            endif
            il = il + step2
            ig = ig + step2
