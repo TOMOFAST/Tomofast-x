@@ -90,7 +90,7 @@ subroutine admm_method_iterate_admm_arrays(this, nlithos, xmin, xmax, x, x0, myr
   do i = 1, this%nelements
 
     ! Calculate the vector magnitude (squared).
-    x_magn = x(i, 1)**2 + x(i, 2)**2 + x(i, 3)**2
+    x_magn = x(i, 1)**1 + x(i, 2)**1 + x(i, 3)**1
 
     arg = x_magn + this%u(i)
 

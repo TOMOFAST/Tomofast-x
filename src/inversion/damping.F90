@@ -127,14 +127,14 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
 
   do i = 1, this%nelements
     ! Vector magnutude (squared).
-    model_mag = model(i, 1)**2 + model(i, 2)**2 + model(i, 3)**2
+    model_mag = model(i, 1)**1 + model(i, 2)**1 + model(i, 3)**1
 
     model_diff(i) = model_mag - model_ref(i)
   enddo
 
   ! Apply the depth-weighting.
   do i = 1, this%nelements
-    model_diff(i) = model_diff(i) / column_weight(i)**2
+    model_diff(i) = model_diff(i) / column_weight(i)
   enddo
 
   if (this%compression_type > 0 .and. WAVELET_DOMAIN) then
@@ -177,15 +177,15 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
 !    endif
 
     ! X-component
-    value = this%alpha * this%problem_weight * 2.d0 * model(i, 1) / column_weight(i)
+    value = this%alpha * this%problem_weight !* 2.d0 * model(i, 1) / column_weight(i)
     call matrix%add(value, param_shift + i, myrank)
 
     ! Y-component
-    value = this%alpha * this%problem_weight * 2.d0 * model(i, 2) / column_weight(i)
+    value = this%alpha * this%problem_weight !* 2.d0 * model(i, 2) / column_weight(i)
     call matrix%add(value, param_shift + i + this%nelements, myrank)
 
     ! Z-component
-    value = this%alpha * this%problem_weight * 2.d0 * model(i, 3) / column_weight(i)
+    value = this%alpha * this%problem_weight !* 2.d0 * model(i, 3) / column_weight(i)
     call matrix%add(value, param_shift + i + 2 * this%nelements, myrank)
 
     call matrix%new_row(myrank)
