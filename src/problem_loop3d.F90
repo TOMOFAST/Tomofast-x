@@ -53,6 +53,7 @@ module problem_loop3d
   private :: write_final_model
   private :: read_Q_size
   private :: write_paraview_model
+  private :: model_read_array
 
 contains
 
@@ -154,7 +155,10 @@ subroutine solve_problem_loop3d(par, ipar, myrank, nbproc)
   call matrix%mult_rows(A_size + 1, par%ndata, ipar%rho_ADMM(1))
 
   ! Starting model.
-  model = 0.d0
+  !model = 0.d0
+
+  ! Read starting model from file.
+  call model_read_array(par%nelements, model, par%model_files(3), myrank)
 
   ! Create the costs file.
   if (myrank == 0) then
@@ -366,5 +370,42 @@ function read_Q_size(file_name, myrank) result(Q_size)
   close(10)
 
 end function read_Q_size
+
+!================================================================================================
+! Read the model from a file.
+!================================================================================================
+subroutine model_read_array(nelements_total, model, file_name, myrank)
+  integer, intent(in) :: nelements_total
+  real(kind=CUSTOM_REAL), intent(out) :: model(nelements_total)
+  character(len=*), intent(in) :: file_name
+  integer, intent(in) :: myrank
+
+  integer :: i, nelements_read
+  integer :: ierr
+  character(len=256) :: msg
+
+  if (myrank == 0) then
+  ! Reading the full model by master CPU only.
+    print *, 'Reading model from file ', trim(file_name)
+
+    open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
+
+    if (ierr /= 0) call exit_MPI("Error in opening the model file! path=" &
+                                 //file_name//" iomsg="//msg, myrank, ierr)
+
+    read(10, *, iostat=ierr) nelements_read
+    if (ierr /= 0) call exit_MPI("Problem while reading the model file!", myrank, ierr)
+
+    ! Reading the model only (without grid).
+    do i = 1, nelements_total
+      read(10, *, iostat=ierr) model(i)
+
+      if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_array!", myrank, ierr)
+    enddo
+
+    close(10)
+  endif
+
+end subroutine model_read_array
 
 end module problem_loop3d
