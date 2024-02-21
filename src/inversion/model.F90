@@ -214,8 +214,8 @@ end subroutine model_update_full
 ! Calculate the linear data using the sensitivity kernel (S) and model (m) as d = S * m.
 ! Use line_start, line_end, param_shift to calculate the data using part of the big (joint) matrix.
 !======================================================================================================
-subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, problem_weight, column_weight, data_calc, &
-                                compression_type, line_start, param_shift, myrank, nbproc)
+subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, problem_weight, column_weight, data_cov, &
+                                data_calc, compression_type, line_start, param_shift, myrank, nbproc)
   class(t_model), intent(in) :: this
   integer, intent(in) :: ndata, ndata_components, compression_type
   integer, intent(in) :: line_start, param_shift
@@ -223,6 +223,7 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
   type(t_sparse_matrix), intent(in) :: matrix_sensit
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(this%nelements)
+  real(kind=CUSTOM_REAL), intent(in) :: data_cov(ndata)
 
   real(kind=CUSTOM_REAL), intent(out) :: data_calc(ndata_components, ndata)
 
@@ -297,6 +298,11 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
   else
     call exit_MPI("Zero problem weight in model_calculate_data!", myrank, 0)
   endif
+
+  ! Apply data covariance transform (as the sensitivity kernel is scaled by covariance).
+  do i = 1, ndata
+    data_calc(:, i) = data_calc(:, i) / data_cov(i)
+  enddo
 
 end subroutine model_calculate_data
 

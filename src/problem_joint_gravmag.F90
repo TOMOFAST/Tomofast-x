@@ -55,7 +55,7 @@ module problem_joint_gravmag
 
   private :: calculate_model_costs
   private :: adjust_admm_weight
-  private :: calculate_residual
+  private :: calculate_residuals
   private :: exit_loop
 
 contains
@@ -244,9 +244,11 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   ! Reading the sensitivity kernel and depth weight from files.
   if (SOLVE_PROBLEM(1)) &
-    call read_sensitivity_kernel(gpar, jinv%matrix_sensit, iarr(1)%column_weight, ipar%problem_weight(1), 1, myrank, nbproc)
+    call read_sensitivity_kernel(gpar, jinv%matrix_sensit, iarr(1)%column_weight, ipar%problem_weight(1), &
+                                 data(1)%cov, 1, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) &
-    call read_sensitivity_kernel(mpar, jinv%matrix_sensit, iarr(2)%column_weight, ipar%problem_weight(2), 2, myrank, nbproc)
+    call read_sensitivity_kernel(mpar, jinv%matrix_sensit, iarr(2)%column_weight, ipar%problem_weight(2), &
+                                 data(2)%cov, 2, myrank, nbproc)
 
   call jinv%matrix_sensit%finalize(myrank)
 
@@ -317,7 +319,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Calculate the data from the read model.
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
-      ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
+      ipar%problem_weight(i), iarr(i)%column_weight, data(i)%cov, data(i)%val_calc, ipar%compression_type, &
       line_start(i), param_shift(i), myrank, nbproc)
   enddo
 
@@ -388,7 +390,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     ! Calculate data from the prior model.
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
-        ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
+        ipar%problem_weight(i), iarr(i)%column_weight, data(i)%cov, data(i)%val_calc, ipar%compression_type, &
         line_start(i), param_shift(i), myrank, nbproc)
     enddo
 
@@ -412,7 +414,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     ! Calculate data from the starting model.
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
-        ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
+        ipar%problem_weight(i), iarr(i)%column_weight, data(i)%cov, data(i)%val_calc, ipar%compression_type, &
         line_start(i), param_shift(i), myrank, nbproc)
     enddo
 
@@ -459,8 +461,10 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
 
       ! Calculate data residuals.
-      if (SOLVE_PROBLEM(1)) call calculate_residual(size(data(1)%val_meas), data(1)%val_meas, data(1)%val_calc, iarr(1)%residuals)
-      if (SOLVE_PROBLEM(2)) call calculate_residual(size(data(2)%val_meas), data(2)%val_meas, data(2)%val_calc, iarr(2)%residuals)
+      if (SOLVE_PROBLEM(1)) call calculate_residuals(ipar%ndata(1), ipar%ndata_components(1), data(1)%val_meas, &
+                                    data(1)%val_calc, data(1)%cov, iarr(1)%residuals)
+      if (SOLVE_PROBLEM(2)) call calculate_residuals(ipar%ndata(2), ipar%ndata_components(2), data(2)%val_meas, &
+                                    data(2)%val_calc, data(2)%cov, iarr(2)%residuals)
 
       ! Resets the joint inversion.
       if (it > 1) call jinv%reset(myrank)
@@ -483,7 +487,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       ! Calculate new data.
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
-          ipar%problem_weight(i), iarr(i)%column_weight, data(i)%val_calc, ipar%compression_type, &
+          ipar%problem_weight(i), iarr(i)%column_weight, data(i)%cov, data(i)%val_calc, ipar%compression_type, &
           line_start(i), param_shift(i), myrank, nbproc)
       enddo
 
@@ -636,19 +640,25 @@ subroutine calculate_model_costs(ipar, iarr, model, cost_model, solve_problem, m
   enddo
 end subroutine calculate_model_costs
 
-!========================================================================================
-! Calcualte data residual.
-! Note: utilize conversion 2D to 1D array via subroutine interface.
-!========================================================================================
-pure subroutine calculate_residual(n, d_obs, d_calc, residual)
-  integer, intent(in) :: n
-  real(kind=CUSTOM_REAL), intent(in) :: d_obs(n)
-  real(kind=CUSTOM_REAL), intent(in) :: d_calc(n)
-  real(kind=CUSTOM_REAL), intent(out) :: residual(n)
+!==================================================================================================
+! Calculate data residuals.
+!==================================================================================================
+pure subroutine calculate_residuals(ndata, ncomponents, data_obs, data_calc, data_cov, residuals)
+  integer, intent(in) :: ndata, ncomponents
+  real(kind=CUSTOM_REAL), intent(in) :: data_obs(ncomponents, ndata)
+  real(kind=CUSTOM_REAL), intent(in) :: data_calc(ncomponents, ndata)
+  real(kind=CUSTOM_REAL), intent(in) :: data_cov(ndata)
+  real(kind=CUSTOM_REAL), intent(out) :: residuals(ncomponents, ndata)
+  integer :: i
 
-  residual = d_obs - d_calc
+  residuals = data_obs - data_calc
 
-end subroutine calculate_residual
+  ! Apply data covariance transform.
+  do i = 1, ndata
+    residuals(:, i) = residuals(:, i) * data_cov(i)
+  enddo
+
+end subroutine calculate_residuals
 
 !========================================================================================
 ! Check if need to exit the inversion loop.

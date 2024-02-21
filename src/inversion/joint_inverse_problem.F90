@@ -325,6 +325,20 @@ subroutine joint_inversion_reset(this, myrank)
 
 end subroutine joint_inversion_reset
 
+!=====================================================================================
+! Calculate the righ-hand side (corresponding to data misfit).
+! Utilize the automatic conversion of the 2D to 1D array.
+!=====================================================================================
+pure subroutine calculate_b_RHS(line_start, line_end, problem_weight, residuals, b_RHS)
+  integer, intent(in) :: line_start, line_end
+  real(kind=CUSTOM_REAL), intent(in) :: problem_weight
+  real(kind=CUSTOM_REAL), intent(in) :: residuals(line_end - line_start + 1)
+  real(kind=CUSTOM_REAL), intent(out) :: b_RHS(:)
+
+  b_RHS(line_start:line_end) = problem_weight * residuals
+
+end subroutine calculate_b_RHS
+
 !================================================================================================
 ! Joint inversion of two problems.
 ! It is also used for single inversions.
@@ -381,8 +395,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
 
     if (myrank == 0) print *, 'Adding joint problem #', i, ' weight =', par%problem_weight(i)
 
-    ! Adding the right-hand side only, as the sensitivity was added when reading the kernel from files.
-    this%b_RHS(line_start(i):line_end(i)) = par%problem_weight(i) * arr(i)%residuals
+    ! Adding the right-hand side (corresponding to data misfit).
+    call calculate_b_RHS(line_start(i), line_end(i), par%problem_weight(i), arr(i)%residuals, this%b_RHS)
 
     if (this%add_damping(i)) then
       if (myrank == 0) print *, 'adding damping with alpha =', par%alpha(i)

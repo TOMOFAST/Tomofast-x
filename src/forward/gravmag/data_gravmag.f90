@@ -47,6 +47,9 @@ module data_gravmag
     real(kind=CUSTOM_REAL), allocatable :: val_meas(:, :)
     real(kind=CUSTOM_REAL), allocatable :: val_calc(:, :)
 
+    ! Data covariance.
+    real(kind=CUSTOM_REAL), allocatable :: cov(:)
+
   contains
     private
 
@@ -84,6 +87,7 @@ subroutine data_initialize(this, ndata, ncomponents, units_mult, z_axis_dir, myr
   allocate(this%Z(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%val_meas(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%val_calc(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%cov(this%ndata), source=1._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in data_initialize!", myrank, ierr)
 
@@ -103,6 +107,7 @@ subroutine data_broadcast(this, myrank)
   call MPI_Bcast(this%Y, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%Z, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%val_meas, size(this%val_meas), CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%cov, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("MPI_Bcast error in data_broadcast!", myrank, ierr)
 

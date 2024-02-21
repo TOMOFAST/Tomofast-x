@@ -30,7 +30,8 @@ module inversion_arrays
   type, public :: t_inversion_arrays
 
     ! Difference between data measured and data calculated.
-    real(kind=CUSTOM_REAL), allocatable :: residuals(:)
+    real(kind=CUSTOM_REAL), allocatable :: residuals(:, :)
+
     ! Weights to scale the sensitivity matrix columns.
     real(kind=CUSTOM_REAL), allocatable :: column_weight(:)
 
@@ -61,7 +62,7 @@ subroutine inversion_arrays_allocate_aux(this, nelements, ndata, ndata_component
 
   ierr = 0
 
-  allocate(this%residuals(ndata_components * ndata), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%residuals(ndata_components, ndata), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%column_weight(nelements), source=1._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in inversion_arrays_allocate_aux!", myrank, ierr)
@@ -88,7 +89,7 @@ subroutine inversion_arrays_reallocate_aux(this, nelements, ndata, ndata_compone
 
   if (size(this%residuals) /= ndata * ndata_components) then
     deallocate(this%residuals)
-    allocate(this%residuals(ndata_components * ndata), source=0._CUSTOM_REAL, stat=ierr)
+    allocate(this%residuals(ndata_components, ndata), source=0._CUSTOM_REAL, stat=ierr)
   endif
 
   if (size(this%column_weight) /= nelements) then
