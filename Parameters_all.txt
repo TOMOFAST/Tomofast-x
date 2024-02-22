@@ -53,6 +53,12 @@ forward.data.grav.dataValuesFile    = None
 forward.data.magn.dataValuesFile    = None
 forward.data.magn.nDataComponents   = 1
 
+# Data covariance.
+forward.data.grav.useCovariance = 0
+forward.data.magn.useCovariance = 0
+forward.data.grav.covarianceFile = None
+forward.data.magn.covarianceFile = None
+
 ===================================================================================
 MAGNETIC FIELD constants
 ===================================================================================

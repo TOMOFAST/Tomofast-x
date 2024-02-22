@@ -152,6 +152,10 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call data(1)%read_grid(gpar%data_grid_file, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%read_grid(mpar%data_grid_file, myrank)
 
+  ! Reading the data covariance.
+  if (SOLVE_PROBLEM(1) .and. gpar%use_data_cov == 1) call data(1)%read_covariance(gpar%data_cov_file, myrank)
+  if (SOLVE_PROBLEM(2) .and. mpar%use_data_cov == 1) call data(2)%read_covariance(mpar%data_cov_file, myrank)
+
   memory = get_max_mem_usage()
   if (myrank == 0) print *, "MEMORY USED (data grid) [GB] =", memory
 
@@ -329,7 +333,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_read_', 2, myrank)
 #endif
 
-  ! Reading the data. Read here to allow the use of the above calculated data from the (original) model read.
+  ! Reading the data. Read here to allow the use of the above calculated data from the (synthetic) model read.
   if (SOLVE_PROBLEM(1)) call data(1)%read(gpar%data_file, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%read(mpar%data_file, myrank)
 

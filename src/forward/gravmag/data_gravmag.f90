@@ -57,6 +57,7 @@ module data_gravmag
     procedure, public, pass :: read => data_read
     procedure, public, pass :: read_grid => data_read_grid
     procedure, public, pass :: write => data_write
+    procedure, public, pass :: read_covariance => data_read_covariance
 
     procedure, pass :: broadcast => data_broadcast
     procedure, pass :: read_points_format => data_read_points_format
@@ -107,7 +108,6 @@ subroutine data_broadcast(this, myrank)
   call MPI_Bcast(this%Y, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%Z, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%val_meas, size(this%val_meas), CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%cov, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("MPI_Bcast error in data_broadcast!", myrank, ierr)
 
@@ -201,6 +201,42 @@ subroutine data_read_points_format(this, file_name, grid_only, myrank)
   close(10)
 
 end subroutine data_read_points_format
+
+!============================================================================================================
+! Read data covariance.
+!============================================================================================================
+subroutine data_read_covariance(this, file_name, myrank)
+  class(t_data), intent(inout) :: this
+  character(len=*), intent(in) :: file_name
+  integer, intent(in) :: myrank
+
+  integer :: i, ierr
+  integer :: ndata_in_file
+
+  ! Reading my master CPU only.
+  if (myrank == 0) then
+    print *, 'Reading data covariance from file '//trim(file_name)
+
+    open(unit=10, file=file_name, status='old', form='formatted', action='read', iostat=ierr)
+    if (ierr /= 0) call exit_MPI("Error in opening the data covariance file!", myrank, ierr)
+
+    read(10, *) ndata_in_file
+
+    if (ndata_in_file /= this%ndata) &
+      call exit_MPI("The number of data in Parfile differs from the data file!", myrank, ndata_in_file)
+
+    do i = 1, this%ndata
+      read(10, *, iostat=ierr) this%cov(i)
+
+      if (ierr /= 0) call exit_MPI("Problem while reading the data covariance file!", myrank, 0)
+    enddo
+
+    close(10)
+  endif
+
+  call MPI_Bcast(this%cov, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
+end subroutine data_read_covariance
 
 !================================================================================================
 ! Writes the data in two formats:

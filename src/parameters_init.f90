@@ -250,6 +250,12 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   gpar%ndata_components = 1
   mpar%ndata_components = 1
 
+  ! Data covariance.
+  gpar%use_data_cov = 0
+  mpar%use_data_cov = 0
+  gpar%data_cov_file = "NILL"
+  mpar%data_cov_file = "NILL"
+
   ! MAGNETIC FIELD constants.
   mpar%mi = 90.d0
   mpar%md = 0.d0
@@ -485,6 +491,22 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
       case("forward.data.magn.nDataComponents")
         read(10, *) mpar%ndata_components
         call print_arg(myrank, parname, mpar%ndata_components)
+
+      case("forward.data.grav.useCovariance")
+        read(10, *) gpar%use_data_cov
+        call print_arg(myrank, parname, gpar%use_data_cov)
+
+      case("forward.data.magn.useCovariance")
+        read(10, *) mpar%use_data_cov
+        call print_arg(myrank, parname, mpar%use_data_cov)
+
+      case("forward.data.grav.covarianceFile")
+        call read_filename(10, gpar%data_cov_file)
+        call print_arg(myrank, parname, gpar%data_cov_file)
+
+      case("forward.data.magn.covarianceFile")
+        call read_filename(10, mpar%data_cov_file)
+        call print_arg(myrank, parname, mpar%data_cov_file)
 
       ! MAGNETIC FIELD constants ---------------------------
 
