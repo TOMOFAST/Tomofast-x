@@ -153,7 +153,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   integer(kind=8) :: sensit_nnz_sum
 
   real(kind=CUSTOM_REAL) :: cost_full, cost_compressed
-  real(kind=CUSTOM_REAL) :: cost_full_loc, cost_compressed_loc
+  real(kind=CUSTOM_REAL) :: error_r_i, error_r_sum, error_r_sum_loc
 
   ! The full column weight.
   real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
@@ -231,8 +231,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   write(77) ndata_loc, par%ndata, nelements_total, myrank, nbproc
 
   nnz_data = 0
-  cost_full_loc = 0.d0
-  cost_compressed_loc = 0.d0
+  error_r_sum_loc = 0.d0
 
   ! Loop over the local data lines.
   do i = 1, ndata_loc
@@ -253,6 +252,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
     ! Loop over the data components.
     do d = 1, par%ndata_components
 
+      cost_full = 0.d0
+      cost_compressed = 0.d0
+
       ! Loop over the model components.
       do k = 1, par%nmodel_components
 
@@ -262,7 +264,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
         if (par%compression_type > 0) then
         ! Wavelet compression.
           ! The uncompressed line cost.
-          cost_full_loc = cost_full_loc + sum(sensit_line_full(:, k, d)**2)
+          cost_full = cost_full + sum(sensit_line_full(:, k, d)**2)
 
           ! Apply the wavelet transform.
           call forward_wavelet(sensit_line_full(:, k, d), par%nx, par%ny, par%nz, par%compression_type)
@@ -296,7 +298,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
               sensit_nnz(p) = sensit_nnz(p) + 1
 
-              cost_compressed_loc = cost_compressed_loc + sensit_line_full(p, k, d)**2
+              cost_compressed = cost_compressed + sensit_line_full(p, k, d)**2
             endif
           enddo
 
@@ -331,6 +333,11 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
         endif
 
       enddo ! nmodel_components loop
+
+      ! Compression error for this row. See Eq.(19) in Li & Oldenburg, GJI (2003) 152, 251–265.
+      error_r_i = sqrt(1.d0 - cost_compressed / cost_full)
+
+      error_r_sum_loc = error_r_sum_loc + error_r_i
     enddo ! ndata_components loop
 
     ! Print the progress.
@@ -342,12 +349,12 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
   close(77)
 
-  call mpi_allreduce(MPI_IN_PLACE, sensit_nnz, nelements_total, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
+  call MPI_Allreduce(MPI_IN_PLACE, sensit_nnz, nelements_total, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
 
   !---------------------------------------------------------------------------------------------
   ! Calculate the kernel compression rate.
   !---------------------------------------------------------------------------------------------
-  call mpi_allreduce(nnz_data, nnz_total, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+  call MPI_Allreduce(nnz_data, nnz_total, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
   comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata) / dble(par%nmodel_components) / dble(par%ndata_components)
 
   if (myrank == 0) print *, 'nnz_total = ', nnz_total
@@ -367,14 +374,15 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   ! Calculate the kernel compression error.
   !---------------------------------------------------------------------------------------------
   if (par%compression_type > 0) then
-    call mpi_allreduce(cost_full_loc, cost_full, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-    call mpi_allreduce(cost_compressed_loc, cost_compressed, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-    comp_error = 1.d0 - sqrt(cost_compressed / cost_full)
+    call MPI_Allreduce(error_r_sum_loc, error_r_sum, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+    ! Calculate the average error over all rows.
+    comp_error = error_r_sum / dble(par%ndata * par%ndata_components)
   else
     comp_error = 0.d0
   endif
 
-  if (myrank == 0) print *, 'COMPRESSION ERROR = ', comp_error
+  if (myrank == 0) print *, 'COMPRESSION ERROR, r = ', comp_error
 
   !---------------------------------------------------------------------------------------------
   ! Write the metadata file.
@@ -852,7 +860,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   !---------------------------------------------------------------------------------------------
   ! Calculate the read kernel compression rate.
   !---------------------------------------------------------------------------------------------
-  call mpi_allreduce(nnz, nnz_total, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
+  call MPI_Allreduce(nnz, nnz_total, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD, ierr)
   comp_rate = dble(nnz_total) / dble(nelements_total) / dble(par%ndata) / dble(par%nmodel_components) / dble(par%ndata_components)
 
   if (myrank == 0) print *, 'nnz_total (of the read kernel)  = ', nnz_total
