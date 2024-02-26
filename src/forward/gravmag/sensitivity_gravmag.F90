@@ -154,6 +154,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
   real(kind=CUSTOM_REAL) :: cost_full, cost_compressed
   real(kind=CUSTOM_REAL) :: error_r_i, error_r_sum, error_r_sum_loc
+  real(kind=CUSTOM_REAL) :: relative_threshold, relative_threshold_sum, relative_threshold_sum_loc
 
   ! The full column weight.
   real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
@@ -232,6 +233,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
   nnz_data = 0
   error_r_sum_loc = 0.d0
+  relative_threshold_sum_loc = 0.d0
 
   ! Loop over the local data lines.
   do i = 1, ndata_loc
@@ -332,12 +334,19 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
           write(77) sensit_compressed(1:nel)
         endif
 
+        !--------------------------------------------------------------------------------------
+        ! Calculate compression statistics.
+        !--------------------------------------------------------------------------------------
+        ! Compression error for this row. See Eq.(19) in Li & Oldenburg, GJI (2003) 152, 251–265.
+        error_r_i = sqrt(1.d0 - cost_compressed / cost_full)
+
+        ! Relative threshold.
+        relative_threshold = threshold / abs(sensit_line_sorted(nelements_total))
+
+        error_r_sum_loc = error_r_sum_loc + error_r_i
+        relative_threshold_sum_loc = relative_threshold_sum_loc + relative_threshold
+
       enddo ! nmodel_components loop
-
-      ! Compression error for this row. See Eq.(19) in Li & Oldenburg, GJI (2003) 152, 251–265.
-      error_r_i = sqrt(1.d0 - cost_compressed / cost_full)
-
-      error_r_sum_loc = error_r_sum_loc + error_r_i
     enddo ! ndata_components loop
 
     ! Print the progress.
@@ -375,14 +384,18 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   !---------------------------------------------------------------------------------------------
   if (par%compression_type > 0) then
     call MPI_Allreduce(error_r_sum_loc, error_r_sum, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+    call MPI_Allreduce(relative_threshold_sum_loc, relative_threshold_sum, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
-    ! Calculate the average error over all rows.
-    comp_error = error_r_sum / dble(par%ndata * par%ndata_components)
+    ! Calculate the average over all rows (compressions).
+    comp_error = error_r_sum / dble(par%ndata * par%ndata_components * par%nmodel_components)
+    relative_threshold = relative_threshold_sum / dble(par%ndata * par%ndata_components * par%nmodel_components)
   else
     comp_error = 0.d0
+    relative_threshold = 0.d0
   endif
 
   if (myrank == 0) print *, 'COMPRESSION ERROR, r = ', comp_error
+  if (myrank == 0) print *, 'Relative threshold, e = ', relative_threshold
 
   !---------------------------------------------------------------------------------------------
   ! Write the metadata file.
