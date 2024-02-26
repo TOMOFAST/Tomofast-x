@@ -254,9 +254,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
     ! Loop over the data components.
     do d = 1, par%ndata_components
 
-      cost_full = 0.d0
-      cost_compressed = 0.d0
-
       ! Loop over the model components.
       do k = 1, par%nmodel_components
 
@@ -265,6 +262,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
         if (par%compression_type > 0) then
         ! Wavelet compression.
+          cost_full = 0.d0
+          cost_compressed = 0.d0
+
           ! The uncompressed line cost.
           cost_full = cost_full + sum(sensit_line_full(:, k, d)**2)
 
@@ -309,6 +309,18 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
             call exit_MPI("Wrong number of elements in calculate_and_write_sensit!", myrank, 0)
           endif
 
+          !--------------------------------------------------------------------------------------
+          ! Calculate compression statistics.
+          !--------------------------------------------------------------------------------------
+          ! Compression error for this row. See Eq.(19) in Li & Oldenburg, GJI (2003) 152, 251–265.
+          error_r_i = sqrt(1.d0 - cost_compressed / cost_full)
+
+          ! Relative threshold.
+          relative_threshold = threshold / abs(sensit_line_sorted(nelements_total))
+
+          error_r_sum_loc = error_r_sum_loc + error_r_i
+          relative_threshold_sum_loc = relative_threshold_sum_loc + relative_threshold
+
         else
         ! No compression.
           nel = nelements_total
@@ -333,19 +345,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
           write(77) sensit_columns(1:nel)
           write(77) sensit_compressed(1:nel)
         endif
-
-        !--------------------------------------------------------------------------------------
-        ! Calculate compression statistics.
-        !--------------------------------------------------------------------------------------
-        ! Compression error for this row. See Eq.(19) in Li & Oldenburg, GJI (2003) 152, 251–265.
-        error_r_i = sqrt(1.d0 - cost_compressed / cost_full)
-
-        ! Relative threshold.
-        relative_threshold = threshold / abs(sensit_line_sorted(nelements_total))
-
-        error_r_sum_loc = error_r_sum_loc + error_r_i
-        relative_threshold_sum_loc = relative_threshold_sum_loc + relative_threshold
-
       enddo ! nmodel_components loop
     enddo ! ndata_components loop
 
