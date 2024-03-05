@@ -27,6 +27,7 @@ module model
   use string
   use sparse_matrix
   use wavelet_transform
+  use wavelet_utils
 
   implicit none
 
@@ -229,6 +230,7 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
   real(kind=CUSTOM_REAL), allocatable :: model_scaled(:, :)
   real(kind=CUSTOM_REAL), allocatable :: model_scaled_full(:)
   integer :: i, k, ierr
+  logical :: SOLVE_PROBLEM(1)
 
   allocate(model_scaled(this%nelements, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
 
@@ -257,18 +259,12 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
 
       if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_calculate_data!", myrank, ierr)
 
-      do k = 1, this%ncomponents
-        ! Gather the full model from all processors to the master rank.
-        call get_full_array(model_scaled(:, k), this%nelements, model_scaled_full, .false., myrank, nbproc)
+      SOLVE_PROBLEM = .true.
 
-        if (myrank == 0) then
-          ! Compress the full model.
-          call forward_wavelet(model_scaled_full, this%grid_full%nx, this%grid_full%ny, this%grid_full%nz, compression_type)
-        endif
-
-        ! Scatter the local array parts.
-        call scatter_full_array(this%nelements, model_scaled_full, model_scaled(:, k), myrank, nbproc)
-      enddo
+      ! Transform the model_scaled to wavelet domain.
+      call apply_wavelet_transform(this%nelements, this%grid_full%nx, this%grid_full%ny, this%grid_full%nz, this%ncomponents, &
+                                   model_scaled, model_scaled_full, &
+                                   .true., compression_type, 1, SOLVE_PROBLEM, myrank, nbproc)
 
       deallocate(model_scaled_full)
 
