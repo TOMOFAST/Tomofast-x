@@ -84,7 +84,6 @@ module model
   end type t_model
 
   public :: rescale_model
-  public  :: calculate_data_unscaled
 
 contains
 
@@ -305,42 +304,6 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
   enddo
 
 end subroutine model_calculate_data
-
-!======================================================================================================
-! Calculate the linear data using the sensitivity kernel (S) and model (m) as d = S * m.
-! Use line_start, line_end, param_shift to calculate the data using part of the big (joint) matrix.
-! This version uses unscaled model (in wavelet domain).
-!======================================================================================================
-subroutine calculate_data_unscaled(nelements, nmodel_components, model, matrix_sensit, problem_weight, &
-                                   ndata, ndata_components, data_calc, line_start, param_shift, myrank)
-  integer, intent(in) :: nelements, nmodel_components
-  real(kind=CUSTOM_REAL), intent(in) :: model(nelements, nmodel_components)
-  type(t_sparse_matrix), intent(in) :: matrix_sensit
-  real(kind=CUSTOM_REAL), intent(in) :: problem_weight
-  integer, intent(in) :: ndata, ndata_components, line_start, param_shift
-  integer, intent(in) :: myrank
-
-  real(kind=CUSTOM_REAL), intent(out) :: data_calc(ndata_components, ndata)
-
-  integer :: ierr
-
-  ! Calculate data: d = S' * m'
-  ! Assume that both the kernel and the model are unscaled (depth weighted and in wavelet domain if compression is activated).
-  call matrix_sensit%part_mult_vector(size(model), model, &
-                                      size(data_calc), data_calc, line_start, param_shift, myrank)
-
-  call MPI_Allreduce(MPI_IN_PLACE, data_calc, size(data_calc), CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-
-  if (ierr /= 0) call exit_MPI("MPI error in calculate_data_unscaled!", myrank, ierr)
-
-  ! Apply the problem weight.
-  if (problem_weight /= 0.d0) then
-    data_calc = data_calc / problem_weight
-  else
-    call exit_MPI("Zero problem weight in calculate_data_unscaled!", myrank, 0)
-  endif
-
-end subroutine calculate_data_unscaled
 
 !================================================================================================
 ! Weights the model parameters.
