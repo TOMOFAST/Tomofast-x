@@ -300,12 +300,7 @@ subroutine data_write(this, name_prefix, which, myrank)
     !------------------------------------------------------------------------------------
     file_name  = 'data_'//name_prefix(1:len(name_prefix) - 1)//'.vtk'
 
-    ! Control the Z-axis direction.
-    if (this%z_axis_dir == 1) then
-      INVERT_Z_AXIS = .true.
-    else
-      INVERT_Z_AXIS = .false.
-    endif
+    INVERT_Z_AXIS = .true.
 
     if (which == 1) then
       call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
