@@ -173,6 +173,7 @@ subroutine data_read_points_format(this, file_name, grid_only, myrank)
   integer, intent(in) :: myrank
 
   real(kind=CUSTOM_REAL) :: dummy(this%ncomponents)
+  real(kind=CUSTOM_REAL) :: dummy_X, dummy_Y, dummy_Z
   integer :: i, ierr
   integer :: ndata_in_file
 
@@ -192,7 +193,7 @@ subroutine data_read_points_format(this, file_name, grid_only, myrank)
       ! Read dummy values too to check for file format consistency.
       read(10, *, iostat=ierr) this%X(i), this%Y(i), this%Z(i), dummy(:)
     else
-      read(10, *, iostat=ierr) this%X(i), this%Y(i), this%Z(i), this%val_meas(:, i)
+      read(10, *, iostat=ierr) dummy_X, dummy_Y, dummy_Z, this%val_meas(:, i)
    endif
 
     if (ierr /= 0) call exit_MPI("Problem while reading the data file! Verify the number of data components.", myrank, 0)
