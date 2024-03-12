@@ -277,11 +277,6 @@ subroutine data_write(this, name_prefix, which, myrank)
     ! Units conversion.
     val = val / this%units_mult
 
-    if (this%ncomponents == 3  .and. this%z_axis_dir /= 1) then
-      ! Flip the Z-axis direction.
-      val(3, :) = -val(3, :)
-    endif
-
     open(10, file=trim(file_name), access='stream', form='formatted', status='replace', action='write')
 
     ! Writing a header line.

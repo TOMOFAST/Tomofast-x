@@ -426,11 +426,6 @@ subroutine model_write_voxels_format(model, file_name, myrank)
     ! Units conversion.
     val_full = model%val_full / model%units_mult
 
-    if (model%ncomponents == 3 .and. model%grid_full%z_axis_dir /= 1) then
-      ! Flip the Z-axis direction.
-      val_full(:, 3) = -val_full(:, 3)
-    endif
-
     open(27, file=trim(filename_full), access='stream', form='formatted', status='replace', action='write')
 
     write(27, *) model%nelements_total
