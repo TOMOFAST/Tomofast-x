@@ -501,6 +501,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
         damping_gradient_cost = jinv%get_damping_gradient_cost()
         write(FILE_COSTS, *) it - 1, cost_data(1), cost_data(2), cost_model(1), cost_model(2), &
                              jinv%get_admm_cost(), &
+                             ipar%rho_ADMM, &
                              damping_gradient_cost, &
                              jinv%get_cross_grad_cost(), &
                              jinv%get_clustering_cost(1), jinv%get_clustering_cost(2)
