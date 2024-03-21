@@ -444,7 +444,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   !---------------------------------------------------------------------------------------------
   ! Calculate sensitivity-based depth weighting.
   !---------------------------------------------------------------------------------------------
-  call MPI_Allreduce(MPI_IN_PLACE, weight_sensit, nelements_total, CUSTOM_REAL, MPI_SUM, MPI_COMM_WORLD, ierr)
+  call MPI_Allreduce(MPI_IN_PLACE, weight_sensit, nelements_total, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
   ! Calculate the square root of the column norm.
   weight_sensit = weight_sensit**(1.d0 / 4.d0)
