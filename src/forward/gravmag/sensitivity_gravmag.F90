@@ -133,7 +133,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   integer :: nelements_total, nel_compressed
   integer(kind=8) :: nnz_data
   integer :: problem_type
-  integer :: idata, ndata_loc, ndata_smaller
+  integer :: idata, ndata_loc, ndata_smaller, nsmaller
   character(len=256) :: filename, filename_full
   real(kind=CUSTOM_REAL) :: comp_rate, comp_error
   integer(kind=8) :: nnz_total
@@ -158,6 +158,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
   ! The full column weight.
   real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
+
+  ! The sensitivity-based depth weight.
+  real(kind=CUSTOM_REAL), allocatable :: weight_sensit(:)
 
   ! Sanity check.
   if (par%compression_rate < 0 .or. par%compression_rate > 1) then
@@ -218,6 +221,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
   allocate(sensit_nnz(nelements_total), source=0, stat=ierr)
 
+  allocate(weight_sensit(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in calculate_and_write_sensit!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
@@ -256,6 +261,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
       ! Loop over the model components.
       do k = 1, par%nmodel_components
+
+        ! Calculate the sensitivity-based weight.
+        weight_sensit = weight_sensit + sensit_line_full(:, k, d)**2
 
         ! Applying the depth weight.
         call apply_column_weight(nelements_total, sensit_line_full(:, k, d), column_weight_full)
@@ -434,6 +442,26 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   endif
 
   !---------------------------------------------------------------------------------------------
+  ! Calculate sensitivity-based depth weighting.
+  !---------------------------------------------------------------------------------------------
+  call MPI_Allreduce(MPI_IN_PLACE, weight_sensit, nelements_total, CUSTOM_REAL, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+  ! Calculate the square root of the column norm.
+  weight_sensit = weight_sensit**(1.d0 / 4.d0)
+
+  ! Normalize.
+  weight_sensit = weight_sensit / maxval(weight_sensit)
+
+  ! Calcualte the matrix column weight.
+  weight_sensit = 1.d0 / weight_sensit
+
+  ! The number of elements on CPUs with rank smaller than myrank.
+  nsmaller = get_nsmaller(par%nelements, myrank, nbproc)
+
+  ! Write the weight to file.
+  call write_depth_weight(par, weight_sensit(nsmaller + 1 : nsmaller + par%nelements), myrank, nbproc, "_sensit")
+
+  !---------------------------------------------------------------------------------------------
   deallocate(sensit_line_full)
   deallocate(sensit_line_sorted)
   deallocate(column_weight_full)
@@ -448,10 +476,11 @@ end subroutine calculate_and_write_sensit
 !=======================================================================================================================
 ! Write the depth weight to file.
 !=======================================================================================================================
-subroutine write_depth_weight(par, column_weight, myrank, nbproc)
+subroutine write_depth_weight(par, column_weight, myrank, nbproc, file_label)
   class(t_parameters_base), intent(in) :: par
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(par%nelements)
   integer, intent(in) :: myrank, nbproc
+  character(len=*), optional, intent(in) :: file_label
 
   character(len=256) :: filename, filename_full
   integer :: problem_type, nelements_total
@@ -483,7 +512,12 @@ subroutine write_depth_weight(par, column_weight, myrank, nbproc)
     call execute_command_line('mkdir -p "'//trim(path_output)//'/SENSIT"')
 
     ! The output file name.
-    filename = "sensit_"//SUFFIX(problem_type)//"_weight"
+    if (present(file_label)) then
+      filename = "sensit_"//SUFFIX(problem_type)//"_weight"//trim(file_label)
+    else
+      filename = "sensit_"//SUFFIX(problem_type)//"_weight"
+    endif
+
     filename_full = trim(path_output)//"/SENSIT/"//filename
 
     print *, 'Writing the depth weight to file ', trim(filename_full)
