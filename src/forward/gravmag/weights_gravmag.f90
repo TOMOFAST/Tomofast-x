@@ -57,6 +57,7 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   real(kind=CUSTOM_REAL) :: Rij(8), R0
   real(kind=CUSTOM_REAL) :: dVj
   real(kind=CUSTOM_REAL) :: integral, wr
+  real(kind=CUSTOM_REAL) :: dist, mindist
   integer :: nsmaller, p
 
   if (myrank == 0) print *, 'Calculating the depth weight, type = ', par%depth_weighting_type
@@ -134,6 +135,29 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
       enddo ! data loop
 
       iarr%column_weight(i) = (1.d0 / sqrt(dVj)) * wr**(par%depth_weighting_beta / 4.d0)
+    enddo ! cells loop
+
+  else if (par%depth_weighting_type == 3) then
+    ! A small constant for division validity.
+    R0 = 0.01d0
+
+    do i = 1, par%nelements
+      ! Full grid index.
+      p = nsmaller + i
+
+      ! Calculate the minimum distance from a cell center to data.
+      mindist = 1.d30
+      do j = 1, par%ndata
+        dist = sqrt((grid_full%get_X_cell_center(p) - data%X(j))**2.d0 + &
+                    (grid_full%get_Y_cell_center(p) - data%Y(j))**2.d0 + &
+                    (grid_full%get_Z_cell_center(p) - data%Z(j))**2.d0)
+
+        if (dist < mindist) then
+          mindist = dist
+        endif
+      enddo ! data loop
+
+      iarr%column_weight(i) = sqrt(1.d0 / (mindist + R0)**par%depth_weighting_power)
     enddo ! cells loop
 
   else
