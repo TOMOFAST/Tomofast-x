@@ -516,6 +516,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) then
           cost_data(i) = data(i)%get_cost()
+          if (myrank == 0) print *, 'data RMSE =', data(i)%get_RMSE()
           if (myrank == 0) print *, 'data cost (new) =', cost_data(i)
         endif
       enddo

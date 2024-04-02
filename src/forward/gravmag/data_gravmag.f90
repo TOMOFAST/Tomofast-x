@@ -60,6 +60,7 @@ module data_gravmag
     procedure, public, pass :: read_covariance => data_read_covariance
 
     procedure, public, pass :: get_cost => data_get_cost
+    procedure, public, pass :: get_RMSE => data_get_RMSE
 
     procedure, pass :: broadcast => data_broadcast
     procedure, pass :: read_points_format => data_read_points_format
@@ -125,6 +126,20 @@ pure function data_get_cost(this) result(cost)
   cost = norm2(this%val_calc - this%val_meas) / norm2(this%val_meas)
 
 end function data_get_cost
+
+!============================================================================================================
+! Calculates the absolute data cost (the root mean squared error).
+!============================================================================================================
+pure function data_get_RMSE(this) result(cost)
+  class(t_data), intent(in) :: this
+  real(kind=CUSTOM_REAL) :: cost
+  integer :: N
+
+  N = size(this%val_calc)
+
+  cost = sqrt(sum((this%val_calc - this%val_meas)**2) / real(N))
+
+end function data_get_RMSE
 
 !============================================================================================================
 ! Read data (coordinates and values) in Universal Transverse Mercator (UTM)
