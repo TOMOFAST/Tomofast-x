@@ -10,17 +10,15 @@
 !
 ! The full text of the license is available in file "LICENSE".
 !
-! If you use this code for your own research, please cite these articles:
+! If you use this code, please cite the following two papers:
 !
-! [1] V. Ogarko, J. Giraud, R. Martin, and M. Jessell (2021),
-!     "Disjoint interval bound constraints using the alternating direction method of multipliers
-!     for geologically constrained inversion: Application to gravity data,"
-!     GEOPHYSICS 86: G1-G11. https://doi.org/10.1190/geo2019-0633.1
+! [1] V. Ogarko, K. Frankcombe, T. Liu, J. Giraud, R. Martin, and M. Jessell (2024),
+!     "Tomofast-x 2.0: an open-source parallel code for inversion of potential field data with topography using wavelet compression",
+!     Geosci. Model Dev., 17, 2325–2345, https://doi.org/10.5194/gmd-17-2325-2024
 !
 ! [2] J. Giraud, V. Ogarko, R. Martin, M. Lindsay, M. Jessell (2021),
-!     "Structural, petrophysical and geological constraints in potential field inversion 
-!     using the Tomofast-x open-source code", Geoscientific Model Development Discussions, 
-!     https://doi.org/10.5194/gmd-2021-14
+!     "Structural, petrophysical, and geological constraints in potential field inversion using the Tomofast-x v1.0 open-source code",
+!     Geosci. Model Dev., 14, 6681–6709, https://doi.org/10.5194/gmd-14-6681-2021
 !
 !========================================================================
 
