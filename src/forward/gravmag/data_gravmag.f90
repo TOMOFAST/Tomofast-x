@@ -59,6 +59,8 @@ module data_gravmag
     procedure, public, pass :: write => data_write
     procedure, public, pass :: read_covariance => data_read_covariance
 
+    procedure, public, pass :: get_cost => data_get_cost
+
     procedure, pass :: broadcast => data_broadcast
     procedure, pass :: read_points_format => data_read_points_format
 
@@ -112,6 +114,17 @@ subroutine data_broadcast(this, myrank)
   if (ierr /= 0) call exit_MPI("MPI_Bcast error in data_broadcast!", myrank, ierr)
 
 end subroutine data_broadcast
+
+!============================================================================================================
+! Calculates the relative data cost.
+!============================================================================================================
+pure function data_get_cost(this) result(cost)
+  class(t_data), intent(in) :: this
+  real(kind=CUSTOM_REAL) :: cost
+
+  cost = norm2(this%val_calc - this%val_meas) / norm2(this%val_meas)
+
+end function data_get_cost
 
 !============================================================================================================
 ! Read data (coordinates and values) in Universal Transverse Mercator (UTM)
