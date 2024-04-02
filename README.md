@@ -93,6 +93,7 @@ Measurement, 128: 428-445, https://doi.org/10.1016/j.measurement.2018.05.099
 ### Authors and contacts 
 
 Vitaliy Ogarko, Jeremie Giraud, Roland Martin, Kim Frankcombe, Taige Liu
+
 For questions, contact Vitaliy Ogarko via vogarko@gmail.com
 
 
