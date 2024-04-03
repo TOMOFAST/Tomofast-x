@@ -86,9 +86,9 @@ module parameters_gravmag
     integer :: sensit_read
     character(len=256) :: sensit_path
 
-    !------ Covariance -----------------------------------------------------
-    integer :: use_data_cov
-    character(len=256) :: data_cov_file
+    !------ Error ----------------------------------------------------------
+    integer :: use_data_error
+    character(len=256) :: data_error_file
 
     !------ Other ----------------------------------------------------------
     ! Model units conversion.
@@ -146,8 +146,8 @@ subroutine parameters_base_broadcast(this, myrank)
   call MPI_Bcast(this%sensit_read, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%sensit_path, 256, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
 
-  call MPI_Bcast(this%use_data_cov, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%data_cov_file, 256, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%use_data_error, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%data_error_file, 256, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
 
   call MPI_Bcast(this%model_units_mult, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%data_units_mult, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)

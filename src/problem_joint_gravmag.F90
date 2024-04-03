@@ -152,9 +152,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call data(1)%read_grid(gpar%data_grid_file, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%read_grid(mpar%data_grid_file, myrank)
 
-  ! Reading the data covariance.
-  if (SOLVE_PROBLEM(1) .and. gpar%use_data_cov == 1) call data(1)%read_covariance(gpar%data_cov_file, myrank)
-  if (SOLVE_PROBLEM(2) .and. mpar%use_data_cov == 1) call data(2)%read_covariance(mpar%data_cov_file, myrank)
+  ! Reading the data error.
+  if (SOLVE_PROBLEM(1) .and. gpar%use_data_error == 1) call data(1)%read_error(gpar%data_error_file, myrank)
+  if (SOLVE_PROBLEM(2) .and. mpar%use_data_error == 1) call data(2)%read_error(mpar%data_error_file, myrank)
 
   memory = get_max_mem_usage()
   if (myrank == 0) print *, "MEMORY USED (data grid) [GB] =", memory
@@ -249,10 +249,10 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Reading the sensitivity kernel and depth weight from files.
   if (SOLVE_PROBLEM(1)) &
     call read_sensitivity_kernel(gpar, jinv%matrix_sensit, iarr(1)%column_weight, ipar%problem_weight(1), &
-                                 data(1)%cov, 1, myrank, nbproc)
+                                 data(1)%weight, 1, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) &
     call read_sensitivity_kernel(mpar, jinv%matrix_sensit, iarr(2)%column_weight, ipar%problem_weight(2), &
-                                 data(2)%cov, 2, myrank, nbproc)
+                                 data(2)%weight, 2, myrank, nbproc)
 
   call jinv%matrix_sensit%finalize(myrank)
 
@@ -323,7 +323,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Calculate the data from the read model.
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
-      ipar%problem_weight(i), iarr(i)%column_weight, data(i)%cov, data(i)%val_calc, ipar%compression_type, &
+      ipar%problem_weight(i), iarr(i)%column_weight, data(i)%weight, data(i)%val_calc, ipar%compression_type, &
       line_start(i), param_shift(i), myrank, nbproc)
   enddo
 
@@ -394,7 +394,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     ! Calculate data from the prior model.
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
-        ipar%problem_weight(i), iarr(i)%column_weight, data(i)%cov, data(i)%val_calc, ipar%compression_type, &
+        ipar%problem_weight(i), iarr(i)%column_weight, data(i)%weight, data(i)%val_calc, ipar%compression_type, &
         line_start(i), param_shift(i), myrank, nbproc)
     enddo
 
@@ -418,7 +418,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     ! Calculate data from the starting model.
     do i = 1, 2
       if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
-        ipar%problem_weight(i), iarr(i)%column_weight, data(i)%cov, data(i)%val_calc, ipar%compression_type, &
+        ipar%problem_weight(i), iarr(i)%column_weight, data(i)%weight, data(i)%val_calc, ipar%compression_type, &
         line_start(i), param_shift(i), myrank, nbproc)
     enddo
 
@@ -466,9 +466,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
       ! Calculate data residuals.
       if (SOLVE_PROBLEM(1)) call calculate_residuals(ipar%ndata(1), ipar%ndata_components(1), data(1)%val_meas, &
-                                    data(1)%val_calc, data(1)%cov, iarr(1)%residuals)
+                                    data(1)%val_calc, data(1)%weight, iarr(1)%residuals)
       if (SOLVE_PROBLEM(2)) call calculate_residuals(ipar%ndata(2), ipar%ndata_components(2), data(2)%val_meas, &
-                                    data(2)%val_calc, data(2)%cov, iarr(2)%residuals)
+                                    data(2)%val_calc, data(2)%weight, iarr(2)%residuals)
 
       ! Resets the joint inversion.
       if (it > 1) call jinv%reset(myrank)
@@ -491,7 +491,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       ! Calculate new data.
       do i = 1, 2
         if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
-          ipar%problem_weight(i), iarr(i)%column_weight, data(i)%cov, data(i)%val_calc, ipar%compression_type, &
+          ipar%problem_weight(i), iarr(i)%column_weight, data(i)%weight, data(i)%val_calc, ipar%compression_type, &
           line_start(i), param_shift(i), myrank, nbproc)
       enddo
 
@@ -649,19 +649,19 @@ end subroutine calculate_model_costs
 !==================================================================================================
 ! Calculate data residuals.
 !==================================================================================================
-pure subroutine calculate_residuals(ndata, ncomponents, data_obs, data_calc, data_cov, residuals)
+pure subroutine calculate_residuals(ndata, ncomponents, data_obs, data_calc, data_weight, residuals)
   integer, intent(in) :: ndata, ncomponents
   real(kind=CUSTOM_REAL), intent(in) :: data_obs(ncomponents, ndata)
   real(kind=CUSTOM_REAL), intent(in) :: data_calc(ncomponents, ndata)
-  real(kind=CUSTOM_REAL), intent(in) :: data_cov(ndata)
+  real(kind=CUSTOM_REAL), intent(in) :: data_weight(ndata)
   real(kind=CUSTOM_REAL), intent(out) :: residuals(ncomponents, ndata)
   integer :: i
 
   residuals = data_obs - data_calc
 
-  ! Apply data covariance transform.
+  ! Apply data error transform.
   do i = 1, ndata
-    residuals(:, i) = residuals(:, i) * data_cov(i)
+    residuals(:, i) = residuals(:, i) * data_weight(i)
   enddo
 
 end subroutine calculate_residuals

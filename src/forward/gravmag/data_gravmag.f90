@@ -47,8 +47,8 @@ module data_gravmag
     real(kind=CUSTOM_REAL), allocatable :: val_meas(:, :)
     real(kind=CUSTOM_REAL), allocatable :: val_calc(:, :)
 
-    ! Data covariance.
-    real(kind=CUSTOM_REAL), allocatable :: cov(:)
+    ! Data weights (to add covariance).
+    real(kind=CUSTOM_REAL), allocatable :: weight(:)
 
   contains
     private
@@ -57,7 +57,7 @@ module data_gravmag
     procedure, public, pass :: read => data_read
     procedure, public, pass :: read_grid => data_read_grid
     procedure, public, pass :: write => data_write
-    procedure, public, pass :: read_covariance => data_read_covariance
+    procedure, public, pass :: read_error => data_read_error
 
     procedure, public, pass :: get_cost => data_get_cost
     procedure, public, pass :: get_RMSE => data_get_RMSE
@@ -91,7 +91,7 @@ subroutine data_initialize(this, ndata, ncomponents, units_mult, z_axis_dir, myr
   allocate(this%Z(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%val_meas(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%val_calc(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%cov(this%ndata), source=1._CUSTOM_REAL, stat=ierr)
+  allocate(this%weight(this%ndata), source=1._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in data_initialize!", myrank, ierr)
 
@@ -232,22 +232,23 @@ subroutine data_read_points_format(this, file_name, grid_only, myrank)
 end subroutine data_read_points_format
 
 !============================================================================================================
-! Read data covariance.
+! Read data errors.
 !============================================================================================================
-subroutine data_read_covariance(this, file_name, myrank)
+subroutine data_read_error(this, file_name, myrank)
   class(t_data), intent(inout) :: this
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank
 
   integer :: i, ierr
   integer :: ndata_in_file
+  real(kind=CUSTOM_REAL) :: data_error
 
   ! Reading my master CPU only.
   if (myrank == 0) then
-    print *, 'Reading data covariance from file '//trim(file_name)
+    print *, 'Reading data error from file '//trim(file_name)
 
     open(unit=10, file=file_name, status='old', form='formatted', action='read', iostat=ierr)
-    if (ierr /= 0) call exit_MPI("Error in opening the data covariance file!", myrank, ierr)
+    if (ierr /= 0) call exit_MPI("Error in opening the data error file!", myrank, ierr)
 
     read(10, *) ndata_in_file
 
@@ -255,17 +256,19 @@ subroutine data_read_covariance(this, file_name, myrank)
       call exit_MPI("The number of data in Parfile differs from the data file!", myrank, ndata_in_file)
 
     do i = 1, this%ndata
-      read(10, *, iostat=ierr) this%cov(i)
+      read(10, *, iostat=ierr) data_error
 
-      if (ierr /= 0) call exit_MPI("Problem while reading the data covariance file!", myrank, 0)
+      this%weight(i) = 1.d0 / data_error
+
+      if (ierr /= 0) call exit_MPI("Problem while reading the data error file!", myrank, 0)
     enddo
 
     close(10)
   endif
 
-  call MPI_Bcast(this%cov, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%weight, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
-end subroutine data_read_covariance
+end subroutine data_read_error
 
 !================================================================================================
 ! Writes the data in two formats:
