@@ -33,6 +33,7 @@ module init_parameters
   public :: initialize_parameters
   public :: get_problem_type
 
+  private :: get_parfile_path
   private :: read_parfile
   private :: set_default_parameters
 
@@ -121,22 +122,27 @@ end subroutine get_problem_type
 subroutine initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
   integer, intent(in) :: problem_type
   integer, intent(in) :: myrank, nbproc
-
   type(t_parameters_grav), intent(out) :: gpar
   type(t_parameters_mag), intent(out) :: mpar
   type(t_parameters_inversion), intent(out) :: ipar
 
+  character(len=256) :: parfile_path
   integer :: nelements, ierr
 
   if (myrank == 0) then
     ! Setting default parameter values.
     call set_default_parameters(gpar, mpar, ipar)
 
-    ! Read Parfile data, only the master does this,
-    ! and then broadcasts all the information to the other processes.
-    call read_parfile(gpar, mpar, ipar, myrank)
+    ! Get the Parfile path.
+    call get_parfile_path(parfile_path, myrank)
 
-    ! Print out if we do this in double or single precision.
+    ! Read the Parfile parameters.
+    call read_parfile(parfile_path, gpar, mpar, ipar, myrank)
+
+    ! Copy the Parfile to the output folder.
+    call copy_file(parfile_path, trim(path_output)//'/Parfile_copy.txt')
+
+    ! Print out if we use double or single precision.
     if (CUSTOM_REAL == SIZE_DOUBLE) then
       print *, "precision = DOUBLE"
     else
@@ -360,18 +366,41 @@ subroutine set_default_parameters(gpar, mpar, ipar)
 
 end subroutine set_default_parameters
 
+!========================================================================================
+! Retrieve the Parfile path from the command line.
+!========================================================================================
+subroutine get_parfile_path(parfile_path, myrank)
+  integer, intent(in) :: myrank
+  character(len=*), intent(out) :: parfile_path
+
+  ! The name of the Parfile should be passed in via the command line.
+  call get_command_argument(2, parfile_path)
+  if (len_trim(parfile_path) == 0) then
+    call exit_MPI("No Parfile supplied!", myrank, 0)
+    stop
+  endif
+end subroutine get_parfile_path
+
+!===================================================================================
+! Copy a file.
+!===================================================================================
+subroutine copy_file(path_from, path_to)
+  character(len=*) :: path_from, path_to
+
+  call execute_command_line('cp "' // trim(path_from) // '" "' // trim(path_to) // '"')
+end subroutine copy_file
+
 !===================================================================================
 ! Read input parameters from Parfile.
 !===================================================================================
-subroutine read_parfile(gpar, mpar, ipar, myrank)
+subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
+  character(len=*), intent(in) :: parfile_path
   integer, intent(in) :: myrank
-
   type(t_parameters_grav), intent(inout) :: gpar
   type(t_parameters_mag), intent(inout) :: mpar
   type(t_parameters_inversion), intent(inout) :: ipar
 
   character(len=1) :: ch
-  character(len=256) :: parfile_name
   character(len=128) :: parname
   character(len=256) :: line
   character(len=256) :: parfile_description
@@ -380,15 +409,8 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
   integer :: ios
   logical :: global_bounds_defined
 
-  ! The name of the Parfile should be passed in via the command line.
-  call get_command_argument(2, parfile_name)
-  if (len_trim(parfile_name) == 0) then
-    call exit_MPI("No Parfile supplied!", myrank, 0)
-    stop
-  endif
-
-  open(unit=10, file=parfile_name, status='old', iostat=itmp, action='read')
-  if (itmp /= 0) call exit_MPI("Parfile """ // trim(parfile_name) // """ cannot be opened!", myrank, 0)
+  open(unit=10, file=trim(parfile_path), status='old', iostat=itmp, action='read')
+  if (itmp /= 0) call exit_MPI("Parfile """ // trim(parfile_path) // """ cannot be opened!", myrank, 0)
 
   global_bounds_defined = .false.
 

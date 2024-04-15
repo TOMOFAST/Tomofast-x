@@ -107,4 +107,3 @@ program program_tomofastx
   call MPI_Finalize(ierr)
 
 end program program_tomofastx
-
