@@ -423,6 +423,10 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
 
     symbol_index = index(line, '=')
     parname = line(:symbol_index - 1)
+
+    ! Skip this line.
+    if (trim(parname) == '') cycle
+
     backspace(10)
 
     ! Reading file line until the end of '=' symbol.
@@ -858,6 +862,7 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
         call print_arg(myrank, parname, mpar%vtk_model_label)
 
       case default
+        print *, "WARNING: Unknown parameter name! Name =", parname
         read(10, *, iostat=ios)
 
     end select
