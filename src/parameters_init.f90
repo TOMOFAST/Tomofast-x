@@ -421,6 +421,9 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
     read(10, '(A)', iostat=ios) line
     if (ios /= 0) exit
 
+    ! Skip a comment line.
+    if (line(1:1) == '#') cycle
+
     symbol_index = index(line, '=')
     parname = line(:symbol_index - 1)
 
