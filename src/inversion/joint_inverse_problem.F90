@@ -539,7 +539,7 @@ subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, model, der
 
   cost = this%cross_grad%get_cost()
 
-  if (myrank == 0) print *, 'cross-grad cost = ', cost%x + cost%y + cost%z
+  if (myrank == 0) print *, 'cross-grad cost = ', cost%x, cost%y, cost%z
 
 end subroutine joint_inversion_add_cross_grad_constraints
 
@@ -589,18 +589,16 @@ pure subroutine joint_inversion_get_clustering(this, res)
 end subroutine joint_inversion_get_clustering
 
 !==================================================================================================
-! Returns the cross-gradient cost.
+! Returns the cross-gradient cost (for each direction).
 !==================================================================================================
 pure function joint_inversion_get_cross_grad_cost(this) result(res)
   class(t_joint_inversion), intent(in) :: this
-  real(kind=CUSTOM_REAL) :: res
-  type(t_vector) :: cost
+  type(t_vector) :: res
 
   if (this%add_cross_grad) then
-    cost = this%cross_grad%get_cost()
-    res = cost%get_norm()
+    res = this%cross_grad%get_cost()
   else
-    res = 0.d0
+    res = t_vector(0.d0, 0.d0, 0.d0)
   endif
 
 end function joint_inversion_get_cross_grad_cost

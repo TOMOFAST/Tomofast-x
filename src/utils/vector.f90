@@ -78,7 +78,7 @@ contains
 !=======================================================================
 ! Constructor for t_ivector type.
 !=======================================================================
-function ivector_constructor(i, j, k) result(res)
+pure function ivector_constructor(i, j, k) result(res)
   integer, intent(in) :: i, j, k
   type(t_ivector) :: res
 
@@ -91,8 +91,8 @@ end function ivector_constructor
 !=======================================================================
 ! Constructor for t_vector type.
 !=======================================================================
-function vector_constructor(x, y, z) result(res)
-  real(kind=CUSTOM_REAL) :: x, y, z
+pure function vector_constructor(x, y, z) result(res)
+  real(kind=CUSTOM_REAL), intent(in) :: x, y, z
   type(t_vector) :: res
 
   res%x = x
@@ -167,7 +167,7 @@ end function vector_subtract
 !=======================================================================
 ! Assign a vector to a scalar.
 !=======================================================================
-subroutine vector_assign(lhs, rhs)
+pure subroutine vector_assign(lhs, rhs)
   type(t_vector), intent(out) :: lhs
   real(kind=CUSTOM_REAL), intent(in) :: rhs
 
