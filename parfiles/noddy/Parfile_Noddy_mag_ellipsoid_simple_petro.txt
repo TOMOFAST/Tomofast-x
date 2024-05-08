@@ -76,6 +76,6 @@ inversion.admm.nLithologies             = 2
 inversion.admm.magn.bounds              = 0. 1.d-9 0.09 0.11
 inversion.admm.magn.weight              = 100.
 
-#inversion.admm.dataCostThreshold        = 1.e-4
+#inversion.admm.dataCostThreshold        = 1.e-2
 #inversion.admm.weightMultiplier         = 2.0
 #inversion.admm.maxWeight                = 1.e+10
