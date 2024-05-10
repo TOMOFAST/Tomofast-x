@@ -316,6 +316,7 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   ! INVERSION parameters.
   ipar%ninversions = 10
   ipar%niter = 100
+  ipar%target_misfit = 0.d0
   ipar%write_model_niter = 0
   ipar%rmin = 1.d-13
   ipar%method = 1 ! LSQR = 1
@@ -683,6 +684,10 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
       case("inversion.nMinorIterations")
         read(10, *) ipar%niter
         call print_arg(myrank, parname, ipar%niter)
+
+      case("inversion.targetDataMisfit")
+        read(10, *) ipar%target_misfit
+        call print_arg(myrank, parname, ipar%target_misfit)
 
       case("inversion.writeModelEveryNiter")
         read(10, *) ipar%write_model_niter

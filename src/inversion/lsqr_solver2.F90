@@ -242,35 +242,32 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
       r = phibar / b1
     endif
 
-#ifndef SUPPRESS_OUTPUT
-    ! Commented as this badly affects the performance.
-    !if (mod(iter, 10) == 0) then
-    !  if (myrank == 0) print *, 'it, r =', iter, r
-    !endif
-#endif
+    iter = iter + 1
 
     !----------------------------------------------------------------------------
     ! Calculate the data misfit.
     !----------------------------------------------------------------------------
-    v2 = x
+    if (target_misfit > 0.d0) then
+      v2 = x
 
-    if (compression_type > 0 .and. .not. WAVELET_DOMAIN) then
-      ! Convert x to wavelet domain.
-      call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
-                                   .true., compression_type, 2, SOLVE_PROBLEM, myrank, nbproc)
-    endif
+      if (compression_type > 0 .and. .not. WAVELET_DOMAIN) then
+        ! Convert x to wavelet domain.
+        call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
+                                     .true., compression_type, 2, SOLVE_PROBLEM, myrank, nbproc)
+      endif
 
-    call matrix_sensit%mult_vector(v2, Sx)
+      call matrix_sensit%mult_vector(v2, Sx)
 
-    ! Sum partial results from all ranks.
-    call MPI_Allreduce(MPI_IN_PLACE, Sx, nlines_sensit, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+      ! Sum partial results from all ranks.
+      call MPI_Allreduce(MPI_IN_PLACE, Sx, nlines_sensit, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
-    ! Calculate the Root Mean Square Error.
-    misfit = sqrt(sum((Sx - b0_sensit)**2) / dble(nlines_sensit))
+      ! Calculate the Root Mean Square Error.
+      misfit = sqrt(sum((Sx - b0_sensit)**2) / dble(nlines_sensit))
 
-    if (misfit <= target_misfit) then
-      if (myrank == 0) print *, 'Reached the target misfit, exiting the loop.'
-      exit
+      if (misfit <= target_misfit) then
+        if (myrank == 0) print *, 'Reached the target misfit, exiting the loop.'
+        exit
+      endif
     endif
     !----------------------------------------------------------------------------
 
@@ -279,11 +276,13 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
       if (myrank == 0) print *, 'WARNING: Small rhobar! Possibly algorithm has converged, exiting the loop.'
       exit
     endif
-
-    iter = iter + 1
   enddo
 
-  if (myrank == 0) print *, 'Finished lsqr solver, r =', r, ' misfit =', misfit, ' iter =', iter - 1
+  if (target_misfit > 0.d0) then
+    if (myrank == 0) print *, 'Finished lsqr solver, r =', r, ' misfit =', misfit, ' iter =', iter - 1
+  else
+    if (myrank == 0) print *, 'Finished lsqr solver, r =', r, ' iter =', iter - 1
+  endif
 
 end subroutine lsqr_solve_sensit
 
