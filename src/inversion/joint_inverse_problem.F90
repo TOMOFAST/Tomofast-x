@@ -487,7 +487,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
 
   delta_model = 0._CUSTOM_REAL
   if (par%method == 1) then
-    call lsqr_solve_sensit(size(this%b_RHS), size(delta_model), par%niter, par%rmin, par%gamma, &
+    call lsqr_solve_sensit(size(this%b_RHS), size(delta_model), par%niter, par%rmin, par%gamma, par%target_misfit, &
                            this%matrix_sensit, this%matrix_cons, this%b_RHS, delta_model, &
                            SOLVE_PROBLEM, par%nelements, par%nx, par%ny, par%nz, par%nmodel_components, &
                            par%compression_type, this%WAVELET_DOMAIN, myrank, nbproc)

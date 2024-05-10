@@ -39,16 +39,16 @@ module lsqr_solver
 
 contains
 
-!======================================================================================
+!==========================================================================================
 ! LSQR solver for a sparse matrix.
 ! As lsqr_solve, but with sensitivity kernel separated from the constraints matrix.
-!======================================================================================
-subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
+!==========================================================================================
+subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit, &
                              matrix_sensit, matrix_cons, u, x, &
                              SOLVE_PROBLEM, nelements, nx, ny, nz, ncomponents, compression_type, &
                              WAVELET_DOMAIN, myrank, nbproc)
   integer, intent(in) :: nlines, ncolumns, niter
-  real(kind=CUSTOM_REAL), intent(in) :: rmin, gamma
+  real(kind=CUSTOM_REAL), intent(in) :: rmin, gamma, target_misfit
   logical, intent(in) :: SOLVE_PROBLEM(2)
   integer, intent(in) :: nelements, nx, ny, nz, ncomponents, compression_type
   logical, intent(in) :: WAVELET_DOMAIN
@@ -65,13 +65,15 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
   real(kind=CUSTOM_REAL) :: alpha, beta, rho, rhobar, phi, phibar, theta
   real(kind=CUSTOM_REAL) :: b1, c, r, s, t1, t2
   real(kind=CUSTOM_REAL) :: rho_inv
+  real(kind=CUSTOM_REAL) :: misfit
   integer :: nlines_sensit
 
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w
-
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v2
   ! Buffer for the full model (for one problem and one component), for wavelet transform.
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v1_full
+
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: b0_sensit, Sx
 
   if (myrank == 0) print *, 'Entered subroutine lsqr_solve_sensit, gamma =', gamma
 
@@ -87,8 +89,11 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
   ! Allocate memory.
   allocate(v(ncolumns), source=0._CUSTOM_REAL)
   allocate(w(ncolumns), source=0._CUSTOM_REAL)
-
   allocate(v2(ncolumns), source=0._CUSTOM_REAL)
+
+  ! To calculate the data misfit.
+  allocate(b0_sensit(nlines_sensit), source=0._CUSTOM_REAL)
+  allocate(Sx(nlines_sensit), source=0._CUSTOM_REAL)
 
   if (myrank == 0) then
     allocate(v1_full(nx * ny * nz), source=0._CUSTOM_REAL)
@@ -98,6 +103,9 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
 
   ! Required by the algorithm.
   x = 0._CUSTOM_REAL
+
+  ! Data residuals.
+  b0_sensit = u(1 : nlines_sensit)
 
   ! Right-hand side check.
   if (norm2(u) == 0.d0) then
@@ -241,6 +249,31 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
     !endif
 #endif
 
+    !----------------------------------------------------------------------------
+    ! Calculate the data misfit.
+    !----------------------------------------------------------------------------
+    v2 = x
+
+    if (compression_type > 0 .and. .not. WAVELET_DOMAIN) then
+      ! Convert x to wavelet domain.
+      call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
+                                   .true., compression_type, 2, SOLVE_PROBLEM, myrank, nbproc)
+    endif
+
+    call matrix_sensit%mult_vector(v2, Sx)
+
+    ! Sum partial results from all ranks.
+    call MPI_Allreduce(MPI_IN_PLACE, Sx, nlines_sensit, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+    ! Calculate the Root Mean Square Error.
+    misfit = sqrt(sum((Sx - b0_sensit)**2) / dble(nlines_sensit))
+
+    if (misfit <= target_misfit) then
+      if (myrank == 0) print *, 'Reached the target misfit, exiting the loop.'
+      exit
+    endif
+    !----------------------------------------------------------------------------
+
     ! To avoid floating point exception of denormal value.
     if (abs(rhobar) < 1.e-30) then
       if (myrank == 0) print *, 'WARNING: Small rhobar! Possibly algorithm has converged, exiting the loop.'
@@ -250,7 +283,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, &
     iter = iter + 1
   enddo
 
-  if (myrank == 0) print *, 'End of subroutine lsqr_solve_sensit, r =', r, ' iter =', iter - 1
+  if (myrank == 0) print *, 'Finished lsqr solver, r =', r, ' misfit =', misfit, ' iter =', iter - 1
 
 end subroutine lsqr_solve_sensit
 

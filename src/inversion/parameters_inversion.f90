@@ -61,12 +61,14 @@ module parameters_inversion
     ! File with local damping gradient weights.
     character(len=256) :: damping_gradient_file(2)
 
-    ! Stopping criterion.
+    ! Minimum relative residual.
     real(kind=CUSTOM_REAL) :: rmin
-    ! LSQR=1, SCA=2.
-    integer :: method
-    ! LSQR threshold to have kinda L1 norm. Use gamma=0 for no thresholding.
+    ! Target data misfit.
+    real(kind=CUSTOM_REAL) :: target_misfit
+    ! LSQR threshold to have approx. L1 norm. Use gamma=0 for no thresholding.
     real(kind=CUSTOM_REAL) :: gamma
+    ! LSQR=1.
+    integer :: method
 
     ! Wavelet compression parameters.
     integer :: compression_type
@@ -147,8 +149,9 @@ subroutine parameters_inversion_broadcast(this, myrank)
   call MPI_Bcast(this%write_model_niter, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
   call MPI_Bcast(this%rmin, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%method, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%target_misfit, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%gamma, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%method, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
   call MPI_Bcast(this%alpha, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%norm_power, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
