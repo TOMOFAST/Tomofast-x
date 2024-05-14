@@ -125,7 +125,7 @@ INVERSION parameters
 ===================================================================================
 inversion.nMajorIterations               = 10
 inversion.nMinorIterations               = 100
-inversion.targetDataMisfit               = 0.d0
+inversion.targetMisfit                   = 0.d0
 inversion.writeModelEveryNiter           = 0
 inversion.minResidual                    = 1.d-13
 

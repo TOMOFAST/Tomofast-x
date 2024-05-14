@@ -685,7 +685,7 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
         read(10, *) ipar%niter
         call print_arg(myrank, parname, ipar%niter)
 
-      case("inversion.targetDataMisfit")
+      case("inversion.targetMisfit")
         read(10, *) ipar%target_misfit
         call print_arg(myrank, parname, ipar%target_misfit)
 
