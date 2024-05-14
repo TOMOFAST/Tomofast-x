@@ -67,6 +67,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
   real(kind=CUSTOM_REAL) :: rho_inv
   real(kind=CUSTOM_REAL) :: misfit
   integer :: nlines_sensit
+  logical :: CALC_MISFIT
 
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v2
@@ -86,14 +87,25 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
 
   nlines_sensit = matrix_sensit%get_total_row_number()
 
+  if (target_misfit > 0.d0) then
+    CALC_MISFIT = .true.
+  else
+    CALC_MISFIT = .false.
+  endif
+
   ! Allocate memory.
   allocate(v(ncolumns), source=0._CUSTOM_REAL)
   allocate(w(ncolumns), source=0._CUSTOM_REAL)
   allocate(v2(ncolumns), source=0._CUSTOM_REAL)
 
-  ! To calculate the data misfit.
-  allocate(b0_sensit(nlines_sensit), source=0._CUSTOM_REAL)
-  allocate(Sx(nlines_sensit), source=0._CUSTOM_REAL)
+  if (CALC_MISFIT) then
+    ! To calculate the data misfit.
+    allocate(b0_sensit(nlines_sensit), source=0._CUSTOM_REAL)
+    allocate(Sx(nlines_sensit), source=0._CUSTOM_REAL)
+
+    ! Data residuals.
+    b0_sensit = u(1 : nlines_sensit)
+  endif
 
   if (myrank == 0) then
     allocate(v1_full(nx * ny * nz), source=0._CUSTOM_REAL)
@@ -103,9 +115,6 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
 
   ! Required by the algorithm.
   x = 0._CUSTOM_REAL
-
-  ! Data residuals.
-  b0_sensit = u(1 : nlines_sensit)
 
   ! Right-hand side check.
   if (norm2(u) == 0.d0) then
@@ -247,7 +256,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
     !----------------------------------------------------------------------------
     ! Calculate the data misfit.
     !----------------------------------------------------------------------------
-    if (target_misfit > 0.d0) then
+    if (CALC_MISFIT) then
       v2 = x
 
       if (compression_type > 0 .and. .not. WAVELET_DOMAIN) then
