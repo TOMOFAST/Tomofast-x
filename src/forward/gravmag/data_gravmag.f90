@@ -133,11 +133,18 @@ end function data_get_cost
 pure function data_get_RMSE(this) result(cost)
   class(t_data), intent(in) :: this
   real(kind=CUSTOM_REAL) :: cost
-  integer :: N
+  integer :: N, i, k
 
-  N = size(this%val_calc)
+  ! Note: when the data errors are not used the weight is initialized to 1.0 and the below calculation is also valid.
+  cost = 0.d0
+  do i = 1, this%ndata
+      do k = 1, this%ncomponents
+        cost = cost + (this%weight(i) * (this%val_calc(k, i) - this%val_meas(k, i)))**2
+      enddo
+  enddo
 
-  cost = sqrt(sum((this%val_calc - this%val_meas)**2) / real(N))
+  N = this%ndata * this%ncomponents
+  cost = sqrt(cost / real(N))
 
 end function data_get_RMSE
 
