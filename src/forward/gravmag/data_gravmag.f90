@@ -265,6 +265,9 @@ subroutine data_read_error(this, file_name, myrank)
     do i = 1, this%ndata
       read(10, *, iostat=ierr) data_error
 
+      ! Convert data error units.
+      data_error = this%units_mult * data_error
+
       this%weight(i) = 1.d0 / data_error
 
       if (ierr /= 0) call exit_MPI("Problem while reading the data error file!", myrank, 0)
