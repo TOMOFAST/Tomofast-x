@@ -223,7 +223,7 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
       if (i == 1 .or. j == 1 .or. k == 1) on_left_boundary = .true.
       if (i == this%size%x .or. j == this%size%y .or. k == this%size%z) on_right_boundary = .true.
 
-      if (der_type == 2 .and. on_left_boundary .and. on_right_boundary) then
+      if (on_left_boundary .and. on_right_boundary) then
       ! Skip the cross gradient constraints.
         tau%val = 0.d0
         tau%dm1 = t_vector(0.d0, 0.d0, 0.d0)
