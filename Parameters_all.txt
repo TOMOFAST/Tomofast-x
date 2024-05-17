@@ -181,8 +181,12 @@ CROSS-GRADIENT constraints
 https://doi.org/10.1093/gji/ggaa414
 ===================================================================================
 inversion.crossGradient.weight               = 0.d0
-# 1-forward, 2-central, 3-mixed.
+# 1-forward, 2-central.
 inversion.crossGradient.derivativeType       = 1
+
+# To use the second model as a constant constraint.
+inversion.crossGradient.grav.keepModelConstant = 0
+inversion.crossGradient.magn.keepModelConstant = 0
 
 ===================================================================================
 CLUSTERING constraints

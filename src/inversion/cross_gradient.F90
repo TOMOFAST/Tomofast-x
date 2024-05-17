@@ -69,6 +69,9 @@ module cross_gradient
     ! Local number of parameters.
     integer :: nparams_loc
 
+    ! Flags to define one of the models constant so that it remains unaltered during the inversion.
+    integer :: keep_model_constant(2)
+
     ! Cross gradient vector magnitude (for visualization).
     real(kind=CUSTOM_REAL), allocatable :: cross_grad(:)
 
@@ -98,9 +101,10 @@ contains
 !============================================================================================================
 ! Initialize cross-gradients: set dimensions and grid steps.
 !============================================================================================================
-subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, myrank)
+subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, keep_model_constant, myrank)
   class(t_cross_gradient), intent(inout) :: this
   integer, intent(in) :: nx, ny, nz, nparams_loc
+  integer, intent(in) :: keep_model_constant(2)
   integer, intent(in) :: myrank
 
   integer :: ierr
@@ -113,6 +117,8 @@ subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, myrank)
 
   this%nparams_loc = nparams_loc
   this%nparams = nx * ny * nz
+
+  this%keep_model_constant = keep_model_constant
 
   this%cost = 0._CUSTOM_REAL
 
@@ -246,20 +252,9 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
       call exit_MPI("Unsupported derivative type!", myrank, der_type)
     endif
 
-!  ! (Start) Skip the cross gradient constraints on the boundaries.
-!  if (i == this%size%x .or. j == this%size%y .or. k == this%size%z) then
-!    tau%val = 0.d0
-!    tau%dm1 = t_vector(0.d0, 0.d0, 0.d0)
-!    tau%dm2 = t_vector(0.d0, 0.d0, 0.d0)
-!  endif
-!
-!  if ((der_type == 2) .and. (i == 1 .or. j == 1 .or. k == 1)) then
-!    tau%val = 0.d0
-!    tau%dm1 = t_vector(0.d0, 0.d0, 0.d0)
-!    tau%dm2 = t_vector(0.d0, 0.d0, 0.d0)
-!  endif
-!  ! (End) Skip the cross gradient constraints on the boundaries.
-
+    ! Set derivatives to zero to keep the second model constant.
+    if (this%keep_model_constant(1) > 0) tau%dm1 = t_vector(0.d0, 0.d0, 0.d0)
+    if (this%keep_model_constant(2) > 0) tau%dm2 = t_vector(0.d0, 0.d0, 0.d0)
 
     ! Normalization.
     !call this%normalize_tau(tau, model1, model2, i, j, k, myrank)

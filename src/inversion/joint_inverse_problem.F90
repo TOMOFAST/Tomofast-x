@@ -174,7 +174,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   endif
 
   if (this%add_cross_grad) then
-    call this%cross_grad%initialize(par%nx, par%ny, par%nz, par%nelements, myrank)
+    call this%cross_grad%initialize(par%nx, par%ny, par%nz, par%nelements, par%keep_model_constant, myrank)
   endif
 
   if (this%add_clustering) then

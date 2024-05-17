@@ -92,6 +92,9 @@ module parameters_inversion
     ! 1 - forward, 2 - central.
     integer :: derivative_type
 
+    ! Flags to define one of the models constant so that it remains unaltered during the inversion.
+    integer :: keep_model_constant(2)
+
     ! ------ Clustering constraints ----------------------------------------
 
     ! Clustering weights.
@@ -170,6 +173,7 @@ subroutine parameters_inversion_broadcast(this, myrank)
   ! Cross-gradient parameters.
   call MPI_Bcast(this%cross_grad_weight, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%derivative_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%keep_model_constant, 2, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
   ! Clustering parameters.
   call MPI_Bcast(this%clustering_weight_glob, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
