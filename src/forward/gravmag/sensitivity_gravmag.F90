@@ -247,8 +247,19 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
                           sensit_line_full, myrank)
       else if (par%data_type == 2) then
         ! Gradiometry.
-        call gradiprism_zz(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
-                           sensit_line_full)
+        if (par%ndata_components == 1) then
+          ! Only Gzz component.
+          call gradiprism_zz(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
+                             sensit_line_full)
+
+        else if (par%ndata_components == 6) then
+          ! Full tensor.
+          call gradiprism_full(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
+                               sensit_line_full(:, 1, 1), sensit_line_full(:, 1, 2), sensit_line_full(:, 1, 3), &
+                               sensit_line_full(:, 1, 4), sensit_line_full(:, 1, 5), sensit_line_full(:, 1, 6))
+        else
+          call exit_MPI("Wrong number of gravity gradiometry data components!", myrank, 0)
+        endif
       endif
 
     else if (problem_type == 2) then
