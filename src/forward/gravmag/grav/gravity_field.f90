@@ -255,8 +255,8 @@ subroutine gradiprism_full(nelements, grid, Xdata, Ydata, Zdata, LineXX, LineXY,
           vxx = atan2(XX(K) * YY(L), XX(K)**2 + Rs * ZZ(M) + ZZ(M)**2)
           vxy = log(Rs + ZZ(M))
           vyy = atan2(XX(K) * YY(L), Rs**2 + Rs * ZZ(M) - XX(K)**2)
-          vzx = 0.5d0 * log((Rs - YY(L) / (Rs + YY(L))))
-          vyz = 0.5d0 * log((Rs - XX(K) / (Rs + XX(K))))
+          vzx = 0.5d0 * log((Rs - YY(L)) / (Rs + YY(L)))
+          vyz = 0.5d0 * log((Rs - XX(K)) / (Rs + XX(K)))
           vzz = -atan2(XX(K) * YY(L), Rs * ZZ(M))
 
           gxx = gxx + dmu * vxx
