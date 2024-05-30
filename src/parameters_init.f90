@@ -521,6 +521,10 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
         call read_filename(10, mpar%data_file)
         call print_arg(myrank, parname, mpar%data_file)
 
+      case("forward.data.grav.nDataComponents")
+        read(10, *) gpar%ndata_components
+        call print_arg(myrank, parname, gpar%ndata_components)
+
       case("forward.data.magn.nDataComponents")
         read(10, *) mpar%ndata_components
         call print_arg(myrank, parname, mpar%ndata_components)
