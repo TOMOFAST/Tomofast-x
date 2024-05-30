@@ -255,6 +255,8 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   mpar%data_file = "NILL"
   gpar%ndata_components = 1
   mpar%ndata_components = 1
+  gpar%data_type = 1
+  mpar%data_type = 1
 
   ! Data error.
   gpar%use_data_error = 0
@@ -522,6 +524,10 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
       case("forward.data.magn.nDataComponents")
         read(10, *) mpar%ndata_components
         call print_arg(myrank, parname, mpar%ndata_components)
+
+      case("forward.data.grav.type")
+        read(10, *) gpar%data_type
+        call print_arg(myrank, parname, gpar%data_type)
 
       case("forward.data.grav.useError")
         read(10, *) gpar%use_data_error

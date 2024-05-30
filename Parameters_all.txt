@@ -53,6 +53,9 @@ forward.data.grav.dataValuesFile    = None
 forward.data.magn.dataValuesFile    = None
 forward.data.magn.nDataComponents   = 1
 
+# Switch between gravity (type = 1) and gravity gradiometry (type = 2).
+forward.data.grav.type = 1
+
 # Data error.
 forward.data.grav.useError = 0
 forward.data.magn.useError = 0

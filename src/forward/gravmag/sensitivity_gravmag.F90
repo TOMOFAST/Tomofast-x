@@ -242,8 +242,14 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
     if (problem_type == 1) then
       ! Calcualte gravity kernel.
-      call graviprism_z(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
-                        sensit_line_full, myrank)
+      if (par%data_type == 1) then
+        call graviprism_z(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
+                          sensit_line_full, myrank)
+      else if (par%data_type == 2) then
+        ! Gradiometry.
+        call gradiprism_zz(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
+                           sensit_line_full)
+      endif
 
     else if (problem_type == 2) then
       ! Calculate magnetic kernel.
