@@ -256,7 +256,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
           ! Full tensor.
           call gradiprism_full(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
                                sensit_line_full(:, 1, 1), sensit_line_full(:, 1, 2), sensit_line_full(:, 1, 3), &
-                               sensit_line_full(:, 1, 4), sensit_line_full(:, 1, 5), sensit_line_full(:, 1, 6))
+                               sensit_line_full(:, 1, 4), sensit_line_full(:, 1, 5), sensit_line_full(:, 1, 6), myrank)
         else
           call exit_MPI("Wrong number of gravity gradiometry data components!", myrank, 0)
         endif

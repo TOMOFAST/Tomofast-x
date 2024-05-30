@@ -194,7 +194,7 @@ subroutine graviprism_z(nelements, grid, Xdata, Ydata, Zdata, LineZ, myrank)
 
 end subroutine graviprism_z
 
-!==========================================================================================
+!==============================================================================================
 ! Compute the full gravity tensor required for gravity gradiometry
 ! Code adapted from matlab code provided in the paper Computation of the gravity field and
 ! its gradient: Some applications by Dubey and Tiwari in 2015.
@@ -203,12 +203,12 @@ end subroutine graviprism_z
 !   Z axis convention: positive down
 !   density: kg/m3
 !   output unit: m s-2 m-1
-!==========================================================================================
-subroutine gradiprism_full(nelements, grid, Xdata, Ydata, Zdata, LineXX, LineXY, LineYY, LineZX, LineYZ, LineZZ)
+!==============================================================================================
+subroutine gradiprism_full(nelements, grid, Xdata, Ydata, Zdata, LineXX, LineXY, LineYY, LineZX, LineYZ, LineZZ, myrank)
   integer, intent(in) :: nelements
   type(t_grid), intent(in) :: grid
   real(kind=CUSTOM_REAL), intent(in) :: Xdata, Ydata, Zdata
-  !integer, intent(in) :: myrank
+  integer, intent(in) :: myrank
 
   real(kind=CUSTOM_REAL), intent(out) :: LineXX(nelements)
   real(kind=CUSTOM_REAL), intent(out) :: LineXY(nelements)
@@ -224,6 +224,8 @@ subroutine gradiprism_full(nelements, grid, Xdata, Ydata, Zdata, LineXX, LineXY,
   double precision :: XX(2), YY(2), ZZ(2)
   double precision :: vxx, vxy, vyy, vzx, vyz, vzz
   double precision :: gxx, gxy, gyy, gzx, gyz, gzz
+  double precision :: arg1, arg2, arg3
+  double precision :: arg21, arg22, arg31, arg32
   double precision :: dmu, Rs
   integer :: i, k, l, m
 
@@ -250,14 +252,40 @@ subroutine gradiprism_full(nelements, grid, Xdata, Ydata, Zdata, LineXX, LineXY,
 
           Rs = sqrt(XX(K)**2 + YY(L)**2 + ZZ(M)**2)
 
-          ! TODO: Add sanity checks on the log argument sign as in graviprism_full().
-
           vxx = atan2(XX(K) * YY(L), XX(K)**2 + Rs * ZZ(M) + ZZ(M)**2)
-          vxy = log(Rs + ZZ(M))
           vyy = atan2(XX(K) * YY(L), Rs**2 + Rs * ZZ(M) - XX(K)**2)
-          vzx = 0.5d0 * log((Rs - YY(L)) / (Rs + YY(L)))
-          vyz = 0.5d0 * log((Rs - XX(K)) / (Rs + XX(K)))
           vzz = -atan2(XX(K) * YY(L), Rs * ZZ(M))
+
+          if (vxx < 0) then
+            vxx = vxx + twopi
+          endif
+          if (vyy < 0) then
+            vyy = vyy + twopi
+          endif
+          if (vzz < 0) then
+            vzz = vzz + twopi
+          endif
+
+          arg1 = Rs + ZZ(M)
+          arg21 = Rs - YY(L)
+          arg22 = Rs + YY(L)
+          arg31 = Rs - XX(K)
+          arg32 = Rs + XX(K)
+
+          if (arg22 == 0. .or. arg32 == 0.) then
+            call exit_MPI("Zero denominator in gradiprism_full! Adjust the model grid.", myrank, 0)
+          endif
+
+          arg2 = arg21 / arg22
+          arg3 = arg31 / arg32
+
+          if (arg1 <= 0. .or. arg2 <= 0. .or. arg3 <= 0.) then
+            call exit_MPI("Bad log argument in gradiprism_full! Adjust the model grid.", myrank, 0)
+          endif
+
+          vxy = log(arg1)
+          vzx = 0.5d0 * log(arg2)
+          vyz = 0.5d0 * log(arg3)
 
           gxx = gxx + dmu * vxx
           gxy = gxy + dmu * vxy
@@ -319,6 +347,10 @@ subroutine gradiprism_zz(nelements, grid, Xdata, Ydata, Zdata, LineZZ)
           Rs = sqrt(XX(K)**2 + YY(L)**2 + ZZ(M)**2)
 
           vzz = -atan2(XX(K) * YY(L), Rs * ZZ(M))
+
+          if (vzz < 0) then
+            vzz = vzz + twopi
+          endif
 
           gzz = gzz + dmu * vzz
         enddo
