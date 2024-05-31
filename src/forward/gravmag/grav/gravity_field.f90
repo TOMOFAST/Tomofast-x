@@ -204,18 +204,18 @@ end subroutine graviprism_z
 !   density: kg/m3
 !   output unit: m s-2 m-1
 !==============================================================================================
-subroutine gradiprism_full(nelements, grid, Xdata, Ydata, Zdata, LineXX, LineXY, LineYY, LineZX, LineYZ, LineZZ, myrank)
+subroutine gradiprism_full(nelements, grid, Xdata, Ydata, Zdata, LineXX, LineYY, LineZZ, LineXY, LineYZ, LineZX, myrank)
   integer, intent(in) :: nelements
   type(t_grid), intent(in) :: grid
   real(kind=CUSTOM_REAL), intent(in) :: Xdata, Ydata, Zdata
   integer, intent(in) :: myrank
 
   real(kind=CUSTOM_REAL), intent(out) :: LineXX(nelements)
-  real(kind=CUSTOM_REAL), intent(out) :: LineXY(nelements)
   real(kind=CUSTOM_REAL), intent(out) :: LineYY(nelements)
-  real(kind=CUSTOM_REAL), intent(out) :: LineZX(nelements)
-  real(kind=CUSTOM_REAL), intent(out) :: LineYZ(nelements)
   real(kind=CUSTOM_REAL), intent(out) :: LineZZ(nelements)
+  real(kind=CUSTOM_REAL), intent(out) :: LineXY(nelements)
+  real(kind=CUSTOM_REAL), intent(out) :: LineYZ(nelements)
+  real(kind=CUSTOM_REAL), intent(out) :: LineZX(nelements)
 
   ! Local variables.
   double precision, parameter :: twopi = 2.d0 * pi
@@ -288,11 +288,11 @@ subroutine gradiprism_full(nelements, grid, Xdata, Ydata, Zdata, LineXX, LineXY,
           vyz = 0.5d0 * log(arg3)
 
           gxx = gxx + dmu * vxx
-          gxy = gxy + dmu * vxy
           gyy = gyy + dmu * vyy
-          gzx = gzx + dmu * vzx
-          gyz = gyz + dmu * vyz
           gzz = gzz + dmu * vzz
+          gxy = gxy + dmu * vxy
+          gyz = gyz + dmu * vyz
+          gzx = gzx + dmu * vzx
         enddo
       enddo
     enddo
