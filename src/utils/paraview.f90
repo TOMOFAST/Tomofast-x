@@ -500,13 +500,18 @@ subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, v
   write(333) lf//lf//'POINT_DATA '//str1//lf
 
   if (ncomponents == 1) then
-  ! Scalar data.
+    ! Scalar data.
     write(333) 'SCALARS F FLOAT'//lf
     write(333) 'LOOKUP_TABLE default'//lf
 
   else if (ncomponents == 3) then
-  ! Vector data.
+    ! Vector data.
     write(333) 'VECTORS vectors FLOAT'//lf
+
+  else if (ncomponents == 6) then
+    ! Tensor data.
+    write(333) 'FIELD field 1'//lf
+    write(333) 'gradi 6 '//str1//' FLOAT'//lf
   endif
 
   point_data = real(val, 4)
