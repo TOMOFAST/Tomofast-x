@@ -159,6 +159,32 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
   ! Use an exit (threshold) criterion in case we can exit the loop before reaching the max iteration count.
   do while (iter <= niter .and. r > rmin)
 
+    !----------------------------------------------------------------------------
+    ! Calculate the data misfit.
+    !----------------------------------------------------------------------------
+    if (CALC_MISFIT) then
+      v2 = x
+
+      if (compression_type > 0 .and. .not. WAVELET_DOMAIN) then
+        ! Convert x to wavelet domain.
+        call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
+                                     .true., compression_type, 2, SOLVE_PROBLEM, myrank, nbproc)
+      endif
+
+      call matrix_sensit%mult_vector(v2, Sx)
+
+      ! Sum partial results from all ranks.
+      call MPI_Allreduce(MPI_IN_PLACE, Sx, nlines_sensit, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+      ! Calculate the Root Mean Square Error.
+      misfit = sqrt(sum((Sx - b0_sensit)**2) / dble(nlines_sensit))
+
+      if (misfit <= target_misfit) then
+        if (myrank == 0) print *, 'Reached the target misfit, exiting the loop.'
+        exit
+      endif
+    endif
+
     !---------------------------------------------------------------
     ! Compute u = - alpha.u + H.v in parallel.
     !---------------------------------------------------------------
@@ -252,33 +278,6 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
     endif
 
     iter = iter + 1
-
-    !----------------------------------------------------------------------------
-    ! Calculate the data misfit.
-    !----------------------------------------------------------------------------
-    if (CALC_MISFIT) then
-      v2 = x
-
-      if (compression_type > 0 .and. .not. WAVELET_DOMAIN) then
-        ! Convert x to wavelet domain.
-        call apply_wavelet_transform(nelements, nx, ny, nz, ncomponents, v2, v1_full, &
-                                     .true., compression_type, 2, SOLVE_PROBLEM, myrank, nbproc)
-      endif
-
-      call matrix_sensit%mult_vector(v2, Sx)
-
-      ! Sum partial results from all ranks.
-      call MPI_Allreduce(MPI_IN_PLACE, Sx, nlines_sensit, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-
-      ! Calculate the Root Mean Square Error.
-      misfit = sqrt(sum((Sx - b0_sensit)**2) / dble(nlines_sensit))
-
-      if (misfit <= target_misfit) then
-        if (myrank == 0) print *, 'Reached the target misfit, exiting the loop.'
-        exit
-      endif
-    endif
-    !----------------------------------------------------------------------------
 
     ! To avoid floating point exception of denormal value.
     if (abs(rhobar) < 1.e-30) then
