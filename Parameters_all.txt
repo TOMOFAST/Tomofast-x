@@ -51,9 +51,11 @@ forward.data.grav.dataGridFile      = None
 forward.data.magn.dataGridFile      = None
 forward.data.grav.dataValuesFile    = None
 forward.data.magn.dataValuesFile    = None
+forward.data.grav.nDataComponents   = 1
 forward.data.magn.nDataComponents   = 1
 
 # Switch between gravity (type = 1) and gravity gradiometry (type = 2).
+# Uses Gzz when nDataComponents = 1, or the full tensor when nDataComponents = 6 (the order is: xx, yy, zz, xy, yz, xz).
 forward.data.grav.type = 1
 
 # Data error.
