@@ -279,11 +279,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
         if (par%compression_type > 0) then
         ! Wavelet compression.
-          cost_full = 0.d0
-          cost_compressed = 0.d0
 
           ! The uncompressed line cost.
-          cost_full = cost_full + sum(sensit_line_full(:, k, d)**2)
+          cost_full = sum(sensit_line_full(:, k, d)**2)
 
           ! Apply the wavelet transform.
           call forward_wavelet(sensit_line_full(:, k, d), par%nx, par%ny, par%nz, par%compression_type)
@@ -317,7 +315,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
               sensit_nnz(p) = sensit_nnz(p) + 1
 
-              cost_compressed = cost_compressed + sensit_line_full(p, k, d)**2
+              cost_compressed = sensit_line_full(p, k, d)**2
             endif
           enddo
 
@@ -329,8 +327,13 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
           !--------------------------------------------------------------------------------------
           ! Calculate compression statistics.
           !--------------------------------------------------------------------------------------
-          ! Compression error for this row. See Eq.(19) in Li & Oldenburg, GJI (2003) 152, 251–265.
-          error_r_i = sqrt(1.d0 - cost_compressed / cost_full)
+          if (nel == nel_compressed) then
+            ! Assign the error directly as the formula is numerically unstable for this case.
+            error_r_i = 0.d0
+          else
+            ! Compression error for this row. See Eq.(19) in Li & Oldenburg, GJI (2003) 152, 251–265.
+            error_r_i = sqrt(1.d0 - cost_compressed / cost_full)
+          endif
 
           ! Relative threshold.
           relative_threshold = threshold / abs(sensit_line_sorted(nelements_total))
