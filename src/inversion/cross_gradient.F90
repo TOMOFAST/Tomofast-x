@@ -226,8 +226,16 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
       on_left_boundary = .false.
       on_right_boundary = .false.
 
-      if (i == 1 .or. j == 1 .or. k == 1) on_left_boundary = .true.
-      if (i == this%nx .or. j == this%ny .or. k == this%nz) on_right_boundary = .true.
+      if (i == 1 .and. this%nx > 1 .or. &
+          j == 1 .and. this%ny > 1 .or. &
+          k == 1 .and. this%nz > 1) then
+        on_left_boundary = .true.
+      endif
+      if (i == this%nx .and. this%nx > 1 .or. &
+          j == this%ny .and. this%ny > 1 .or. &
+          k == this%nz .and. this%nz > 1) then
+        on_right_boundary = .true.
+      endif
 
       if (on_left_boundary .and. on_right_boundary) then
       ! Skip the cross gradient constraints.
@@ -250,6 +258,26 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
 
     else
       call exit_MPI("Unsupported derivative type!", myrank, der_type)
+    endif
+
+    ! Process the 2D case.
+    if (this%nx == 1) then
+      ! Set the y and z components to zero.
+      tau%val%y = 0.d0
+      tau%val%z = 0.d0
+      tau%dm1(:)%y = 0.d0
+      tau%dm1(:)%z = 0.d0
+      tau%dm2(:)%y = 0.d0
+      tau%dm2(:)%z = 0.d0
+
+    else if (this%ny == 1) then
+      ! Set the x and z components to zero.
+      tau%val%x = 0.d0
+      tau%val%z = 0.d0
+      tau%dm1(:)%x = 0.d0
+      tau%dm1(:)%z = 0.d0
+      tau%dm2(:)%x = 0.d0
+      tau%dm2(:)%z = 0.d0
     endif
 
     ! Set derivatives to zero to keep the second model constant.
