@@ -58,7 +58,7 @@ module cross_gradient
     private
 
     ! Problem dimensions.
-    type(t_ivector) :: size
+    integer :: nx, ny, nz
 
     ! Cost (that we want to minimize).
     type(t_vector) :: cost
@@ -111,9 +111,9 @@ subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, keep_model_c
 
   if (myrank == 0) print *, "Initializing cross-gradient constraints."
 
-  this%size%x = nx
-  this%size%y = ny
-  this%size%z = nz
+  this%nx = nx
+  this%ny = ny
+  this%nz = nz
 
   this%nparams_loc = nparams_loc
   this%nparams = nx * ny * nz
@@ -213,9 +213,9 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
     k = model1%grid_full%k_(p)
 
     ! Sanity check.
-    if (i < 1 .or. i > this%size%x .or. &
-        j < 1 .or. j > this%size%y .or. &
-        k < 1 .or. k > this%size%z) then
+    if (i < 1 .or. i > this%nx .or. &
+        j < 1 .or. j > this%ny .or. &
+        k < 1 .or. k > this%nz) then
         call exit_MPI("Wrong index in cross_gradient_calculate! i, j, k, p =" &
                       //str(i)//" "//str(j)//" "//str(k)//" "//str(p), myrank, 0)
     endif
@@ -227,7 +227,7 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
       on_right_boundary = .false.
 
       if (i == 1 .or. j == 1 .or. k == 1) on_left_boundary = .true.
-      if (i == this%size%x .or. j == this%size%y .or. k == this%size%z) on_right_boundary = .true.
+      if (i == this%nx .or. j == this%ny .or. k == this%nz) on_right_boundary = .true.
 
       if (on_left_boundary .and. on_right_boundary) then
       ! Skip the cross gradient constraints.
