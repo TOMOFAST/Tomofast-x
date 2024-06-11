@@ -215,9 +215,9 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
       enddo
     endif
 
-    print *, 'Xmin, Xmax =', grid%get_Xmin(), grid%get_Xmax()
-    print *, 'Ymin, Ymax =', grid%get_Ymin(), grid%get_Ymax()
-    print *, 'Zmin, Zmax =', grid%get_Zmin(), grid%get_Zmax()
+    print *, 'Xmin, Xmax, SizeX =', grid%get_Xmin(), grid%get_Xmax(), grid%get_Xmax()- grid%get_Xmin()
+    print *, 'Ymin, Ymax, SizeY =', grid%get_Ymin(), grid%get_Ymax(), grid%get_Ymax()- grid%get_Ymin()
+    print *, 'Zmin, Zmax, SizeZ =', grid%get_Zmin(), grid%get_Zmax(), grid%get_Zmax()- grid%get_Zmin()
   endif ! myrank == 0
 
   ! Broadcast full grid to all CPUs.
