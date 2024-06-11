@@ -13,22 +13,6 @@
 #========================================================================
 
 ################################################################################
-# Configuration section.
-################################################################################
-
-# Disables writing output files for Paraview visualization, and some other output.
-# Note: disable this for performance measurements since the output is performed by
-# the master CPU only, and thus slows down the parallel performance.
-SUPPRESS_OUTPUT = NO
-
-# TODO: Move here compiler choice (GNU/Intel) and optimization level.
-
-# By default, keep the output enabled.
-ifeq ($(strip $(SUPPRESS_OUTPUT)),)
-SUPPRESS_OUTPUT = NO
-endif
-
-################################################################################
 # Compiler and linker flags.
 ################################################################################
 
@@ -42,7 +26,7 @@ endif
 # NOTE: To check what compiler is used by mpif90, execute
 # mpif90 -v
 
-# Use MPI Fortran and C compiler and linker wrappers.
+# Use MPI Fortran compiler and linker wrappers.
 #FC = mpiifort
 FC = mpif90
 
@@ -70,12 +54,6 @@ OPT_INFO = -ftree-vectorize -fopt-info-vec-optimized=vec.info
 
 # Comment this for non GNU compiler.
 #FFLAGS := $(OPT_INFO) $(FFLAGS)
-
-CFLAGS =
-
-ifeq ($(strip $(SUPPRESS_OUTPUT)),YES)
-FFLAGS := $(FFLAGS) -DSUPPRESS_OUTPUT
-endif
 
 # To print a variable run: make print-VARIABLE
 print-%  : ; @echo $* = $($*)

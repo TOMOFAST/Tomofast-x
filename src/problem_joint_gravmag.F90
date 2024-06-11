@@ -289,11 +289,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call set_model(model(1), 2, 0.d0, gpar%model_files(1), myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call set_model(model(2), 2, 0.d0, mpar%model_files(1), myrank, nbproc)
 
-#ifndef SUPPRESS_OUTPUT
   ! Write the model read to a file for Paraview visualization.
   if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_read_', .false., .false., myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_read_', .false., .false., myrank, nbproc)
-#endif
 
   ! SETTING THE ADMM BOUNDS -----------------------------------------------------------------------------
 
@@ -327,21 +325,17 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       line_start(i), param_shift(i), myrank, nbproc)
   enddo
 
-#ifndef SUPPRESS_OUTPUT
   ! Write data calculated from the read model.
   if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_read_', 2, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_read_', 2, myrank)
-#endif
 
   ! Reading the data. Read here to allow the use of the above calculated data from the (synthetic) model read.
   if (SOLVE_PROBLEM(1)) call data(1)%read(gpar%data_file, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%read(mpar%data_file, myrank)
 
-#ifndef SUPPRESS_OUTPUT
   ! Write the observed (measured) data.
   if (SOLVE_PROBLEM(1)) call data(1)%write('grav_observed_', 1, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%write('mag_observed_', 1, myrank)
-#endif
 
   !-----------------------------------------------------------------------------------------
   number_prior_models = gpar%number_prior_models
@@ -384,11 +378,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(1)) model(1)%val_prior = model(1)%val
     if (SOLVE_PROBLEM(2)) model(2)%val_prior = model(2)%val
 
-#ifndef SUPPRESS_OUTPUT
     ! Write the prior model to a file for visualization.
     if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_prior_', .false., .false., myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_prior_', .false., .false., myrank, nbproc)
-#endif
 
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the prior model.
@@ -398,21 +390,17 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
         line_start(i), param_shift(i), myrank, nbproc)
     enddo
 
-#ifndef SUPPRESS_OUTPUT
     ! Write data calculated from the prior model.
     if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_prior_', 2, myrank)
     if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_prior_', 2, myrank)
-#endif
 
     ! SETTING STARTING MODEL FOR INVERSION -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) call set_model(model(1), gpar%start_model_type, gpar%start_model_val, gpar%model_files(3), myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call set_model(model(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), myrank, nbproc)
 
-#ifndef SUPPRESS_OUTPUT
     ! Write the starting model to a file for visualization.
     if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_starting_', .false., .false., myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_starting_', .false., .false., myrank, nbproc)
-#endif
 
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the starting model.
@@ -422,11 +410,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
         line_start(i), param_shift(i), myrank, nbproc)
     enddo
 
-#ifndef SUPPRESS_OUTPUT
     ! Write data calculated from the starting model.
     if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_starting_', 2, myrank)
     if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_starting_', 2, myrank)
-#endif
 
     !-----------------------------------------------------------------------------------------
     ! Calculate costs for the models (damping term in the cost function).
@@ -440,11 +426,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
     enddo
 
-#ifndef SUPPRESS_OUTPUT
     ! Stores costs.
     if (myrank == 0) &
       open(FILE_COSTS, file=trim(path_output)//'/costs.txt', access='stream', form='formatted', status='replace', action='write')
-#endif
 
     memory = get_max_mem_usage()
     if (myrank == 0) print *, "MEMORY USED (major loop start) [GB] =", memory
@@ -495,7 +479,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
           line_start(i), param_shift(i), myrank, nbproc)
       enddo
 
-#ifndef SUPPRESS_OUTPUT
       ! Write costs (for the previous iteration).
       if (myrank == 0) then
         damping_gradient_cost = jinv%get_damping_gradient_cost()
@@ -507,7 +490,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
                              jinv%get_clustering_cost(1), jinv%get_clustering_cost(2)
         flush(FILE_COSTS)
       endif
-#endif
 
       ! Calculate new costs for the models (damping term in the cost function).
       call calculate_model_costs(ipar, iarr, model, cost_model, SOLVE_PROBLEM, myrank, nbproc)
@@ -528,19 +510,14 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     enddo ! Major inversion loop.
 
-#ifndef SUPPRESS_OUTPUT
     ! Write final costs.
     if (myrank == 0) write(FILE_COSTS, *) ipar%ninversions, cost_data(1), cost_data(2), cost_model(1), cost_model(2)
     if (myrank == 0) close(FILE_COSTS)
-#endif
 
-#ifndef SUPPRESS_OUTPUT
     ! Write the final model to a file.
     if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_final_', .true., .true., myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_final_', .true., .true., myrank, nbproc)
-#endif
 
-#ifndef SUPPRESS_OUTPUT
     if (myrank == 0) then
       ! Print model value bounds.
       do i = 1, 2
@@ -548,9 +525,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
           print *, 'Model', i , 'min/max values =', minval(model(i)%val_full), maxval(model(i)%val_full)
       enddo
     endif
-#endif
 
-#ifndef SUPPRESS_OUTPUT
     ! Write data calculated from final model.
     if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_final_', 2, myrank)
     if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_final_', 2, myrank)
@@ -565,9 +540,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     ! Write final data residual.
     if (SOLVE_PROBLEM(1)) call data(1)%write('grav_misfit_final_', 2, myrank)
     if (SOLVE_PROBLEM(2)) call data(2)%write('mag_misfit_final_', 2, myrank)
-#endif
 
-#ifndef SUPPRESS_OUTPUT
     if (jinv%add_cross_grad) then
       if (myrank == 0) then
         ! Write the final cross-gradient vector magnitude to a file.
@@ -575,9 +548,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
         call model_write(model(1), 'cross_grad_final_', .false., .false., myrank, nbproc)
       endif
     endif
-#endif
 
-#ifndef SUPPRESS_OUTPUT
     if (jinv%add_clustering) then
       ! Write final clustering probabilities, i.e., P(m) per cell.
       call jinv%get_clustering(model(1)%val_full)
@@ -585,7 +556,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
       call jinv%clustering%write_data('clustering_data.txt', model(1)%grid_full, myrank)
     endif
-#endif
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 

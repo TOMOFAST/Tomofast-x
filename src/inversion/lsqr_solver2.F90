@@ -443,13 +443,6 @@ subroutine lsqr_solve(nlines, nelements, niter, rmin, gamma, matrix, u, x, myran
       r = phibar / b1
     endif
 
-#ifndef SUPPRESS_OUTPUT
-    ! Commented as this badly affects the performance.
-    !if (mod(iter, 10) == 0) then
-    !  if (myrank == 0) print *, 'it, r =', iter, r
-    !endif
-#endif
-
     ! To avoid floating point exception of denormal value.
     if (abs(rhobar) < 1.e-30) then
       if (myrank == 0) print *, 'WARNING: Small rhobar! Possibly algorithm has converged, exiting the loop.'
