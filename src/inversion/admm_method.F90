@@ -81,8 +81,6 @@ subroutine admm_method_iterate_admm_arrays(this, nlithos, xmin, xmax, x, x0, myr
   integer :: i, j
   logical :: inside
 
-  if (myrank == 0) print *, 'Calculating the ADMM arrays.'
-
   ! Calculate z[k + 1] = Pc(x[k + 1] + u[k]).
   do i = 1, this%nelements
 

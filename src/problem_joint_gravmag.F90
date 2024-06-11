@@ -610,8 +610,6 @@ subroutine calculate_model_costs(ipar, iarr, model, cost_model, solve_problem, m
     if (solve_problem(i)) then
       call calculate_cost_model(ipar%nelements, ipar%norm_power, model(i)%val(:, 1), model(i)%val_prior(:, 1), &
                                 iarr(i)%column_weight, cost_model(i), nbproc)
-
-      if (myrank == 0) print *, 'model cost =', cost_model(i)
     endif
   enddo
 end subroutine calculate_model_costs
