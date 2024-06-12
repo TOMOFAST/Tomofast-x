@@ -191,6 +191,10 @@ subroutine data_read_grid(this, file_name, myrank)
     if (this%z_axis_dir /= 1) then
       this%Z = -this%Z
     endif
+
+    print *, 'Data Xmin, Xmax =', minval(this%X), maxval(this%X)
+    print *, 'Data Ymin, Ymax =', minval(this%Y), maxval(this%Y)
+    print *, 'Data Zmin, Zmax =', minval(this%Z), maxval(this%Z)
   endif
 
   ! MPI broadcast data arrays.
