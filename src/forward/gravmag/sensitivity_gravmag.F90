@@ -306,6 +306,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
           endif
 
           nel = 0
+          cost_compressed = 0.d0
           do p = 1, nelements_total
             if (abs(sensit_line_full(p, k, d)) > threshold) then
               ! Store sensitivity elements greater than the wavelet threshold.
@@ -315,7 +316,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
               sensit_nnz(p) = sensit_nnz(p) + 1
 
-              cost_compressed = sensit_line_full(p, k, d)**2
+              cost_compressed = cost_compressed + sensit_line_full(p, k, d)**2
             endif
           enddo
 
@@ -327,7 +328,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
           !--------------------------------------------------------------------------------------
           ! Calculate compression statistics.
           !--------------------------------------------------------------------------------------
-          if (nel == nel_compressed) then
+          if (nel_compressed == nelements_total) then
             ! Assign the error directly as the formula is numerically unstable for this case.
             error_r_i = 0.d0
           else
