@@ -143,14 +143,15 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank
 
-  integer :: i, nelements_read
-  integer :: i_, j_, k_
+  integer :: p, nelements_read
+  integer :: i, j, k
   integer :: nelements_total
   integer :: ierr
   character(len=256) :: msg
   real(kind=CUSTOM_REAL) :: tmp
   real(kind=CUSTOM_REAL) :: val(nmodel_components)
   integer :: mid_index
+  logical :: correct_order
 
   if (myrank == 0) then
   ! Reading the full grid by master CPU only.
@@ -172,45 +173,53 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
                     //"nelements_read="//str(nelements_read)//new_line('a') &
                     //"nelements_total="//str(nelements_total), myrank, 0)
 
+    correct_order = .true.
+
     ! Reading the full grid.
-    do i = 1, nelements_total
-      read(10, *, iostat=ierr) grid%X1(i), grid%X2(i), &
-                               grid%Y1(i), grid%Y2(i), &
-                               grid%Z1(i), grid%Z2(i), &
+    do p = 1, nelements_total
+      read(10, *, iostat=ierr) grid%X1(p), grid%X2(p), &
+                               grid%Y1(p), grid%Y2(p), &
+                               grid%Z1(p), grid%Z2(p), &
                                val, &
-                               i_, j_, k_
+                               i, j, k
 
       if (ierr /= 0) call exit_MPI("Problem while reading the grid file in grid_read!", myrank, ierr)
 
       ! Sanity check.
-      if (i_ < 1 .or. &
-          j_ < 1 .or. &
-          k_ < 1 .or. &
-          i_ > grid%nx .or. &
-          j_ > grid%ny .or. &
-          k_ > grid%nz) then
-
+      if (i < 1 .or. j < 1 .or. k < 1 .or. &
+          i > grid%nx .or. j > grid%ny .or. k > grid%nz) then
         call exit_MPI("The model grid dimensions in the Parfile are inconsistent with the model 3D indexes!"//new_line('a') &
-                  //"i="//str(i_)//new_line('a') &
-                  //"j="//str(j_)//new_line('a') &
-                  //"k="//str(k_), myrank, 0)
+                  //"i ="//str(i)//new_line('a') &
+                  //"j ="//str(j)//new_line('a') &
+                  //"k ="//str(k), myrank, 0)
       endif
 
       ! Sanity check.
-      if (grid%X1(i) >= grid%X2(i) .or. &
-          grid%Y1(i) >= grid%Y2(i) .or. &
-          grid%Z1(i) >= grid%Z2(i)) then
+      if (grid%X1(p) >= grid%X2(p) .or. &
+          grid%Y1(p) >= grid%Y2(p) .or. &
+          grid%Z1(p) >= grid%Z2(p)) then
         call exit_MPI("The grid is not correctly defined (X1 >= X2 or Y1 >= Y2 or Z1 >= Z2)!", myrank, 0)
       endif
+
+      ! Test that the grid cell order is i-j-k.
+      if (p == 1 .and. (i /= 1 .or. j /= 1 .or. k /= 1)) correct_order = .false.
+      if (p == 2 .and. (i /= 2 .or. j /= 1 .or. k /= 1)) correct_order = .false.
+      if (p == grid%nx + 1 .and. (i /= 1 .or. j /= 2 .or. k /= 1)) correct_order = .false.
+      if (p == grid%nx * grid%ny + 1 .and. (i /= 1 .or. j /= 1 .or. k /= 2)) correct_order = .false.
+
+      if (.not. correct_order) then
+        call exit_MPI("Wrong cell order in the model grid file! Use the i-j-k order (i is the fastest index)!", myrank, 0)
+      endif
+
     enddo
     close(10)
 
     ! Flip the Z-axis direction.
     if (grid%z_axis_dir /= 1) then
-      do i = 1, nelements_total
-        tmp = grid%Z1(i)
-        grid%Z1(i) = -grid%Z2(i)
-        grid%Z2(i) = -tmp
+      do p = 1, nelements_total
+        tmp = grid%Z1(p)
+        grid%Z1(p) = -grid%Z2(p)
+        grid%Z2(p) = -tmp
       enddo
     endif
 

@@ -47,7 +47,6 @@ module sensitivity_gravmag
   public :: read_depth_weight
 
   private :: apply_column_weight
-  private :: test_grid_cell_order
   private :: get_load_balancing_nelements
   private :: get_nel_compressed
   private :: read_depth_weight_file
@@ -56,49 +55,6 @@ module sensitivity_gravmag
   character(len=4) :: SUFFIX(2) = ["grav", "magn"]
 
 contains
-
-!=============================================================================================
-! Sanity check for the correct grid cells ordering.
-!=============================================================================================
-function test_grid_cell_order(par, grid) result(res)
-  class(t_parameters_base), intent(in) :: par
-  type(t_grid), intent(in) :: grid
-  logical :: res
-
-  integer :: t, ind(4)
-  integer :: i_res(4), j_res(4), k_res(4)
-
-  ! The very first voxel (expects: 1 1 1)
-  ind(1) = 1
-  ! The immediate next voxel (expects: 2 1 1)
-  ind(2) = 2
-  ! The immediate voxel after the X cycles once (expects: 1 2 1)
-  ind(3) = par%nx + 1
-  !  The immediate voxel after both X and Y cycles once (expects: 1 1 2)
-  ind(4) = par%nx * par%ny + 1
-
-  ! Expected results.
-  i_res(1) = 1; j_res(1) = 1; k_res(1) = 1 ! 1 1 1
-  i_res(2) = 2; j_res(2) = 1; k_res(2) = 1 ! 2 1 1
-  i_res(3) = 1; j_res(3) = 2; k_res(3) = 1 ! 1 2 1
-  i_res(4) = 1; j_res(4) = 1; k_res(4) = 2 ! 1 1 2
-
-  res = .true.
-
-  do t = 1, 4
-    ! Skip the test if the corresponding grid dimension is equal to 1, i.e., a 2D slice.
-    if (t == 2 .and. grid%nx == 1) cycle
-    if (t == 3 .and. grid%ny == 1) cycle
-    if (t == 4 .and. grid%nz == 1) cycle
-
-    ! Performing the test.
-!    if (grid%i_(ind(t)) /= i_res(t) .or. &
-!        grid%j_(ind(t)) /= j_res(t) .or. &
-!        grid%k_(ind(t)) /= k_res(t)) then
-!      res = .false.
-!    endif
-  enddo
-end function test_grid_cell_order
 
 !===============================================================================================================
 ! Calculates the number of elements in the compressed sensitivity line.
@@ -163,13 +119,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   if (par%compression_rate < 0 .or. par%compression_rate > 1) then
     call exit_MPI("Wrong compression rate! It must be between 0 and 1.", myrank, 0)
   endif
-
-  ! Sanity check for the correct grid cells ordering.
-!  if (par%compression_rate > 0) then
-!    if (.not. test_grid_cell_order(par, grid_full)) then
-!      call exit_MPI("Wrong grid cells ordering in the grid file! Use the kji-loop order!", myrank, 0)
-!    endif
-!  endif
 
   ! Define the problem type.
   select type(par)
