@@ -104,7 +104,7 @@ subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix
   real(kind=CUSTOM_REAL), intent(inout) :: b_RHS(nrows)
 
   integer :: nsmaller
-  integer :: i, j, k, p
+  integer :: i, j, k, l, p
   integer :: ind(2)
   real(kind=CUSTOM_REAL) :: val(2), delta, gradient_val
   type(t_vector) :: gradient_fwd
@@ -116,87 +116,88 @@ subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix
   this%cost = 0.d0
 
   ! Add matrix lines (Jacobian).
-  do p = 1, this%nelements_total
+  p = 0
+  do k = 1, this%nz
+    do j = 1, this%ny
+      do i = 1, this%nx
+        p = p + 1
 
-    ! Grid (i,j,k)-index in the full grid.
-    i = model%grid_full%i_(p)
-    j = model%grid_full%j_(p)
-    k = model%grid_full%k_(p)
+        gradient_fwd = get_grad(model%val_full(:, icomp), model%grid_full, i, j, k, FWD_TYPE)
+        !gradient_bwd = get_grad(model%val_full(:, icomp), model%grid_full, i, j, k, BWD_TYPE)
 
-    gradient_fwd = get_grad(model%val_full(:, icomp), model%grid_full, i, j, k, FWD_TYPE)
-    !gradient_bwd = get_grad(model%val_full(:, icomp), model%grid_full, i, j, k, BWD_TYPE)
+        ! NOTE: Use only gradient in one direction per time.
 
-    ! NOTE: Use only gradient in one direction per time.
+        if (direction == 1) then
+          delta = model%grid_full%get_hx(p)
 
-    if (direction == 1) then
-      delta = model%grid_full%get_hx(p)
+          if (i /= this%nx) then
+            ind(1) = model%grid_full%get_ind(i + 1, j, k) ! f(i + 1, j, k)
+            ind(2) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
+            gradient_val = gradient_fwd%x
+          else
+            !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
+            !ind(2) = model%grid_full%get_ind(i - 1, j, k) ! f(i - 1, j, k)
+            !gradient_val = gradient_bwd%x
+            call matrix%new_row(myrank)
+            cycle
+          endif
 
-      if (i /= this%nx) then
-        ind(1) = model%grid_full%get_ind(i + 1, j, k) ! f(i + 1, j, k)
-        ind(2) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
-        gradient_val = gradient_fwd%x
-      else
-        !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
-        !ind(2) = model%grid_full%get_ind(i - 1, j, k) ! f(i - 1, j, k)
-        !gradient_val = gradient_bwd%x
+        else if (direction == 2) then
+          delta = model%grid_full%get_hy(p)
+
+          if (j /= this%ny) then
+            ind(1) = model%grid_full%get_ind(i, j + 1, k) ! f(i, j + 1, k)
+            ind(2) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
+            gradient_val = gradient_fwd%y
+          else
+            !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
+            !ind(2) = model%grid_full%get_ind(i, j - 1, k) ! f(i, j - 1, k)
+            !gradient_val = gradient_bwd%y
+            call matrix%new_row(myrank)
+            cycle
+          endif
+
+        else if (direction == 3) then
+          delta = model%grid_full%get_hz(p)
+
+          if (k /= this%nz) then
+            ind(1) = model%grid_full%get_ind(i, j, k + 1) ! f(i, j, k + 1)
+            ind(2) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
+            gradient_val = gradient_fwd%z
+          else
+            !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
+            !ind(2) = model%grid_full%get_ind(i, j, k - 1) ! f(i, j, k - 1)
+            !gradient_val = gradient_bwd%z
+            call matrix%new_row(myrank)
+            cycle
+          endif
+
+        else
+          call exit_MPI("Wrong direction in damping_gradient_add!", myrank, 0)
+        endif
+
+        val(1) = 1.d0 / delta
+        val(2) = - val(1)
+
+        ! Add elements to the matrix.
+        do l = 1, 2
+          if (ind(l) > nsmaller .and. ind(l) <= nsmaller + this%nelements) then
+            ind(l) = ind(l) - nsmaller
+            val(l) = val(l) * this%problem_weight * this%beta * column_weight(ind(l)) * local_weight(p)
+
+            call matrix%add(val(l), param_shift + ind(l), myrank)
+          endif
+        enddo
+
         call matrix%new_row(myrank)
-        cycle
-      endif
 
-    else if (direction == 2) then
-      delta = model%grid_full%get_hy(p)
+        ! Setting the right-hand side.
+        b_RHS(matrix%get_current_row_number()) = - this%problem_weight * this%beta * gradient_val * local_weight(p)
 
-      if (j /= this%ny) then
-        ind(1) = model%grid_full%get_ind(i, j + 1, k) ! f(i, j + 1, k)
-        ind(2) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
-        gradient_val = gradient_fwd%y
-      else
-        !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
-        !ind(2) = model%grid_full%get_ind(i, j - 1, k) ! f(i, j - 1, k)
-        !gradient_val = gradient_bwd%y
-        call matrix%new_row(myrank)
-        cycle
-      endif
-
-    else if (direction == 3) then
-      delta = model%grid_full%get_hz(p)
-
-      if (k /= this%nz) then
-        ind(1) = model%grid_full%get_ind(i, j, k + 1) ! f(i, j, k + 1)
-        ind(2) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
-        gradient_val = gradient_fwd%z
-      else
-        !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
-        !ind(2) = model%grid_full%get_ind(i, j, k - 1) ! f(i, j, k - 1)
-        !gradient_val = gradient_bwd%z
-        call matrix%new_row(myrank)
-        cycle
-      endif
-
-    else
-      call exit_MPI("Wrong direction in damping_gradient_add!", myrank, 0)
-    endif
-
-    val(1) = 1.d0 / delta
-    val(2) = - val(1)
-
-    ! Add elements to the matrix.
-    do i = 1, 2
-      if (ind(i) > nsmaller .and. ind(i) <= nsmaller + this%nelements) then
-        ind(i) = ind(i) - nsmaller
-        val(i) = val(i) * this%problem_weight * this%beta * column_weight(ind(i)) * local_weight(p)
-
-        call matrix%add(val(i), param_shift + ind(i), myrank)
-      endif
+        ! Calculate the cost.
+        this%cost = this%cost + gradient_val**2
+      enddo
     enddo
-
-    call matrix%new_row(myrank)
-
-    ! Setting the right-hand side.
-    b_RHS(matrix%get_current_row_number()) = - this%problem_weight * this%beta * gradient_val * local_weight(p)
-
-    ! Calculate the cost.
-    this%cost = this%cost + gradient_val**2
   enddo
 
 end subroutine damping_gradient_add

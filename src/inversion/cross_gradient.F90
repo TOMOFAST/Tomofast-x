@@ -204,138 +204,129 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
   ! Number of parameters on ranks smaller than current one.
   nsmaller = get_nsmaller(this%nparams_loc, myrank, nbproc)
 
-  do p = 1, this%nparams
+  p = 0
+  do k = 1, this%nz
+    do j = 1, this%ny
+      do i = 1, this%nx
+        p = p + 1
 
-    ! Grid (i,j,k)-index in the full grid.
-    ! (Assume both models have the same grid indexes.)
-    i = model1%grid_full%i_(p)
-    j = model1%grid_full%j_(p)
-    k = model1%grid_full%k_(p)
+        ! Calculate cross-gradient discretization.
+        if (der_type == 1 .or. der_type == 2) then
+          ! Apply boundary conditions.
+          on_left_boundary = .false.
+          on_right_boundary = .false.
 
-    ! Sanity check.
-    if (i < 1 .or. i > this%nx .or. &
-        j < 1 .or. j > this%ny .or. &
-        k < 1 .or. k > this%nz) then
-        call exit_MPI("Wrong index in cross_gradient_calculate! i, j, k, p =" &
-                      //str(i)//" "//str(j)//" "//str(k)//" "//str(p), myrank, 0)
-    endif
+          if (i == 1 .or. j == 1 .or. k == 1) on_left_boundary = .true.
+          if (i == this%nx .or. j == this%ny .or. k == this%nz) on_right_boundary = .true.
 
-    ! Calculate cross-gradient discretization.
-    if (der_type == 1 .or. der_type == 2) then
-      ! Apply boundary conditions.
-      on_left_boundary = .false.
-      on_right_boundary = .false.
+          if (on_left_boundary .and. on_right_boundary) then
+          ! Skip the cross gradient constraints.
+            tau%val = 0.d0
+            tau%dm1 = t_vector(0.d0, 0.d0, 0.d0)
+            tau%dm2 = t_vector(0.d0, 0.d0, 0.d0)
 
-      if (i == 1 .or. j == 1 .or. k == 1) on_left_boundary = .true.
-      if (i == this%nx .or. j == this%ny .or. k == this%nz) on_right_boundary = .true.
+          else if (der_type == 2 .and. on_left_boundary) then
+          ! On the left boundary: use forward difference.
+            tau = this%calculate_tau(model1, model2, i, j, k, 1)
 
-      if (on_left_boundary .and. on_right_boundary) then
-      ! Skip the cross gradient constraints.
-        tau%val = 0.d0
-        tau%dm1 = t_vector(0.d0, 0.d0, 0.d0)
-        tau%dm2 = t_vector(0.d0, 0.d0, 0.d0)
+          else if (on_right_boundary) then
+          ! On the right boundary: use backward difference.
+            tau = this%calculate_tau_backward(model1, model2, i, j, k)
 
-      else if (der_type == 2 .and. on_left_boundary) then
-      ! On the left boundary: use forward difference.
-        tau = this%calculate_tau(model1, model2, i, j, k, 1)
+          else
+          ! Inside the domain.
+            tau = this%calculate_tau(model1, model2, i, j, k, der_type)
+          endif
 
-      else if (on_right_boundary) then
-      ! On the right boundary: use backward difference.
-        tau = this%calculate_tau_backward(model1, model2, i, j, k)
-
-      else
-      ! Inside the domain.
-        tau = this%calculate_tau(model1, model2, i, j, k, der_type)
-      endif
-
-    else
-      call exit_MPI("Unsupported derivative type!", myrank, der_type)
-    endif
-
-    ! Set derivatives to zero to keep the second model constant.
-    if (this%keep_model_constant(1) > 0) tau%dm1 = t_vector(0.d0, 0.d0, 0.d0)
-    if (this%keep_model_constant(2) > 0) tau%dm2 = t_vector(0.d0, 0.d0, 0.d0)
-
-    ! Normalization.
-    !call this%normalize_tau(tau, model1, model2, i, j, k, myrank)
-
-    if (myrank == 0) then
-      ! Store cross gradient vector magnitude.
-      this%cross_grad(p) = tau%val%get_norm()
-    endif
-
-    ! Calculate the cost.
-    this%cost%x = this%cost%x + tau%val%x**2
-    this%cost%y = this%cost%y + tau%val%y**2
-    this%cost%z = this%cost%z + tau%val%z**2
-
-    if (add) then
-    ! Adding to the matrix and right-hand-side.
-
-      ! Row with x-component.
-
-      do l = 1, nderiv
-        ind1 = tau%ind1(l)%x
-        ind2 = tau%ind2(l)%x
-
-        if (ind1 > nsmaller .and. ind1 <= nsmaller + this%nparams_loc) then
-          ind1 = ind1 - nsmaller
-          val1 = tau%dm1(l)%x * column_weight1(ind1) * glob_weight
-          call matrix%add(val1, ind1, myrank)
+        else
+          call exit_MPI("Unsupported derivative type!", myrank, der_type)
         endif
 
-        if (ind2 > nsmaller .and. ind2 <= nsmaller + this%nparams_loc) then
-          ind2 = ind2 - nsmaller
-          val2 = tau%dm2(l)%x * column_weight2(ind2) * glob_weight
-          call matrix%add(val2, ind2 + this%nparams_loc, myrank)
-        endif
-      enddo
-      call matrix%new_row(myrank)
-      b_RHS(matrix%get_current_row_number()) = - tau%val%x * glob_weight
+        ! Set derivatives to zero to keep the second model constant.
+        if (this%keep_model_constant(1) > 0) tau%dm1 = t_vector(0.d0, 0.d0, 0.d0)
+        if (this%keep_model_constant(2) > 0) tau%dm2 = t_vector(0.d0, 0.d0, 0.d0)
 
-      ! Row with y-component.
+        ! Normalization.
+        !call this%normalize_tau(tau, model1, model2, i, j, k, myrank)
 
-      do l = 1, nderiv
-        ind1 = tau%ind1(l)%y
-        ind2 = tau%ind2(l)%y
-
-        if (ind1 > nsmaller .and. ind1 <= nsmaller + this%nparams_loc) then
-          ind1 = ind1 - nsmaller
-          val1 = tau%dm1(l)%y * column_weight1(ind1) * glob_weight
-          call matrix%add(val1, ind1, myrank)
+        if (myrank == 0) then
+          ! Store cross gradient vector magnitude.
+          this%cross_grad(p) = tau%val%get_norm()
         endif
 
-        if (ind2 > nsmaller .and. ind2 <= nsmaller + this%nparams_loc) then
-          ind2 = ind2 - nsmaller
-          val2 = tau%dm2(l)%y * column_weight2(ind2) * glob_weight
-          call matrix%add(val2, ind2 + this%nparams_loc, myrank)
-        endif
-      enddo
-      call matrix%new_row(myrank)
-      b_RHS(matrix%get_current_row_number()) = - tau%val%y * glob_weight
+        ! Calculate the cost.
+        this%cost%x = this%cost%x + tau%val%x**2
+        this%cost%y = this%cost%y + tau%val%y**2
+        this%cost%z = this%cost%z + tau%val%z**2
 
-      ! Row with z-component.
+        if (add) then
+        ! Adding to the matrix and right-hand-side.
 
-      do l = 1, nderiv
-        ind1 = tau%ind1(l)%z
-        ind2 = tau%ind2(l)%z
+          ! Row with x-component.
 
-        if (ind1 > nsmaller .and. ind1 <= nsmaller + this%nparams_loc) then
-          ind1 = ind1 - nsmaller
-          val1 = tau%dm1(l)%z * column_weight1(ind1) * glob_weight
-          call matrix%add(val1, ind1, myrank)
-        endif
+          do l = 1, nderiv
+            ind1 = tau%ind1(l)%x
+            ind2 = tau%ind2(l)%x
 
-        if (ind2 > nsmaller .and. ind2 <= nsmaller + this%nparams_loc) then
-          ind2 = ind2 - nsmaller
-          val2 = tau%dm2(l)%z * column_weight2(ind2) * glob_weight
-          call matrix%add(val2, ind2 + this%nparams_loc, myrank)
+            if (ind1 > nsmaller .and. ind1 <= nsmaller + this%nparams_loc) then
+              ind1 = ind1 - nsmaller
+              val1 = tau%dm1(l)%x * column_weight1(ind1) * glob_weight
+              call matrix%add(val1, ind1, myrank)
+            endif
+
+            if (ind2 > nsmaller .and. ind2 <= nsmaller + this%nparams_loc) then
+              ind2 = ind2 - nsmaller
+              val2 = tau%dm2(l)%x * column_weight2(ind2) * glob_weight
+              call matrix%add(val2, ind2 + this%nparams_loc, myrank)
+            endif
+          enddo
+          call matrix%new_row(myrank)
+          b_RHS(matrix%get_current_row_number()) = - tau%val%x * glob_weight
+
+          ! Row with y-component.
+
+          do l = 1, nderiv
+            ind1 = tau%ind1(l)%y
+            ind2 = tau%ind2(l)%y
+
+            if (ind1 > nsmaller .and. ind1 <= nsmaller + this%nparams_loc) then
+              ind1 = ind1 - nsmaller
+              val1 = tau%dm1(l)%y * column_weight1(ind1) * glob_weight
+              call matrix%add(val1, ind1, myrank)
+            endif
+
+            if (ind2 > nsmaller .and. ind2 <= nsmaller + this%nparams_loc) then
+              ind2 = ind2 - nsmaller
+              val2 = tau%dm2(l)%y * column_weight2(ind2) * glob_weight
+              call matrix%add(val2, ind2 + this%nparams_loc, myrank)
+            endif
+          enddo
+          call matrix%new_row(myrank)
+          b_RHS(matrix%get_current_row_number()) = - tau%val%y * glob_weight
+
+          ! Row with z-component.
+
+          do l = 1, nderiv
+            ind1 = tau%ind1(l)%z
+            ind2 = tau%ind2(l)%z
+
+            if (ind1 > nsmaller .and. ind1 <= nsmaller + this%nparams_loc) then
+              ind1 = ind1 - nsmaller
+              val1 = tau%dm1(l)%z * column_weight1(ind1) * glob_weight
+              call matrix%add(val1, ind1, myrank)
+            endif
+
+            if (ind2 > nsmaller .and. ind2 <= nsmaller + this%nparams_loc) then
+              ind2 = ind2 - nsmaller
+              val2 = tau%dm2(l)%z * column_weight2(ind2) * glob_weight
+              call matrix%add(val2, ind2 + this%nparams_loc, myrank)
+            endif
+          enddo
+          call matrix%new_row(myrank)
+          b_RHS(matrix%get_current_row_number()) = - tau%val%z * glob_weight
         endif
       enddo
-      call matrix%new_row(myrank)
-      b_RHS(matrix%get_current_row_number()) = - tau%val%z * glob_weight
-
-    endif
+    enddo
   enddo
 
 end subroutine cross_gradient_calculate
