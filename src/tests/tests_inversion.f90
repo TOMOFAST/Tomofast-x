@@ -204,8 +204,6 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
         model1%grid_full%i_(p) = i
         model1%grid_full%j_(p) = j
         model1%grid_full%k_(p) = k
-
-        model1%grid_full%ind(i, j, k) = p
       enddo
     enddo
   enddo

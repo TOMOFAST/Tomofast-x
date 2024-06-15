@@ -195,9 +195,6 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
                   //"k="//str(grid%k_(i)), myrank, 0)
       endif
 
-      ! Store 1D grid index of the model parameter.
-      grid%ind(grid%i_(i), grid%j_(i), grid%k_(i)) = i
-
       ! Sanity check.
       if (grid%X1(i) >= grid%X2(i) .or. &
           grid%Y1(i) >= grid%Y2(i) .or. &
@@ -221,7 +218,7 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
     print *, 'Zmin, Zmax, SizeZ =', grid%get_Zmin(), grid%get_Zmax(), grid%get_Zmax()- grid%get_Zmin()
 
     ! Index of the top middle cell.
-    mid_index = grid%ind(grid%nx / 2, grid%ny / 2, 1)
+    mid_index = grid%get_ind(grid%nx / 2, grid%ny / 2, 1)
     print *, 'Top middle cell dx, dy, dz =', grid%get_hx(mid_index), grid%get_hy(mid_index), grid%get_hz(mid_index)
   endif ! myrank == 0
 

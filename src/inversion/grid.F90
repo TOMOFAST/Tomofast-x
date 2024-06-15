@@ -35,9 +35,6 @@ module grid
     ! 3D index of the grid element.
     integer, dimension(:), allocatable :: i_, j_, k_
 
-    ! 1D index of the grid element (makes sense only for the full grid).
-    integer, allocatable :: ind(:, :, :)
-
     ! Full grid dimensions.
     integer :: nx, ny, nz
 
@@ -105,8 +102,6 @@ subroutine grid_allocate(this, nx, ny, nz, z_axis_dir, myrank)
   allocate(this%j_(nelements_total), source=0, stat=ierr)
   allocate(this%k_(nelements_total), source=0, stat=ierr)
 
-  allocate(this%ind(nx, ny, nz), source=0, stat=ierr)
-
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in grid_initialize!", myrank, ierr)
 
 end subroutine grid_allocate
@@ -127,8 +122,6 @@ subroutine grid_deallocate(this)
   deallocate(this%i_)
   deallocate(this%j_)
   deallocate(this%k_)
-
-  deallocate(this%ind)
 
 end subroutine grid_deallocate
 
@@ -157,8 +150,6 @@ subroutine grid_broadcast(this, myrank)
   call MPI_Bcast(this%j_, nelements_total, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%k_, nelements_total, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
-  call MPI_Bcast(this%ind, nelements_total, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-
   if (ierr /= 0) call exit_MPI("Error in MPI_Bcast in grid_broadcast!", myrank, ierr)
 
 end subroutine grid_broadcast
@@ -167,22 +158,22 @@ end subroutine grid_broadcast
 ! Returns 1D element index based on 3D one.
 ! If the 3D index in out of bounds, returns index = -1.
 !============================================================================
-pure function grid_get_ind(this, i, j, k) result(index)
+pure function grid_get_ind(this, i, j, k) result(ind)
   class(t_grid), intent(in) :: this
   integer, intent(in) :: i, j, k
-
-  integer :: index
+  integer :: ind
 
   if (i < 1 .or. i > this%nx .or. &
       j < 1 .or. j > this%ny .or. &
       k < 1 .or. k > this%nz) then
 
     ! Set invalid index.
-    index = -1
+    ind = -1
     return
   endif
 
-  index = this%ind(i, j, k)
+  ! Note: we assume the i-j-k order of cells in the model grid.
+  ind = i + (j - 1) * this%nx + (k - 1) * this%nx * this%ny
 
 end function grid_get_ind
 
