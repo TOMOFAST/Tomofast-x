@@ -92,11 +92,11 @@ function test_grid_cell_order(par, grid) result(res)
     if (t == 4 .and. grid%nz == 1) cycle
 
     ! Performing the test.
-    if (grid%i_(ind(t)) /= i_res(t) .or. &
-        grid%j_(ind(t)) /= j_res(t) .or. &
-        grid%k_(ind(t)) /= k_res(t)) then
-      res = .false.
-    endif
+!    if (grid%i_(ind(t)) /= i_res(t) .or. &
+!        grid%j_(ind(t)) /= j_res(t) .or. &
+!        grid%k_(ind(t)) /= k_res(t)) then
+!      res = .false.
+!    endif
   enddo
 end function test_grid_cell_order
 
@@ -165,11 +165,11 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   endif
 
   ! Sanity check for the correct grid cells ordering.
-  if (par%compression_rate > 0) then
-    if (.not. test_grid_cell_order(par, grid_full)) then
-      call exit_MPI("Wrong grid cells ordering in the grid file! Use the kji-loop order!", myrank, 0)
-    endif
-  endif
+!  if (par%compression_rate > 0) then
+!    if (.not. test_grid_cell_order(par, grid_full)) then
+!      call exit_MPI("Wrong grid cells ordering in the grid file! Use the kji-loop order!", myrank, 0)
+!    endif
+!  endif
 
   ! Define the problem type.
   select type(par)

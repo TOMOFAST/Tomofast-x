@@ -200,10 +200,6 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
         model1%grid_full%Y2(p) = real(j + 1, CUSTOM_REAL)
         model1%grid_full%Z1(p) = real(k, CUSTOM_REAL)
         model1%grid_full%Z2(p) = real(k + 1, CUSTOM_REAL)
-
-        model1%grid_full%i_(p) = i
-        model1%grid_full%j_(p) = j
-        model1%grid_full%k_(p) = k
       enddo
     enddo
   enddo

@@ -32,9 +32,6 @@ module grid
     real(kind=CUSTOM_REAL), dimension(:), allocatable :: X1, Y1, Z1
     real(kind=CUSTOM_REAL), dimension(:), allocatable :: X2, Y2, Z2
 
-    ! 3D index of the grid element.
-    integer, dimension(:), allocatable :: i_, j_, k_
-
     ! Full grid dimensions.
     integer :: nx, ny, nz
 
@@ -98,10 +95,6 @@ subroutine grid_allocate(this, nx, ny, nz, z_axis_dir, myrank)
   allocate(this%Z1(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%Z2(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
 
-  allocate(this%i_(nelements_total), source=0, stat=ierr)
-  allocate(this%j_(nelements_total), source=0, stat=ierr)
-  allocate(this%k_(nelements_total), source=0, stat=ierr)
-
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in grid_initialize!", myrank, ierr)
 
 end subroutine grid_allocate
@@ -118,10 +111,6 @@ subroutine grid_deallocate(this)
   deallocate(this%Y2)
   deallocate(this%Z1)
   deallocate(this%Z2)
-
-  deallocate(this%i_)
-  deallocate(this%j_)
-  deallocate(this%k_)
 
 end subroutine grid_deallocate
 
@@ -145,10 +134,6 @@ subroutine grid_broadcast(this, myrank)
   call MPI_Bcast(this%Y2, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%Z1, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%Z2, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-  call MPI_Bcast(this%i_, nelements_total, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%j_, nelements_total, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%k_, nelements_total, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("Error in MPI_Bcast in grid_broadcast!", myrank, ierr)
 

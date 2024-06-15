@@ -144,6 +144,7 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
   integer, intent(in) :: myrank
 
   integer :: i, nelements_read
+  integer :: i_, j_, k_
   integer :: nelements_total
   integer :: ierr
   character(len=256) :: msg
@@ -177,22 +178,22 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
                                grid%Y1(i), grid%Y2(i), &
                                grid%Z1(i), grid%Z2(i), &
                                val, &
-                               grid%i_(i), grid%j_(i), grid%k_(i)
+                               i_, j_, k_
 
       if (ierr /= 0) call exit_MPI("Problem while reading the grid file in grid_read!", myrank, ierr)
 
       ! Sanity check.
-      if (grid%i_(i) < 1 .or. &
-          grid%j_(i) < 1 .or. &
-          grid%k_(i) < 1 .or. &
-          grid%i_(i) > grid%nx .or. &
-          grid%j_(i) > grid%ny .or. &
-          grid%k_(i) > grid%nz) then
+      if (i_ < 1 .or. &
+          j_ < 1 .or. &
+          k_ < 1 .or. &
+          i_ > grid%nx .or. &
+          j_ > grid%ny .or. &
+          k_ > grid%nz) then
 
         call exit_MPI("The model grid dimensions in the Parfile are inconsistent with the model 3D indexes!"//new_line('a') &
-                  //"i="//str(grid%i_(i))//new_line('a') &
-                  //"j="//str(grid%j_(i))//new_line('a') &
-                  //"k="//str(grid%k_(i)), myrank, 0)
+                  //"i="//str(i_)//new_line('a') &
+                  //"j="//str(j_)//new_line('a') &
+                  //"k="//str(k_), myrank, 0)
       endif
 
       ! Sanity check.
@@ -473,7 +474,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
     call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%ncomponents, model%val_full, &
                                          model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                          model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
-                                         model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
+                                         model%grid_full%nx, model%grid_full%ny, model%grid_full%nz, &
                                          1, nx, 1, ny, 1, nz, &
                                          INVERT_Z_AXIS, model%units_mult, model%vtk_label)
   endif
@@ -483,7 +484,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
   call visualisation_paraview_struct_grid(filename, myrank, model%nelements_total, model%ncomponents, model%val_full, &
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
-                                       model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
+                                       model%grid_full%nx, model%grid_full%ny, model%grid_full%nz, &
                                        1, nx, 1, ny, 1, nz, &
                                        INVERT_Z_AXIS, model%units_mult, model%vtk_label)
 
@@ -492,7 +493,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
   call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%ncomponents, model%val_full, &
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
-                                       model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
+                                       model%grid_full%nx, model%grid_full%ny, model%grid_full%nz, &
                                        nx / 2 + 1, nx / 2 + 1, 1, ny, 1, nz, &
                                        INVERT_Z_AXIS, model%units_mult, model%vtk_label)
 
@@ -501,7 +502,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
   call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%ncomponents, model%val_full, &
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
-                                       model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
+                                       model%grid_full%nx, model%grid_full%ny, model%grid_full%nz, &
                                        1, nx, ny / 2 + 1, ny / 2 + 1, 1, nz, &
                                        INVERT_Z_AXIS, model%units_mult, model%vtk_label)
 
@@ -510,7 +511,7 @@ subroutine model_write_paraview(model, name_prefix, myrank)
   call visualisation_paraview_legogrid(filename, myrank, model%nelements_total, model%ncomponents, model%val_full, &
                                        model%grid_full%X1, model%grid_full%Y1, model%grid_full%Z1, &
                                        model%grid_full%X2, model%grid_full%Y2, model%grid_full%Z2, &
-                                       model%grid_full%i_, model%grid_full%j_, model%grid_full%k_, &
+                                       model%grid_full%nx, model%grid_full%ny, model%grid_full%nz, &
                                        1, nx, 1, ny, nz / 2 + 1, nz / 2 + 1, &
                                        INVERT_Z_AXIS, model%units_mult, model%vtk_label)
 end subroutine model_write_paraview

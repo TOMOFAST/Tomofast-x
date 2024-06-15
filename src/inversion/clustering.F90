@@ -380,9 +380,7 @@ subroutine clustering_write_data(this, file_name, grid, myrank)
     write (37, *) this%nelements_total
 
     do p = 1, this%nelements_total
-      write(37, *) grid%X1(p), grid%X2(p), grid%Y1(p), grid%Y2(p), grid%Z1(p), grid%Z2(p), &
-                   grid%i_(p), grid%j_(p), grid%k_(p), &
-                   this%data_all(p)%value, this%data_all(p)%derivative, this%data_all(p)%component
+      write(37, *) this%data_all(p)%value, this%data_all(p)%derivative, this%data_all(p)%component
     enddo
 
     close(37)
