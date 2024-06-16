@@ -23,7 +23,6 @@ module clustering
   use mpi_tools, only: exit_MPI
   use sparse_matrix
   use model
-  use grid
   use string, only: str
   use parallel_tools
 
@@ -358,10 +357,9 @@ end subroutine clustering_write_mixtures
 !================================================================================================
 ! Write clustering data (probabilities and derivatives).
 !================================================================================================
-subroutine clustering_write_data(this, file_name, grid, myrank)
+subroutine clustering_write_data(this, file_name, myrank)
   class(t_clustering), intent(in) :: this
   character(len=*), intent(in) :: file_name
-  type(t_grid), intent(in) :: grid
   integer, intent(in) :: myrank
 
   integer :: p

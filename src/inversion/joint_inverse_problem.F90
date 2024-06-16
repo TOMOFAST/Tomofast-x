@@ -460,7 +460,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
   do i = 1, 2
     if (this%add_admm(i)) then
       call this%admm_method(i)%iterate_admm_arrays(model(i)%nlithos, model(i)%min_bound, model(i)%max_bound, &
-                                                   model(i)%val, this%x0_ADMM(i)%val, myrank)
+                                                   model(i)%val, this%x0_ADMM(i)%val)
 
       ! Use the L2 norm for the ADMM constraints.
       norm_power = 2.0d0

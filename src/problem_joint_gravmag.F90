@@ -410,7 +410,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     !-----------------------------------------------------------------------------------------
     ! Calculate costs for the models (damping term in the cost function).
-    call calculate_model_costs(ipar, iarr, model, cost_model, SOLVE_PROBLEM, myrank, nbproc)
+    call calculate_model_costs(ipar, iarr, model, cost_model, SOLVE_PROBLEM, nbproc)
 
     ! Calculate initial cost (misfit).
     do i = 1, 2
@@ -486,7 +486,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       endif
 
       ! Calculate new costs for the models (damping term in the cost function).
-      call calculate_model_costs(ipar, iarr, model, cost_model, SOLVE_PROBLEM, myrank, nbproc)
+      call calculate_model_costs(ipar, iarr, model, cost_model, SOLVE_PROBLEM, nbproc)
 
       ! Calculate new costs for data misfits.
       do i = 1, 2
@@ -548,7 +548,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       call jinv%get_clustering(model(1)%val_full)
       call model_write(model(1), 'clustering_final_', .false., .false., myrank, nbproc)
 
-      call jinv%clustering%write_data('clustering_data.txt', model(1)%grid_full, myrank)
+      call jinv%clustering%write_data('clustering_data.txt', myrank)
     endif
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
@@ -588,12 +588,12 @@ end subroutine adjust_admm_weight
 !==============================================================================================
 ! Computes and prints norm Lp of the difference between inverted and prior models.
 !==============================================================================================
-subroutine calculate_model_costs(ipar, iarr, model, cost_model, solve_problem, myrank, nbproc)
+subroutine calculate_model_costs(ipar, iarr, model, cost_model, solve_problem, nbproc)
   type(t_parameters_inversion), intent(in) :: ipar
   type(t_inversion_arrays), intent(in) :: iarr(2)
   type(t_model), intent(in) :: model(2)
   logical, intent(in) :: solve_problem(2)
-  integer, intent(in) :: myrank, nbproc
+  integer, intent(in) :: nbproc
   real(kind=CUSTOM_REAL), intent(out) :: cost_model(2)
 
   integer :: i

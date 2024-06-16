@@ -67,13 +67,12 @@ end subroutine admm_method_initialize
 !===========================================================================================
 ! Calculating the main ADMM arrays needed to add the ADMM constraints.
 !===========================================================================================
-subroutine admm_method_iterate_admm_arrays(this, nlithos, xmin, xmax, x, x0, myrank)
+subroutine admm_method_iterate_admm_arrays(this, nlithos, xmin, xmax, x, x0)
   class(t_admm_method), intent(inout) :: this
   integer, intent(in) :: nlithos
   real(kind=CUSTOM_REAL), intent(in) :: xmin(nlithos, this%nelements)
   real(kind=CUSTOM_REAL), intent(in) :: xmax(nlithos, this%nelements)
   real(kind=CUSTOM_REAL), intent(in) :: x(this%nelements)
-  integer, intent(in) :: myrank
 
   real(kind=CUSTOM_REAL), intent(out) :: x0(this%nelements)
 
