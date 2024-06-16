@@ -94,7 +94,7 @@ end function damping_gradient_get_cost
 subroutine damping_gradient_add(this, model, grid, column_weight, local_weight, matrix, nrows, &
                                 b_RHS, param_shift, direction, icomp, myrank, nbproc)
   class(t_damping_gradient), intent(inout) :: this
-  type(t_model), intent(inout) :: model
+  type(t_model), intent(in) :: model
   type(t_grad_grid), intent(in) :: grid
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   real(kind=CUSTOM_REAL), intent(in) :: local_weight(:)

@@ -542,10 +542,15 @@ subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, model, der
 
   if (myrank == 0) print *, 'Calculating cross gradients. der_type =', der_type
 
+  ! Update the full models.
+  call model(1)%update_full(.true., myrank, nbproc)
+  call model(2)%update_full(.true., myrank, nbproc)
+
   ! Starting line for constraints.
   lc = this%ndata_lines + 1
 
-  call this%cross_grad%calculate(model(1), model(2), this%grad_grid, &
+  call this%cross_grad%calculate(model(1)%val_full(:, 1), model(2)%val_full(:, 1), &
+                                 this%grad_grid, &
                                  arr(1)%column_weight, arr(2)%column_weight, &
                                  this%matrix_cons, this%b_RHS(lc:), this%add_cross_grad, der_type, &
                                  par%cross_grad_weight, myrank, nbproc)
