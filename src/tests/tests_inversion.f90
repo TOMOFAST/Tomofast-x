@@ -28,6 +28,7 @@ module tests_inversion
   use model
   use damping
   use cross_gradient
+  use grid
 
   implicit none
 
@@ -147,6 +148,7 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
   type(t_sparse_matrix) :: matrix
   type(t_model) :: model1
   type(t_model) :: model2
+  type(t_grad_grid) :: grad_grid
   real(kind=CUSTOM_REAL), allocatable :: b_RHS(:)
   real(kind=CUSTOM_REAL), allocatable :: column_weight1(:)
   real(kind=CUSTOM_REAL), allocatable :: column_weight2(:)
@@ -210,6 +212,9 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
   call model1%distribute(myrank, nbproc)
   call model2%distribute(myrank, nbproc)
 
+  ! Init the gradient grid.
+  call grad_grid%init(model1%grid_full, myrank)
+
   call cross_grad%initialize(nx, ny, nz, nelements, keep_model_constant, myrank)
 
   call matrix%initialize(3 * nelements_total, 2 * nelements, &
@@ -217,7 +222,8 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
 
   glob_weight = 1.d0
 
-  call cross_grad%calculate(model1, model2, column_weight1, column_weight2, &
+  call cross_grad%calculate(model1, model2, grad_grid, &
+                            column_weight1, column_weight2, &
                             matrix, b_RHS, .true., derivative_type, glob_weight, myrank, nbproc)
 
   call matrix%finalize(myrank)

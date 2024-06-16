@@ -29,6 +29,7 @@ module cross_gradient
   use parallel_tools
   use string, only: str
   use gradient
+  use grid
 
   implicit none
 
@@ -169,11 +170,12 @@ end function cross_gradient_get_num_deriv
 ! Calculates the cross-gradients of the model1 and model2 and stores in cross_grad(:).
 ! If the flag add = 'true', then adds cross-gradients to the sparse matrix and right-hand side b_RHS.
 !=====================================================================================================
-subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column_weight2, &
+subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, column_weight2, &
                                     matrix, b_RHS, add, der_type, glob_weight, myrank, nbproc)
   class(t_cross_gradient), intent(inout) :: this
   type(t_model), intent(inout) :: model1
   type(t_model), intent(inout) :: model2
+  type(t_grad_grid), intent(in) :: grid
   real(kind=CUSTOM_REAL), intent(in) :: column_weight1(:)
   real(kind=CUSTOM_REAL), intent(in) :: column_weight2(:)
   real(kind=CUSTOM_REAL), intent(in) :: glob_weight
@@ -227,15 +229,15 @@ subroutine cross_gradient_calculate(this, model1, model2, column_weight1, column
 
           else if (der_type == 2 .and. on_left_boundary) then
           ! On the left boundary: use forward difference.
-            tau = this%calculate_tau(model1, model2, i, j, k, 1)
+            tau = this%calculate_tau(model1, model2, grid, i, j, k, 1)
 
           else if (on_right_boundary) then
           ! On the right boundary: use backward difference.
-            tau = this%calculate_tau_backward(model1, model2, i, j, k)
+            tau = this%calculate_tau_backward(model1, model2, grid, i, j, k)
 
           else
           ! Inside the domain.
-            tau = this%calculate_tau(model1, model2, i, j, k, der_type)
+            tau = this%calculate_tau(model1, model2, grid, i, j, k, der_type)
           endif
 
         else
@@ -359,23 +361,21 @@ end subroutine cross_gradient_get_magnitude
 ! der_type = 1:  using a forward difference scheme (Geophys. Res. Lett., Vol. 33, L07303).
 ! der_type /= 1: using a central difference scheme.
 !==================================================================================================
-function cross_gradient_calculate_tau(model1, model2, i, j, k, der_type) result(tau)
+function cross_gradient_calculate_tau(model1, model2, grid, i, j, k, der_type) result(tau)
   type(t_model), intent(in) :: model1
   type(t_model), intent(in) :: model2
+  type(t_grad_grid), intent(in) :: grid
   integer, intent(in) :: i, j, k, der_type
 
   type(t_tau) :: tau
   type(t_vector) :: m1_grad, m2_grad
   type(t_vector) :: step
-  integer :: ind
-
-  ind = model1%grid_full%get_ind(i, j, k)
 
   ! Calculate model gradients.
   ! NOTE: These gradients are used to calculate the partial derivatives below,
   ! so if we want to e.g. normalize gradients then expressions for derivatives have to be changed.
-  m1_grad = get_grad(model1%val_full(:, 1), model1%grid_full, i, j, k, get_der_type(der_type))
-  m2_grad = get_grad(model2%val_full(:, 1), model2%grid_full, i, j, k, get_der_type(der_type))
+  m1_grad = get_grad(model1%val_full(:, 1), grid, i, j, k, get_der_type(der_type))
+  m2_grad = get_grad(model2%val_full(:, 1), grid, i, j, k, get_der_type(der_type))
 
   ! Calculate the cross-product between model gradients.
   tau%val = m1_grad%cross_product(m2_grad)
@@ -383,7 +383,7 @@ function cross_gradient_calculate_tau(model1, model2, i, j, k, der_type) result(
   ! Calculate partial derivatives (with respect to the model parameters),
   ! and corresponding matrix column indexes.
 
-  step = t_vector(model1%grid_full%get_hx(ind), model1%grid_full%get_hy(ind), model1%grid_full%get_hz(ind))
+  step = t_vector(grid%dX(i), grid%dY(j), grid%dZ(k))
 
   if (der_type /= 1) then
     step = 2._CUSTOM_REAL * step
@@ -398,14 +398,14 @@ function cross_gradient_calculate_tau(model1, model2, i, j, k, der_type) result(
   tau%dm1(2)%x = - m2_grad%y / step%z   ! dx / dm1(i, j, k + 1)
   tau%dm2(2)%x =   m1_grad%y / step%z   ! dx / dm2(i, j, k + 1)
 
-  tau%ind(1)%x = model1%grid_full%get_ind(i, j + 1, k)
-  tau%ind(2)%x = model1%grid_full%get_ind(i, j, k + 1)
+  tau%ind(1)%x = grid%get_ind(i, j + 1, k)
+  tau%ind(2)%x = grid%get_ind(i, j, k + 1)
 
   if (der_type == 1) then
     tau%dm1(3)%x = - (m2_grad%z / step%y - m2_grad%y / step%z)  ! dx / dm1(i, j, k)
     tau%dm2(3)%x = - (m1_grad%y / step%z - m1_grad%z / step%y)  ! dx / dm2(i, j, k)
 
-    tau%ind(3)%x = model1%grid_full%get_ind(i, j, k)
+    tau%ind(3)%x = grid%get_ind(i, j, k)
 
   else
     tau%dm1(3)%x = - tau%dm1(1)%x   ! dx / dm1(i, j - 1, k)
@@ -414,8 +414,8 @@ function cross_gradient_calculate_tau(model1, model2, i, j, k, der_type) result(
     tau%dm1(4)%x = - tau%dm1(2)%x   ! dx / dm1(i, j, k - 1)
     tau%dm2(4)%x = - tau%dm2(2)%x   ! dx / dm2(i, j, k - 1)
 
-    tau%ind(3)%x = model1%grid_full%get_ind(i, j - 1, k)
-    tau%ind(4)%x = model1%grid_full%get_ind(i, j, k - 1)
+    tau%ind(3)%x = grid%get_ind(i, j - 1, k)
+    tau%ind(4)%x = grid%get_ind(i, j, k - 1)
   endif
 
   !------------
@@ -425,14 +425,14 @@ function cross_gradient_calculate_tau(model1, model2, i, j, k, der_type) result(
   tau%dm1(2)%y =   m2_grad%x / step%z   ! dy / dm1(i, j, k + 1)
   tau%dm2(2)%y = - m1_grad%x / step%z   ! dy / dm2(i, j, k + 1)
 
-  tau%ind(1)%y = model1%grid_full%get_ind(i + 1, j, k)
-  tau%ind(2)%y = model1%grid_full%get_ind(i, j, k + 1)
+  tau%ind(1)%y = grid%get_ind(i + 1, j, k)
+  tau%ind(2)%y = grid%get_ind(i, j, k + 1)
 
   if (der_type == 1) then
     tau%dm1(3)%y = - (m2_grad%x / step%z - m2_grad%z / step%x)  ! dy / dm1(i, j, k)
     tau%dm2(3)%y = - (m1_grad%z / step%x - m1_grad%x / step%z)  ! dy / dm2(i, j, k)
 
-    tau%ind(3)%y = model1%grid_full%get_ind(i, j, k)
+    tau%ind(3)%y = grid%get_ind(i, j, k)
 
   else
     tau%dm1(3)%y = - tau%dm1(1)%y   ! dy / dm1(i - 1, j, k)
@@ -441,8 +441,8 @@ function cross_gradient_calculate_tau(model1, model2, i, j, k, der_type) result(
     tau%dm1(4)%y = - tau%dm1(2)%y   ! dy / dm1(i, j, k - 1)
     tau%dm2(4)%y = - tau%dm2(2)%y   ! dy / dm2(i, j, k - 1)
 
-    tau%ind(3)%y = model1%grid_full%get_ind(i - 1, j, k)
-    tau%ind(4)%y = model1%grid_full%get_ind(i, j, k - 1)
+    tau%ind(3)%y = grid%get_ind(i - 1, j, k)
+    tau%ind(4)%y = grid%get_ind(i, j, k - 1)
   endif
 
   !------------
@@ -452,14 +452,14 @@ function cross_gradient_calculate_tau(model1, model2, i, j, k, der_type) result(
   tau%dm1(2)%z = - m2_grad%x / step%y   ! dz / dm1(i, j + 1, k)
   tau%dm2(2)%z =   m1_grad%x / step%y   ! dz / dm2(i, j + 1, k)
 
-  tau%ind(1)%z = model1%grid_full%get_ind(i + 1, j, k)
-  tau%ind(2)%z = model1%grid_full%get_ind(i, j + 1, k)
+  tau%ind(1)%z = grid%get_ind(i + 1, j, k)
+  tau%ind(2)%z = grid%get_ind(i, j + 1, k)
 
   if (der_type == 1) then
     tau%dm1(3)%z = - (m2_grad%y / step%x - m2_grad%x / step%y)  ! dz / dm1(i, j, k)
     tau%dm2(3)%z = - (m1_grad%x / step%y - m1_grad%y / step%x)  ! dz / dm2(i, j, k)
 
-    tau%ind(3)%z = model1%grid_full%get_ind(i, j, k)
+    tau%ind(3)%z = grid%get_ind(i, j, k)
 
   else
     tau%dm1(3)%z = - tau%dm1(1)%z   ! dz / dm1(i - 1, j, k)
@@ -468,8 +468,8 @@ function cross_gradient_calculate_tau(model1, model2, i, j, k, der_type) result(
     tau%dm1(4)%z = - tau%dm1(2)%z   ! dz / dm1(i, j - 1, k)
     tau%dm2(4)%z = - tau%dm2(2)%z   ! dz / dm2(i, j - 1, k)
 
-    tau%ind(3)%z = model1%grid_full%get_ind(i - 1, j, k)
-    tau%ind(4)%z = model1%grid_full%get_ind(i, j - 1, k)
+    tau%ind(3)%z = grid%get_ind(i - 1, j, k)
+    tau%ind(4)%z = grid%get_ind(i, j - 1, k)
   endif
 
   ! To avoid having non-initialized values.
@@ -494,24 +494,22 @@ end function cross_gradient_calculate_tau
 !
 ! Same as cross_gradient_calculate_tau but uses three-point forward difference scheme.
 !==================================================================================================
-function cross_gradient_calculate_tau2(model1, model2, i, j, k) result(tau)
+function cross_gradient_calculate_tau2(model1, model2, grid, i, j, k) result(tau)
   type(t_model), intent(in) :: model1
   type(t_model), intent(in) :: model2
+  type(t_grad_grid), intent(in) :: grid
   integer, intent(in) :: i, j, k
 
   type(t_tau) :: tau
   type(t_vector) :: m1_grad, m2_grad
   type(t_vector) :: step
-  integer :: ind
-
-  ind = model1%grid_full%get_ind(i, j, k)
 
   ! Calculate model gradients.
   ! NOTE: These gradients are used to calculate the partial derivatives below,
   ! so if we want to e.g. normalize gradients then expressions for derivatives have to be changed.
 
-  m1_grad = get_grad(model1%val_full(:, 1), model1%grid_full, i, j, k, FWD2_TYPE)
-  m2_grad = get_grad(model2%val_full(:, 1), model2%grid_full, i, j, k, FWD2_TYPE)
+  m1_grad = get_grad(model1%val_full(:, 1), grid, i, j, k, FWD2_TYPE)
+  m2_grad = get_grad(model2%val_full(:, 1), grid, i, j, k, FWD2_TYPE)
 
   ! Calculate the cross-product between model gradients.
   tau%val = m1_grad%cross_product(m2_grad)
@@ -519,7 +517,7 @@ function cross_gradient_calculate_tau2(model1, model2, i, j, k) result(tau)
   ! Calculate partial derivatives (with respect to the model parameters),
   ! and corresponding matrix column indexes.
 
-  step = 2.d0 * t_vector(model1%grid_full%get_hx(ind), model1%grid_full%get_hy(ind), model1%grid_full%get_hz(ind))
+  step = 2.d0 * t_vector(grid%dX(i), grid%dY(j), grid%dZ(k))
 
   !------------------------------------------------------------------
   ! Note: assume both models have the same grid indexes.
@@ -537,11 +535,11 @@ function cross_gradient_calculate_tau2(model1, model2, i, j, k) result(tau)
   tau%dm2(4)%x = + 4.d0 * m1_grad%y / step%z                         ! dx / dm2(i, j, k + 1)
   tau%dm2(5)%x = - 3.d0 * (m1_grad%y / step%z - m1_grad%z / step%y)  ! dx / dm2(i, j, k)
 
-  tau%ind(1)%x = model1%grid_full%get_ind(i, j + 2, k)
-  tau%ind(2)%x = model1%grid_full%get_ind(i, j + 1, k)
-  tau%ind(3)%x = model1%grid_full%get_ind(i, j, k + 2)
-  tau%ind(4)%x = model1%grid_full%get_ind(i, j, k + 1)
-  tau%ind(5)%x = model1%grid_full%get_ind(i, j, k)
+  tau%ind(1)%x = grid%get_ind(i, j + 2, k)
+  tau%ind(2)%x = grid%get_ind(i, j + 1, k)
+  tau%ind(3)%x = grid%get_ind(i, j, k + 2)
+  tau%ind(4)%x = grid%get_ind(i, j, k + 1)
+  tau%ind(5)%x = grid%get_ind(i, j, k)
 
   ! Y-component.
   tau%dm1(1)%y = - 1.d0 * m2_grad%x / step%z                         ! dy / dm1(i, j, k + 2)
@@ -556,11 +554,11 @@ function cross_gradient_calculate_tau2(model1, model2, i, j, k) result(tau)
   tau%dm2(4)%y = + 4.d0 * m1_grad%z / step%x                         ! dy / dm2(i + 1, j, k)
   tau%dm2(5)%y = - 3.d0 * (m1_grad%z / step%x - m1_grad%x / step%z)  ! dy / dm2(i, j, k)
 
-  tau%ind(1)%y = model1%grid_full%get_ind(i, j, k + 2)
-  tau%ind(2)%y = model1%grid_full%get_ind(i, j, k + 1)
-  tau%ind(3)%y = model1%grid_full%get_ind(i + 2, j, k)
-  tau%ind(4)%y = model1%grid_full%get_ind(i + 1, j, k)
-  tau%ind(5)%y = model1%grid_full%get_ind(i, j, k)
+  tau%ind(1)%y = grid%get_ind(i, j, k + 2)
+  tau%ind(2)%y = grid%get_ind(i, j, k + 1)
+  tau%ind(3)%y = grid%get_ind(i + 2, j, k)
+  tau%ind(4)%y = grid%get_ind(i + 1, j, k)
+  tau%ind(5)%y = grid%get_ind(i, j, k)
 
   ! Z-component.
   tau%dm1(1)%z = - 1.d0 * m2_grad%y / step%x                         ! dz / dm1(i + 2, j, k)
@@ -575,11 +573,11 @@ function cross_gradient_calculate_tau2(model1, model2, i, j, k) result(tau)
   tau%dm2(4)%z = + 4.d0 * m1_grad%x / step%y                         ! dz / dm2(i, j + 1, k)
   tau%dm2(5)%z = - 3.d0 * (m1_grad%x / step%y - m1_grad%y / step%x)  ! dz / dm2(i, j, k)
 
-  tau%ind(1)%z = model1%grid_full%get_ind(i + 2, j, k)
-  tau%ind(2)%z = model1%grid_full%get_ind(i + 1, j, k)
-  tau%ind(3)%z = model1%grid_full%get_ind(i, j + 2, k)
-  tau%ind(4)%z = model1%grid_full%get_ind(i, j + 1, k)
-  tau%ind(5)%z = model1%grid_full%get_ind(i, j, k)
+  tau%ind(1)%z = grid%get_ind(i + 2, j, k)
+  tau%ind(2)%z = grid%get_ind(i + 1, j, k)
+  tau%ind(3)%z = grid%get_ind(i, j + 2, k)
+  tau%ind(4)%z = grid%get_ind(i, j + 1, k)
+  tau%ind(5)%z = grid%get_ind(i, j, k)
 
   tau%ind1 = tau%ind
   tau%ind2 = tau%ind
@@ -592,25 +590,23 @@ end function cross_gradient_calculate_tau2
 !
 ! Same as cross_gradient_calculate_tau but uses backward finite difference.
 !==================================================================================================
-function cross_gradient_calculate_tau_backward(model1, model2, i, j, k) result(tau)
+function cross_gradient_calculate_tau_backward(model1, model2, grid, i, j, k) result(tau)
   type(t_model), intent(in) :: model1
   type(t_model), intent(in) :: model2
+  type(t_grad_grid), intent(in) :: grid
   integer, intent(in) :: i, j, k
 
   type(t_tau) :: tau
   type(t_vector) :: m1_grad, m2_grad
   type(t_vector) :: step
-  integer :: ind
-
-  ind = model1%grid_full%get_ind(i, j, k)
 
   ! Calculate model gradients.
   ! NOTE: These gradients are used to calculate the partial derivatives below,
   ! so if we want to e.g. normalize gradients then expressions for derivatives have to be changed.
 
   ! Forward and backward difference.
-  m1_grad = get_grad(model1%val_full(:, 1), model1%grid_full, i, j, k, BWD_TYPE)
-  m2_grad = get_grad(model2%val_full(:, 1), model2%grid_full, i, j, k, BWD_TYPE)
+  m1_grad = get_grad(model1%val_full(:, 1), grid, i, j, k, BWD_TYPE)
+  m2_grad = get_grad(model2%val_full(:, 1), grid, i, j, k, BWD_TYPE)
 
   ! Calculate the cross-product between model gradients.
   tau%val = m1_grad%cross_product(m2_grad)
@@ -618,7 +614,7 @@ function cross_gradient_calculate_tau_backward(model1, model2, i, j, k) result(t
   ! Calculate partial derivatives (with respect to the model parameters),
   ! and corresponding matrix column indexes.
 
-  step = t_vector(model1%grid_full%get_hx(ind), model1%grid_full%get_hy(ind), model1%grid_full%get_hz(ind))
+  step = t_vector(grid%dX(i), grid%dY(j), grid%dZ(k))
 
   !------------------------------------------------------------------
   ! Note: assume both models have the same grid indexes.
@@ -631,9 +627,9 @@ function cross_gradient_calculate_tau_backward(model1, model2, i, j, k) result(t
   tau%dm2(2)%x = - m1_grad%y / step%z                         ! dx / dm2(i, j, k - 1)
   tau%dm2(3)%x =   m1_grad%y / step%z - m1_grad%z / step%y    ! dx / dm2(i, j, k)
 
-  tau%ind(1)%x = model1%grid_full%get_ind(i, j - 1, k)
-  tau%ind(2)%x = model1%grid_full%get_ind(i, j, k - 1)
-  tau%ind(3)%x = model1%grid_full%get_ind(i, j, k)
+  tau%ind(1)%x = grid%get_ind(i, j - 1, k)
+  tau%ind(2)%x = grid%get_ind(i, j, k - 1)
+  tau%ind(3)%x = grid%get_ind(i, j, k)
 
   !------------
   tau%dm1(1)%y =   m2_grad%z / step%x                         ! dy / dm1(i - 1, j, k)
@@ -644,9 +640,9 @@ function cross_gradient_calculate_tau_backward(model1, model2, i, j, k) result(t
   tau%dm2(2)%y =   m1_grad%x / step%z                         ! dy / dm2(i, j, k - 1)
   tau%dm2(3)%y =   m1_grad%z / step%x - m1_grad%x / step%z    ! dy / dm2(i, j, k)
 
-  tau%ind(1)%y = model1%grid_full%get_ind(i - 1, j, k)
-  tau%ind(2)%y = model1%grid_full%get_ind(i, j, k - 1)
-  tau%ind(3)%y = model1%grid_full%get_ind(i, j, k)
+  tau%ind(1)%y = grid%get_ind(i - 1, j, k)
+  tau%ind(2)%y = grid%get_ind(i, j, k - 1)
+  tau%ind(3)%y = grid%get_ind(i, j, k)
 
   !------------
   tau%dm1(1)%z = - m2_grad%y / step%x                         ! dz / dm1(i - 1, j, k)
@@ -657,9 +653,9 @@ function cross_gradient_calculate_tau_backward(model1, model2, i, j, k) result(t
   tau%dm2(2)%z = - m1_grad%x / step%y                         ! dz / dm2(i, j - 1, k)
   tau%dm2(3)%z =   m1_grad%x / step%y - m1_grad%y / step%x    ! dz / dm2(i, j, k)
 
-  tau%ind(1)%z = model1%grid_full%get_ind(i - 1, j, k)
-  tau%ind(2)%z = model1%grid_full%get_ind(i, j - 1, k)
-  tau%ind(3)%z = model1%grid_full%get_ind(i, j, k)
+  tau%ind(1)%z = grid%get_ind(i - 1, j, k)
+  tau%ind(2)%z = grid%get_ind(i, j - 1, k)
+  tau%ind(3)%z = grid%get_ind(i, j, k)
 
   ! To avoid having non-initialized values.
   tau%dm1(4:) = t_vector(0.d0, 0.d0, 0.d0)
@@ -671,36 +667,33 @@ function cross_gradient_calculate_tau_backward(model1, model2, i, j, k) result(t
 
 end function cross_gradient_calculate_tau_backward
 
-
 !==================================================================================================
 ! Calculates the discretized cross-gradients function (and corresponding matrix column indexes)
 ! between the models model1 and model2, at pixel location (i, j, k).
 !
 ! Same as cross_gradient_calculate_tau but uses forward and central difference at the same time.
 !==================================================================================================
-function cross_gradient_calculate_tau_mixed_gradients(model1, model2, i, j, k) result(tau)
+function cross_gradient_calculate_tau_mixed_gradients(model1, model2, grid, i, j, k) result(tau)
   type(t_model), intent(in) :: model1
   type(t_model), intent(in) :: model2
+  type(t_grad_grid), intent(in) :: grid
   integer, intent(in) :: i, j, k
 
   type(t_tau) :: tau
   type(t_vector) :: m1_grad, m2_grad
   type(t_vector) :: step
-  integer :: ind
-
-  ind = model1%grid_full%get_ind(i, j, k)
 
   ! Calculate model gradients.
   ! NOTE: These gradients are used to calculate the partial derivatives below,
   ! so if we want to e.g. normalize gradients then expressions for derivatives have to be changed.
 
   ! Forward and central difference.
-!  m1_grad = grad%get_grad(model1%val_full(:, 1), model1%grid_full, i, j, k, FWD_TYPE)
-!  m2_grad = grad%get_grad(model2%val_full(:, 1), model2%grid_full, i, j, k, CNT_TYPE)
+!  m1_grad = grad%get_grad(model1%val_full(:, 1), grid, i, j, k, FWD_TYPE)
+!  m2_grad = grad%get_grad(model2%val_full(:, 1), grid, i, j, k, CNT_TYPE)
 
   ! Forward and backward difference.
-  m1_grad = get_grad(model1%val_full(:, 1), model1%grid_full, i, j, k, FWD_TYPE)
-  m2_grad = get_grad(model2%val_full(:, 1), model2%grid_full, i, j, k, BWD_TYPE)
+  m1_grad = get_grad(model1%val_full(:, 1), grid, i, j, k, FWD_TYPE)
+  m2_grad = get_grad(model2%val_full(:, 1), grid, i, j, k, BWD_TYPE)
 
   ! Calculate the cross-product between model gradients.
   tau%val = m1_grad%cross_product(m2_grad)
@@ -708,7 +701,7 @@ function cross_gradient_calculate_tau_mixed_gradients(model1, model2, i, j, k) r
   ! Calculate partial derivatives (with respect to the model parameters),
   ! and corresponding matrix column indexes.
 
-  step = t_vector(model1%grid_full%get_hx(ind), model1%grid_full%get_hy(ind), model1%grid_full%get_hz(ind))
+  step = t_vector(grid%dX(i), grid%dY(j), grid%dZ(k))
 
   !------------------------------------------------------------------
   ! Note: assume both models have the same grid indexes.
@@ -726,14 +719,14 @@ function cross_gradient_calculate_tau_mixed_gradients(model1, model2, i, j, k) r
 !  tau%dm2(3)%x = - tau%dm2(1)%x                               ! dx / dm2(i, j - 1, k)
 !  tau%dm2(4)%x = - tau%dm2(2)%x                               ! dx / dm2(i, j, k - 1)
 !
-!  tau%ind1(1)%x = model1%grid_full%get_ind(i, j + 1, k)
-!  tau%ind1(2)%x = model1%grid_full%get_ind(i, j, k + 1)
-!  tau%ind1(3)%x = model1%grid_full%get_ind(i, j, k)
+!  tau%ind1(1)%x = grid%get_ind(i, j + 1, k)
+!  tau%ind1(2)%x = grid%get_ind(i, j, k + 1)
+!  tau%ind1(3)%x = grid%get_ind(i, j, k)
 !
-!  tau%ind2(1)%x = model1%grid_full%get_ind(i, j + 1, k)
-!  tau%ind2(2)%x = model1%grid_full%get_ind(i, j, k + 1)
-!  tau%ind2(3)%x = model1%grid_full%get_ind(i, j - 1, k)
-!  tau%ind2(4)%x = model1%grid_full%get_ind(i, j, k - 1)
+!  tau%ind2(1)%x = grid%get_ind(i, j + 1, k)
+!  tau%ind2(2)%x = grid%get_ind(i, j, k + 1)
+!  tau%ind2(3)%x = grid%get_ind(i, j - 1, k)
+!  tau%ind2(4)%x = grid%get_ind(i, j, k - 1)
 !
 !  !------------
 !  tau%dm1(1)%y = - m2_grad%z / step%x                         ! dy / dm1(i + 1, j, k)
@@ -745,14 +738,14 @@ function cross_gradient_calculate_tau_mixed_gradients(model1, model2, i, j, k) r
 !  tau%dm2(3)%y = - tau%dm2(1)%y                               ! dy / dm2(i - 1, j, k)
 !  tau%dm2(4)%y = - tau%dm2(2)%y                               ! dy / dm2(i, j, k - 1)
 !
-!  tau%ind1(1)%y = model1%grid_full%get_ind(i + 1, j, k)
-!  tau%ind1(2)%y = model1%grid_full%get_ind(i, j, k + 1)
-!  tau%ind1(3)%y = model1%grid_full%get_ind(i, j, k)
+!  tau%ind1(1)%y = grid%get_ind(i + 1, j, k)
+!  tau%ind1(2)%y = grid%get_ind(i, j, k + 1)
+!  tau%ind1(3)%y = grid%get_ind(i, j, k)
 !
-!  tau%ind2(1)%y = model1%grid_full%get_ind(i + 1, j, k)
-!  tau%ind2(2)%y = model1%grid_full%get_ind(i, j, k + 1)
-!  tau%ind2(3)%y = model1%grid_full%get_ind(i - 1, j, k)
-!  tau%ind2(4)%y = model1%grid_full%get_ind(i, j, k - 1)
+!  tau%ind2(1)%y = grid%get_ind(i + 1, j, k)
+!  tau%ind2(2)%y = grid%get_ind(i, j, k + 1)
+!  tau%ind2(3)%y = grid%get_ind(i - 1, j, k)
+!  tau%ind2(4)%y = grid%get_ind(i, j, k - 1)
 !
 !  !------------
 !  tau%dm1(1)%z =   m2_grad%y / step%x                         ! dz / dm1(i + 1, j, k)
@@ -764,14 +757,14 @@ function cross_gradient_calculate_tau_mixed_gradients(model1, model2, i, j, k) r
 !  tau%dm2(3)%z = - tau%dm2(1)%z                               ! dz / dm2(i - 1, j, k)
 !  tau%dm2(4)%z = - tau%dm2(2)%z                               ! dz / dm2(i, j - 1, k)
 !
-!  tau%ind1(1)%z = model1%grid_full%get_ind(i + 1, j, k)
-!  tau%ind1(2)%z = model1%grid_full%get_ind(i, j + 1, k)
-!  tau%ind1(3)%z = model1%grid_full%get_ind(i, j, k)
+!  tau%ind1(1)%z = grid%get_ind(i + 1, j, k)
+!  tau%ind1(2)%z = grid%get_ind(i, j + 1, k)
+!  tau%ind1(3)%z = grid%get_ind(i, j, k)
 !
-!  tau%ind2(1)%z = model1%grid_full%get_ind(i + 1, j, k)
-!  tau%ind2(2)%z = model1%grid_full%get_ind(i, j + 1, k)
-!  tau%ind2(3)%z = model1%grid_full%get_ind(i - 1, j, k)
-!  tau%ind2(4)%z = model1%grid_full%get_ind(i, j - 1, k)
+!  tau%ind2(1)%z = grid%get_ind(i + 1, j, k)
+!  tau%ind2(2)%z = grid%get_ind(i, j + 1, k)
+!  tau%ind2(3)%z = grid%get_ind(i - 1, j, k)
+!  tau%ind2(4)%z = grid%get_ind(i, j - 1, k)
 !
 !  ! To avoid having non-initialized values.
 !  tau%ind1(4)%x = 0
@@ -792,13 +785,13 @@ function cross_gradient_calculate_tau_mixed_gradients(model1, model2, i, j, k) r
   tau%dm2(2)%x = - m1_grad%y / step%z                         ! dx / dm2(i, j, k - 1)
   tau%dm2(3)%x =   m1_grad%y / step%z - m1_grad%z / step%y    ! dx / dm2(i, j, k)
 
-  tau%ind1(1)%x = model1%grid_full%get_ind(i, j + 1, k)
-  tau%ind1(2)%x = model1%grid_full%get_ind(i, j, k + 1)
-  tau%ind1(3)%x = model1%grid_full%get_ind(i, j, k)
+  tau%ind1(1)%x = grid%get_ind(i, j + 1, k)
+  tau%ind1(2)%x = grid%get_ind(i, j, k + 1)
+  tau%ind1(3)%x = grid%get_ind(i, j, k)
 
-  tau%ind2(1)%x = model1%grid_full%get_ind(i, j - 1, k)
-  tau%ind2(2)%x = model1%grid_full%get_ind(i, j, k - 1)
-  tau%ind2(3)%x = model1%grid_full%get_ind(i, j, k)
+  tau%ind2(1)%x = grid%get_ind(i, j - 1, k)
+  tau%ind2(2)%x = grid%get_ind(i, j, k - 1)
+  tau%ind2(3)%x = grid%get_ind(i, j, k)
 
   !------------
   tau%dm1(1)%y = - m2_grad%z / step%x                         ! dy / dm1(i + 1, j, k)
@@ -809,13 +802,13 @@ function cross_gradient_calculate_tau_mixed_gradients(model1, model2, i, j, k) r
   tau%dm2(2)%y =   m1_grad%x / step%z                         ! dy / dm2(i, j, k - 1)
   tau%dm2(3)%y =   m1_grad%z / step%x - m1_grad%x / step%z    ! dy / dm2(i, j, k)
 
-  tau%ind1(1)%y = model1%grid_full%get_ind(i + 1, j, k)
-  tau%ind1(2)%y = model1%grid_full%get_ind(i, j, k + 1)
-  tau%ind1(3)%y = model1%grid_full%get_ind(i, j, k)
+  tau%ind1(1)%y = grid%get_ind(i + 1, j, k)
+  tau%ind1(2)%y = grid%get_ind(i, j, k + 1)
+  tau%ind1(3)%y = grid%get_ind(i, j, k)
 
-  tau%ind2(1)%y = model1%grid_full%get_ind(i - 1, j, k)
-  tau%ind2(2)%y = model1%grid_full%get_ind(i, j, k - 1)
-  tau%ind2(3)%y = model1%grid_full%get_ind(i, j, k)
+  tau%ind2(1)%y = grid%get_ind(i - 1, j, k)
+  tau%ind2(2)%y = grid%get_ind(i, j, k - 1)
+  tau%ind2(3)%y = grid%get_ind(i, j, k)
 
   !------------
   tau%dm1(1)%z =   m2_grad%y / step%x                         ! dz / dm1(i + 1, j, k)
@@ -826,13 +819,13 @@ function cross_gradient_calculate_tau_mixed_gradients(model1, model2, i, j, k) r
   tau%dm2(2)%z = - m1_grad%x / step%y                         ! dz / dm2(i, j - 1, k)
   tau%dm2(3)%z =   m1_grad%x / step%y - m1_grad%y / step%x    ! dz / dm2(i, j, k)
 
-  tau%ind1(1)%z = model1%grid_full%get_ind(i + 1, j, k)
-  tau%ind1(2)%z = model1%grid_full%get_ind(i, j + 1, k)
-  tau%ind1(3)%z = model1%grid_full%get_ind(i, j, k)
+  tau%ind1(1)%z = grid%get_ind(i + 1, j, k)
+  tau%ind1(2)%z = grid%get_ind(i, j + 1, k)
+  tau%ind1(3)%z = grid%get_ind(i, j, k)
 
-  tau%ind2(1)%z = model1%grid_full%get_ind(i - 1, j, k)
-  tau%ind2(2)%z = model1%grid_full%get_ind(i, j - 1, k)
-  tau%ind2(3)%z = model1%grid_full%get_ind(i, j, k)
+  tau%ind2(1)%z = grid%get_ind(i - 1, j, k)
+  tau%ind2(2)%z = grid%get_ind(i, j - 1, k)
+  tau%ind2(3)%z = grid%get_ind(i, j, k)
 
   ! To avoid having non-initialized values.
   tau%ind1(4)%x = 0
@@ -852,17 +845,18 @@ end function cross_gradient_calculate_tau_mixed_gradients
 ! Normalize the cross gradient function.
 ! (See N Linde, J Doetsch, Joint inversion of crosshole GPR and Seismic traveltime data.)
 !==============================================================================================
-subroutine cross_gradient_normalize_tau(tau, model1, model2, i, j, k)
+subroutine cross_gradient_normalize_tau(tau, model1, model2, grid, i, j, k)
   type(t_model), intent(in) :: model1
   type(t_model), intent(in) :: model2
+  type(t_grad_grid), intent(in) :: grid
   integer, intent(in) :: i, j, k
 
   type(t_tau), intent(inout) :: tau
   real(kind=CUSTOM_REAL) :: val1, val2, scale
   integer :: l
 
-  val1 = grad_get_par(model1%val_full(:, 1), model1%grid_full, i, j, k)
-  val2 = grad_get_par(model2%val_full(:, 1), model2%grid_full, i, j, k)
+  val1 = grad_get_par(model1%val_full(:, 1), grid, i, j, k)
+  val2 = grad_get_par(model2%val_full(:, 1), grid, i, j, k)
 
   if (val1 /= 0._CUSTOM_REAL .and. val2 /= 0._CUSTOM_REAL) then
     scale = 1._CUSTOM_REAL / abs(val1 * val2)

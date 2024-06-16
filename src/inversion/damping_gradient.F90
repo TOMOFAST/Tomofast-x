@@ -26,6 +26,7 @@ module damping_gradient
   use parallel_tools
   use gradient
   use vector
+  use grid
 
   implicit none
 
@@ -90,10 +91,11 @@ end function damping_gradient_get_cost
 !==================================================================================================================
 ! Adding gradient constraints to the matrix and right-hand-side.
 !==================================================================================================================
-subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix, nrows, &
+subroutine damping_gradient_add(this, model, grid, column_weight, local_weight, matrix, nrows, &
                                 b_RHS, param_shift, direction, icomp, myrank, nbproc)
   class(t_damping_gradient), intent(inout) :: this
   type(t_model), intent(inout) :: model
+  type(t_grad_grid), intent(in) :: grid
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(:)
   real(kind=CUSTOM_REAL), intent(in) :: local_weight(:)
   integer, intent(in) :: param_shift, nrows
@@ -122,51 +124,51 @@ subroutine damping_gradient_add(this, model, column_weight, local_weight, matrix
       do i = 1, this%nx
         p = p + 1
 
-        gradient_fwd = get_grad(model%val_full(:, icomp), model%grid_full, i, j, k, FWD_TYPE)
-        !gradient_bwd = get_grad(model%val_full(:, icomp), model%grid_full, i, j, k, BWD_TYPE)
+        gradient_fwd = get_grad(model%val_full(:, icomp), grid, i, j, k, FWD_TYPE)
+        !gradient_bwd = get_grad(model%val_full(:, icomp), grid, i, j, k, BWD_TYPE)
 
         ! NOTE: Use only gradient in one direction per time.
 
         if (direction == 1) then
-          delta = model%grid_full%get_hx(p)
+          delta = grid%dX(i)
 
           if (i /= this%nx) then
-            ind(1) = model%grid_full%get_ind(i + 1, j, k) ! f(i + 1, j, k)
-            ind(2) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
+            ind(1) = grid%get_ind(i + 1, j, k) ! f(i + 1, j, k)
+            ind(2) = grid%get_ind(i, j, k)     ! f(i, j, k)
             gradient_val = gradient_fwd%x
           else
-            !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
-            !ind(2) = model%grid_full%get_ind(i - 1, j, k) ! f(i - 1, j, k)
+            !ind(1) = grid%get_ind(i, j, k)     ! f(i, j, k)
+            !ind(2) = grid%get_ind(i - 1, j, k) ! f(i - 1, j, k)
             !gradient_val = gradient_bwd%x
             call matrix%new_row(myrank)
             cycle
           endif
 
         else if (direction == 2) then
-          delta = model%grid_full%get_hy(p)
+          delta = grid%dY(j)
 
           if (j /= this%ny) then
-            ind(1) = model%grid_full%get_ind(i, j + 1, k) ! f(i, j + 1, k)
-            ind(2) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
+            ind(1) = grid%get_ind(i, j + 1, k) ! f(i, j + 1, k)
+            ind(2) = grid%get_ind(i, j, k)     ! f(i, j, k)
             gradient_val = gradient_fwd%y
           else
-            !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
-            !ind(2) = model%grid_full%get_ind(i, j - 1, k) ! f(i, j - 1, k)
+            !ind(1) = grid%get_ind(i, j, k)     ! f(i, j, k)
+            !ind(2) = grid%get_ind(i, j - 1, k) ! f(i, j - 1, k)
             !gradient_val = gradient_bwd%y
             call matrix%new_row(myrank)
             cycle
           endif
 
         else if (direction == 3) then
-          delta = model%grid_full%get_hz(p)
+          delta = grid%dZ(k)
 
           if (k /= this%nz) then
-            ind(1) = model%grid_full%get_ind(i, j, k + 1) ! f(i, j, k + 1)
-            ind(2) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
+            ind(1) = grid%get_ind(i, j, k + 1) ! f(i, j, k + 1)
+            ind(2) = grid%get_ind(i, j, k)     ! f(i, j, k)
             gradient_val = gradient_fwd%z
           else
-            !ind(1) = model%grid_full%get_ind(i, j, k)     ! f(i, j, k)
-            !ind(2) = model%grid_full%get_ind(i, j, k - 1) ! f(i, j, k - 1)
+            !ind(1) = grid%get_ind(i, j, k)     ! f(i, j, k)
+            !ind(2) = grid%get_ind(i, j, k - 1) ! f(i, j, k - 1)
             !gradient_val = gradient_bwd%z
             call matrix%new_row(myrank)
             cycle

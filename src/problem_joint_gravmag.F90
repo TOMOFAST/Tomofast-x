@@ -222,16 +222,10 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   !-------------------------------------------------------------------------------------------------------
   ! Deallocate the model grid.
   ! Keep the grid only on rank 0 for writing the models.
-  ! Keep the grid on all ranks if we use gradient-based constraints (cross-gradient or damping gradient).
   !-------------------------------------------------------------------------------------------------------
   if (myrank /= 0) then
-    if (ipar%cross_grad_weight == 0.d0) then
-      do i = 1, 2
-        if (SOLVE_PROBLEM(i) .and. ipar%beta(i) == 0.d0) then ! beta is the damping gradient weight.
-          call model(i)%grid_full%deallocate()
-        endif
-      enddo
-    endif
+    if (SOLVE_PROBLEM(1)) call model(1)%grid_full%deallocate()
+    if (SOLVE_PROBLEM(2)) call model(2)%grid_full%deallocate()
   endif
 
   memory = get_max_mem_usage()
@@ -261,8 +255,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   ! RHS ALLOCATION -----------------------------------------------------------------------------------
 
-  ! Allocate the right-hand side array.
-  call jinv%initialize2(myrank)
+  ! Allocate the RHS and remaining arrays.
+  call jinv%initialize2(model(merge(1, 2, SOLVE_PROBLEM(1)))%grid_full, myrank)
 
   ! MODEL ALLOCATION -----------------------------------------------------------------------------------
 

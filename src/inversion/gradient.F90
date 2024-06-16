@@ -70,7 +70,7 @@ end function get_der_type
 !==============================================================================================
 recursive function get_grad(val, grid, i, j, k, der_type) result(res)
   real(kind=CUSTOM_REAL), intent(in) :: val(:)
-  type(t_grid), intent(in) :: grid
+  type(t_grad_grid), intent(in) :: grid
   integer, intent(in) :: i, j, k
   character(len=4), intent(in) :: der_type
 
@@ -78,50 +78,47 @@ recursive function get_grad(val, grid, i, j, k, der_type) result(res)
   integer :: p, t
   real(kind=CUSTOM_REAL) :: c(4)
   logical :: do_x, do_y, do_z
-  integer :: ind
-
-  ind = grid%get_ind(i, j, k)
 
   if (der_type == BWD_TYPE) then
   ! Backward difference scheme. O(h).
-    res%x = (grad_get_par(val, grid, i, j, k) - grad_get_par(val, grid, i - 1, j, k)) / grid%get_hx(ind)
-    res%y = (grad_get_par(val, grid, i, j, k) - grad_get_par(val, grid, i, j - 1, k)) / grid%get_hy(ind)
-    res%z = (grad_get_par(val, grid, i, j, k) - grad_get_par(val, grid, i, j, k - 1)) / grid%get_hz(ind)
+    res%x = (grad_get_par(val, grid, i, j, k) - grad_get_par(val, grid, i - 1, j, k)) / grid%dX(i)
+    res%y = (grad_get_par(val, grid, i, j, k) - grad_get_par(val, grid, i, j - 1, k)) / grid%dY(j)
+    res%z = (grad_get_par(val, grid, i, j, k) - grad_get_par(val, grid, i, j, k - 1)) / grid%dZ(k)
 
   else if (der_type == FWD_TYPE) then
   ! Forward difference scheme. O(h).
-    res%x = (grad_get_par(val, grid, i + 1, j, k) - grad_get_par(val, grid, i, j, k)) / grid%get_hx(ind)
-    res%y = (grad_get_par(val, grid, i, j + 1, k) - grad_get_par(val, grid, i, j, k)) / grid%get_hy(ind)
-    res%z = (grad_get_par(val, grid, i, j, k + 1) - grad_get_par(val, grid, i, j, k)) / grid%get_hz(ind)
+    res%x = (grad_get_par(val, grid, i + 1, j, k) - grad_get_par(val, grid, i, j, k)) / grid%dX(i)
+    res%y = (grad_get_par(val, grid, i, j + 1, k) - grad_get_par(val, grid, i, j, k)) / grid%dY(j)
+    res%z = (grad_get_par(val, grid, i, j, k + 1) - grad_get_par(val, grid, i, j, k)) / grid%dZ(k)
 
   else if (der_type == CNT_TYPE) then
   ! Central difference scheme. O(h^2).
-    res%x = (grad_get_par(val, grid, i + 1, j, k) - grad_get_par(val, grid, i - 1, j, k)) / 2.d0 / grid%get_hx(ind)
-    res%y = (grad_get_par(val, grid, i, j + 1, k) - grad_get_par(val, grid, i, j - 1, k)) / 2.d0 / grid%get_hy(ind)
-    res%z = (grad_get_par(val, grid, i, j, k + 1) - grad_get_par(val, grid, i, j, k - 1)) / 2.d0 / grid%get_hz(ind)
+    res%x = (grad_get_par(val, grid, i + 1, j, k) - grad_get_par(val, grid, i - 1, j, k)) / 2.d0 / grid%dX(i)
+    res%y = (grad_get_par(val, grid, i, j + 1, k) - grad_get_par(val, grid, i, j - 1, k)) / 2.d0 / grid%dY(j)
+    res%z = (grad_get_par(val, grid, i, j, k + 1) - grad_get_par(val, grid, i, j, k - 1)) / 2.d0 / grid%dZ(k)
 
   else if (der_type == FWD2_TYPE) then
   ! Forward difference scheme using three points. O(h^2).
     ! Use O(h) formula if there are less than two cells away from boundary.
     if (i >= grid%nx - 1) then
-      res%x = (grad_get_par(val, grid, i + 1, j, k) - grad_get_par(val, grid, i, j, k)) / grid%get_hx(ind)
+      res%x = (grad_get_par(val, grid, i + 1, j, k) - grad_get_par(val, grid, i, j, k)) / grid%dX(i)
     else
       res%x = (- 1.d0 * grad_get_par(val, grid, i + 2, j, k) + 4.d0 * grad_get_par(val, grid, i + 1, j, k) &
-               - 3.d0 * grad_get_par(val, grid, i, j, k)) / grid%get_hx(ind) / 2.d0
+               - 3.d0 * grad_get_par(val, grid, i, j, k)) / grid%dX(i) / 2.d0
     endif
 
     if (j >= grid%ny - 1) then
-      res%y = (grad_get_par(val, grid, i, j + 1, k) - grad_get_par(val, grid, i, j, k)) / grid%get_hy(ind)
+      res%y = (grad_get_par(val, grid, i, j + 1, k) - grad_get_par(val, grid, i, j, k)) / grid%dY(j)
     else
       res%y = (- 1.d0 * grad_get_par(val, grid, i, j + 2, k) + 4.d0 * grad_get_par(val, grid, i, j + 1, k) &
-               - 3.d0 * grad_get_par(val, grid, i, j, k)) / grid%get_hy(ind) / 2.d0
+               - 3.d0 * grad_get_par(val, grid, i, j, k)) / grid%dY(j) / 2.d0
     endif
 
     if (k >= grid%nz - 1) then
-      res%z = (grad_get_par(val, grid, i, j, k + 1) - grad_get_par(val, grid, i, j, k)) / grid%get_hz(ind)
+      res%z = (grad_get_par(val, grid, i, j, k + 1) - grad_get_par(val, grid, i, j, k)) / grid%dZ(k)
     else
       res%z = (- 1.d0 * grad_get_par(val, grid, i, j, k + 2) + 4.d0 * grad_get_par(val, grid, i, j, k + 1) &
-               - 3.d0 * grad_get_par(val, grid, i, j, k)) / grid%get_hz(ind) / 2.d0
+               - 3.d0 * grad_get_par(val, grid, i, j, k)) / grid%dZ(k) / 2.d0
     endif
 
   else if (der_type == FWD3_TYPE) then
@@ -159,9 +156,9 @@ recursive function get_grad(val, grid, i, j, k, der_type) result(res)
       if (do_z) res%z = res%z + c(p) * grad_get_par(val, grid, i, j, k + t)
     enddo
 
-    if (do_x) res%x = res%x / 24.d0 / grid%get_hx(ind)
-    if (do_y) res%y = res%y / 24.d0 / grid%get_hy(ind)
-    if (do_z) res%z = res%z / 24.d0 / grid%get_hz(ind)
+    if (do_x) res%x = res%x / 24.d0 / grid%dX(i)
+    if (do_y) res%y = res%y / 24.d0 / grid%dY(j)
+    if (do_z) res%z = res%z / 24.d0 / grid%dZ(k)
 
     ! When we are close to the boundary then use low order finite difference.
     res_low = get_grad(val, grid, i, j, k, FWD_TYPE)
@@ -182,7 +179,7 @@ end function get_grad
 !==================================================================================
 function grad_get_par(val, grid, i, j, k) result(res)
   real(kind=CUSTOM_REAL), intent(in) :: val(:)
-  type(t_grid), intent(in) :: grid
+  type(t_grad_grid), intent(in) :: grid
   integer, intent(in) :: i, j, k
 
   integer :: ib, jb, kb, index

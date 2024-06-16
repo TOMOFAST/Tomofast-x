@@ -38,6 +38,7 @@ module joint_inverse_problem
   use parallel_tools
   use wavelet_utils
   use costs
+  use grid
 
   implicit none
 
@@ -71,6 +72,9 @@ module joint_inverse_problem
 
     ! Cross gradient data.
     type(t_cross_gradient) :: cross_grad
+
+    ! A compact grid for calculating gradients.
+    type(t_grad_grid) :: grad_grid
 
     ! ADMM method (stores auxiliary arrays).
     type(t_admm_method) :: admm_method(2)
@@ -290,8 +294,9 @@ end subroutine joint_inversion_initialize
 ! Split memory allocations to reduce the total memory footprint.
 ! Call this after reading the sensitivity kernel where some temporary buffer arrays are allocated.
 !==================================================================================================
-subroutine joint_inversion_initialize2(this, myrank)
+subroutine joint_inversion_initialize2(this, grid, myrank)
   class(t_joint_inversion), intent(inout) :: this
+  type(t_grid), intent(in) :: grid
   integer, intent(in) :: myrank
   integer :: nl, ierr
   real(kind=CUSTOM_REAL) :: mem, mem_loc
@@ -308,6 +313,12 @@ subroutine joint_inversion_initialize2(this, myrank)
   allocate(this%b_RHS(nl), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize2!", myrank, ierr)
+
+  ! Initialize the gradient grid.
+  if (this%add_cross_grad .or. &
+      this%add_damping_gradient(1) .or. this%add_damping_gradient(2)) then
+      call this%grad_grid%init(grid, myrank)
+  endif
 
 end subroutine joint_inversion_initialize2
 
@@ -427,7 +438,8 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
       do k = 1, par%nmodel_components
         damping_param_shift = param_shift(i) + (k - 1) * par%nelements
         do j = 1, 3 ! j is direction (1 = x, 2 = y, 3 = z).
-          call damping_gradient%add(model(i), arr(i)%column_weight, model(i)%damping_grad_weight(:, j), &
+          call damping_gradient%add(model(i), this%grad_grid, &
+                                    arr(i)%column_weight, model(i)%damping_grad_weight(:, j), &
                                     this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), &
                                     damping_param_shift, j, k, myrank, nbproc)
 
@@ -533,7 +545,8 @@ subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, model, der
   ! Starting line for constraints.
   lc = this%ndata_lines + 1
 
-  call this%cross_grad%calculate(model(1), model(2), arr(1)%column_weight, arr(2)%column_weight, &
+  call this%cross_grad%calculate(model(1), model(2), this%grad_grid, &
+                                 arr(1)%column_weight, arr(2)%column_weight, &
                                  this%matrix_cons, this%b_RHS(lc:), this%add_cross_grad, der_type, &
                                  par%cross_grad_weight, myrank, nbproc)
 

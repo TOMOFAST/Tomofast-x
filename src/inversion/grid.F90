@@ -13,7 +13,7 @@
 !========================================================================
 
 !================================================================================================
-! A class to work with grids for forward and inverse problems.
+! A class to work with model grids for forward and inverse problems.
 !
 ! Vitaliy Ogarko, UWA, CET, Australia.
 !================================================================================================
@@ -45,8 +45,6 @@ module grid
     procedure, public, pass :: deallocate => grid_deallocate
     procedure, public, pass :: broadcast => grid_broadcast
 
-    procedure, public, pass :: get_ind => grid_get_ind
-
     procedure, public, pass :: get_hx => grid_get_hx
     procedure, public, pass :: get_hy => grid_get_hy
     procedure, public, pass :: get_hz => grid_get_hz
@@ -65,6 +63,23 @@ module grid
     procedure, public, pass :: get_Zmax => grid_get_Zmax
 
   end type t_grid
+
+  !-------------------------------------------------------------------------------------
+  ! A memory efficient grid for calculating the gradients.
+  ! It only stores cell sizes along each dimension, i.e., the total memory is O(nx + ny + nz).
+  type, public :: t_grad_grid
+
+    ! Cell sizes along each dimension.
+    real(kind=CUSTOM_REAL), dimension(:), allocatable :: dX, dY, dZ
+
+    ! Full grid dimensions.
+    integer :: nx, ny, nz
+  contains
+    private
+    procedure, public, pass :: init => grad_grid_init
+    procedure, public, pass :: get_ind => grad_grid_get_ind
+
+  end type t_grad_grid
 
 contains
 
@@ -138,29 +153,6 @@ subroutine grid_broadcast(this, myrank)
   if (ierr /= 0) call exit_MPI("Error in MPI_Bcast in grid_broadcast!", myrank, ierr)
 
 end subroutine grid_broadcast
-
-!============================================================================
-! Returns 1D element index based on 3D one.
-! If the 3D index in out of bounds, returns index = -1.
-!============================================================================
-pure function grid_get_ind(this, i, j, k) result(ind)
-  class(t_grid), intent(in) :: this
-  integer, intent(in) :: i, j, k
-  integer :: ind
-
-  if (i < 1 .or. i > this%nx .or. &
-      j < 1 .or. j > this%ny .or. &
-      k < 1 .or. k > this%nz) then
-
-    ! Set invalid index.
-    ind = -1
-    return
-  endif
-
-  ! Note: we assume the i-j-k order of cells in the model grid.
-  ind = i + (j - 1) * this%nx + (k - 1) * this%nx * this%ny
-
-end function grid_get_ind
 
 !===================================================================================
 ! Returns grid step hx.
@@ -307,5 +299,78 @@ pure function grid_get_Zmax(this) result(res)
 
   res = maxval(this%Z2)
 end function grid_get_Zmax
+
+!============================================================================
+! Initialize the gradient grid from a full model grid.
+! The full model grid only needs to be allocated on master CPU.
+!============================================================================
+subroutine grad_grid_init(this, grid, myrank)
+  class(t_grad_grid), intent(inout) :: this
+  type(t_grid), intent(in) :: grid
+  integer, intent(in) :: myrank
+  integer :: i, j, k, ind, ierr
+
+  this%nx = grid%nx
+  this%ny = grid%ny
+  this%nz = grid%nz
+
+  ierr = 0
+
+  allocate(this%dX(this%nx), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%dY(this%ny), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%dZ(this%nz), source=0._CUSTOM_REAL, stat=ierr)
+
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in grad_grid_init!", myrank, ierr)
+
+  ! Build the grid from a full model grid on master CPU.
+  ! Note that we assume structured grid, i.e., dX depends only on i, dY depends only on j, and dZ depends only on k.
+  if (myrank == 0) then
+    do i = 1, this%nx
+      ind = this%get_ind(i, 1, 1)
+      this%dX(i) = grid%get_hx(ind)
+    enddo
+    do j = 1, this%ny
+      ind = this%get_ind(1, j, 1)
+      this%dY(j) = grid%get_hy(ind)
+    enddo
+    do k = 1, this%nz
+      ind = this%get_ind(1, 1, k)
+      this%dZ(k) = grid%get_hz(ind)
+    enddo
+  endif
+
+  ierr = 0
+
+  ! Broadcast the grid from the master to all CPUs.
+  call MPI_Bcast(this%dX, this%nx, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%dY, this%ny, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%dZ, this%nz, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
+  if (ierr /= 0) call exit_MPI("Error in MPI_Bcast in grad_grid_init!", myrank, ierr)
+
+end subroutine grad_grid_init
+
+!============================================================================
+! Returns 1D element index based on 3D one.
+! If the 3D index in out of bounds, returns index = -1.
+!============================================================================
+pure function grad_grid_get_ind(this, i, j, k) result(ind)
+  class(t_grad_grid), intent(in) :: this
+  integer, intent(in) :: i, j, k
+  integer :: ind
+
+  if (i < 1 .or. i > this%nx .or. &
+      j < 1 .or. j > this%ny .or. &
+      k < 1 .or. k > this%nz) then
+
+    ! Set invalid index.
+    ind = -1
+    return
+  endif
+
+  ! Note: we assume the i-j-k order of cells in the model grid.
+  ind = i + (j - 1) * this%nx + (k - 1) * this%nx * this%ny
+
+end function grad_grid_get_ind
 
 end module grid
