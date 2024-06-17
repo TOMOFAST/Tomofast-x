@@ -46,10 +46,6 @@ module cross_gradient
 
     ! Indexes in the model corresponding to derivatives.
     type(t_ivector) :: ind(5)
-
-    ! Use these when compute different types of derivatives (e.g., fwd and central) for different models.
-    type(t_ivector) :: ind1(5)
-    type(t_ivector) :: ind2(5)
   end type t_tau
 
   !----------------------------------------------------------------
@@ -187,7 +183,7 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
   ! Cross-gradient data.
   type(t_tau) :: tau
   integer :: i, j, k, l, p
-  integer :: ind1, ind2, nderiv
+  integer :: ind, nderiv
   integer :: nsmaller
   real(kind=CUSTOM_REAL) :: val1, val2
   logical :: on_left_boundary, on_right_boundary
@@ -259,63 +255,45 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
         ! Adding to the matrix and right-hand-side.
 
           ! Row with x-component.
-
           do l = 1, nderiv
-            ind1 = tau%ind1(l)%x
-            ind2 = tau%ind2(l)%x
+            ind = tau%ind(l)%x
 
-            if (ind1 > nsmaller .and. ind1 <= nsmaller + this%nparams_loc) then
-              ind1 = ind1 - nsmaller
-              val1 = tau%dm1(l)%x * column_weight1(ind1) * glob_weight
-              call matrix%add(val1, ind1, myrank)
-            endif
-
-            if (ind2 > nsmaller .and. ind2 <= nsmaller + this%nparams_loc) then
-              ind2 = ind2 - nsmaller
-              val2 = tau%dm2(l)%x * column_weight2(ind2) * glob_weight
-              call matrix%add(val2, ind2 + this%nparams_loc, myrank)
+            if (ind > nsmaller .and. ind <= nsmaller + this%nparams_loc) then
+              ind = ind - nsmaller
+              val1 = tau%dm1(l)%x * column_weight1(ind) * glob_weight
+              val2 = tau%dm2(l)%x * column_weight2(ind) * glob_weight
+              call matrix%add(val1, ind, myrank)
+              call matrix%add(val2, ind + this%nparams_loc, myrank)
             endif
           enddo
           call matrix%new_row(myrank)
           b_RHS(matrix%get_current_row_number()) = - tau%val%x * glob_weight
 
           ! Row with y-component.
-
           do l = 1, nderiv
-            ind1 = tau%ind1(l)%y
-            ind2 = tau%ind2(l)%y
+            ind = tau%ind(l)%y
 
-            if (ind1 > nsmaller .and. ind1 <= nsmaller + this%nparams_loc) then
-              ind1 = ind1 - nsmaller
-              val1 = tau%dm1(l)%y * column_weight1(ind1) * glob_weight
-              call matrix%add(val1, ind1, myrank)
-            endif
-
-            if (ind2 > nsmaller .and. ind2 <= nsmaller + this%nparams_loc) then
-              ind2 = ind2 - nsmaller
-              val2 = tau%dm2(l)%y * column_weight2(ind2) * glob_weight
-              call matrix%add(val2, ind2 + this%nparams_loc, myrank)
+            if (ind > nsmaller .and. ind <= nsmaller + this%nparams_loc) then
+              ind = ind - nsmaller
+              val1 = tau%dm1(l)%y * column_weight1(ind) * glob_weight
+              val2 = tau%dm2(l)%y * column_weight2(ind) * glob_weight
+              call matrix%add(val1, ind, myrank)
+              call matrix%add(val2, ind + this%nparams_loc, myrank)
             endif
           enddo
           call matrix%new_row(myrank)
           b_RHS(matrix%get_current_row_number()) = - tau%val%y * glob_weight
 
           ! Row with z-component.
-
           do l = 1, nderiv
-            ind1 = tau%ind1(l)%z
-            ind2 = tau%ind2(l)%z
+            ind = tau%ind(l)%z
 
-            if (ind1 > nsmaller .and. ind1 <= nsmaller + this%nparams_loc) then
-              ind1 = ind1 - nsmaller
-              val1 = tau%dm1(l)%z * column_weight1(ind1) * glob_weight
-              call matrix%add(val1, ind1, myrank)
-            endif
-
-            if (ind2 > nsmaller .and. ind2 <= nsmaller + this%nparams_loc) then
-              ind2 = ind2 - nsmaller
-              val2 = tau%dm2(l)%z * column_weight2(ind2) * glob_weight
-              call matrix%add(val2, ind2 + this%nparams_loc, myrank)
+            if (ind > nsmaller .and. ind <= nsmaller + this%nparams_loc) then
+              ind = ind - nsmaller
+              val1 = tau%dm1(l)%z * column_weight1(ind) * glob_weight
+              val2 = tau%dm2(l)%z * column_weight2(ind) * glob_weight
+              call matrix%add(val1, ind, myrank)
+              call matrix%add(val2, ind + this%nparams_loc, myrank)
             endif
           enddo
           call matrix%new_row(myrank)
@@ -477,9 +455,6 @@ function cross_gradient_calculate_tau(model1, model2, grid, i, j, k, der_type) r
     tau%dm2(5:) = t_vector(0.d0, 0.d0, 0.d0)
   endif
 
-  tau%ind1 = tau%ind
-  tau%ind2 = tau%ind
-
 end function cross_gradient_calculate_tau
 
 !==================================================================================================
@@ -573,9 +548,6 @@ function cross_gradient_calculate_tau2(model1, model2, grid, i, j, k) result(tau
   tau%ind(4)%z = grid%get_ind(i, j + 1, k)
   tau%ind(5)%z = grid%get_ind(i, j, k)
 
-  tau%ind1 = tau%ind
-  tau%ind2 = tau%ind
-
 end function cross_gradient_calculate_tau2
 
 !==================================================================================================
@@ -655,9 +627,6 @@ function cross_gradient_calculate_tau_backward(model1, model2, grid, i, j, k) re
   tau%dm1(4:) = t_vector(0.d0, 0.d0, 0.d0)
   tau%dm2(4:) = t_vector(0.d0, 0.d0, 0.d0)
   tau%ind(4:) = t_ivector(0, 0, 0)
-
-  tau%ind1 = tau%ind
-  tau%ind2 = tau%ind
 
 end function cross_gradient_calculate_tau_backward
 
