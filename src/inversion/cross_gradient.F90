@@ -66,10 +66,12 @@ module cross_gradient
     integer :: nparams_loc
 
     ! Flags to define one of the models constant so that it remains unaltered during the inversion.
-    integer :: keep_model_constant(2)
+    logical :: keep_model_constant(2)
 
     ! Cross gradient vector magnitude (for visualization).
     real(kind=CUSTOM_REAL), allocatable :: cross_grad(:)
+
+    integer(kind=8) :: nnz
 
   contains
     private
@@ -113,9 +115,10 @@ subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, keep_model_c
   this%nparams_loc = nparams_loc
   this%nparams = nx * ny * nz
 
-  this%keep_model_constant = keep_model_constant
+  this%keep_model_constant = (keep_model_constant > 0)
 
   this%cost = 0._CUSTOM_REAL
+  this%nnz = 0
 
   ierr = 0
 
@@ -187,6 +190,7 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
   integer :: nsmaller
   real(kind=CUSTOM_REAL) :: val1, val2
   logical :: on_left_boundary, on_right_boundary
+  integer(kind=8) :: nnz
 
   ! Set the number of derivatives.
   nderiv = this%get_num_deriv(der_type)
@@ -196,6 +200,7 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
   ! Number of parameters on ranks smaller than current one.
   nsmaller = get_nsmaller(this%nparams_loc, myrank, nbproc)
 
+  nnz = 0
   p = 0
   do k = 1, this%nz
     do j = 1, this%ny
@@ -235,8 +240,8 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
         endif
 
         ! Set derivatives to zero to keep the second model constant.
-        if (this%keep_model_constant(1) > 0) tau%dm1 = t_vector(0.d0, 0.d0, 0.d0)
-        if (this%keep_model_constant(2) > 0) tau%dm2 = t_vector(0.d0, 0.d0, 0.d0)
+        if (this%keep_model_constant(1)) tau%dm1 = t_vector(0.d0, 0.d0, 0.d0)
+        if (this%keep_model_constant(2)) tau%dm2 = t_vector(0.d0, 0.d0, 0.d0)
 
         ! Normalization.
         !call this%normalize_tau(tau, model1, model2, i, j, k, myrank)
@@ -264,6 +269,7 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
               val2 = tau%dm2(l)%x * column_weight2(ind) * glob_weight
               call matrix%add(val1, ind, myrank)
               call matrix%add(val2, ind + this%nparams_loc, myrank)
+              nnz = nnz + 2
             endif
           enddo
           call matrix%new_row(myrank)
@@ -279,6 +285,7 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
               val2 = tau%dm2(l)%y * column_weight2(ind) * glob_weight
               call matrix%add(val1, ind, myrank)
               call matrix%add(val2, ind + this%nparams_loc, myrank)
+              nnz = nnz + 2
             endif
           enddo
           call matrix%new_row(myrank)
@@ -294,6 +301,7 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
               val2 = tau%dm2(l)%z * column_weight2(ind) * glob_weight
               call matrix%add(val1, ind, myrank)
               call matrix%add(val2, ind + this%nparams_loc, myrank)
+              nnz = nnz + 2
             endif
           enddo
           call matrix%new_row(myrank)
@@ -302,6 +310,15 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
       enddo
     enddo
   enddo
+
+  ! Set the nnz taking into account the 'keep_model_constant' flag.
+  if (this%keep_model_constant(1) .and. this%keep_model_constant(2)) then
+    this%nnz = 0
+  else if (this%keep_model_constant(1) .or. this%keep_model_constant(2)) then
+    this%nnz = nnz / 2
+  else
+    this%nnz = nnz
+  endif
 
 end subroutine cross_gradient_calculate
 
