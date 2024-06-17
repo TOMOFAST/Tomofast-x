@@ -213,8 +213,13 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
 
   call cross_grad%initialize(nx, ny, nz, nelements, keep_model_constant, myrank)
 
-  call matrix%initialize(3 * nelements_total, 2 * nelements, &
-                         int(cross_grad%get_num_elements(derivative_type), 8), myrank)
+  ! Calculate without adding to the matrix, to obtain the nnz.
+  call cross_grad%calculate(model1%val_full(:, 1), model2%val_full(:, 1), &
+                            grad_grid, &
+                            column_weight1, column_weight2, &
+                            matrix, b_RHS, .false., derivative_type, glob_weight, myrank, nbproc)
+
+  call matrix%initialize(3 * nelements_total, 2 * nelements, cross_grad%nnz, myrank)
 
   glob_weight = 1.d0
 

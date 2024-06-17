@@ -82,7 +82,6 @@ module cross_gradient
 
     procedure, public, pass :: get_cost => cross_gradient_get_cost
     procedure, public, pass :: get_magnitude => cross_gradient_get_magnitude
-    procedure, public, pass :: get_num_elements => cross_gradient_get_num_elements
 
     procedure, private, nopass :: calculate_tau => cross_gradient_calculate_tau
     procedure, private, nopass :: normalize_tau => cross_gradient_normalize_tau
@@ -131,22 +130,6 @@ subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, keep_model_c
   endif
 
 end subroutine cross_gradient_initialize
-
-!=============================================================================================
-! Returns the estimated (local) number of elements to be added to the matrix.
-!=============================================================================================
-pure function cross_gradient_get_num_elements(this, der_type) result(res)
-  class(t_cross_gradient), intent(in) :: this
-  integer, intent(in) :: der_type
-  integer :: res
-
-  res = 3 * this%get_num_deriv(der_type) * 2 * this%nparams_loc
-
-  ! Adding a buffer: derivatives of elements on the boundaries can belong to other CPUs, which leads to more elements.
-  ! Note: this can be optimized by using a smaller factor.
-  res = 2 * res
-
-end function cross_gradient_get_num_elements
 
 !=============================================================================================
 ! Returns the number of derivatives depending on the finite difference scheme.
