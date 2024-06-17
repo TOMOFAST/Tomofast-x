@@ -126,7 +126,6 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   integer(kind=8), intent(in) :: nnz_sensit
   integer, intent(in) :: myrank
 
-  integer :: ierr
   integer :: i
 
   do i = 1, 2
@@ -214,16 +213,6 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   call this%matrix_sensit%initialize(this%ndata_lines, &
                                      2 * par%nmodel_components * par%nelements, nnz_sensit, myrank, 0)
 
-  ierr = 0
-
-  do i = 1, 2
-    if (this%add_admm(i)) then
-      allocate(this%x0_ADMM(i)%val(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
-    endif
-  enddo
-
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize!", myrank, ierr)
-
 end subroutine joint_inversion_initialize
 
 !==================================================================================================
@@ -287,7 +276,7 @@ subroutine joint_inversion_initialize2(this, par, arr, model, myrank, nbproc)
 
   if (this%add_cross_grad) then
     allocate(b_dummy(1))
-    ! Calculate the cross-gradient without adding it to the matrix and RHS to obtain accurate nnz and nl.
+    ! Calculate the cross-gradient without adding it to the matrix and RHS to obtain accurate nnz and nl_nonempty.
     call this%cross_grad%calculate(model(1)%val_full(:, 1), model(2)%val_full(:, 1), &
                                    this%grad_grid, &
                                    arr(1)%column_weight, arr(2)%column_weight, &
@@ -297,8 +286,7 @@ subroutine joint_inversion_initialize2(this, par, arr, model, myrank, nbproc)
     nl = nl + 3 * par%nelements_total
     nnz = nnz + this%cross_grad%nnz
 
-    ! Note: we increase a multiplier from 3 to 18 to account for elements from other ranks.
-    nl_empty_loc = 3 * par%nelements_total - 18 * par%nelements
+    nl_empty_loc = 3 * par%nelements_total - this%cross_grad%nl_nonempty
     if (nl_empty_loc > 0) then
       nl_empty = nl_empty + nl_empty_loc
     endif
@@ -337,6 +325,15 @@ subroutine joint_inversion_initialize2(this, par, arr, model, myrank, nbproc)
   if (myrank == 0) print *, "Allocating the RHS, memory (GB) =", mem / 1024**3
 
   allocate(this%b_RHS(nl), source=0._CUSTOM_REAL, stat=ierr)
+
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize2!", myrank, ierr)
+
+  !-------------------------------------------------------------------------------------------------
+  do i = 1, 2
+    if (this%add_admm(i)) then
+      allocate(this%x0_ADMM(i)%val(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
+    endif
+  enddo
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize2!", myrank, ierr)
 

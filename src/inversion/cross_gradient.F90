@@ -72,6 +72,7 @@ module cross_gradient
     real(kind=CUSTOM_REAL), allocatable :: cross_grad(:)
 
     integer(kind=8), public :: nnz
+    integer, public :: nl_nonempty
 
   contains
     private
@@ -119,6 +120,7 @@ subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, keep_model_c
 
   this%cost = 0._CUSTOM_REAL
   this%nnz = 0
+  this%nl_nonempty = 0
 
   ierr = 0
 
@@ -190,7 +192,7 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
   integer :: nsmaller
   real(kind=CUSTOM_REAL) :: val1, val2
   logical :: on_left_boundary, on_right_boundary
-  integer(kind=8) :: nnz
+  logical :: index_included
 
   ! Set the number of derivatives.
   nderiv = this%get_num_deriv(der_type)
@@ -200,7 +202,8 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
   ! Number of parameters on ranks smaller than current one.
   nsmaller = get_nsmaller(this%nparams_loc, myrank, nbproc)
 
-  nnz = 0
+  this%nl_nonempty = 0
+  this%nnz = 0
   p = 0
   do k = 1, this%nz
     do j = 1, this%ny
@@ -259,6 +262,7 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
         ! Adding constraints to the matrix and right-hand-side.
 
         ! Row with x-component.
+        index_included = .false.
         do l = 1, nderiv
           ind = tau%ind(l)%x
 
@@ -270,15 +274,18 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
               call matrix%add(val1, ind, myrank)
               call matrix%add(val2, ind + this%nparams_loc, myrank)
             endif
-            nnz = nnz + 2
+            this%nnz = this%nnz + 2
+            index_included = .true.
           endif
         enddo
         if (add) then
           call matrix%new_row(myrank)
-          b_RHS(matrix%get_current_row_number()) = - tau%val%x * glob_weight
+          b_RHS(matrix%get_current_row_number()) = -tau%val%x * glob_weight
         endif
+        if (index_included) this%nl_nonempty = this%nl_nonempty + 1
 
         ! Row with y-component.
+        index_included = .false.
         do l = 1, nderiv
           ind = tau%ind(l)%y
 
@@ -290,15 +297,18 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
               call matrix%add(val1, ind, myrank)
               call matrix%add(val2, ind + this%nparams_loc, myrank)
             endif
-            nnz = nnz + 2
+            this%nnz = this%nnz + 2
+            index_included = .true.
           endif
         enddo
         if (add) then
           call matrix%new_row(myrank)
-          b_RHS(matrix%get_current_row_number()) = - tau%val%y * glob_weight
+          b_RHS(matrix%get_current_row_number()) = -tau%val%y * glob_weight
         endif
+        if (index_included) this%nl_nonempty = this%nl_nonempty + 1
 
         ! Row with z-component.
+        index_included = .false.
         do l = 1, nderiv
           ind = tau%ind(l)%z
 
@@ -310,24 +320,24 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
               call matrix%add(val1, ind, myrank)
               call matrix%add(val2, ind + this%nparams_loc, myrank)
             endif
-            nnz = nnz + 2
+            this%nnz = this%nnz + 2
+            index_included = .true.
           endif
         enddo
         if (add) then
           call matrix%new_row(myrank)
-          b_RHS(matrix%get_current_row_number()) = - tau%val%z * glob_weight
+          b_RHS(matrix%get_current_row_number()) = -tau%val%z * glob_weight
         endif
+        if (index_included) this%nl_nonempty = this%nl_nonempty + 1
       enddo
     enddo
   enddo
 
-  ! Set the nnz taking into account the 'keep_model_constant' flag.
+  ! Adjust the nnz taking into account the 'keep_model_constant' flag.
   if (this%keep_model_constant(1) .and. this%keep_model_constant(2)) then
     this%nnz = 0
   else if (this%keep_model_constant(1) .or. this%keep_model_constant(2)) then
-    this%nnz = nnz / 2
-  else
-    this%nnz = nnz
+    this%nnz = this%nnz / 2
   endif
 
 end subroutine cross_gradient_calculate

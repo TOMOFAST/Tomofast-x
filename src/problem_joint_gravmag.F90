@@ -263,7 +263,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     call model(2)%initialize(ipar%nelements, ipar%nmodel_components, allocate_full_model_on_all_cpus(2), &
                              mpar%model_units_mult, mpar%vtk_model_label, myrank, nbproc)
 
-  ! RHS ALLOCATION -------------------------------------------------------------------------------------
+  ! CONSTRAINTS and RHS ALLOCATION ---------------------------------------------------------------------
 
   ! Allocate the RHS and constraints matrix.
   call jinv%initialize2(ipar, iarr, model, myrank, nbproc)
