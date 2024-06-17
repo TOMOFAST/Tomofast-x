@@ -253,11 +253,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   memory = get_max_mem_usage()
   if (myrank == 0) print *, "MEMORY USED (sensit read) [GB] =", memory
 
-  ! RHS ALLOCATION -----------------------------------------------------------------------------------
-
-  ! Allocate the RHS and remaining arrays.
-  call jinv%initialize2(model(merge(1, 2, SOLVE_PROBLEM(1)))%grid_full, myrank)
-
   ! MODEL ALLOCATION -----------------------------------------------------------------------------------
 
   ! Allocate memory for the model.
@@ -267,6 +262,11 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) &
     call model(2)%initialize(ipar%nelements, ipar%nmodel_components, allocate_full_model_on_all_cpus(2), &
                              mpar%model_units_mult, mpar%vtk_model_label, myrank, nbproc)
+
+  ! RHS ALLOCATION -------------------------------------------------------------------------------------
+
+  ! Allocate the RHS and constraints matrix.
+  call jinv%initialize2(ipar, iarr, model, myrank, nbproc)
 
   !-----------------------------------------------------------------------------------------------------
   ! Writing the column weight for Paraview visualisation.

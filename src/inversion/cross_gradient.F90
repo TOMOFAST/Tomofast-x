@@ -71,7 +71,7 @@ module cross_gradient
     ! Cross gradient vector magnitude (for visualization).
     real(kind=CUSTOM_REAL), allocatable :: cross_grad(:)
 
-    integer(kind=8) :: nnz
+    integer(kind=8), public :: nnz
 
   contains
     private
@@ -256,54 +256,64 @@ subroutine cross_gradient_calculate(this, model1, model2, grid, column_weight1, 
         this%cost%y = this%cost%y + tau%val%y**2
         this%cost%z = this%cost%z + tau%val%z**2
 
-        if (add) then
-        ! Adding to the matrix and right-hand-side.
+        ! Adding constraints to the matrix and right-hand-side.
 
-          ! Row with x-component.
-          do l = 1, nderiv
-            ind = tau%ind(l)%x
+        ! Row with x-component.
+        do l = 1, nderiv
+          ind = tau%ind(l)%x
 
-            if (ind > nsmaller .and. ind <= nsmaller + this%nparams_loc) then
+          if (ind > nsmaller .and. ind <= nsmaller + this%nparams_loc) then
+            if (add) then
               ind = ind - nsmaller
               val1 = tau%dm1(l)%x * column_weight1(ind) * glob_weight
               val2 = tau%dm2(l)%x * column_weight2(ind) * glob_weight
               call matrix%add(val1, ind, myrank)
               call matrix%add(val2, ind + this%nparams_loc, myrank)
-              nnz = nnz + 2
             endif
-          enddo
+            nnz = nnz + 2
+          endif
+        enddo
+        if (add) then
           call matrix%new_row(myrank)
           b_RHS(matrix%get_current_row_number()) = - tau%val%x * glob_weight
+        endif
 
-          ! Row with y-component.
-          do l = 1, nderiv
-            ind = tau%ind(l)%y
+        ! Row with y-component.
+        do l = 1, nderiv
+          ind = tau%ind(l)%y
 
-            if (ind > nsmaller .and. ind <= nsmaller + this%nparams_loc) then
+          if (ind > nsmaller .and. ind <= nsmaller + this%nparams_loc) then
+            if (add) then
               ind = ind - nsmaller
               val1 = tau%dm1(l)%y * column_weight1(ind) * glob_weight
               val2 = tau%dm2(l)%y * column_weight2(ind) * glob_weight
               call matrix%add(val1, ind, myrank)
               call matrix%add(val2, ind + this%nparams_loc, myrank)
-              nnz = nnz + 2
             endif
-          enddo
+            nnz = nnz + 2
+          endif
+        enddo
+        if (add) then
           call matrix%new_row(myrank)
           b_RHS(matrix%get_current_row_number()) = - tau%val%y * glob_weight
+        endif
 
-          ! Row with z-component.
-          do l = 1, nderiv
-            ind = tau%ind(l)%z
+        ! Row with z-component.
+        do l = 1, nderiv
+          ind = tau%ind(l)%z
 
-            if (ind > nsmaller .and. ind <= nsmaller + this%nparams_loc) then
+          if (ind > nsmaller .and. ind <= nsmaller + this%nparams_loc) then
+            if (add) then
               ind = ind - nsmaller
               val1 = tau%dm1(l)%z * column_weight1(ind) * glob_weight
               val2 = tau%dm2(l)%z * column_weight2(ind) * glob_weight
               call matrix%add(val1, ind, myrank)
               call matrix%add(val2, ind + this%nparams_loc, myrank)
-              nnz = nnz + 2
             endif
-          enddo
+            nnz = nnz + 2
+          endif
+        enddo
+        if (add) then
           call matrix%new_row(myrank)
           b_RHS(matrix%get_current_row_number()) = - tau%val%z * glob_weight
         endif

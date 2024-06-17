@@ -117,9 +117,9 @@ module joint_inverse_problem
 
 contains
 
-!=================================================================================
+!=====================================================================================
 ! Initialize joint inversion.
-!=================================================================================
+!=====================================================================================
 subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
@@ -127,8 +127,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   integer, intent(in) :: myrank
 
   integer :: ierr
-  integer :: i, k, nl, nl_empty, ndata_i, nl_empty_loc
-  integer(kind=8) :: nnz
+  integer :: i
 
   do i = 1, 2
     if (par%alpha(i) == 0.d0 .or. par%problem_weight(i) == 0.d0) then
@@ -201,18 +200,61 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
 
   if (myrank == 0) print *, 'WAVELET_DOMAIN =', this%WAVELET_DOMAIN
 
-  !--------------------------------------------------------------------------------------
-  ! Calculate number of matrix rows and (approx.) non-zero elements.
-  !--------------------------------------------------------------------------------------
+  ! Calculate the number of sensitivity matrix rows.
   this%ndata_lines = 0
   do i = 1, 2
     if (par%problem_weight(i) /= 0.d0) then
-      ndata_i = par%ndata(i) * par%ndata_components(i)
-      this%ndata_lines = this%ndata_lines + ndata_i
+      this%ndata_lines = this%ndata_lines + par%ndata(i) * par%ndata_components(i)
     endif
   enddo
 
+  !-------------------------------------------------------------------------------------------
+  ! SENSITIVITY MATRIX MEMORY ALLOCATION.
+  !-------------------------------------------------------------------------------------------
+  call this%matrix_sensit%initialize(this%ndata_lines, &
+                                     2 * par%nmodel_components * par%nelements, nnz_sensit, myrank, 0)
+
+  ierr = 0
+
+  do i = 1, 2
+    if (this%add_admm(i)) then
+      allocate(this%x0_ADMM(i)%val(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
+    endif
+  enddo
+
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize!", myrank, ierr)
+
+end subroutine joint_inversion_initialize
+
+!==================================================================================================
+! Remaining memory allocations.
+! Split memory allocations to reduce the total memory footprint.
+! Call this after reading the sensitivity kernel where some temporary buffer arrays are allocated.
+!==================================================================================================
+subroutine joint_inversion_initialize2(this, par, arr, model, myrank, nbproc)
+  class(t_joint_inversion), intent(inout) :: this
+  type(t_parameters_inversion), intent(in) :: par
+  type(t_inversion_arrays), intent(in) :: arr(2)
+  type(t_model), intent(in) :: model(2)
+  integer, intent(in) :: myrank, nbproc
+
+  integer :: ierr
+  real(kind=CUSTOM_REAL) :: mem, mem_loc
+  integer :: i, k, nl, nl_empty, nl_empty_loc
+  integer(kind=8) :: nnz
+  real(kind=CUSTOM_REAL), allocatable :: b_dummy(:)
+
+  !--------------------------------------------------------------------------------------
+  ! Initialize the gradient grid.
+  !--------------------------------------------------------------------------------------
+  if (this%add_cross_grad .or. &
+      this%add_damping_gradient(1) .or. this%add_damping_gradient(2)) then
+    call this%grad_grid%init(model(merge(1, 2, par%problem_weight(1) /= 0.d0))%grid_full, myrank)
+  endif
+
+  !--------------------------------------------------------------------------------------
   ! Calcualte nl and nnz for the constraints matrix.
+  !--------------------------------------------------------------------------------------
   nnz = 0
   nl = 0
   nl_empty = 0
@@ -244,8 +286,16 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   enddo
 
   if (this%add_cross_grad) then
+    allocate(b_dummy(1))
+    ! Calculate the cross-gradient without adding it to the matrix and RHS to obtain accurate nnz and nl.
+    call this%cross_grad%calculate(model(1)%val_full(:, 1), model(2)%val_full(:, 1), &
+                                   this%grad_grid, &
+                                   arr(1)%column_weight, arr(2)%column_weight, &
+                                   this%matrix_cons, b_dummy, .false., par%derivative_type, &
+                                   par%cross_grad_weight, myrank, nbproc)
+
     nl = nl + 3 * par%nelements_total
-    nnz = nnz + this%cross_grad%get_num_elements(par%derivative_type)
+    nnz = nnz + this%cross_grad%nnz
 
     ! Note: we increase a multiplier from 3 to 18 to account for elements from other ranks.
     nl_empty_loc = 3 * par%nelements_total - 18 * par%nelements
@@ -269,38 +319,14 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     nnz = nnz + 2 * par%nelements
   endif
 
-  !-------------------------------------------------------------------------------------------
-  ! MAIN MATRIX MEMORY ALLOCATION.
-  !-------------------------------------------------------------------------------------------
-  call this%matrix_sensit%initialize(this%ndata_lines, &
-                                     2 * par%nmodel_components * par%nelements, nnz_sensit, myrank, 0)
-
+  !--------------------------------------------------------------------------------------
+  ! Constraints matrix allocation.
+  !--------------------------------------------------------------------------------------
   call this%matrix_cons%initialize(nl, 2 * par%nmodel_components * par%nelements, nnz, myrank, nl_empty)
 
-  ierr = 0
-
-  do i = 1, 2
-    if (this%add_admm(i)) then
-      allocate(this%x0_ADMM(i)%val(par%nelements), source=0._CUSTOM_REAL, stat=ierr)
-    endif
-  enddo
-
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize!", myrank, ierr)
-
-end subroutine joint_inversion_initialize
-
-!==================================================================================================
-! Remaining memory allocations.
-! Split memory allocations to reduce the total memory footprint.
-! Call this after reading the sensitivity kernel where some temporary buffer arrays are allocated.
-!==================================================================================================
-subroutine joint_inversion_initialize2(this, grid, myrank)
-  class(t_joint_inversion), intent(inout) :: this
-  type(t_grid), intent(in) :: grid
-  integer, intent(in) :: myrank
-  integer :: nl, ierr
-  real(kind=CUSTOM_REAL) :: mem, mem_loc
-
+  !-------------------------------------------------------------------------------------------------
+  ! Allocate the right-hand side.
+  !-------------------------------------------------------------------------------------------------
   ! Total number of matrix rows.
   nl = this%matrix_sensit%get_total_row_number() + this%matrix_cons%get_total_row_number()
 
@@ -313,12 +339,6 @@ subroutine joint_inversion_initialize2(this, grid, myrank)
   allocate(this%b_RHS(nl), source=0._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in joint_inversion_initialize2!", myrank, ierr)
-
-  ! Initialize the gradient grid.
-  if (this%add_cross_grad .or. &
-      this%add_damping_gradient(1) .or. this%add_damping_gradient(2)) then
-      call this%grad_grid%init(grid, myrank)
-  endif
 
 end subroutine joint_inversion_initialize2
 
@@ -552,7 +572,7 @@ subroutine joint_inversion_add_cross_grad_constraints(this, par, arr, model, der
   call this%cross_grad%calculate(model(1)%val_full(:, 1), model(2)%val_full(:, 1), &
                                  this%grad_grid, &
                                  arr(1)%column_weight, arr(2)%column_weight, &
-                                 this%matrix_cons, this%b_RHS(lc:), this%add_cross_grad, der_type, &
+                                 this%matrix_cons, this%b_RHS(lc:), .true., der_type, &
                                  par%cross_grad_weight, myrank, nbproc)
 
   cost = this%cross_grad%get_cost()
