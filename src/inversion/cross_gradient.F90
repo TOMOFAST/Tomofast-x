@@ -71,6 +71,16 @@ module cross_gradient
     ! Cross gradient vector magnitude (for visualization).
     real(kind=CUSTOM_REAL), allocatable :: cross_grad(:)
 
+    ! A flag for using a vector field for structural constraints.
+    ! 0 - don't use, 1 - use for the 1st model, 2 - use for the 2nd model.
+    integer :: vec_field_type
+
+    ! Vector field to use as structural constraints.
+    real(kind=CUSTOM_REAL), public, allocatable :: vec_field(:, :)
+
+    ! Vector field file.
+    character(len=256) :: vec_field_file
+
     integer(kind=8), public :: nnz
     integer, public :: nl_nonempty
 
@@ -83,7 +93,7 @@ module cross_gradient
     procedure, public, pass :: get_cost => cross_gradient_get_cost
     procedure, public, pass :: get_magnitude => cross_gradient_get_magnitude
 
-    procedure, private, nopass :: calculate_tau => cross_gradient_calculate_tau
+    procedure, private :: calculate_tau => cross_gradient_calculate_tau
     procedure, private, nopass :: normalize_tau => cross_gradient_normalize_tau
 
     procedure, private, nopass :: calculate_tau2 => cross_gradient_calculate_tau2
@@ -92,6 +102,8 @@ module cross_gradient
     procedure, private, nopass :: get_num_deriv => cross_gradient_get_num_deriv
 
   end type t_cross_gradient
+
+  private :: read_vector_field
 
 contains
 
@@ -125,11 +137,62 @@ subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, keep_model_c
 
   if (myrank == 0) then
     allocate(this%cross_grad(this%nparams), stat=ierr)
-
     if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in cross_gradient_initialize!", myrank, ierr)
   endif
 
+  !----------------------------------------
+  ! TODO: Expose to Parfile.
+  this%vec_field_type = 2
+  this%vec_field_file = 'one_sphere_vector.txt'
+
+  if (this%vec_field_type > 0) then
+    ! Keep dimensions in this order for compatibility with paraview visualisation interface.
+    allocate(this%vec_field(this%nparams, 3), stat=ierr)
+    if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in cross_gradient_initialize!", myrank, ierr)
+
+    call read_vector_field(this%nparams, this%vec_field, this%vec_field_file, myrank)
+  endif
+
 end subroutine cross_gradient_initialize
+
+!==========================================================================================================
+! Read the vector field.
+!==========================================================================================================
+subroutine read_vector_field(nparams, vec_field, file_name, myrank)
+  integer, intent(in) :: nparams
+  character(len=*), intent(in) :: file_name
+  integer, intent(in) :: myrank
+  real(kind=CUSTOM_REAL), intent(out) :: vec_field(nparams, 3)
+
+  integer :: ierr, i, nelements_read
+  character(len=256) :: msg
+
+  if (myrank == 0) print *, 'Reading the vector field from file ', trim(file_name)
+
+  open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
+  if (ierr /= 0) call exit_MPI("Error in opening the vector field file! path=" &
+                 //file_name//" iomsg="//msg, myrank, ierr)
+
+  read(10, *, iostat=ierr) nelements_read
+  if (ierr /= 0) call exit_MPI("Problem while reading the vector field file header!", myrank, ierr)
+
+  ! Sanity check.
+  if (nparams /= nelements_read) &
+    call exit_MPI("The vector field is not correctly defined!"//new_line('a') &
+          //"nelements_read="//str(nelements_read)//new_line('a') &
+          //"nelements_total="//str(nparams), myrank, 0)
+
+  ! Reading the vectors.
+  do i = 1, nparams
+      read(10, *, iostat=ierr) vec_field(i, 1), vec_field(i, 2), vec_field(i, 3)
+
+      if (ierr /= 0) &
+        call exit_MPI("Problem with reading the vector field for pixel i = "//str(i), myrank, ierr)
+  enddo
+
+  close(10)
+
+end subroutine read_vector_field
 
 !=============================================================================================
 ! Returns the number of derivatives depending on the finite difference scheme.
@@ -353,7 +416,8 @@ end subroutine cross_gradient_get_magnitude
 ! der_type = 1:  using a forward difference scheme (Geophys. Res. Lett., Vol. 33, L07303).
 ! der_type /= 1: using a central difference scheme.
 !==================================================================================================
-function cross_gradient_calculate_tau(model1, model2, grid, i, j, k, der_type) result(tau)
+function cross_gradient_calculate_tau(this, model1, model2, grid, i, j, k, der_type) result(tau)
+  class(t_cross_gradient), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: model1(:)
   real(kind=CUSTOM_REAL), intent(in) :: model2(:)
   type(t_grad_grid), intent(in) :: grid
