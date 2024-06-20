@@ -32,6 +32,7 @@ module paraview
   public :: visualisation_paraview_points
 
   private :: index_included
+  private :: add_component_names
 
 contains
 
@@ -49,6 +50,29 @@ function index_included(i, j, k, i1, i2, j1, j2, k1, k2) result(included)
     included = .false.
   endif
 end function index_included
+
+!=======================================================================================================================
+! Writes to file individual component names for the vtk vector data.
+!=======================================================================================================================
+subroutine add_component_names(unit, INVERT_Z_AXIS)
+  integer, intent(in) :: unit
+  logical, intent(in) :: INVERT_Z_AXIS
+
+  character :: lf*1
+  ! Line feed character.
+  lf = char(10)
+
+  write(unit) 'METADATA'//lf
+  write(unit) 'COMPONENT_NAMES'//lf
+  write(unit) 'X'//lf
+  write(unit) 'Y'//lf
+  if (INVERT_Z_AXIS) then
+    write(unit) '-Z'//lf
+  else
+    write(unit) 'Z'//lf
+  endif
+
+end subroutine add_component_names
 
 !=======================================================================================================================
 ! Writes the model in binary VTK format for Paraview visualization.
@@ -193,6 +217,11 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomp
   endif
 
   write(333) point_data
+
+  if (ncomponents == 3) then
+    ! Add component names to the vector data.
+    call add_component_names(333, INVERT_Z_AXIS)
+  endif
 
   close(333)
 
@@ -404,6 +433,11 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
 
   write(333) cell_data
 
+  if (ncomponents == 3) then
+    ! Add component names to the vector data.
+    call add_component_names(333, INVERT_Z_AXIS)
+  endif
+
   close(333)
 
   deallocate(xyzgrid_all)
@@ -543,6 +577,11 @@ subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, v
   endif
 
   write(333) point_data
+
+  if (ncomponents == 3) then
+    ! Add component names to the vector data.
+    call add_component_names(333, INVERT_Z_AXIS)
+  endif
 
   close(333)
 
