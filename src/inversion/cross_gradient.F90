@@ -93,11 +93,13 @@ module cross_gradient
     procedure, public, pass :: get_cost => cross_gradient_get_cost
     procedure, public, pass :: get_magnitude => cross_gradient_get_magnitude
 
+    procedure, private :: get_model_gradients => cross_gradient_get_model_gradients
+
     procedure, private :: calculate_tau => cross_gradient_calculate_tau
     procedure, private, nopass :: normalize_tau => cross_gradient_normalize_tau
 
-    procedure, private, nopass :: calculate_tau2 => cross_gradient_calculate_tau2
-    procedure, private, nopass :: calculate_tau_backward => cross_gradient_calculate_tau_backward
+    procedure, private :: calculate_tau2 => cross_gradient_calculate_tau2
+    procedure, private :: calculate_tau_backward => cross_gradient_calculate_tau_backward
 
     procedure, private, nopass :: get_num_deriv => cross_gradient_get_num_deriv
 
@@ -143,7 +145,7 @@ subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, keep_model_c
   !----------------------------------------
   ! TODO: Expose to Parfile.
   this%vec_field_type = 2
-  this%vec_field_file = 'one_sphere_vector.txt'
+  this%vec_field_file = 'one_sphere_vector2.txt'
 
   if (this%vec_field_type > 0) then
     ! Keep dimensions in this order for compatibility with paraview visualisation interface.
@@ -411,6 +413,42 @@ pure subroutine cross_gradient_get_magnitude(this, cross_grad)
 end subroutine cross_gradient_get_magnitude
 
 !==================================================================================================
+! Retrieve the model gradients.
+! We either calculate the gradient from the model, or take it from the input vector field.
+!==================================================================================================
+subroutine cross_gradient_get_model_gradients(this, model1, model2, grid, i, j, k, der_type, m1_grad, m2_grad)
+  class(t_cross_gradient), intent(in) :: this
+  real(kind=CUSTOM_REAL), intent(in) :: model1(:)
+  real(kind=CUSTOM_REAL), intent(in) :: model2(:)
+  type(t_grad_grid), intent(in) :: grid
+  integer, intent(in) :: i, j, k
+  character(len=4) :: der_type
+  type(t_vector), intent(out) :: m1_grad, m2_grad
+
+  type(t_vector) :: vec
+  integer :: ind
+
+  if (this%vec_field_type > 0) then
+    ! Use gradient from the provided vector field.
+    ind = grid%get_ind(i, j, k)
+    vec = t_vector(this%vec_field(ind, 1), this%vec_field(ind, 2), this%vec_field(ind, 3))
+  endif
+
+  ! Calculate model gradients.
+  if (this%vec_field_type == 1) then
+    m1_grad = vec
+  else
+    m1_grad = get_grad(model1, grid, i, j, k, der_type)
+  endif
+  if (this%vec_field_type == 2) then
+    m2_grad = vec
+  else
+    m2_grad = get_grad(model2, grid, i, j, k, der_type)
+  endif
+
+end subroutine cross_gradient_get_model_gradients
+
+!==================================================================================================
 ! Calculates the discretized cross-gradients function (and corresponding matrix column indexes)
 ! between the models model1 and model2, at pixel location (i, j, k).
 ! der_type = 1:  using a forward difference scheme (Geophys. Res. Lett., Vol. 33, L07303).
@@ -427,11 +465,8 @@ function cross_gradient_calculate_tau(this, model1, model2, grid, i, j, k, der_t
   type(t_vector) :: m1_grad, m2_grad
   type(t_vector) :: step
 
-  ! Calculate model gradients.
-  ! NOTE: These gradients are used to calculate the partial derivatives below,
-  ! so if we want to e.g. normalize gradients then expressions for derivatives have to be changed.
-  m1_grad = get_grad(model1, grid, i, j, k, get_der_type(der_type))
-  m2_grad = get_grad(model2, grid, i, j, k, get_der_type(der_type))
+  ! Retrieve the gradients.
+  call this%get_model_gradients(model1, model2, grid, i, j, k, get_der_type(der_type), m1_grad, m2_grad)
 
   ! Calculate the cross-product between model gradients.
   tau%val = m1_grad%cross_product(m2_grad)
@@ -547,7 +582,8 @@ end function cross_gradient_calculate_tau
 !
 ! Same as cross_gradient_calculate_tau but uses three-point forward difference scheme.
 !==================================================================================================
-function cross_gradient_calculate_tau2(model1, model2, grid, i, j, k) result(tau)
+function cross_gradient_calculate_tau2(this, model1, model2, grid, i, j, k) result(tau)
+  class(t_cross_gradient), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: model1(:)
   real(kind=CUSTOM_REAL), intent(in) :: model2(:)
   type(t_grad_grid), intent(in) :: grid
@@ -557,12 +593,8 @@ function cross_gradient_calculate_tau2(model1, model2, grid, i, j, k) result(tau
   type(t_vector) :: m1_grad, m2_grad
   type(t_vector) :: step
 
-  ! Calculate model gradients.
-  ! NOTE: These gradients are used to calculate the partial derivatives below,
-  ! so if we want to e.g. normalize gradients then expressions for derivatives have to be changed.
-
-  m1_grad = get_grad(model1, grid, i, j, k, FWD2_TYPE)
-  m2_grad = get_grad(model2, grid, i, j, k, FWD2_TYPE)
+  ! Retrieve the gradients.
+  call this%get_model_gradients(model1, model2, grid, i, j, k, FWD2_TYPE, m1_grad, m2_grad)
 
   ! Calculate the cross-product between model gradients.
   tau%val = m1_grad%cross_product(m2_grad)
@@ -640,7 +672,8 @@ end function cross_gradient_calculate_tau2
 !
 ! Same as cross_gradient_calculate_tau but uses backward finite difference.
 !==================================================================================================
-function cross_gradient_calculate_tau_backward(model1, model2, grid, i, j, k) result(tau)
+function cross_gradient_calculate_tau_backward(this, model1, model2, grid, i, j, k) result(tau)
+  class(t_cross_gradient), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: model1(:)
   real(kind=CUSTOM_REAL), intent(in) :: model2(:)
   type(t_grad_grid), intent(in) :: grid
@@ -650,13 +683,8 @@ function cross_gradient_calculate_tau_backward(model1, model2, grid, i, j, k) re
   type(t_vector) :: m1_grad, m2_grad
   type(t_vector) :: step
 
-  ! Calculate model gradients.
-  ! NOTE: These gradients are used to calculate the partial derivatives below,
-  ! so if we want to e.g. normalize gradients then expressions for derivatives have to be changed.
-
-  ! Forward and backward difference.
-  m1_grad = get_grad(model1, grid, i, j, k, BWD_TYPE)
-  m2_grad = get_grad(model2, grid, i, j, k, BWD_TYPE)
+  ! Retrieve the gradients.
+  call this%get_model_gradients(model1, model2, grid, i, j, k, BWD_TYPE, m1_grad, m2_grad)
 
   ! Calculate the cross-product between model gradients.
   tau%val = m1_grad%cross_product(m2_grad)
