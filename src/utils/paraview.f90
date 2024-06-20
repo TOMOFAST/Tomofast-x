@@ -162,6 +162,11 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomp
 
           ! Units conversion.
           point_data(:, l) = point_data(:, l) / real(units_mult, 4)
+
+          if (ncomponents == 3) then
+            ! Flip the Z-axis of a vector.
+            point_data(3, l) = z_sign * point_data(3, l)
+          endif
         endif
       enddo
     enddo
@@ -340,6 +345,11 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
 
           ! Units conversion.
           cell_data(:, l) = cell_data(:, l) / real(units_mult, 4)
+
+          if (ncomponents == 3) then
+            ! Flip the Z-axis of a vector.
+            cell_data(3, l) = real(z_sign, 4) * cell_data(3, l)
+          endif
         endif
       enddo
     enddo
@@ -525,6 +535,12 @@ subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, v
 
   ! Convert data units.
   point_data = point_data / real(units_mult, 4)
+
+  if (ncomponents == 3) then
+    if (INVERT_Z_AXIS) then
+      point_data(3, :) = -point_data(3, :)
+    endif
+  endif
 
   write(333) point_data
 

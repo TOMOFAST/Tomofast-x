@@ -73,11 +73,6 @@ subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
 
     ! Units conversion.
     model%val_full = model%val_full * model%units_mult
-
-    if (model%ncomponents == 3  .and. model%grid_full%z_axis_dir /= 1) then
-      ! Flip the Z-axis direction.
-      model%val_full(:, 3) = -model%val_full(:, 3)
-    endif
   endif
 
   ! Distribute the model values among CPUs.

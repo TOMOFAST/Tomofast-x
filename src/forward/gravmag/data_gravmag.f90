@@ -163,11 +163,6 @@ subroutine data_read(this, file_name, myrank)
 
     ! Convert input data units.
     this%val_meas = this%units_mult * this%val_meas
-
-    if (this%ncomponents == 3 .and. this%z_axis_dir /= 1) then
-      ! Flip the Z-axis direction.
-      this%val_meas(3, :) = -this%val_meas(3, :)
-    endif
   endif
 
   ! MPI broadcast data arrays.
