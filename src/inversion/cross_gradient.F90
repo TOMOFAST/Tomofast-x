@@ -74,12 +74,11 @@ module cross_gradient
     ! A flag for using a vector field for structural constraints.
     ! 0 - don't use, 1 - use for the 1st model, 2 - use for the 2nd model.
     integer :: vec_field_type
+    ! Vector field file.
+    character(len=256) :: vec_field_file
 
     ! Vector field to use as structural constraints.
     real(kind=CUSTOM_REAL), public, allocatable :: vec_field(:, :)
-
-    ! Vector field file.
-    character(len=256) :: vec_field_file
 
     integer(kind=8), public :: nnz
     integer, public :: nl_nonempty
@@ -112,10 +111,13 @@ contains
 !============================================================================================================
 ! Initialize cross-gradients: set dimensions and grid steps.
 !============================================================================================================
-subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, keep_model_constant, myrank)
+subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, keep_model_constant, &
+                                     vec_field_type, vec_field_file, myrank)
   class(t_cross_gradient), intent(inout) :: this
   integer, intent(in) :: nx, ny, nz, nparams_loc
   integer, intent(in) :: keep_model_constant(2)
+  integer, intent(in) :: vec_field_type
+  character(len=256), intent(in) :: vec_field_file
   integer, intent(in) :: myrank
 
   integer :: ierr
@@ -131,6 +133,9 @@ subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, keep_model_c
 
   this%keep_model_constant = (keep_model_constant > 0)
 
+  this%vec_field_type = vec_field_type
+  this%vec_field_file = vec_field_file
+
   this%cost = 0._CUSTOM_REAL
   this%nnz = 0
   this%nl_nonempty = 0
@@ -141,11 +146,6 @@ subroutine cross_gradient_initialize(this, nx, ny, nz, nparams_loc, keep_model_c
     allocate(this%cross_grad(this%nparams), stat=ierr)
     if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in cross_gradient_initialize!", myrank, ierr)
   endif
-
-  !----------------------------------------
-  ! TODO: Expose to Parfile.
-  this%vec_field_type = 2
-  this%vec_field_file = 'one_sphere_vector2.txt'
 
   if (this%vec_field_type > 0) then
     ! Keep dimensions in this order for compatibility with paraview visualisation interface.

@@ -231,16 +231,14 @@ subroutine joint_inversion_initialize2(this, par, arr, model, myrank, nbproc)
   real(kind=CUSTOM_REAL), allocatable :: b_dummy(:)
   character(len=256) :: filename
   integer :: nelements_total
-  integer :: vec_field_type
 
   if (this%add_cross_grad) then
-    call this%cross_grad%initialize(par%nx, par%ny, par%nz, par%nelements, par%keep_model_constant, myrank)
+    call this%cross_grad%initialize(par%nx, par%ny, par%nz, par%nelements, par%keep_model_constant, &
+                                    par%vec_field_type, par%vec_field_file, myrank)
 
-    ! TODO: Expose to inversion parameters.
-    vec_field_type = 2
-    if (myrank == 0 .and. vec_field_type > 0) then
+    if (myrank == 0 .and. par%vec_field_type > 0) then
       ! Write vtk model for visualisation of the vector field.
-      filename = "vec_field.vtk"
+      filename = "cross_grad_vec_field.vtk"
       nelements_total = model(1)%grid_full%nx * model(1)%grid_full%ny * model(1)%grid_full%nz
       call visualisation_paraview_struct_grid(filename, myrank, nelements_total, 3, this%cross_grad%vec_field, &
                                    model(1)%grid_full%X1, model(1)%grid_full%Y1, model(1)%grid_full%Z1, &

@@ -358,6 +358,8 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   ipar%cross_grad_weight = 0.d0
   ipar%derivative_type = 1 ! 1-fwd, 2-cent
   ipar%keep_model_constant = 0
+  ipar%vec_field_type = 0
+  ipar%vec_field_file = "NILL"
 
   ! CLUSTERING constraints.
   ipar%clustering_weight_glob(1) = 0.d0
@@ -847,6 +849,14 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
       case("inversion.crossGradient.magn.keepModelConstant")
         read(10, *) ipar%keep_model_constant(2)
         call print_arg(myrank, parname, ipar%keep_model_constant(2))
+
+      case("inversion.crossGradient.vectorFieldType")
+        read(10, *) ipar%vec_field_type
+        call print_arg(myrank, parname, ipar%vec_field_type)
+
+      case("inversion.crossGradient.vectorFieldFile")
+        call read_filename(10, ipar%vec_field_file)
+        call print_arg(myrank, parname, ipar%vec_field_file)
 
       ! CLUSTERING constraints ---------------------------------------
 

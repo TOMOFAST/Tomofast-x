@@ -158,6 +158,8 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
   integer :: matrix_nel_loc, matrix_nel_glob
   integer :: i, j, k, p
   integer :: keep_model_constant(2)
+  integer :: vec_field_type
+  character(len=256) :: vec_field_file
 
   ! Note: changing these dimensions will affect the test result (matrix_nel_glob).
   nx = 20
@@ -169,6 +171,8 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
   nelements = nelements_total / nbproc
 
   keep_model_constant = 0
+  vec_field_type = 0
+  vec_field_file = ''
 
   if (mod(nelements_total, nbproc) /= 0) then
     if (myrank == 0) print *, "WARNING: nelements_total mod nbproc /= 0, skipping the test."
@@ -211,7 +215,7 @@ subroutine test_cross_gradient_calculate(myrank, nbproc, derivative_type)
   ! Init the gradient grid.
   call grad_grid%init(model1%grid_full, myrank)
 
-  call cross_grad%initialize(nx, ny, nz, nelements, keep_model_constant, myrank)
+  call cross_grad%initialize(nx, ny, nz, nelements, keep_model_constant, vec_field_type, vec_field_file, myrank)
 
   ! Calculate without adding to the matrix, to obtain the nnz.
   call cross_grad%calculate(model1%val_full(:, 1), model2%val_full(:, 1), &

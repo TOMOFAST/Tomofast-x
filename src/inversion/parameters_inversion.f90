@@ -87,13 +87,16 @@ module parameters_inversion
 
     ! Contribution of the cross-gradient to the cost function.
     real(kind=CUSTOM_REAL) :: cross_grad_weight
-
     ! The type of derivative use for cross-gradients discretization:
     ! 1 - forward, 2 - central.
     integer :: derivative_type
-
     ! Flags to define one of the models constant so that it remains unaltered during the inversion.
     integer :: keep_model_constant(2)
+
+    ! A flag for using a vector field for structural constraints.
+    integer :: vec_field_type
+    ! Vector field file (for structural constraints).
+    character(len=256) :: vec_field_file
 
     ! ------ Clustering constraints ----------------------------------------
 
@@ -174,6 +177,8 @@ subroutine parameters_inversion_broadcast(this, myrank)
   call MPI_Bcast(this%cross_grad_weight, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%derivative_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%keep_model_constant, 2, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%vec_field_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%vec_field_file, 512, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
 
   ! Clustering parameters.
   call MPI_Bcast(this%clustering_weight_glob, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
