@@ -42,6 +42,7 @@ module init_parameters
   private :: print_arg_dblarr
   private :: print_arg_str
   private :: read_filename
+  private :: copy_file
 
   ! For overloading the 'print_arg' function.
   interface print_arg
@@ -138,6 +139,9 @@ subroutine initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
 
     ! Read the Parfile parameters.
     call read_parfile(parfile_path, gpar, mpar, ipar, myrank)
+
+    ! Create the output directory. If it already exists there is no problem.
+    call execute_command_line('mkdir -p "'//trim(path_output)//'"')
 
     ! Copy the Parfile to the output folder.
     call copy_file(parfile_path, trim(path_output)//'/Parfile_copy.txt')
