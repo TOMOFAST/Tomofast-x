@@ -118,6 +118,7 @@ module parameters_inversion
     real(kind=CUSTOM_REAL) :: data_cost_threshold_ADMM
     real(kind=CUSTOM_REAL) :: weight_multiplier_ADMM
     real(kind=CUSTOM_REAL) :: max_weight_ADMM
+    real(kind=CUSTOM_REAL) :: target_cost_ADMM
 
   contains
     private
@@ -180,6 +181,8 @@ subroutine parameters_inversion_broadcast(this, myrank)
   call MPI_Bcast(this%data_cost_threshold_ADMM, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%weight_multiplier_ADMM, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%max_weight_ADMM, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
+  call MPI_Bcast(this%target_cost_ADMM, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
   if (ierr /= 0) call exit_MPI("MPI_Bcast error in parameters_inversion_broadcast!", myrank, ierr)
 

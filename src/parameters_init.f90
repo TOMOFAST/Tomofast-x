@@ -322,6 +322,7 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   ipar%bounds_ADMM_file(2) = "NILL"
   ipar%rho_ADMM(1) = 1.d-7
   ipar%rho_ADMM(2) = 1.d+5
+  ipar%target_cost_ADMM = 0.d0
 
   ipar%data_cost_threshold_ADMM = 1.e-4
   ipar%weight_multiplier_ADMM = 1.d0
@@ -675,6 +676,10 @@ subroutine read_parfile(gpar, mpar, ipar, myrank)
       case("inversion.admm.maxWeight")
         read(10, 1) ipar%max_weight_ADMM
         call print_arg(myrank, parname, ipar%max_weight_ADMM)
+
+      case("inversion.admm.targetADMMCost")
+        read(10, 1) ipar%target_cost_ADMM
+        call print_arg(myrank, parname, ipar%target_cost_ADMM)
 
       ! DAMPING-GRADIENT constraints -------------------------------
 

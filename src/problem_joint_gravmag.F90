@@ -461,6 +461,11 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       ! Adjust the ADMM weight dynamically.
       if (ipar%admm_type > 0) then
         call adjust_admm_weight(ipar, SOLVE_PROBLEM, cost_data, myrank)
+
+        if (it > 1 .and. jinv%get_admm_cost() < ipar%target_cost_ADMM) then
+          if (myrank == 0) print *, 'Reached target ADMM cost! Exiting the loop.'
+          exit
+        endif
       endif
 
     enddo ! Major inversion loop.
