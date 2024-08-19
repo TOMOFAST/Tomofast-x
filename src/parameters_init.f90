@@ -769,7 +769,7 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
         call print_arg(myrank, parname, ipar%nlithos)
 
       case("inversion.admm.grav.bounds")
-        if (ipar%admm_type == 1 .and. ipar%admm_bound_type == 1) then
+        if (ipar%admm_type > 0 .and. ipar%admm_bound_type == 1) then
         ! Read these only when the global bound type is used.
           allocate(ipar%admm_bounds(1)%val(2 * ipar%nlithos), source=0._CUSTOM_REAL)
           read(10, *) ipar%admm_bounds(1)%val
@@ -778,7 +778,7 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
         endif
 
       case("inversion.admm.magn.bounds")
-        if (ipar%admm_type == 1 .and. ipar%admm_bound_type == 1) then
+        if (ipar%admm_type > 0 .and. ipar%admm_bound_type == 1) then
         ! Read these only when the global bound type is used.
           allocate(ipar%admm_bounds(2)%val(2 * ipar%nlithos), source=0._CUSTOM_REAL)
           read(10, *) ipar%admm_bounds(2)%val
@@ -910,7 +910,7 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
   enddo
 
   ! Sanity check.
-  if (ipar%admm_type == 1 .and. ipar%admm_bound_type == 1) then
+  if (ipar%admm_type > 0 .and. ipar%admm_bound_type == 1) then
     if (.not. global_bounds_defined) then
       call exit_MPI("Global admm bounds are not defined! They must be defined in the Parfile.", myrank, 0)
     endif
