@@ -295,7 +295,7 @@ subroutine apply_local_depth_weighting(par, column_weight, myrank, nbproc)
           ! Divide the column weight which makes the depth weight multiplied.
           column_weight(ind) = column_weight(ind) / local_weight
         else
-          call exit_MPI("Zero local weight in apply_local_depth_weighting!", myrank, ierr)
+          column_weight(ind) = 0.d0
         endif
       else
         ! Skip the line.
