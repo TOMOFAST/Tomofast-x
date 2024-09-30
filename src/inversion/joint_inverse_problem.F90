@@ -503,7 +503,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
 
       call damping%add(this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), arr(i)%column_weight, &
                        model(i)%val(:, 1), this%x0_ADMM(i)%val, param_shift(i), &
-                       this%WAVELET_DOMAIN, myrank, nbproc)
+                       this%WAVELET_DOMAIN, myrank, nbproc, model(i)%bound_weight)
 
       ! Calculate the ADMM cost in parallel.
       call calculate_cost(par%nelements, this%admm_method(i)%z, model(i)%val(:, 1), cost, .true., nbproc)
