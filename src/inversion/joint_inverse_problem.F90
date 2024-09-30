@@ -190,7 +190,9 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   this%WAVELET_DOMAIN = .true.
   if (this%add_cross_grad .or. this%add_clustering .or. &
       this%add_damping_gradient(1) .or. this%add_damping_gradient(2) .or. &
-      par%norm_power /= 2.d0) then
+      par%norm_power /= 2.d0 .or. &
+      ! Essentially we care only about the local admm weights (i.e., when the bound_weight /= 1).
+      par%admm_bound_type /= 1) then
     this%WAVELET_DOMAIN = .false.
   endif
 
