@@ -125,7 +125,11 @@ subroutine damping_add(this, matrix, nrows, b_RHS, column_weight, &
 
   ! Apply the depth-weighting.
   do i = 1, this%nelements
-    model_diff(i) = model_diff(i) / column_weight(i)
+    if (column_weight(i) /= 0.d0) then
+      model_diff(i) = model_diff(i) / column_weight(i)
+    else
+      model_diff(i) = 0.d0
+    endif
   enddo
 
   if (this%compression_type > 0 .and. WAVELET_DOMAIN) then

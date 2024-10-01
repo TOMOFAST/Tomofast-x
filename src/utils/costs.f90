@@ -93,7 +93,11 @@ subroutine calculate_cost_model(nelements, norm_power, model, model_prior, colum
   cost_model = 0._CUSTOM_REAL
   do i = 1, nelements
     ! Make calculations consistent with damping.F90 where we also scale the model difference.
-    model_diff = (model(i) - model_prior(i)) / column_weight(i)
+    if (column_weight(i) /= 0.d0) then
+      model_diff = (model(i) - model_prior(i)) / column_weight(i)
+    else
+      model_diff = 0.d0
+    endif
     cost_model = cost_model + (abs(model_diff))**norm_power
   enddo
 

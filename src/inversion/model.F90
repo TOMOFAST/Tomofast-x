@@ -239,7 +239,11 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
   ! Rescale the model to calculate data, as we store the depth-weighted sensitivity kernel.
   do k = 1, this%ncomponents
     do i = 1, this%nelements
-      model_scaled(i, k) = this%val(i, k) / column_weight(i)
+      if (column_weight(i) /= 0.d0) then
+        model_scaled(i, k) = this%val(i, k) / column_weight(i)
+      else
+        model_scaled(i, k) = 0.d0
+      endif
     enddo
   enddo
 
