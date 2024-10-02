@@ -49,10 +49,14 @@ module parameters_inversion
     ! Write intermediate model every N major iterations.
     integer :: write_model_niter
 
-    ! Error in prior model -- damping for the inverse problem.
+    ! Global model damping weight.
     real(kind=CUSTOM_REAL) :: alpha(2)
     ! Power p of Lp norm on the model damping term (for LSQR method). Use p=2. for pure LSQR.
     real(kind=CUSTOM_REAL) :: norm_power
+
+    ! Local damping weight.
+    integer :: apply_local_damping_weight
+    character(len=256) :: damping_weight_file(2)
 
     ! Damping gradient weight type (1-global, 2-local).
     integer :: damp_grad_weight_type
@@ -161,6 +165,9 @@ subroutine parameters_inversion_broadcast(this, myrank)
 
   call MPI_Bcast(this%alpha, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%norm_power, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+
+  call MPI_Bcast(this%apply_local_damping_weight, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%damping_weight_file, 512, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
 
   call MPI_Bcast(this%damp_grad_weight_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%beta, 2, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)

@@ -41,6 +41,7 @@ module model_IO
   public :: set_model_bounds
   private :: read_bound_constraints
   public :: read_damping_gradient_weights
+  public :: read_damping_weights
 
   private :: model_write_voxels_format
   private :: model_write_paraview
@@ -378,6 +379,62 @@ subroutine read_damping_gradient_weights(model, file_name, myrank)
   close(10)
 
 end subroutine read_damping_gradient_weights
+
+!==========================================================================================================
+! Read local model damping weights.
+!==========================================================================================================
+subroutine read_damping_weights(model, file_name, myrank, nbproc)
+  class(t_model), intent(inout) :: model
+  character(len=*), intent(in) :: file_name
+  integer, intent(in) :: myrank, nbproc
+
+  integer :: ierr, i, ind, nelements_read, nsmaller
+  real(kind=CUSTOM_REAL) :: weight
+  character(len=256) :: msg
+
+  if (myrank == 0) print *, 'Reading model damping weights from file ', trim(file_name)
+
+  open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
+  if (ierr /= 0) call exit_MPI("Error in opening the damping gradient weights file! path=" &
+                 //file_name//" iomsg="//msg, myrank, ierr)
+
+  read(10, *, iostat=ierr) nelements_read
+  if (ierr /= 0) call exit_MPI("Problem while reading the model damping weights file!", myrank, ierr)
+
+  ! Sanity check.
+  if (model%nelements_total /= nelements_read) &
+    call exit_MPI("The damping gradient weights are not correctly defined!"//new_line('a') &
+          //"nelements="//str(model%nelements)//new_line('a') &
+          //"nelements_read="//str(nelements_read)//new_line('a') &
+          //"nelements_total="//str(model%nelements_total), myrank, 0)
+
+  ! The number of elements on CPUs with rank smaller than myrank.
+  nsmaller = get_nsmaller(model%nelements, myrank, nbproc)
+
+  ! Reading local weights from file.
+  do i = 1, model%nelements_total
+    if (i > nsmaller .and. i <= nsmaller + model%nelements) then
+      read(10, *, iostat=ierr) weight
+
+      if (ierr /= 0) &
+        call exit_MPI("Problem with reading the local weight!", myrank, ierr)
+
+      ind = i - nsmaller
+
+      model%damping_weight(ind) = weight
+    else
+      ! Skip the line.
+      read(10, *)
+    endif
+
+    if (i > nsmaller + model%nelements) then
+      exit
+    endif
+  enddo
+
+  close(10)
+
+end subroutine read_damping_weights
 
 !======================================================================================================
 ! Write the model snapshots for visualization.

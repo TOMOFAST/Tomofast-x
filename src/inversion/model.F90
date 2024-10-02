@@ -54,6 +54,9 @@ module model
     ! Local weights for damping gradient constraints, for every direction (X, Y, Z).
     real(kind=CUSTOM_REAL), allocatable :: damping_grad_weight(:, :)
 
+    ! Local damping weights (for the prior model term).
+    real(kind=CUSTOM_REAL), allocatable :: damping_weight(:)
+
     ! Full grid.
     type(t_grid) :: grid_full
 
@@ -129,6 +132,7 @@ subroutine model_initialize(this, nelements, ncomponents, alloc_full_on_all_cpus
 
   allocate(this%val(this%nelements, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%val_prior(this%nelements, this%ncomponents), source=0._CUSTOM_REAL, stat=ierr)
+  allocate(this%damping_weight(this%nelements), source=1._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in model_initialize!", myrank, ierr)
 

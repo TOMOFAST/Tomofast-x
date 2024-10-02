@@ -192,7 +192,8 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
       this%add_damping_gradient(1) .or. this%add_damping_gradient(2) .or. &
       par%norm_power /= 2.d0 .or. &
       ! Essentially we care only about the local admm weights (i.e., when the bound_weight /= 1).
-      par%admm_bound_type /= 1) then
+      par%admm_bound_type /= 1 .or. &
+      par%apply_local_damping_weight > 0) then
     this%WAVELET_DOMAIN = .false.
   endif
 
@@ -455,7 +456,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
         damping_param_shift = param_shift(i) + (k - 1) * par%nelements
         call damping%add(this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), arr(i)%column_weight, &
                          model(i)%val(:, k), model(i)%val_prior(:, k), damping_param_shift, &
-                         this%WAVELET_DOMAIN, myrank, nbproc)
+                         this%WAVELET_DOMAIN, myrank, nbproc, model(i)%damping_weight)
 
         if (myrank == 0) print *, 'model damping cost = ', damping%get_cost()
       enddo

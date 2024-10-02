@@ -139,8 +139,12 @@ MODEL DAMPING (m - m_prior)
 ===================================================================================
 inversion.modelDamping.grav.weight       = 1.d-11
 inversion.modelDamping.magn.weight       = 1.d-8
-inversion.modelDamping.ect.weight        = 1.d-11
 inversion.modelDamping.normPower         = 2.d0
+
+# Local damping weight.
+inversion.modelDamping.applyLocalWeight    = 0
+inversion.modelDamping.grav.file           = None
+inversion.modelDamping.magn.file           = None
 
 ===================================================================================
 JOINT INVERSION parameters

@@ -333,6 +333,9 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   ipar%alpha(2) = 1.d-8
   ipar%norm_power = 2.d0
 
+  ipar%apply_local_damping_weight = 0
+  ipar%damping_weight_file = "NILL"
+
   ! JOINT INVERSION parameters.
   ipar%problem_weight(1) = 1.d0
   ipar%problem_weight(2) = 0.d0
@@ -735,6 +738,18 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
       case("inversion.modelDamping.normPower")
         read(10, *) ipar%norm_power
         call print_arg(myrank, parname, ipar%norm_power)
+
+      case("inversion.modelDamping.applyLocalWeight")
+        read(10, *) ipar%apply_local_damping_weight
+        call print_arg(myrank, parname, ipar%apply_local_damping_weight)
+
+      case("inversion.modelDamping.grav.file")
+        call read_filename(10, ipar%damping_weight_file(1))
+        call print_arg(myrank, parname, ipar%damping_weight_file(1))
+
+      case("inversion.modelDamping.magn.file")
+        call read_filename(10, ipar%damping_weight_file(2))
+        call print_arg(myrank, parname, ipar%damping_weight_file(2))
 
       ! JOINT INVERSION parameters -------------------------------
 

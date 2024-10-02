@@ -294,7 +294,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call set_model_bounds(ipar, model(2), 2, myrank, nbproc)
   endif
 
-  ! SETTING damping gradient weights --------------------------------------------------------------------
+  ! READING damping gradient weights --------------------------------------------------------------------
 
   do i = 1, 2
     if (SOLVE_PROBLEM(i)) then
@@ -303,6 +303,16 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
         if (ipar%damp_grad_weight_type > 1) then
           call read_damping_gradient_weights(model(i), ipar%damping_gradient_file(i), myrank)
         endif
+      endif
+    endif
+  enddo
+
+  ! READING model damping weights ------------------------------------------------------------------------
+
+  do i = 1, 2
+    if (SOLVE_PROBLEM(i)) then
+      if (ipar%apply_local_damping_weight > 0) then
+        call read_damping_weights(model(i), ipar%damping_weight_file(i), myrank, nbproc)
       endif
     endif
   enddo
