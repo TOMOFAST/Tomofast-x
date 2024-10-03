@@ -261,7 +261,12 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
               ! Store sensitivity elements greater than the wavelet threshold.
               nel = nel + 1
               sensit_columns(nel) = p
-              sensit_compressed(nel) = real(sensit_line_full(p, k, d), MATRIX_PRECISION)
+              !sensit_compressed(nel) = real(sensit_line_full(p, k, d), MATRIX_PRECISION)
+              if (sensit_line_full(p, k, d) > threshold) then
+                sensit_compressed(nel) = real(sensit_line_full(p, k, d) - threshold, MATRIX_PRECISION)
+              else
+                sensit_compressed(nel) = real(sensit_line_full(p, k, d) + threshold, MATRIX_PRECISION)
+              endif
 
               sensit_nnz(p) = sensit_nnz(p) + 1
 
