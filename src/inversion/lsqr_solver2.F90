@@ -66,6 +66,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
   real(kind=CUSTOM_REAL) :: b1, c, r, s, t1, t2
   real(kind=CUSTOM_REAL) :: rho_inv
   real(kind=CUSTOM_REAL) :: misfit
+  real(kind=CUSTOM_REAL) :: Bk, Dk, cond
   integer :: nlines_sensit
   logical :: CALC_MISFIT
 
@@ -155,6 +156,8 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
 
   iter = 1
   r = 1._CUSTOM_REAL
+  Bk = 1.d0
+  Dk = 0.d0
 
   ! Use an exit (threshold) criterion in case we can exit the loop before reaching the max iteration count.
   do while (iter <= niter .and. r > rmin)
@@ -262,6 +265,10 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
     t1      = phi * rho_inv
     t2      = - theta * rho_inv
 
+    ! Compute terms needed for the estimate of cond(A).
+    Bk = Bk + alpha**2 + beta**2
+    Dk = Dk + sum(w**2) * rho_inv**2
+
     ! Update the current solution x (w is an auxiliary array in order to compute the solution).
     x = t1 * w + x
     w = t2 * w + v
@@ -291,6 +298,18 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
   else
     if (myrank == 0) print *, 'Finished lsqr solver, r =', r, ' iter =', iter - 1
   endif
+
+  !--------------------------------------------------------------------------------------
+  ! Gather the full Dk term.
+  call MPI_Allreduce(MPI_IN_PLACE, Dk, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
+
+  ! Adding D1 term.
+  Dk = Dk + 1.d0
+
+  ! Calculate the estimate for condition number.
+  cond = Bk * Dk
+
+  if (myrank == 0) print *, 'cond(A) =', cond
 
 end subroutine lsqr_solve_sensit
 
