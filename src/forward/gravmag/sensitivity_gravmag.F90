@@ -184,6 +184,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
   error_r_sum_loc = 0.d0
   relative_threshold_sum_loc = 0.d0
 
+! Loop over the data components.
+do d = 1, par%ndata_components
+
   ! Loop over the local data lines.
   do i = 1, ndata_loc
     ! Global data index.
@@ -217,8 +220,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
                               data%X(idata), data%Y(idata), data%Z(idata), sensit_line_full)
     endif
 
-    ! Loop over the data components.
-    do d = 1, par%ndata_components
+!    ! Loop over the data components.
+!    do d = 1, par%ndata_components
 
       ! Loop over the model components.
       do k = 1, par%nmodel_components
@@ -316,7 +319,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
           write(77) sensit_compressed(1:nel)
         endif
       enddo ! nmodel_components loop
-    enddo ! ndata_components loop
+    !enddo ! ndata_components loop
 
     ! Print the progress.
     if (myrank == 0 .and. mod(i, max(int(0.1d0 * ndata_loc), 1)) == 0) then
@@ -324,6 +327,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
     endif
 
   enddo ! data loop
+enddo ! ndata_components loop
 
   close(77)
 
@@ -744,12 +748,15 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
       call exit_MPI("Wrong file header in read_sensitivity_kernel!", myrank, 0)
     endif
 
+  ! Loop over data components.
+  do d = 1, par%ndata_components
+
     ! Loop over the local data chunk within a file.
     do i = 1, ndata_loc
       idata_glob = idata_glob + 1
 
-      ! Loop over data components.
-      do d = 1, par%ndata_components
+!      ! Loop over data components.
+!      do d = 1, par%ndata_components
 
         ! Loop over model components.
         do k = 1, par%nmodel_components
@@ -758,9 +765,9 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
           read(78) idata, nel, model_component, data_component
 
           ! Make sure the data is stored in the correct order.
-          if (idata /= idata_glob) then
-            call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, 0)
-          endif
+!          if (idata /= idata_glob) then
+!            call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, 0)
+!          endif
 
           ! Sanity check for the nel.
           if (nel > nel_compressed) then
@@ -829,9 +836,10 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
         ! Adding the matrix row.
         call sensit_matrix%new_row(myrank)
 
-      enddo ! data components loop
+!      enddo ! data components loop
 
     enddo ! data loop
+  enddo ! data components loop
 
     close(78)
   enddo
