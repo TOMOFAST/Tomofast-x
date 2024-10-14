@@ -1,13 +1,15 @@
 # Tomofast-x v.2.0
 
-Geophysical 3D potential field joint and constrained parallel inversion code.  
+A parallel inversion code for 3D geophysical potential field data, supporting joint and constrained inversion.  
 Authors: Vitaliy Ogarko, Jeremie Giraud, Roland Martin, Kim Frankcombe, Taige Liu
 
-Tomofast-x is a 3D parallel inversion platform to run single domain or joint inversion of gravity and magnetic data. It can invert multiple component magnetic data, and supports inversion for magnetisation vector, including remanence. It can use petrophysical constraints such as Gaussian mixture model and disjoint interval bound constraints. Tomofast-x can run in parallel on desktops and supercomputers, and it has been optimised for both – shared and distributed memory systems. Tomofast-x supports the parallel wavelet compression of the sensitivity kernel for significant memory reduction and faster performance. Tomofast-x allows to invert models with arbitrary surface topography.   
+**Tomofast-x** is a powerful 3D parallel inversion platform designed for single-domain or joint inversion of gravity and magnetic data. It also supports the inversion of gravity gradiometry data (FTG) and can handle multiple-component magnetic data. The platform is capable of inverting for the magnetization vector, including remanence, while incorporating petrophysical constraints.
+
+Optimized for both shared and distributed memory systems, Tomofast-x can run in parallel on desktops and supercomputers, ensuring scalability across different computing environments. It also features parallel wavelet compression of the sensitivity kernel, reducing memory usage and enhancing performance. Furthermore, Tomofast-x supports the inversion of models with arbitrary surface topography, making it highly versatile for various geological scenarios.
 
 ### Citing Tomofast-x
 
-If you are using the code (or some of its parts) please cite the following two papers which are detailing Tomofast-x's geophysical calculations and examples of utilisation:
+If you use the code (or any of its components), please cite the following two papers, which provide detailed explanations of Tomofast-x's geophysical calculations and examples of its application:
 
 - V. Ogarko, K. Frankcombe, T. Liu, J. Giraud, R. Martin, and M. Jessell (2024),
 "Tomofast-x 2.0: an open-source parallel code for inversion of potential field data with topography using wavelet compression", Geosci. Model Dev., 17, 2325–2345, 
@@ -21,8 +23,8 @@ Geosci. Model Dev., 14, 6681–6709, https://doi.org/10.5194/gmd-14-6681-2021
 
 To compile the code you need: GCC or Intel compiler, and the MPI library (such as OpenMPI).
 
-The makefile is contained in the root folder and should be used to compile Tomofast-x. Compiling the code is a necessary step to be able to run inversions.  
-To compile the code run the make command in the code directory as:  
+The Makefile is located in the root folder and is used to compile Tomofast-x. Compilation is a required step before running inversions. 
+To compile the code, navigate to the code directory and run the following command: 
 ```shell
 make
 ```
@@ -51,7 +53,7 @@ To run the test example:
 ```
 
 If the code runs successfully you will see in the end of the screen log the messages "*Writing the full model...*", and "*THE END*".
-To visualize the final model, open in Paraview the file ``Paraview/grav_final_model3D_full.vtk`` (or ``Paraview/mag_final_model3D_full.vtk``), located in the output folder.
+To visualize the final model, open in Paraview the file ``Paraview/grav_final_model3D_full.vtk``, located in the output folder.
 For details on other output files, see the User Manual in the ``docs`` folder. 
 
 ### Publications using the code
