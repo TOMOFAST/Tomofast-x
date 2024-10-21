@@ -48,7 +48,7 @@ module data_gravmag
     real(kind=CUSTOM_REAL), allocatable :: val_calc(:, :)
 
     ! Data weights (to add covariance).
-    real(kind=CUSTOM_REAL), allocatable :: weight(:)
+    real(kind=CUSTOM_REAL), allocatable :: weight(:, :)
 
   contains
     private
@@ -91,7 +91,7 @@ subroutine data_initialize(this, ndata, ncomponents, units_mult, z_axis_dir, myr
   allocate(this%Z(this%ndata), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%val_meas(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
   allocate(this%val_calc(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%weight(this%ndata), source=1._CUSTOM_REAL, stat=ierr)
+  allocate(this%weight(this%ncomponents, this%ndata), source=1._CUSTOM_REAL, stat=ierr)
 
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in data_initialize!", myrank, ierr)
 
@@ -139,7 +139,7 @@ pure function data_get_RMSE(this) result(cost)
   cost = 0.d0
   do i = 1, this%ndata
       do k = 1, this%ncomponents
-        cost = cost + (this%weight(i) * (this%val_calc(k, i) - this%val_meas(k, i)))**2
+        cost = cost + (this%weight(k, i) * (this%val_calc(k, i) - this%val_meas(k, i)))**2
       enddo
   enddo
 
@@ -247,7 +247,7 @@ subroutine data_read_error(this, file_name, myrank)
 
   integer :: i, ierr
   integer :: ndata_in_file
-  real(kind=CUSTOM_REAL) :: data_error
+  real(kind=CUSTOM_REAL) :: data_error(this%ncomponents)
 
   ! Reading my master CPU only.
   if (myrank == 0) then
@@ -267,7 +267,7 @@ subroutine data_read_error(this, file_name, myrank)
       ! Convert data error units.
       data_error = this%units_mult * data_error
 
-      this%weight(i) = 1.d0 / data_error
+      this%weight(:, i) = 1.d0 / data_error
 
       if (ierr /= 0) call exit_MPI("Problem while reading the data error file!", myrank, 0)
     enddo
@@ -275,7 +275,7 @@ subroutine data_read_error(this, file_name, myrank)
     close(10)
   endif
 
-  call MPI_Bcast(this%weight, this%ndata, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%weight, size(this%weight), CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
 
 end subroutine data_read_error
 

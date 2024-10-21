@@ -227,7 +227,7 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
   type(t_sparse_matrix), intent(in) :: matrix_sensit
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(this%nelements)
-  real(kind=CUSTOM_REAL), intent(in) :: data_weight(ndata)
+  real(kind=CUSTOM_REAL), intent(in) :: data_weight(ndata_components, ndata)
 
   real(kind=CUSTOM_REAL), intent(out) :: data_calc(ndata_components, ndata)
 
@@ -303,9 +303,7 @@ subroutine model_calculate_data(this, ndata, ndata_components, matrix_sensit, pr
   endif
 
   ! Apply data error transform (as the sensitivity kernel is scaled by data error).
-  do i = 1, ndata
-    data_calc(:, i) = data_calc(:, i) / data_weight(i)
-  enddo
+  data_calc = data_calc / data_weight
 
 end subroutine model_calculate_data
 

@@ -656,7 +656,7 @@ end subroutine calculate_new_partitioning
 subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_weight, data_weight, problem_type, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   real(kind=CUSTOM_REAL), intent(in) :: problem_weight
-  real(kind=CUSTOM_REAL), intent(in) :: data_weight(par%ndata)
+  real(kind=CUSTOM_REAL), intent(in) :: data_weight(par%ndata_components, par%ndata)
   integer, intent(in) :: problem_type
   integer, intent(in) :: myrank, nbproc
 
@@ -814,7 +814,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
             sensit_compressed(istart:iend) = sensit_compressed(istart:iend) * real(problem_weight, MATRIX_PRECISION)
 
             ! Apply the data error.
-            sensit_compressed(istart:iend) = sensit_compressed(istart:iend) * real(data_weight(idata), MATRIX_PRECISION)
+            sensit_compressed(istart:iend) = sensit_compressed(istart:iend) * real(data_weight(d, idata), MATRIX_PRECISION)
 
             ! Add a complete matrix row.
             call sensit_matrix%add_row(iend - istart + 1, sensit_compressed(istart:iend), sensit_columns(istart:iend), myrank)

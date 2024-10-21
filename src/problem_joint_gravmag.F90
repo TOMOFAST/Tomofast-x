@@ -625,16 +625,10 @@ pure subroutine calculate_residuals(ndata, ncomponents, data_obs, data_calc, dat
   integer, intent(in) :: ndata, ncomponents
   real(kind=CUSTOM_REAL), intent(in) :: data_obs(ncomponents, ndata)
   real(kind=CUSTOM_REAL), intent(in) :: data_calc(ncomponents, ndata)
-  real(kind=CUSTOM_REAL), intent(in) :: data_weight(ndata)
+  real(kind=CUSTOM_REAL), intent(in) :: data_weight(ncomponents, ndata)
   real(kind=CUSTOM_REAL), intent(out) :: residuals(ncomponents, ndata)
-  integer :: i
 
-  residuals = data_obs - data_calc
-
-  ! Apply data error transform.
-  do i = 1, ndata
-    residuals(:, i) = residuals(:, i) * data_weight(i)
-  enddo
+  residuals = data_weight * (data_obs - data_calc)
 
 end subroutine calculate_residuals
 
