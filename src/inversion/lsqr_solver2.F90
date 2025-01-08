@@ -36,6 +36,7 @@ module lsqr_solver
 
   private :: normalize
   private :: apply_soft_thresholding
+  private :: sym_ortho
 
 contains
 
@@ -64,10 +65,10 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
   integer :: iter, ierr
   real(kind=CUSTOM_REAL) :: alpha, beta, rho, rhobar, phi, phibar, theta
   real(kind=CUSTOM_REAL) :: b1, c, r, s, t1, t2
-  real(kind=CUSTOM_REAL) :: rho_inv
   real(kind=CUSTOM_REAL) :: misfit
   integer :: nlines_sensit
   logical :: CALC_MISFIT
+  logical :: ORTHO
 
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v2
@@ -242,25 +243,35 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
     endif
 
     ! Compute scalars for updating the solution.
-    rho = sqrt(rhobar * rhobar + beta * beta)
+    ORTHO = .true.
+    if (.not. ORTHO) then
 
-    ! Sanity check (avoid zero division).
-    if (rho == 0._CUSTOM_REAL) then
-      print *, 'WARNING: rho = 0. Exiting.'
-      exit
+      rho = sqrt(rhobar * rhobar + beta * beta)
+
+      ! Sanity check (avoid zero division).
+      if (rho == 0._CUSTOM_REAL) then
+        print *, 'WARNING: rho = 0. Exiting.'
+        exit
+      endif
+
+      c       = rhobar / rho
+      s       = beta / rho
+    else
+      call sym_ortho(rhobar, beta, c, s, rho)
+
+      ! Sanity check (avoid zero division).
+      if (rho == 0._CUSTOM_REAL) then
+        print *, 'WARNING: rho = 0. Exiting.'
+        exit
+      endif
     endif
 
-    ! Compute scalars for updating the solution.
-    rho_inv = 1.d0 / rho
-
-    c       = rhobar * rho_inv
-    s       = beta * rho_inv
     theta   = s * alpha
     rhobar  = - c * alpha
     phi     = c * phibar
     phibar  = s * phibar
-    t1      = phi * rho_inv
-    t2      = - theta * rho_inv
+    t1      = phi / rho
+    t2      = - theta / rho
 
     ! Update the current solution x (w is an auxiliary array in order to compute the solution).
     x = t1 * w + x
@@ -515,5 +526,35 @@ subroutine normalize(n, x, s, in_parallel, ierr)
   x = ss * x
 
 end subroutine normalize
+
+!============================================================================
+! Added for numerical stability
+!============================================================================
+subroutine sym_ortho(a, b, c, s, r)
+  real(kind=CUSTOM_REAL), intent(in) :: a, b
+  real(kind=CUSTOM_REAL), intent(out) :: c, s, r
+  real(kind=CUSTOM_REAL) :: tau
+
+  if (b == 0) then
+    c = sign(1._CUSTOM_REAL, a)
+    s = 0.
+    r = abs(a)
+  else if (a == 0) then
+    c = 0.
+    s = sign(1._CUSTOM_REAL, b)
+    r = abs(b)
+  else if (abs(b) > abs(a)) then
+    tau = a / b
+    s = sign(1._CUSTOM_REAL, b) / sqrt(1. + tau * tau)
+    c = s * tau
+    r = b / s
+  else
+    tau = b / a
+    c = sign(1._CUSTOM_REAL, a) / sqrt(1. + tau * tau)
+    s = c * tau
+    r = a / c
+  endif
+
+end subroutine sym_ortho
 
 end module lsqr_solver
