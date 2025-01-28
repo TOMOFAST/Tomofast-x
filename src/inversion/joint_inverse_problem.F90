@@ -81,7 +81,7 @@ module joint_inverse_problem
     type(t_admm_method) :: admm_method(2)
 
     ! ADMM term cost.
-    real(kind=CUSTOM_REAL) :: admm_cost
+    real(kind=CUSTOM_REAL) :: admm_cost(2)
 
     ! Damping gradient term cost (in each direction and for each joint problem).
     real(kind=CUSTOM_REAL) :: damping_gradient_cost(3, 2)
@@ -509,10 +509,9 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
                        this%WAVELET_DOMAIN, myrank, nbproc, model(i)%bound_weight)
 
       ! Calculate the ADMM cost in parallel.
-      call calculate_cost(par%nelements, this%admm_method(i)%z, model(i)%val(:, 1), cost, .true., nbproc)
-      this%admm_cost = sqrt(cost)
+      call calculate_cost(par%nelements, this%admm_method(i)%z, model(i)%val(:, 1), this%admm_cost(i), .true., nbproc)
 
-      if (myrank == 0) print *, "ADMM cost |x - z| / |z| =", this%admm_cost
+      if (myrank == 0) print *, "ADMM cost |x - z| / |z| =", this%admm_cost(i)
     endif
   enddo
 
@@ -676,11 +675,12 @@ end function joint_inversion_get_clustering_cost
 !==================================================================================================
 ! Returns the ADMM cost.
 !==================================================================================================
-pure function joint_inversion_get_admm_cost(this) result(res)
+pure function joint_inversion_get_admm_cost(this, problem_type) result(res)
   class(t_joint_inversion), intent(in) :: this
+  integer, intent(in) :: problem_type
   real(kind=CUSTOM_REAL) :: res
 
-  res = this%admm_cost
+  res = this%admm_cost(problem_type)
 
 end function joint_inversion_get_admm_cost
 

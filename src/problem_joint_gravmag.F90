@@ -431,8 +431,17 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     enddo
 
     ! Stores costs.
-    if (myrank == 0) &
+    if (myrank == 0) then
       open(FILE_COSTS, file=trim(path_output)//'/costs.txt', access='stream', form='formatted', status='replace', action='write')
+
+      ! Write the file header.
+      write(FILE_COSTS, *) "# 1:iteration, 2:data_cost_grav, 3:data_cost_mag, 4:model_cost_grav, 5:model_cost_mag,&
+        & 6:ADMM_cost_grav, 7:ADMM_cost_mag, 8:ADMM_weight_grav, 9:ADMM_weight_mag,&
+        & 10:damp_gradient_cost_x_grav, 11:damp_gradient_cost_y_grav, 12:damp_gradient_cost_z_grav,&
+        & 13:damp_gradient_cost_x_mag, 14:damp_gradient_cost_y_mag, 15:damp_gradient_cost_z_mag,&
+        & 16:cross_grad_cost_x, 17:cross_grad_cost_y, 18:cross_grad_cost_z,&
+        & 19:clustering_cost_grav, 20:clustering_cost_mag"
+     endif
 
     memory = get_max_mem_usage()
     if (myrank == 0) print *, "MEMORY USED (major loop start) [GB] =", memory
@@ -487,7 +496,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       if (myrank == 0) then
         damping_gradient_cost = jinv%get_damping_gradient_cost()
         write(FILE_COSTS, *) it - 1, cost_data(1), cost_data(2), cost_model(1), cost_model(2), &
-                             jinv%get_admm_cost(), &
+                             jinv%get_admm_cost(1), jinv%get_admm_cost(2), &
                              ipar%rho_ADMM, &
                              damping_gradient_cost, &
                              jinv%get_cross_grad_cost(), &

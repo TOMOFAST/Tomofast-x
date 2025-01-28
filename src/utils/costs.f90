@@ -62,7 +62,9 @@ subroutine calculate_cost(n, arr1, arr2, cost, in_parallel, nbproc)
     cost2_glob = cost2
   endif
 
-  if (cost2_glob /= 0) cost = cost1_glob / cost2_glob
+  if (cost2_glob /= 0) then
+    cost = sqrt(cost1_glob / cost2_glob)
+  endif
 
 end subroutine calculate_cost
 
