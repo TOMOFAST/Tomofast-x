@@ -43,7 +43,7 @@ module model_IO
   public :: read_damping_gradient_weights
   public :: read_damping_weights
 
-  private :: model_write_voxels_format
+  private :: model_write_ascii_format
   private :: model_write_paraview
 
   logical, parameter, private :: WRITE_UNSTRUCTURED_GRID_PARAVIEW_MODEL = .false.
@@ -53,9 +53,9 @@ contains
 !========================================================================================
 ! Sets the model values: via a constant from Parfile or via reading it from file.
 !========================================================================================
-subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
+subroutine set_model(model, model_type, model_val, model_file, file_format, myrank, nbproc)
   type(t_model), intent(inout) :: model
-  integer, intent(in) :: model_type, myrank, nbproc
+  integer, intent(in) :: model_type, file_format, myrank, nbproc
   real(kind=CUSTOM_REAL), intent(in) :: model_val
   character(len=256), intent(in) :: model_file
 
@@ -66,7 +66,7 @@ subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
 
     else if (model_type == 2) then
       ! Reading from file.
-      call model_read(model, model_file, myrank)
+      call model_read(model, model_file, file_format, myrank)
 
     else
       call exit_MPI("Unknown model type in set_model!", myrank, model_type)
@@ -83,11 +83,13 @@ end subroutine set_model
 
 !================================================================================================
 ! Read the model from a file.
+! file_format = 1: reading the model from the 7th column (stored in the model grid file).
+! file_format > 1: reading the model from the 1st column.
 !================================================================================================
-subroutine model_read(model, file_name, myrank)
+subroutine model_read(model, file_name, file_format, myrank)
   class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: file_name
-  integer, intent(in) :: myrank
+  integer, intent(in) :: file_format, myrank
 
   integer :: i, nelements_read
   integer :: ierr
@@ -117,7 +119,13 @@ subroutine model_read(model, file_name, myrank)
     ! Reading the model only (without grid).
     do i = 1, model%nelements_total
       ! Note we read an array of val.
-      read(10, *, iostat=ierr) dummy, val, i_, j_, k_
+      if (file_format == 1) then
+        ! Old format (model is stored with the grid).
+        read(10, *, iostat=ierr) dummy, val, i_, j_, k_
+      else
+        ! New format (model is stored without grid).
+        read(10, *, iostat=ierr) val
+      endif
 
       ! Set the model value.
       model%val_full(i, :) = val
@@ -439,10 +447,10 @@ end subroutine read_damping_weights
 !======================================================================================================
 ! Write the model snapshots for visualization.
 !======================================================================================================
-subroutine model_write(model, name_prefix, gather_full_model, write_voxet, myrank, nbproc)
+subroutine model_write(model, name_prefix, gather_full_model, write_ascii, myrank, nbproc)
   class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: name_prefix
-  logical, intent(in) :: gather_full_model, write_voxet
+  logical, intent(in) :: gather_full_model, write_ascii
   integer, intent(in) :: myrank, nbproc
 
   if (gather_full_model) then
@@ -452,17 +460,17 @@ subroutine model_write(model, name_prefix, gather_full_model, write_voxet, myran
   ! Write the model in vtk format.
   call model_write_paraview(model, name_prefix, myrank)
 
-  if (write_voxet) then
-    ! Write the full model in voxels format.
-    call model_write_voxels_format(model, name_prefix//"voxet_full.txt", myrank)
+  if (write_ascii) then
+    ! Write the full model in ASCII format.
+    call model_write_ascii_format(model, name_prefix//"model_full.txt", myrank)
   endif
 
 end subroutine model_write
 
 !================================================================================================
-! Write the full model (in voxels format) to file.
+! Write the full model (in ASCII format) to file.
 !================================================================================================
-subroutine model_write_voxels_format(model, file_name, myrank)
+subroutine model_write_ascii_format(model, file_name, myrank)
   class(t_model), intent(in) :: model
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank
@@ -474,9 +482,9 @@ subroutine model_write_voxels_format(model, file_name, myrank)
 
   if (myrank == 0) then
     ! Create a directory.
-    call execute_command_line('mkdir -p "'//trim(path_output)//'/Voxet"')
+    call execute_command_line('mkdir -p "'//trim(path_output)//'/model"')
 
-    filename_full = trim(path_output)//"/Voxet/"//file_name
+    filename_full = trim(path_output)//"/model/"//file_name
 
     print *, 'Writing the full model to file ', trim(filename_full)
 
@@ -497,7 +505,7 @@ subroutine model_write_voxels_format(model, file_name, myrank)
     deallocate(val_full)
   endif
 
-end subroutine model_write_voxels_format
+end subroutine model_write_ascii_format
 
 !======================================================================================================
 ! Write the model snapshots in Paraview format for visualization.

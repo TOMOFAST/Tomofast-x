@@ -280,8 +280,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! READING THE READ MODEL (SYNTHETIC) -----------------------------------------------------------------
 
   ! Reading the read model - that is stored in the model grid file.
-  if (SOLVE_PROBLEM(1)) call set_model(model(1), 2, 0.d0, gpar%model_files(1), myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call set_model(model(2), 2, 0.d0, mpar%model_files(1), myrank, nbproc)
+  if (SOLVE_PROBLEM(1)) call set_model(model(1), 2, 0.d0, gpar%model_files(1), 1, myrank, nbproc)
+  if (SOLVE_PROBLEM(2)) call set_model(model(2), 2, 0.d0, mpar%model_files(1), 1, myrank, nbproc)
 
   ! Write the model read to a file for Paraview visualization.
   if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_read_', .false., .false., myrank, nbproc)
@@ -374,9 +374,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     ! SETTING PRIOR MODEL FOR INVERSION -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) &
-      call set_model(model(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank, nbproc)
+      call set_model(model(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, 2, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) &
-      call set_model(model(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, myrank, nbproc)
+      call set_model(model(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, 2, myrank, nbproc)
 
     ! Set the prior model.
     if (SOLVE_PROBLEM(1)) model(1)%val_prior = model(1)%val
@@ -399,8 +399,10 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_prior_', 2, myrank)
 
     ! SETTING STARTING MODEL FOR INVERSION -----------------------------------------------------
-    if (SOLVE_PROBLEM(1)) call set_model(model(1), gpar%start_model_type, gpar%start_model_val, gpar%model_files(3), myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call set_model(model(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) &
+      call set_model(model(1), gpar%start_model_type, gpar%start_model_val, gpar%model_files(3), 2, myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) &
+      call set_model(model(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), 2, myrank, nbproc)
 
     ! Write the starting model to a file for visualization.
     if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_starting_', .false., .false., myrank, nbproc)

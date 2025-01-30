@@ -367,9 +367,9 @@ subroutine clustering_write_data(this, file_name, myrank)
 
   if (myrank == 0) then
     ! Create a directory.
-    call execute_command_line('mkdir -p "'//trim(path_output)//'/Voxet"')
+    call execute_command_line('mkdir -p "'//trim(path_output)//'/model"')
 
-    filename_full = trim(path_output)//"/Voxet/"//file_name
+    filename_full = trim(path_output)//"/model/"//file_name
 
     print *, 'Writing the clustering data to file ', trim(filename_full)
 
