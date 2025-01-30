@@ -15,7 +15,7 @@ DATA parameters
 ===================================================================================
 forward.data.magn.nData             = 1600
 forward.data.magn.dataGridFile      = data/gravmag/ellipsoid/mag/simple/data_grid.txt
-forward.data.magn.dataValuesFile    = output/Noddy_mag_ellipsoid_simple/mag_calc_read_data.txt
+forward.data.magn.dataValuesFile    = output/Noddy_mag_ellipsoid_simple/data/mag_calc_read_data.txt
 
 ===================================================================================
 DEPTH WEIGHTING

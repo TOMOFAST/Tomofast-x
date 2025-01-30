@@ -18,7 +18,7 @@ DATA parameters
 ===================================================================================
 forward.data.magn.nData               = 48
 forward.data.magn.dataGridFile        = ./data/gravmag/drillholes/dummy_dh_data.obs
-forward.data.magn.dataValuesFile      = ./output/dh_data/mag_calc_read_data.txt
+forward.data.magn.dataValuesFile      = ./output/dh_data/data/mag_calc_read_data.txt
 forward.data.magn.nDataComponents     = 3
 
 ===================================================================================

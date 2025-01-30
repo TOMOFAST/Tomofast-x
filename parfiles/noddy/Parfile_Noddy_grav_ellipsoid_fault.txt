@@ -15,7 +15,7 @@ DATA parameters
 ===================================================================================
 forward.data.grav.nData             = 1600
 forward.data.grav.dataGridFile      = data/gravmag/ellipsoid/grav/fault/data_grid.txt
-forward.data.grav.dataValuesFile    = output/Noddy_grav_ellipsoid_fault/grav_calc_read_data.txt
+forward.data.grav.dataValuesFile    = output/Noddy_grav_ellipsoid_fault/data/grav_calc_read_data.txt
 
 ===================================================================================
 DEPTH WEIGHTING

@@ -302,7 +302,10 @@ subroutine data_write(this, name_prefix, which, myrank)
 
   ! Write files by master CPU only.
   if (myrank == 0) then
-    file_name  = trim(path_output)//'/'//name_prefix//'data.txt'
+    ! Create a data directory.
+    call execute_command_line('mkdir -p "'//trim(path_output)//'/data"')
+
+    file_name  = trim(path_output)//'/data/'//name_prefix//'data.txt'
 
     print *, 'Writing data to file '//trim(file_name)
 
