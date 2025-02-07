@@ -579,6 +579,8 @@ subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
 
   close(78)
 
+  if (myrank == 0) print *, nnz_at_cpu
+
   ! Return the parameters for the current rank.
   nnz = nnz_at_cpu(myrank + 1)
 
