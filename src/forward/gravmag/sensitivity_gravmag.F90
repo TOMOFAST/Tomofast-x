@@ -760,7 +760,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
         do k = 1, par%nmodel_components
 
           ! Reading the data descriptor.
-          read(78) idata, nel, model_component, data_component
+          read(78, pos=pos0) idata, nel, model_component, data_component
           pos0 = pos0 + 4 * 4
 
           ! Make sure the data is stored in the correct order.
@@ -836,11 +836,8 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
           endif
 
-          ! Read one integer to move the file pointer to the correct position (as the fseek function is not in the standard).
-          if (nel > 0) then
-            read(78, pos=pos0 + (nel - 1) * MATRIX_PRECISION) tmp
-            pos0 = pos0 + nel * MATRIX_PRECISION
-          endif
+          ! Shift the file pointer to the next matrix row.
+          pos0 = pos0 + nel * MATRIX_PRECISION
 
         enddo ! model components loop
 
