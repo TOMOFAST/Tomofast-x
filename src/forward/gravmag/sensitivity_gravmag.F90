@@ -400,6 +400,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   integer(kind=8) :: nnz
   integer :: column
   integer :: nx_read, ny_read, nz_read, weight_type_read
+  integer :: model_component, data_component
 
   if (myrank == 0) print *, 'Reading the sensitivity kernel.'
 
@@ -423,7 +424,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
                                //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
   ! Reading the file header.
-  read(78) ndata_loc_read, ndata_read, nelements_total_read, nel_compressed_read, myrank_read, nbproc_read
+  read(78) ndata_loc_read, ndata_read, nelements_total_read, myrank_read, nbproc_read
 
   ! Consistency check.
   if (ndata_loc_read /= par%ndata_loc .or. ndata_read /= par%ndata .or. nelements_total_read /= par%nelements_total &
@@ -443,15 +444,15 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   do i = 1, par%ndata_loc
 
     ! Reading the data descriptor.
-    read(78) idata, nel
+    read(78) idata, nel, model_component, data_component
 
-    if (nel > nel_compressed_read) then
-      call exit_MPI("Wrong nel in read_sensitivity_kernel!", myrank, idata)
-    endif
-
-    if (i /= idata) then
-      call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, idata)
-    endif
+!    if (nel > nel_compressed_read) then
+!      call exit_MPI("Wrong nel in read_sensitivity_kernel!", myrank, idata)
+!    endif
+!
+!    if (i /= idata) then
+!      call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, idata)
+!    endif
 
     if (nel > 0) then
       ! Reading the data.
@@ -507,18 +508,18 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   if (ierr /= 0) call exit_MPI("Error in opening the depth weight file! path=" &
                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
-  read(78) nx_read, ny_read, nz_read, ndata_read, weight_type_read
+  read(78) nelements_total_read
   read(78) column_weight
 
   close(78)
 
   if (myrank == 0) print *, "Depth weight type (read) =", weight_type_read
 
-  ! Consistency check.
-  if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
-      ndata_read /= par%ndata) then
-    call exit_MPI("Sensitivity weight file dimensions do not match the Parfile!", myrank, 0)
-  endif
+!  ! Consistency check.
+!  if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
+!      ndata_read /= par%ndata) then
+!    call exit_MPI("Sensitivity weight file dimensions do not match the Parfile!", myrank, 0)
+!  endif
 
   !---------------------------------------------------------------------------------------------
   deallocate(sensit_columns)
@@ -558,21 +559,21 @@ subroutine read_sensitivity_metadata(par, nnz, problem_type, myrank, nbproc)
   if (ierr /= 0) call exit_MPI("Error in opening the sensitivity metadata file! path=" &
                                 //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
-  read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read, precision_read, comp_rate, comp_error
-
-  if (myrank == 0) print *, "COMPRESSION RATE (read) =", comp_rate
-  if (myrank == 0) print *, "COMPRESSION ERROR (read) =", comp_error
-
-  ! Consistency check.
-  if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
-      ndata_read /= par%ndata .or. nbproc_read /= nbproc) then
-    call exit_MPI("Sensitivity metadata file info does not match the Parfile!", myrank, 0)
-  endif
-
-  ! Matrix precision consistency check.
-  if (precision_read /= MATRIX_PRECISION) then
-    call exit_MPI("Matrix precision is not consistent!", myrank, 0)
-  endif
+!  read(78, *) nx_read, ny_read, nz_read, ndata_read, nbproc_read, precision_read, comp_rate, comp_error
+!
+!  if (myrank == 0) print *, "COMPRESSION RATE (read) =", comp_rate
+!  if (myrank == 0) print *, "COMPRESSION ERROR (read) =", comp_error
+!
+!  ! Consistency check.
+!  if (nx_read /= par%nx .or. ny_read /= par%ny .or. nz_read /= par%nz .or. &
+!      ndata_read /= par%ndata .or. nbproc_read /= nbproc) then
+!    call exit_MPI("Sensitivity metadata file info does not match the Parfile!", myrank, 0)
+!  endif
+!
+!  ! Matrix precision consistency check.
+!  if (precision_read /= MATRIX_PRECISION) then
+!    call exit_MPI("Matrix precision is not consistent!", myrank, 0)
+!  endif
 
   read(78, *) nnz_at_cpu
 
