@@ -683,6 +683,8 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   integer :: param_shift(2)
   integer :: istart, iend
   integer :: index_shift
+  integer(kind=8) :: pos0
+  integer :: ncol, tmp
 
   param_shift(1) = 0
   param_shift(2) = par%nelements * par%nmodel_components
@@ -727,7 +729,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
       filename_full = trim(path_output)//"/SENSIT/"//filename
     endif
 
-    if (myrank == 0 .and. rank == 0) print *, 'Reading the sensitivity file ', trim(filename_full)
+    if (myrank == 0 .and. rank == 0) print *, 'Reading the sensitivity file (new) ', trim(filename_full)
 
     open(78, file=trim(filename_full), status='old', access='stream', form='unformatted', action='read', &
          iostat=ierr, iomsg=msg)
@@ -737,6 +739,9 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
     ! Reading the file header.
     read(78) ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
+
+    ! The current position of file pointer.
+    pos0 = 1 + 5 * 4
 
     ! Consistency check.
     if (ndata_read /= par%ndata .or. nelements_total_read /= nelements_total &
@@ -756,6 +761,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
           ! Reading the data descriptor.
           read(78) idata, nel, model_component, data_component
+          pos0 = pos0 + 4 * 4
 
           ! Make sure the data is stored in the correct order.
           if (idata /= idata_glob) then
@@ -780,7 +786,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
           if (nel > 0) then
             ! Reading the data.
             read(78) sensit_columns(1:nel)
-            read(78) sensit_compressed(1:nel)
+            pos0 = pos0 + nel * 4
           endif
 
           ! Determine istart index (for the matrix elements corresponding to the current cpu).
@@ -804,6 +810,12 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
               endif
             enddo
 
+            ! The number of non-zero matrix elements on this rank.
+            ncol = iend - istart + 1
+
+            ! Read only the sensitivity matrix elements corresponding to the current rank.
+            read(78, pos=pos0 + (istart - 1) * MATRIX_PRECISION) sensit_compressed(1:ncol)
+
             ! Column index shift.
             index_shift = param_shift(problem_type) + (k - 1) * par%nelements - nsmaller
 
@@ -811,17 +823,23 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
             sensit_columns(istart:iend) = sensit_columns(istart:iend) + index_shift
 
             ! Apply the problem weight.
-            sensit_compressed(istart:iend) = sensit_compressed(istart:iend) * real(problem_weight, MATRIX_PRECISION)
+            sensit_compressed(1:ncol) = sensit_compressed(1:ncol) * real(problem_weight, MATRIX_PRECISION)
 
             ! Apply the data error.
-            sensit_compressed(istart:iend) = sensit_compressed(istart:iend) * real(data_weight(d, idata), MATRIX_PRECISION)
+            sensit_compressed(1:ncol) = sensit_compressed(1:ncol) * real(data_weight(d, idata), MATRIX_PRECISION)
 
             ! Add a complete matrix row.
-            call sensit_matrix%add_row(iend - istart + 1, sensit_compressed(istart:iend), sensit_columns(istart:iend), myrank)
+            call sensit_matrix%add_row(ncol, sensit_compressed(1:ncol), sensit_columns(istart:iend), myrank)
 
             ! Number of nonzero elements.
-            nnz = nnz + iend - istart + 1
+            nnz = nnz + ncol
 
+          endif
+
+          ! Read one integer to move the file pointer to the correct position (as the fseek function is not in the standard).
+          if (nel > 0) then
+            read(78, pos=pos0 + (nel - 1) * MATRIX_PRECISION) tmp
+            pos0 = pos0 + nel * MATRIX_PRECISION
           endif
 
         enddo ! model components loop
