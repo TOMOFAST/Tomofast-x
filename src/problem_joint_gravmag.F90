@@ -198,6 +198,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     if (SOLVE_PROBLEM(2)) call calculate_and_write_sensit(mpar, model(2)%grid_full, data(2), iarr(2)%column_weight, &
                                                           myrank, nbproc)
+
+    if (SOLVE_PROBLEM(1)) call partition_sensitivity_columns(gpar, 1, myrank, nbproc)
+    if (SOLVE_PROBLEM(2)) call partition_sensitivity_columns(mpar, 2, myrank, nbproc)
   endif
 
   ! Calculate new partitioning for the load balancing.

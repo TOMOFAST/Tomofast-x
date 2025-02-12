@@ -45,6 +45,7 @@ module sensitivity_gravmag
   public :: calculate_new_partitioning
   public :: write_depth_weight
   public :: read_depth_weight
+  public :: partition_sensitivity_columns
 
   private :: apply_column_weight
   private :: get_load_balancing_nelements
@@ -684,7 +685,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   integer :: istart, iend
   integer :: index_shift
   integer(kind=8) :: pos0
-  integer :: ncol, tmp
+  integer :: ncol
 
   param_shift(1) = 0
   param_shift(2) = par%nelements * par%nmodel_components
@@ -871,6 +872,128 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   if (myrank == 0) print *, 'Finished reading the sensitivity kernel.'
 
 end subroutine read_sensitivity_kernel
+
+!============================================================================================================================
+! Reads the sensitivity column indexes and performs partitioning by columns needed
+! for efficient reading of the sensitivity parallelised by model parameters.
+!============================================================================================================================
+subroutine partition_sensitivity_columns(par, problem_type, myrank, nbproc)
+  class(t_parameters_base), intent(in) :: par
+  integer, intent(in) :: problem_type
+  integer, intent(in) :: myrank, nbproc
+
+  ! Arrays for storing the compressed sensitivity line.
+  integer, allocatable :: sensit_columns(:)
+
+  integer :: i, k, d, ierr
+  integer :: nelements_total, nel_compressed, ndata_smaller
+  character(len=256) :: filename, filename_full
+  character(len=256) :: msg
+
+  integer :: ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
+  integer :: idata, nel, idata_glob, model_component, data_component
+  integer(kind=8) :: pos0
+
+  !---------------------------------------------------------------------------------------------
+  ! Allocate memory.
+  !---------------------------------------------------------------------------------------------
+  nel_compressed = get_nel_compressed(par)
+
+  allocate(sensit_columns(nel_compressed), source=0, stat=ierr)
+
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in read_sensitivity_kernel!", myrank, ierr)
+
+  !---------------------------------------------------------------------------------------------
+  ! Reading the sensitivity kernel files.
+  !---------------------------------------------------------------------------------------------
+  nelements_total = par%nx * par%ny * par%nz
+
+  ! Form the file name (containing the MPI rank).
+  filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(myrank))
+
+  if (par%sensit_read /= 0) then
+    filename_full = trim(par%sensit_path)//filename
+  else
+    filename_full = trim(path_output)//"/SENSIT/"//filename
+  endif
+
+  if (myrank == 0) print *, 'Reading the sensitivity file ', trim(filename_full)
+
+  open(78, file=trim(filename_full), status='old', access='stream', form='unformatted', action='read', &
+       iostat=ierr, iomsg=msg)
+
+  if (ierr /= 0) call exit_MPI("Error in opening the sensitivity file! path=" &
+                               //trim(filename_full)//", iomsg="//msg, myrank, ierr)
+
+  ! Reading the file header.
+  read(78) ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
+
+  ! The current position of file pointer.
+  pos0 = 1 + 5 * 4
+
+  ! Consistency check.
+  if (ndata_read /= par%ndata .or. nelements_total_read /= nelements_total &
+      .or. myrank_read /= myrank .or. nbproc_read /= nbproc) then
+    call exit_MPI("Wrong file header in read_sensitivity_kernel!", myrank, 0)
+  endif
+
+  ndata_smaller = get_nsmaller(ndata_loc, myrank, nbproc)
+
+  ! Loop over the local data chunk within a file.
+  do i = 1, ndata_loc
+    idata_glob = ndata_smaller + i
+
+    ! Loop over data components.
+    do d = 1, par%ndata_components
+
+      ! Loop over model components.
+      do k = 1, par%nmodel_components
+
+        ! Reading the data descriptor.
+        read(78, pos=pos0) idata, nel, model_component, data_component
+        pos0 = pos0 + 4 * 4
+
+        ! Make sure the data is stored in the correct order.
+        if (idata /= idata_glob) then
+          call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, 0)
+        endif
+
+        ! Sanity check for the nel.
+        if (nel > nel_compressed) then
+          call exit_MPI("Wrong number of elements in read_sensitivity_kernel!", myrank, 0)
+        endif
+
+        ! Sanity check for the model component index.
+        if (model_component /= k) then
+          call exit_MPI("Wrong model component index in read_sensitivity_kernel!", myrank, 0)
+        endif
+
+        ! Sanity check for the data component index.
+        if (data_component /= d) then
+          call exit_MPI("Wrong data component index in read_sensitivity_kernel!", myrank, 0)
+        endif
+
+        if (nel > 0) then
+          ! Reading the data.
+          read(78) sensit_columns(1:nel)
+          pos0 = pos0 + nel * 4
+        endif
+
+        ! Shift the file pointer to the next matrix row.
+        pos0 = pos0 + nel * MATRIX_PRECISION
+      enddo ! model components loop
+
+    enddo ! data components loop
+
+  enddo ! data loop
+
+  close(78)
+
+  deallocate(sensit_columns)
+
+  if (myrank == 0) print *, 'Finished partitioning of the sensitivity kernel.'
+
+end subroutine partition_sensitivity_columns
 
 !=============================================================================================
 ! Reads the depth weight.
