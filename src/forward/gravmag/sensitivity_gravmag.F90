@@ -577,16 +577,15 @@ end subroutine read_sensit_nnz
 !==============================================================================================
 ! Calculate new partitioning for the load balancing using the sensit_nnz from file.
 !==============================================================================================
-subroutine calculate_new_partitioning(par, nnz, nelements_new, problem_type, myrank, nbproc)
+subroutine calculate_new_partitioning(par, nnz, nelements_at_cpu, problem_type, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   integer, intent(in) :: problem_type
   integer, intent(in) :: myrank, nbproc
 
   integer(kind=8), intent(out) :: nnz
-  integer, intent(out) :: nelements_new
+  integer, intent(out) :: nelements_at_cpu(nbproc)
 
   integer(kind=8) :: nnz_at_cpu(nbproc)
-  integer :: nelements_at_cpu_new(nbproc)
 
   integer :: ierr
   integer :: nelements_total
@@ -630,21 +629,20 @@ subroutine calculate_new_partitioning(par, nnz, nelements_new, problem_type, myr
     endif
 
     ! Calculate the load balancing.
-    call get_load_balancing_nelements(nelements_total, sensit_nnz, nnz_at_cpu, nelements_at_cpu_new, myrank, nbproc)
+    call get_load_balancing_nelements(nelements_total, sensit_nnz, nnz_at_cpu, nelements_at_cpu, myrank, nbproc)
 
     deallocate(sensit_nnz)
 
   endif ! myrank == 0
 
   call MPI_Bcast(nnz_at_cpu, nbproc, MPI_INTEGER8, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(nelements_at_cpu_new, nbproc, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(nelements_at_cpu, nbproc, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
-  ! Return the parameters for the current rank.
+  ! Return the parameter for the current rank.
   nnz = nnz_at_cpu(myrank + 1)
-  nelements_new = nelements_at_cpu_new(myrank + 1)
 
   if (myrank == 0) then
-    print *, "nelements_at_cpu_new =", nelements_at_cpu_new
+    print *, "nelements_at_cpu =", nelements_at_cpu
     print *, "nnz_at_cpu =", nnz_at_cpu
   endif
 
@@ -877,10 +875,11 @@ end subroutine read_sensitivity_kernel
 ! Reads the sensitivity column indexes and performs partitioning by columns needed
 ! for efficient reading of the sensitivity parallelised by model parameters.
 !============================================================================================================================
-subroutine partition_sensitivity_columns(par, problem_type, myrank, nbproc)
+subroutine partition_sensitivity_columns(par, problem_type, myrank, nbproc, nelements_at_cpu)
   class(t_parameters_base), intent(in) :: par
   integer, intent(in) :: problem_type
   integer, intent(in) :: myrank, nbproc
+  integer, intent(in) :: nelements_at_cpu(nbproc)
 
   ! Arrays for storing the compressed sensitivity line.
   integer, allocatable :: sensit_columns(:)
@@ -893,6 +892,8 @@ subroutine partition_sensitivity_columns(par, problem_type, myrank, nbproc)
   integer :: ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
   integer :: idata, nel, idata_glob, model_component, data_component
   integer(kind=8) :: pos0
+  integer :: cpu, p
+  integer :: nel_at_cpu(nbproc)
 
   !---------------------------------------------------------------------------------------------
   ! Allocate memory.
@@ -901,7 +902,7 @@ subroutine partition_sensitivity_columns(par, problem_type, myrank, nbproc)
 
   allocate(sensit_columns(nel_compressed), source=0, stat=ierr)
 
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in read_sensitivity_kernel!", myrank, ierr)
+  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in partition_sensitivity_columns!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
   ! Reading the sensitivity kernel files.
@@ -934,7 +935,7 @@ subroutine partition_sensitivity_columns(par, problem_type, myrank, nbproc)
   ! Consistency check.
   if (ndata_read /= par%ndata .or. nelements_total_read /= nelements_total &
       .or. myrank_read /= myrank .or. nbproc_read /= nbproc) then
-    call exit_MPI("Wrong file header in read_sensitivity_kernel!", myrank, 0)
+    call exit_MPI("Wrong file header in partition_sensitivity_columns!", myrank, 0)
   endif
 
   ndata_smaller = get_nsmaller(ndata_loc, myrank, nbproc)
@@ -955,22 +956,22 @@ subroutine partition_sensitivity_columns(par, problem_type, myrank, nbproc)
 
         ! Make sure the data is stored in the correct order.
         if (idata /= idata_glob) then
-          call exit_MPI("Wrong data index in read_sensitivity_kernel!", myrank, 0)
+          call exit_MPI("Wrong data index in partition_sensitivity_columns!", myrank, 0)
         endif
 
         ! Sanity check for the nel.
         if (nel > nel_compressed) then
-          call exit_MPI("Wrong number of elements in read_sensitivity_kernel!", myrank, 0)
+          call exit_MPI("Wrong number of elements in partition_sensitivity_columns!", myrank, 0)
         endif
 
         ! Sanity check for the model component index.
         if (model_component /= k) then
-          call exit_MPI("Wrong model component index in read_sensitivity_kernel!", myrank, 0)
+          call exit_MPI("Wrong model component index in partition_sensitivity_columns!", myrank, 0)
         endif
 
         ! Sanity check for the data component index.
         if (data_component /= d) then
-          call exit_MPI("Wrong data component index in read_sensitivity_kernel!", myrank, 0)
+          call exit_MPI("Wrong data component index in partition_sensitivity_columns!", myrank, 0)
         endif
 
         if (nel > 0) then
@@ -981,10 +982,23 @@ subroutine partition_sensitivity_columns(par, problem_type, myrank, nbproc)
 
         ! Shift the file pointer to the next matrix row.
         pos0 = pos0 + nel * MATRIX_PRECISION
+
+        ! Calculate the partitioning.
+        nel_at_cpu = 0
+        cpu = 1
+        do p = 1, nel
+          do while (sensit_columns(p) > sum(nelements_at_cpu(1:cpu)))
+            cpu = cpu + 1
+          enddo
+          nel_at_cpu(cpu) = nel_at_cpu(cpu) + 1
+        enddo
+
+        if (sum(nel_at_cpu) /= nel) then
+          call exit_MPI("Wrong nel_at_cpu in read_sensitivity_kernel!", myrank, 0)
+        endif
+
       enddo ! model components loop
-
     enddo ! data components loop
-
   enddo ! data loop
 
   close(78)

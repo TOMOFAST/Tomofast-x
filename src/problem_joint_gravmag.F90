@@ -91,7 +91,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   logical :: SOLVE_PROBLEM(2)
   logical :: allocate_full_model_on_all_cpus(2)
   integer(kind=8) :: nnz
-  integer :: nelements_new
+  integer :: nelements_at_cpu(nbproc)
 
   ! Unit number for cost file handle.
   integer, parameter :: FILE_COSTS = 1234567
@@ -199,24 +199,24 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) call calculate_and_write_sensit(mpar, model(2)%grid_full, data(2), iarr(2)%column_weight, &
                                                           myrank, nbproc)
 
-    if (SOLVE_PROBLEM(1)) call partition_sensitivity_columns(gpar, 1, myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call partition_sensitivity_columns(mpar, 2, myrank, nbproc)
-  endif
+    ! Calculate new partitioning for the load balancing.
+    if (SOLVE_PROBLEM(1) .and. (SOLVE_PROBLEM(2))) then
+    ! Joint inversion.
+      call calculate_new_partitioning(gpar, nnz, nelements_at_cpu, 3, myrank, nbproc)
+    else if (SOLVE_PROBLEM(1)) then
+      call calculate_new_partitioning(gpar, nnz, nelements_at_cpu, 1, myrank, nbproc)
+    else if (SOLVE_PROBLEM(2)) then
+      call calculate_new_partitioning(mpar, nnz, nelements_at_cpu, 2, myrank, nbproc)
+    endif
 
-  ! Calculate new partitioning for the load balancing.
-  if (SOLVE_PROBLEM(1) .and. (SOLVE_PROBLEM(2))) then
-  ! Joint inversion.
-    call calculate_new_partitioning(gpar, nnz, nelements_new, 3, myrank, nbproc)
-  else if (SOLVE_PROBLEM(1)) then
-    call calculate_new_partitioning(gpar, nnz, nelements_new, 1, myrank, nbproc)
-  else if (SOLVE_PROBLEM(2)) then
-    call calculate_new_partitioning(mpar, nnz, nelements_new, 2, myrank, nbproc)
+    if (SOLVE_PROBLEM(1)) call partition_sensitivity_columns(gpar, 1, myrank, nbproc, nelements_at_cpu)
+    if (SOLVE_PROBLEM(2)) call partition_sensitivity_columns(mpar, 2, myrank, nbproc, nelements_at_cpu)
   endif
 
   ! Update the nelements for the nnz load balancing.
-  if (SOLVE_PROBLEM(1)) gpar%nelements = nelements_new
-  if (SOLVE_PROBLEM(2)) mpar%nelements = nelements_new
-  ipar%nelements = nelements_new
+  if (SOLVE_PROBLEM(1)) gpar%nelements = nelements_at_cpu(myrank + 1)
+  if (SOLVE_PROBLEM(2)) mpar%nelements = nelements_at_cpu(myrank + 1)
+  ipar%nelements = nelements_at_cpu(myrank + 1)
 
   ! Reallocate the inversion arrays using the updated nelements value (for the nnz load balancing).
   if (SOLVE_PROBLEM(1)) call iarr(1)%reallocate_aux(ipar%nelements, ipar%ndata(1), ipar%ndata_components(1), myrank)
