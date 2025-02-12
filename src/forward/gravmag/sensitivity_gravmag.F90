@@ -673,10 +673,10 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   integer :: i, j, k, d, nsmaller, ierr
   integer :: rank, nelements_total, nel_compressed
   character(len=256) :: filename, filename_full
+  character(len=256) :: filename_partit, filename_full_partit
   character(len=256) :: msg
 
   integer :: ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
-  integer :: nbproc_sensit
   integer :: idata, nel, idata_glob, model_component, data_component
   integer(kind=8) :: nnz
   integer :: param_shift(2)
@@ -684,6 +684,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   integer :: index_shift
   integer(kind=8) :: pos0
   integer :: ncol
+  integer :: nel_at_cpu(nbproc)
 
   param_shift(1) = 0
   param_shift(2) = par%nelements * par%nmodel_components
@@ -699,16 +700,8 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in read_sensitivity_kernel!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
-  ! Read sensitivity metadata and retrieve nbproc_sensit.
-  !---------------------------------------------------------------------------------------------
-  call read_sensitivity_metadata(par, nbproc_sensit, problem_type, myrank)
-
-  if (myrank == 0) print *, "nbproc_sensit =", nbproc_sensit
-
-  !---------------------------------------------------------------------------------------------
   ! Reading the sensitivity kernel files.
   !---------------------------------------------------------------------------------------------
-
   nelements_total = par%nx * par%ny * par%nz
 
   ! The number of elements on CPUs with rank smaller than myrank.
@@ -718,14 +711,17 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   nnz = 0
 
   ! Loop over the MPI ranks (as the sensitivity kernel is stored parallelized by data in a separate file for each rank).
-  do rank = 0, nbproc_sensit - 1
+  do rank = 0, nbproc - 1
     ! Form the file name (containing the MPI rank).
-    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc_sensit))//"_"//trim(str(rank))
+    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(rank))
+    filename_partit = "partit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(rank))
 
     if (par%sensit_read /= 0) then
       filename_full = trim(par%sensit_path)//filename
+      filename_full_partit = trim(par%sensit_path)//filename_partit
     else
       filename_full = trim(path_output)//"/SENSIT/"//filename
+      filename_full_partit = trim(path_output)//"/SENSIT/"//filename_partit
     endif
 
     if (myrank == 0 .and. rank == 0) print *, 'Reading the sensitivity file (new) ', trim(filename_full)
@@ -736,6 +732,12 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
     if (ierr /= 0) call exit_MPI("Error in opening the sensitivity file! path=" &
                                  //trim(filename_full)//", iomsg="//msg, myrank, ierr)
 
+    open(70, file=trim(filename_full_partit), status='old', access='stream', form='unformatted', action='read', &
+         iostat=ierr, iomsg=msg)
+
+    if (ierr /= 0) call exit_MPI("Error in opening the partitioning file! path=" &
+                                 //trim(filename_full_partit)//", iomsg="//msg, myrank, ierr)
+
     ! Reading the file header.
     read(78) ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
 
@@ -744,7 +746,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
     ! Consistency check.
     if (ndata_read /= par%ndata .or. nelements_total_read /= nelements_total &
-        .or. myrank_read /= rank .or. nbproc_read /= nbproc_sensit) then
+        .or. myrank_read /= rank .or. nbproc_read /= nbproc) then
       call exit_MPI("Wrong file header in read_sensitivity_kernel!", myrank, 0)
     endif
 
@@ -757,6 +759,8 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
         ! Loop over model components.
         do k = 1, par%nmodel_components
+          ! Read the column partitioning.
+          read(70) nel_at_cpu
 
           ! Reading the data descriptor.
           read(78, pos=pos0) idata, nel, model_component, data_component
@@ -782,44 +786,21 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
             call exit_MPI("Wrong data component index in read_sensitivity_kernel!", myrank, 0)
           endif
 
-          if (nel > 0) then
-            ! Reading the data.
-            read(78) sensit_columns(1:nel)
-            pos0 = pos0 + nel * 4
-          endif
+          ! The number of non-zero matrix elements on this rank.
+          ncol = nel_at_cpu(myrank + 1)
 
-          ! Determine istart index (for the matrix elements corresponding to the current cpu).
-          istart = 0
-          do j = 1, nel
-            if (sensit_columns(j) > nsmaller) then
-              istart = j
-              exit
-            endif
-          enddo
+          if (ncol > 0) then
+            istart = sum(nel_at_cpu(1:myrank)) + 1
 
-          if (istart > 0) then
-          ! Found matrix elements.
-
-            ! Determine iend index (for the matrix elements corresponding to the current cpu).
-            iend = nel
-            do j = istart, nel
-              if (sensit_columns(j) > nsmaller + par%nelements) then
-                iend = j - 1
-                exit
-              endif
-            enddo
-
-            ! The number of non-zero matrix elements on this rank.
-            ncol = iend - istart + 1
-
-            ! Read only the sensitivity matrix elements corresponding to the current rank.
-            read(78, pos=pos0 + (istart - 1) * MATRIX_PRECISION) sensit_compressed(1:ncol)
+            ! Reading the data (corresponding to the current rank).
+            read(78, pos = pos0 + (istart - 1) * 4) sensit_columns(1:ncol)
+            read(78, pos = pos0 + nel * 4 + (istart - 1) * MATRIX_PRECISION) sensit_compressed(1:ncol)
 
             ! Column index shift.
             index_shift = param_shift(problem_type) + (k - 1) * par%nelements - nsmaller
 
             ! The column index in a big (joint) parallel sparse matrix.
-            sensit_columns(istart:iend) = sensit_columns(istart:iend) + index_shift
+            sensit_columns(1:ncol) = sensit_columns(1:ncol) + index_shift
 
             ! Apply the problem weight.
             sensit_compressed(1:ncol) = sensit_compressed(1:ncol) * real(problem_weight, MATRIX_PRECISION)
@@ -828,15 +809,14 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
             sensit_compressed(1:ncol) = sensit_compressed(1:ncol) * real(data_weight(d, idata), MATRIX_PRECISION)
 
             ! Add a complete matrix row.
-            call sensit_matrix%add_row(ncol, sensit_compressed(1:ncol), sensit_columns(istart:iend), myrank)
+            call sensit_matrix%add_row(ncol, sensit_compressed(1:ncol), sensit_columns(1:ncol), myrank)
 
             ! Number of nonzero elements.
             nnz = nnz + ncol
-
           endif
 
           ! Shift the file pointer to the next matrix row.
-          pos0 = pos0 + nel * MATRIX_PRECISION
+          pos0 = pos0 + nel * (4 + MATRIX_PRECISION)
 
         enddo ! model components loop
 
@@ -844,10 +824,10 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
         call sensit_matrix%new_row(myrank)
 
       enddo ! data components loop
-
     enddo ! data loop
 
     close(78)
+    close(70)
   enddo
 
   deallocate(sensit_columns)
@@ -922,7 +902,7 @@ subroutine partition_sensitivity_kernel(par, problem_type, myrank, nbproc, nelem
     filename_full_partit = trim(path_output)//"/SENSIT/"//filename_partit
   endif
 
-  if (myrank == 0) print *, 'Reading the sensitivity file ', trim(filename_full)
+  if (myrank == 0) print *, 'Perform kernel partitioning: reading the file ', trim(filename_full)
 
   open(78, file=trim(filename_full), status='old', access='stream', form='unformatted', action='read', &
        iostat=ierr, iomsg=msg)
