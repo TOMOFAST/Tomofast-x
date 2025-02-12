@@ -670,7 +670,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
   real(kind=CUSTOM_REAL) :: comp_rate
   integer(kind=8) :: nnz_total
-  integer :: i, j, k, d, nsmaller, ierr
+  integer :: i, k, d, nsmaller, ierr
   integer :: rank, nelements_total, nel_compressed
   character(len=256) :: filename, filename_full
   character(len=256) :: filename_partit, filename_full_partit
@@ -680,7 +680,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   integer :: idata, nel, idata_glob, model_component, data_component
   integer(kind=8) :: nnz
   integer :: param_shift(2)
-  integer :: istart, iend
+  integer :: istart
   integer :: index_shift
   integer(kind=8) :: pos0
   integer :: ncol
