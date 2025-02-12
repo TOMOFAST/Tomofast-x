@@ -45,7 +45,7 @@ module sensitivity_gravmag
   public :: calculate_new_partitioning
   public :: write_depth_weight
   public :: read_depth_weight
-  public :: partition_sensitivity_columns
+  public :: partition_sensitivity_kernel
 
   private :: apply_column_weight
   private :: get_load_balancing_nelements
@@ -875,7 +875,7 @@ end subroutine read_sensitivity_kernel
 ! Reads the sensitivity column indexes and performs partitioning by columns needed
 ! for efficient reading of the sensitivity parallelised by model parameters.
 !============================================================================================================================
-subroutine partition_sensitivity_columns(par, problem_type, myrank, nbproc, nelements_at_cpu)
+subroutine partition_sensitivity_kernel(par, problem_type, myrank, nbproc, nelements_at_cpu)
   class(t_parameters_base), intent(in) :: par
   integer, intent(in) :: problem_type
   integer, intent(in) :: myrank, nbproc
@@ -887,6 +887,7 @@ subroutine partition_sensitivity_columns(par, problem_type, myrank, nbproc, nele
   integer :: i, k, d, ierr
   integer :: nelements_total, nel_compressed, ndata_smaller
   character(len=256) :: filename, filename_full
+  character(len=256) :: filename_partit, filename_full_partit
   character(len=256) :: msg
 
   integer :: ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
@@ -911,11 +912,14 @@ subroutine partition_sensitivity_columns(par, problem_type, myrank, nbproc, nele
 
   ! Form the file name (containing the MPI rank).
   filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(myrank))
+  filename_partit = "partit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(myrank))
 
   if (par%sensit_read /= 0) then
     filename_full = trim(par%sensit_path)//filename
+    filename_full_partit = trim(par%sensit_path)//filename_partit
   else
     filename_full = trim(path_output)//"/SENSIT/"//filename
+    filename_full_partit = trim(path_output)//"/SENSIT/"//filename_partit
   endif
 
   if (myrank == 0) print *, 'Reading the sensitivity file ', trim(filename_full)
@@ -925,6 +929,8 @@ subroutine partition_sensitivity_columns(par, problem_type, myrank, nbproc, nele
 
   if (ierr /= 0) call exit_MPI("Error in opening the sensitivity file! path=" &
                                //trim(filename_full)//", iomsg="//msg, myrank, ierr)
+
+  open(77, file=trim(filename_full_partit), form='unformatted', status='replace', action='write', access='stream')
 
   ! Reading the file header.
   read(78) ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
@@ -997,17 +1003,20 @@ subroutine partition_sensitivity_columns(par, problem_type, myrank, nbproc, nele
           call exit_MPI("Wrong nel_at_cpu in read_sensitivity_kernel!", myrank, 0)
         endif
 
+        write(77) nel_at_cpu
+
       enddo ! model components loop
     enddo ! data components loop
   enddo ! data loop
 
   close(78)
+  close(77)
 
   deallocate(sensit_columns)
 
   if (myrank == 0) print *, 'Finished partitioning of the sensitivity kernel.'
 
-end subroutine partition_sensitivity_columns
+end subroutine partition_sensitivity_kernel
 
 !=============================================================================================
 ! Reads the depth weight.
