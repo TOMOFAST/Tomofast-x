@@ -27,7 +27,7 @@
 # mpif90 -v
 
 # Use MPI Fortran compiler and linker wrappers.
-#FC = mpiifort
+#FC = mpiifx # For Intel compiler (mpiifort is deprecated).
 FC = mpif90
 
 # obj directory
@@ -37,10 +37,10 @@ OBJDIR = obj
 EXEC = tomofastx
 
 # Intel ifort with full checking options to debug (slow but very useful to check everything).
-#FFLAGS = -convert big_endian -vec-report0  -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn argument_checking -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check all -debug -g -O0 -fp-stack-check -traceback -ftrapuv -module $(OBJDIR)
+#FFLAGS = -convert big_endian -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn interfaces -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check all -debug -g -O0 -traceback -ftrapuv -module $(OBJDIR)
 
 # Intel ifort optimized for speed for production runs (add -mcmodel=medium -shared-intel to use more than 2 GB of memory).
-#FFLAGS = -convert big_endian -vec-report0 -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn argument_checking -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check nobounds -O3 -xHost -module $(OBJDIR)
+#FFLAGS = -convert big_endian -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn interfaces -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check nobounds -O3 -xHost -module $(OBJDIR)
 
 # GNU gfortran pseudo-optimized.
 FFLAGS = -std=f2008 -fconvert=big-endian -O3 -fimplicit-none -frange-check -fmax-errors=10 -pedantic -pedantic-errors -Warray-temporaries -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -DUSE_FLUSH6 -J $(OBJDIR)
