@@ -395,8 +395,6 @@ pure subroutine sparse_matrix_add_trans_mult_vector(this, x, b)
   integer(kind=8) :: k
 
   do i = 1, this%nl_nonempty
-!IBM* ASSERT (NODEPS,ITERCNT(1000))
-!DIR$ IVDEP
     i_all = this%rowptr(i)
     do k = this%ijl(i), this%ijl(i + 1) - 1
       j = this%ija(k)

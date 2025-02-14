@@ -24,7 +24,6 @@ module model_IO
   use paraview
   use string, only: str
   use parallel_tools
-  use string
   use model
   use grid
   use parameters_inversion

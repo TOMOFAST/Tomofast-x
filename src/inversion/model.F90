@@ -24,7 +24,6 @@ module model
   use grid
   use string, only: str
   use parallel_tools
-  use string
   use sparse_matrix
   use wavelet_transform
   use wavelet_utils
