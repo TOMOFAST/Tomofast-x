@@ -16,19 +16,15 @@
 # Compiler and linker flags.
 ################################################################################
 
-# NOTE: To set explicitly gfortran-4.9 compiler, execute
-# export OMPI_FC=gfortran-4.9
-# or put the above line into ~/.bashrc file.
-
-# NOTE: When mpiifort is not found (sometimes happens), compile using mpif90 with
-# export OMPI_FC=ifort
-
-# NOTE: To check what compiler is used by mpif90, execute
-# mpif90 -v
+# Compiler choice: 1 - GCC, 2 - Intel.
+COMPILER = 1
 
 # Use MPI Fortran compiler and linker wrappers.
-#FC = mpiifx # For Intel compiler (mpiifort is deprecated).
-FC = mpif90
+ifeq ($(COMPILER), 1)
+  FC = mpif90
+else
+  FC = mpiifx # For Intel compiler (mpiifort is deprecated).
+endif
 
 # obj directory
 OBJDIR = obj
@@ -36,24 +32,25 @@ OBJDIR = obj
 # Executable name.
 EXEC = tomofastx
 
-# Intel ifort with full checking options to debug (slow but very useful to check everything).
-#FFLAGS = -convert big_endian -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn interfaces -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check all -debug -g -O0 -traceback -ftrapuv -module $(OBJDIR)
+ifeq ($(COMPILER), 1)
+  # GNU gfortran pseudo-optimized.
+  FFLAGS = -std=f2008 -fconvert=big-endian -O3 -fimplicit-none -frange-check -fmax-errors=10 -pedantic -pedantic-errors -Warray-temporaries -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -DUSE_FLUSH6 -J $(OBJDIR)
 
-# Intel ifort optimized for speed for production runs (add -mcmodel=medium -shared-intel to use more than 2 GB of memory).
-#FFLAGS = -convert big_endian -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn interfaces -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check nobounds -O3 -xHost -module $(OBJDIR)
+  # GNU gfortran with debug symbols and full debugging.
+  #FFLAGS = -std=f2008 -fconvert=big-endian -O0 -g -fimplicit-none -frange-check -fmax-errors=10 -pedantic -pedantic-errors -Warray-temporaries -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -fbacktrace -Wunreachable-code -Wunused-label -Wunused-variable -Wimplicit-interface -Wall -fcheck=all -fbounds-check -ffpe-trap=invalid,zero,overflow,underflow,denormal -DUSE_FLUSH6 -J $(OBJDIR)
 
-# GNU gfortran pseudo-optimized.
-FFLAGS = -std=f2008 -fconvert=big-endian -O3 -fimplicit-none -frange-check -fmax-errors=10 -pedantic -pedantic-errors -Warray-temporaries -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -DUSE_FLUSH6 -J $(OBJDIR)
+  # GNU flags to output the vector optimizations report.
+  OPT_INFO = -ftree-vectorize -fopt-info-vec-optimized=vec.info
 
-# GNU gfortran with debug symbols and full debugging.
-#FFLAGS = -std=f2008 -fconvert=big-endian -O0 -g -fimplicit-none -frange-check -fmax-errors=10 -pedantic -pedantic-errors -Warray-temporaries -Waliasing -Wampersand -Wcharacter-truncation -Wline-truncation -Wsurprising -Wno-tabs -Wunderflow -fbacktrace -Wunreachable-code -Wunused-label -Wunused-variable -Wimplicit-interface -Wall -fcheck=all -fbounds-check -ffpe-trap=invalid,zero,overflow,underflow,denormal -DUSE_FLUSH6 -J $(OBJDIR)
+  # Adding vectorisation report for GNU compiler.
+  #FFLAGS := $(OPT_INFO) $(FFLAGS)
+else
+  # Intel compiler optimized for speed for production runs.
+  FFLAGS = -convert big_endian -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn interfaces -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check nobounds -O3 -xHost -module $(OBJDIR)
 
-# (GNU) Flags to output the vector optimizations report.
-# possible flags: -fopt-info-vec-optimized, -fopt-info-vec-missed, -fopt-info-vec-note, -fopt-info-vec-all
-OPT_INFO = -ftree-vectorize -fopt-info-vec-optimized=vec.info
-
-# Comment this for non GNU compiler.
-#FFLAGS := $(OPT_INFO) $(FFLAGS)
+  # Intel compiler with full checking options to debug (slow but very useful to check everything).
+  #FFLAGS = -convert big_endian -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn interfaces -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check all -debug -g -O0 -traceback -ftrapuv -module $(OBJDIR)
+endif
 
 # To print a variable run: make print-VARIABLE
 print-%  : ; @echo $* = $($*)
