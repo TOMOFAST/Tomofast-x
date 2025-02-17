@@ -245,8 +245,10 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   mpar%nx = 0
   mpar%ny = 0
   mpar%nz = 0
-  gpar%model_files(1) = "NILL"
-  mpar%model_files(1) = "NILL"
+  gpar%model_files = "NILL"
+  mpar%model_files = "NILL"
+  gpar%model_grid_file = "NILL"
+  mpar%model_grid_file = "NILL"
   gpar%nmodel_components = 1
   mpar%nmodel_components = 1
 
@@ -261,6 +263,8 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   mpar%ndata_components = 1
   gpar%data_type = 1
   mpar%data_type = 1
+  gpar%calc_forward = 0
+  mpar%calc_forward = 0
 
   ! Data error.
   gpar%use_data_error = 0
@@ -493,12 +497,12 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
         mpar%nz = gpar%nz
 
       case("modelGrid.grav.file")
-        call read_filename(10, gpar%model_files(1))
-        call print_arg(myrank, parname, gpar%model_files(1))
+        call read_filename(10, gpar%model_grid_file)
+        call print_arg(myrank, parname, gpar%model_grid_file)
 
       case("modelGrid.magn.file")
-        call read_filename(10, mpar%model_files(1))
-        call print_arg(myrank, parname, mpar%model_files(1))
+        call read_filename(10, mpar%model_grid_file)
+        call print_arg(myrank, parname, mpar%model_grid_file)
 
       case("modelGrid.magn.nModelComponents")
         read(10, *) mpar%nmodel_components
@@ -542,6 +546,7 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
         read(10, *) gpar%data_type
         call print_arg(myrank, parname, gpar%data_type)
 
+      ! Data error. -----------------------------------------
       case("forward.data.grav.useError")
         read(10, *) gpar%use_data_error
         call print_arg(myrank, parname, gpar%use_data_error)
@@ -557,6 +562,23 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
       case("forward.data.magn.errorFile")
         call read_filename(10, mpar%data_error_file)
         call print_arg(myrank, parname, mpar%data_error_file)
+
+      ! Model for forward calc. -----------------------------
+      case("forward.data.grav.calculateForward")
+        read(10, *) gpar%calc_forward
+        call print_arg(myrank, parname, gpar%calc_forward)
+
+      case("forward.data.magn.calculateForward")
+        read(10, *) mpar%calc_forward
+        call print_arg(myrank, parname, mpar%calc_forward)
+
+      case("forward.data.grav.modelForForwardCalcFile")
+        call read_filename(10, gpar%model_files(1))
+        call print_arg(myrank, parname, gpar%model_files(1))
+
+      case("forward.data.magn.modelForForwardCalcFile")
+        call read_filename(10, mpar%model_files(1))
+        call print_arg(myrank, parname, mpar%model_files(1))
 
       ! MAGNETIC FIELD constants ---------------------------
 

@@ -135,8 +135,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call model(2)%grid_full%allocate(ipar%nx, ipar%ny, ipar%nz, mpar%z_axis_dir, myrank)
 
   ! Reading the full model grid.
-  if (SOLVE_PROBLEM(1)) call read_model_grid(model(1)%grid_full, ipar%nmodel_components, gpar%model_files(1), myrank)
-  if (SOLVE_PROBLEM(2)) call read_model_grid(model(2)%grid_full, ipar%nmodel_components, mpar%model_files(1), myrank)
+  if (SOLVE_PROBLEM(1)) call read_model_grid(model(1)%grid_full, ipar%nmodel_components, gpar%model_grid_file, myrank)
+  if (SOLVE_PROBLEM(2)) call read_model_grid(model(2)%grid_full, ipar%nmodel_components, mpar%model_grid_file, myrank)
 
   memory = get_max_mem_usage()
   if (myrank == 0) print *, "MEMORY USED (model grid) [GB] =", memory
@@ -285,15 +285,17 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     endif
   enddo
 
-  ! READING THE READ MODEL (SYNTHETIC) -----------------------------------------------------------------
+  ! READING THE MODEL FOR FORWARD CALC -----------------------------------------------------------------
 
-  ! Reading the read model - that is stored in the model grid file.
-  if (SOLVE_PROBLEM(1)) call set_model(model(1), 2, 0.d0, gpar%model_files(1), 1, myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call set_model(model(2), 2, 0.d0, mpar%model_files(1), 1, myrank, nbproc)
+  ! Reading the model for forward calc.
+  if (SOLVE_PROBLEM(1) .and. gpar%calc_forward > 0) call set_model(model(1), 2, 0.d0, gpar%model_files(1), myrank, nbproc)
+  if (SOLVE_PROBLEM(2) .and. mpar%calc_forward > 0) call set_model(model(2), 2, 0.d0, mpar%model_files(1), myrank, nbproc)
 
-  ! Write the model read to a file for Paraview visualization.
-  if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_read_', .false., .false., myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_read_', .false., .false., myrank, nbproc)
+  ! Write the model for forward calc to a file for Paraview visualization.
+  if (SOLVE_PROBLEM(1) .and. gpar%calc_forward > 0) &
+    call model_write(model(1), 'grav_forwardcalc_', .false., .false., myrank, nbproc)
+  if (SOLVE_PROBLEM(2) .and. mpar%calc_forward > 0) &
+    call model_write(model(2), 'mag_forwardcalc_', .false., .false., myrank, nbproc)
 
   ! SETTING THE ADMM BOUNDS -----------------------------------------------------------------------------
 
@@ -330,16 +332,18 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   call jinv%calculate_matrix_partitioning(ipar, line_start, line_end, param_shift)
 
   !-------------------------------------------------------------------------------------------------------
-  ! Calculate the data from the read model.
+  ! Calculate the data from the model for forward calc.
   do i = 1, 2
-    if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
-      ipar%problem_weight(i), iarr(i)%column_weight, data(i)%weight, data(i)%val_calc, ipar%compression_type, &
-      line_start(i), param_shift(i), myrank, nbproc)
+    if (SOLVE_PROBLEM(i) .and. ((i == 1 .and. gpar%calc_forward > 0) .or. (i == 2 .and. mpar%calc_forward > 0))) then
+      call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
+        ipar%problem_weight(i), iarr(i)%column_weight, data(i)%weight, data(i)%val_calc, ipar%compression_type, &
+        line_start(i), param_shift(i), myrank, nbproc)
+    endif
   enddo
 
-  ! Write data calculated from the read model.
-  if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_read_', 2, myrank)
-  if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_read_', 2, myrank)
+  ! Write data calculated from the model for forward calc.
+  if (SOLVE_PROBLEM(1) .and. gpar%calc_forward > 0) call data(1)%write('grav_forwardcalc_', 2, myrank)
+  if (SOLVE_PROBLEM(2) .and. mpar%calc_forward > 0) call data(2)%write('mag_forwardcalc_', 2, myrank)
 
   ! Reading the data. Read here to allow the use of the above calculated data from the (synthetic) model read.
   if (SOLVE_PROBLEM(1)) call data(1)%read(gpar%data_file, myrank)
@@ -382,9 +386,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     ! SETTING PRIOR MODEL FOR INVERSION -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) &
-      call set_model(model(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, 2, myrank, nbproc)
+      call set_model(model(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) &
-      call set_model(model(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, 2, myrank, nbproc)
+      call set_model(model(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, myrank, nbproc)
 
     ! Set the prior model.
     if (SOLVE_PROBLEM(1)) model(1)%val_prior = model(1)%val
@@ -408,9 +412,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     ! SETTING STARTING MODEL FOR INVERSION -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) &
-      call set_model(model(1), gpar%start_model_type, gpar%start_model_val, gpar%model_files(3), 2, myrank, nbproc)
+      call set_model(model(1), gpar%start_model_type, gpar%start_model_val, gpar%model_files(3), myrank, nbproc)
     if (SOLVE_PROBLEM(2)) &
-      call set_model(model(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), 2, myrank, nbproc)
+      call set_model(model(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), myrank, nbproc)
 
     ! Write the starting model to a file for visualization.
     if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_starting_', .false., .false., myrank, nbproc)

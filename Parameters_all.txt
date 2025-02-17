@@ -64,6 +64,12 @@ forward.data.magn.useError = 0
 forward.data.grav.errorFile = None
 forward.data.magn.errorFile = None
 
+# Model for forward data calculation.
+forward.data.grav.calculateForward = 0
+forward.data.magn.calculateForward = 0
+forward.data.grav.modelForForwardCalcFile = None
+forward.data.magn.modelForForwardCalcFile = None
+
 ===================================================================================
 MAGNETIC FIELD constants
 ===================================================================================

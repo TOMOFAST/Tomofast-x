@@ -47,10 +47,14 @@ module parameters_gravmag
     character(len=256) :: data_grid_file
 
     ! File names for the model (with grid).
-    ! (1): Read model.
+    ! (1): Synthetic model (for forward calc).
     ! (2): Prior model.
     ! (3): Starting model.
     character(len=256) :: model_files(3)
+    character(len=256) :: model_grid_file
+
+    ! Calculate forward data from synthetic model.
+    integer :: calc_forward
 
     ! Type of prior model.
     integer :: prior_model_type
@@ -127,6 +131,7 @@ subroutine parameters_base_broadcast(this, myrank)
   call MPI_Bcast(this%ndata_components, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%nmodel_components, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%data_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%calc_forward, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
   call MPI_Bcast(this%prior_model_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%number_prior_models, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
