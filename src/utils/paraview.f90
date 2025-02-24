@@ -92,8 +92,8 @@ subroutine visualisation_paraview_struct_grid(filename, myrank, nelements, ncomp
   ! Values for visualization.
   real(kind=CUSTOM_REAL), intent(in) :: val(nelements, ncomponents)
   ! Coordinates of points in the grid.
-  real(kind=CUSTOM_REAL), intent(in) :: X1(nelements), Y1(nelements), Z1(nelements)
-  real(kind=CUSTOM_REAL), intent(in) :: X2(nelements), Y2(nelements), Z2(nelements)
+  real(kind=CUSTOM_REAL), pointer, intent(in) :: X1(:), Y1(:), Z1(:)
+  real(kind=CUSTOM_REAL), pointer, intent(in) :: X2(:), Y2(:), Z2(:)
   integer, intent(in) :: nx, ny, nz
   integer, intent(in) :: i1, i2, j1, j2, k1, k2
   logical, intent(in) :: INVERT_Z_AXIS
@@ -248,8 +248,8 @@ subroutine visualisation_paraview_legogrid(filename, myrank, nelements, ncompone
   ! Values for visualization.
   real(kind=CUSTOM_REAL), intent(in) :: val(nelements, ncomponents)
   ! Coordinates of points in the grid.
-  real(kind=CUSTOM_REAL), intent(in) :: X1(nelements), Y1(nelements), Z1(nelements)
-  real(kind=CUSTOM_REAL), intent(in) :: X2(nelements), Y2(nelements), Z2(nelements)
+  real(kind=CUSTOM_REAL), pointer, intent(in) :: X1(:), Y1(:), Z1(:)
+  real(kind=CUSTOM_REAL), pointer, intent(in) :: X2(:), Y2(:), Z2(:)
   integer, intent(in) :: nx, ny, nz
   integer, intent(in) :: i1, i2, j1, j2, k1, k2
   logical, intent(in) :: INVERT_Z_AXIS

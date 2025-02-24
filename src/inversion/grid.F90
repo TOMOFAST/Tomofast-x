@@ -19,6 +19,8 @@
 !================================================================================================
 module grid
 
+  use, intrinsic :: iso_c_binding
+
   use global_typedefs
   use mpi_tools, only: exit_MPI
 
@@ -27,23 +29,30 @@ module grid
   private
 
   type, public :: t_grid
-
-    ! The beginning and the ending coordinates of a 3D prism for every model element.
-    real(kind=CUSTOM_REAL), dimension(:), allocatable :: X1, Y1, Z1
-    real(kind=CUSTOM_REAL), dimension(:), allocatable :: X2, Y2, Z2
-
-    ! Full grid dimensions.
+    ! Grid dimensions.
     integer :: nx, ny, nz
 
     ! Direction of the Z-axis (1 = down, -1 = up).
     integer :: z_axis_dir
+
+    ! Shared memory variables.
+    integer :: comm_shm, shm_rank
+    integer :: win_X1, win_Y1, win_Z1
+    integer :: win_X2, win_Y2, win_Z2
+    type(c_ptr) :: baseptr_X1, baseptr_Y1, baseptr_Z1
+    type(c_ptr) :: baseptr_X2, baseptr_Y2, baseptr_Z2
+
+    integer :: is_first_group
+
+    ! The starting and ending coordinates of the 3D prism for each model grid cell.
+    real(kind=CUSTOM_REAL), pointer, dimension(:) :: X1, Y1, Z1
+    real(kind=CUSTOM_REAL), pointer, dimension(:) :: X2, Y2, Z2
 
   contains
     private
 
     procedure, public, pass :: allocate => grid_allocate
     procedure, public, pass :: deallocate => grid_deallocate
-    procedure, public, pass :: broadcast => grid_broadcast
 
     procedure, public, pass :: get_hx => grid_get_hx
     procedure, public, pass :: get_hy => grid_get_hy
@@ -92,6 +101,10 @@ subroutine grid_allocate(this, nx, ny, nz, z_axis_dir, myrank)
 
   integer :: nelements_total
   integer :: ierr
+  integer(kind=MPI_ADDRESS_KIND) :: size, disp_unit
+  integer :: shm_group_size
+!  integer :: color, key
+  integer :: shape_arr(1)
 
   this%nx = nx
   this%ny = ny
@@ -101,16 +114,74 @@ subroutine grid_allocate(this, nx, ny, nz, z_axis_dir, myrank)
 
   nelements_total = nx * ny * nz
 
-  ierr = 0
+  !------------------------------------------------------------------------------
+  ! Shared memory allocation.
+  !------------------------------------------------------------------------------
+!  ! Split MPI ranks into even and odd groups
+!  if (mod(myrank, 2) == 0) then
+!     color = 0  ! Even group
+!  else
+!     color = 1  ! Odd group
+!  end if
+!  key = myrank  ! Maintain original rank order in new communicators
+!
+!  call MPI_Comm_split(MPI_COMM_WORLD, color, key, this%comm_shm, ierr)
 
-  allocate(this%X1(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%X2(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%Y1(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%Y2(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%Z1(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
-  allocate(this%Z2(nelements_total), source=0._CUSTOM_REAL, stat=ierr)
+  ! Create a shared memory communicator.
+  call MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, this%comm_shm, ierr)
 
-  if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in grid_initialize!", myrank, ierr)
+  ! Define the first group's flag.
+  this%is_first_group = 0
+  if (myrank == 0) then
+     this%is_first_group = 1
+  endif
+  ! Broadcast the flag of the first group to all ranks
+  call MPI_Bcast(this%is_first_group, 1, MPI_INT, 0, this%comm_shm, ierr)
+
+  call MPI_Comm_rank(this%comm_shm, this%shm_rank, ierr)
+  call MPI_Comm_size(this%comm_shm, shm_group_size, ierr)
+
+  if (this%shm_rank == 0) then
+    print *, 'myrank, shm_rank, shm_group_size =', myrank, this%shm_rank, shm_group_size
+  endif
+
+  ! Define the size of the shared memory array (allocate only on rank 0 of shared communicator).
+  if (this%shm_rank == 0) then
+     size = nelements_total * CUSTOM_REAL
+  else
+     size = 0  ! Other ranks request zero size (they will query instead).
+  end if
+  disp_unit = CUSTOM_REAL
+
+  ! Allocate shared memory.
+  call MPI_Win_allocate_shared(size, disp_unit, MPI_INFO_NULL, this%comm_shm, this%baseptr_X1, this%win_X1, ierr)
+  call MPI_Win_allocate_shared(size, disp_unit, MPI_INFO_NULL, this%comm_shm, this%baseptr_Y1, this%win_Y1, ierr)
+  call MPI_Win_allocate_shared(size, disp_unit, MPI_INFO_NULL, this%comm_shm, this%baseptr_Z1, this%win_Z1, ierr)
+  call MPI_Win_allocate_shared(size, disp_unit, MPI_INFO_NULL, this%comm_shm, this%baseptr_X2, this%win_X2, ierr)
+  call MPI_Win_allocate_shared(size, disp_unit, MPI_INFO_NULL, this%comm_shm, this%baseptr_Y2, this%win_Y2, ierr)
+  call MPI_Win_allocate_shared(size, disp_unit, MPI_INFO_NULL, this%comm_shm, this%baseptr_Z2, this%win_Z2, ierr)
+
+  if (ierr /= 0) call exit_MPI("Shared memory allocation error in grid_allocate!", myrank, ierr)
+
+  ! Query the shared memory pointer on all ranks
+  call MPI_Win_shared_query(this%win_X1, 0, size, disp_unit, this%baseptr_X1, ierr)
+  call MPI_Win_shared_query(this%win_Y1, 0, size, disp_unit, this%baseptr_Y1, ierr)
+  call MPI_Win_shared_query(this%win_Z1, 0, size, disp_unit, this%baseptr_Z1, ierr)
+  call MPI_Win_shared_query(this%win_X2, 0, size, disp_unit, this%baseptr_X2, ierr)
+  call MPI_Win_shared_query(this%win_Y2, 0, size, disp_unit, this%baseptr_Y2, ierr)
+  call MPI_Win_shared_query(this%win_Z2, 0, size, disp_unit, this%baseptr_Z2, ierr)
+
+  if (ierr /= 0) call exit_MPI("Shared memory query error in grid_allocate!", myrank, ierr)
+
+  shape_arr(1) = nelements_total
+
+  ! Convert C pointer to Fortran pointer.
+  call c_f_pointer(this%baseptr_X1, this%X1, shape_arr)
+  call c_f_pointer(this%baseptr_Y1, this%Y1, shape_arr)
+  call c_f_pointer(this%baseptr_Z1, this%Z1, shape_arr)
+  call c_f_pointer(this%baseptr_X2, this%X2, shape_arr)
+  call c_f_pointer(this%baseptr_Y2, this%Y2, shape_arr)
+  call c_f_pointer(this%baseptr_Z2, this%Z2, shape_arr)
 
 end subroutine grid_allocate
 
@@ -119,40 +190,19 @@ end subroutine grid_allocate
 !=======================================================================================
 subroutine grid_deallocate(this)
   class(t_grid), intent(inout) :: this
-
-  deallocate(this%X1)
-  deallocate(this%X2)
-  deallocate(this%Y1)
-  deallocate(this%Y2)
-  deallocate(this%Z1)
-  deallocate(this%Z2)
-
-end subroutine grid_deallocate
-
-!==============================================================================================
-! Broadcasts grid arrays from master CPU to all.
-!==============================================================================================
-subroutine grid_broadcast(this, myrank)
-  class(t_grid), intent(inout) :: this
-  integer, intent(in) :: myrank
-
-  integer :: nelements_total
   integer :: ierr
 
-  nelements_total = this%nx * this%ny * this%nz
+  ! Shared memory deallocation.
+  call MPI_Win_free(this%win_X1, ierr)
+  call MPI_Win_free(this%win_Y1, ierr)
+  call MPI_Win_free(this%win_Z1, ierr)
+  call MPI_Win_free(this%win_X2, ierr)
+  call MPI_Win_free(this%win_Y2, ierr)
+  call MPI_Win_free(this%win_Z2, ierr)
 
-  ierr = 0
+  if (ierr /= 0) call exit_MPI("Shared memory deallocation error in grid_deallocate!", 0, ierr)
 
-  call MPI_Bcast(this%X1, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%X2, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%Y1, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%Y2, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%Z1, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-  call MPI_Bcast(this%Z2, nelements_total, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)
-
-  if (ierr /= 0) call exit_MPI("Error in MPI_Bcast in grid_broadcast!", myrank, ierr)
-
-end subroutine grid_broadcast
+end subroutine grid_deallocate
 
 !===================================================================================
 ! Returns grid step hx.

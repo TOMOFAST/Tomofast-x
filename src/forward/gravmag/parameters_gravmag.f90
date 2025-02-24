@@ -128,6 +128,8 @@ subroutine parameters_base_broadcast(this, myrank)
   call MPI_Bcast(this%nmodel_components, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%data_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
+  call MPI_Bcast(this%model_files, size(this%model_files) * 256, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
+
   call MPI_Bcast(this%prior_model_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%number_prior_models, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%prior_model_val, 1, CUSTOM_MPI_TYPE, 0, MPI_COMM_WORLD, ierr)

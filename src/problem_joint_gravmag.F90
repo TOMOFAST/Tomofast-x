@@ -231,10 +231,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Deallocate the model grid.
   ! Keep the grid only on rank 0 for writing the models.
   !-------------------------------------------------------------------------------------------------------
-  if (myrank /= 0) then
-    if (SOLVE_PROBLEM(1)) call model(1)%grid_full%deallocate()
-    if (SOLVE_PROBLEM(2)) call model(2)%grid_full%deallocate()
-  endif
+  if (SOLVE_PROBLEM(1) .and. model(1)%grid_full%is_first_group == 0) call model(1)%grid_full%deallocate()
+  if (SOLVE_PROBLEM(2) .and. model(2)%grid_full%is_first_group == 0) call model(2)%grid_full%deallocate()
 
   memory = get_max_mem_usage()
   if (myrank == 0) print *, "MEMORY USED (sensit calc) [GB] =", memory

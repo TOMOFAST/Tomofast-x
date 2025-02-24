@@ -155,8 +155,11 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
   real(kind=CUSTOM_REAL) :: val(nmodel_components)
   logical :: correct_order
 
-  if (myrank == 0) then
-  ! Reading the full grid by master CPU only.
+  ! Synchronize processes (for shared memory reading).
+  call MPI_Barrier(MPI_COMM_WORLD, ierr)
+
+  if (grid%shm_rank == 0) then
+  ! Reading the full grid by zero rank at each group.
     print *, 'Reading model grid from file ', trim(file_name)
 
     open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
@@ -230,8 +233,7 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
     print *, 'Zmin, Zmax, SizeZ =', grid%get_Zmin(), grid%get_Zmax(), grid%get_Zmax()- grid%get_Zmin()
   endif ! myrank == 0
 
-  ! Broadcast full grid to all CPUs.
-  call grid%broadcast(myrank)
+  call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
 end subroutine read_model_grid
 
