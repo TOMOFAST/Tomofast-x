@@ -22,6 +22,7 @@ COMPILER = 1
 # Use MPI Fortran compiler and linker wrappers.
 ifeq ($(COMPILER), 1)
   FC = mpif90
+  #FC = /usr/bin/mpif90.openmpi
 else
   FC = mpiifx # For Intel compiler (mpiifort is deprecated).
 endif

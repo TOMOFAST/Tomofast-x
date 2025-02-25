@@ -36,9 +36,10 @@ module grid
     integer :: z_axis_dir
 
     ! Shared memory variables.
-    integer :: comm_shm, shm_rank
-    integer :: win_X1, win_Y1, win_Z1
-    integer :: win_X2, win_Y2, win_Z2
+    type(MPI_Comm) :: comm_shm
+    integer :: shm_rank
+    type(MPI_Win) :: win_X1, win_Y1, win_Z1
+    type(MPI_Win) :: win_X2, win_Y2, win_Z2
     type(c_ptr) :: baseptr_X1, baseptr_Y1, baseptr_Z1
     type(c_ptr) :: baseptr_X2, baseptr_Y2, baseptr_Z2
 
@@ -101,10 +102,12 @@ subroutine grid_allocate(this, nx, ny, nz, z_axis_dir, myrank)
 
   integer :: nelements_total
   integer :: ierr
-  integer(kind=MPI_ADDRESS_KIND) :: size, disp_unit
+  integer(kind=MPI_ADDRESS_KIND) :: size
+  integer :: disp_unit
   integer :: shm_group_size
 !  integer :: color, key
   integer :: shape_arr(1)
+  type(MPI_Info) :: MPI_INFO_NULL
 
   this%nx = nx
   this%ny = ny
