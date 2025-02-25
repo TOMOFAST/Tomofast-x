@@ -45,7 +45,6 @@ module problem_joint_gravmag
   use data_gravmag
   use string, only: str
   use model_IO
-  use memory_tools
 
   implicit none
 
@@ -100,9 +99,12 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Model change (update) at inversion iteration.
   real(kind=CUSTOM_REAL), allocatable :: delta_model(:, :, :)
   ! Memory usage.
-  real(kind=CUSTOM_REAL) :: memory
+  real(kind=CUSTOM_REAL) :: memory_fwd, memory_inv
 
-  if (myrank == 0) print *, "Solving problem joint grav/mag."
+  if (myrank == 0) print *, "Solving problem grav/mag."
+
+  memory_fwd = 0.d0
+  memory_inv = 0.d0
 
   do i = 1, 2
     SOLVE_PROBLEM(i) = (ipar%problem_weight(i) /= 0.d0)
@@ -138,9 +140,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1)) call read_model_grid(model(1)%grid_full, ipar%nmodel_components, gpar%model_files(1), myrank)
   if (SOLVE_PROBLEM(2)) call read_model_grid(model(2)%grid_full, ipar%nmodel_components, mpar%model_files(1), myrank)
 
-  memory = get_max_mem_usage()
-  if (myrank == 0) print *, "MEMORY USED (model grid) [GB] =", memory
-
   ! (II) DATA ALLOCATION. -----------------------------------------------------------------
 
   if (myrank == 0) print *, "(II) DATA ALLOCATION."
@@ -156,9 +155,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Reading the data error.
   if (SOLVE_PROBLEM(1) .and. gpar%use_data_error == 1) call data(1)%read_error(gpar%data_error_file, myrank)
   if (SOLVE_PROBLEM(2) .and. mpar%use_data_error == 1) call data(2)%read_error(mpar%data_error_file, myrank)
-
-  memory = get_max_mem_usage()
-  if (myrank == 0) print *, "MEMORY USED (data grid) [GB] =", memory
 
   ! (III) SENSITIVITY MATRIX CALCULATION  ---------------------------------------------------
 
@@ -195,10 +191,10 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (gpar%sensit_read == 0 .or. gpar%sensit_read == 2) then
     ! Calculate and write the sensitivity kernel to files.
     if (SOLVE_PROBLEM(1)) call calculate_and_write_sensit(gpar, model(1)%grid_full, data(1), iarr(1)%column_weight, &
-                                                          myrank, nbproc)
+                                                          memory_fwd, myrank, nbproc)
 
     if (SOLVE_PROBLEM(2)) call calculate_and_write_sensit(mpar, model(2)%grid_full, data(2), iarr(2)%column_weight, &
-                                                          myrank, nbproc)
+                                                          memory_fwd, myrank, nbproc)
   endif
 
   ! Calculate new partitioning for the load balancing.
@@ -234,9 +230,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(1) .and. model(1)%grid_full%is_first_group == 0) call model(1)%grid_full%deallocate()
   if (SOLVE_PROBLEM(2) .and. model(2)%grid_full%is_first_group == 0) call model(2)%grid_full%deallocate()
 
-  memory = get_max_mem_usage()
-  if (myrank == 0) print *, "MEMORY USED (sensit calc) [GB] =", memory
-
   ! (IV) MATRIX ALLOCATION  ------------------------------------------------------------------------------
 
   if (myrank == 0) print *, "(IV) MATRIX ALLOCATION."
@@ -255,9 +248,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
                                  data(2)%weight, 2, myrank, nbproc)
 
   call jinv%matrix_sensit%finalize(myrank)
-
-  memory = get_max_mem_usage()
-  if (myrank == 0) print *, "MEMORY USED (sensit read) [GB] =", memory
 
   ! MODEL ALLOCATION -----------------------------------------------------------------------------------
 
@@ -451,9 +441,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
         & 19:clustering_cost_grav, 20:clustering_cost_mag"
      endif
 
-    memory = get_max_mem_usage()
-    if (myrank == 0) print *, "MEMORY USED (major loop start) [GB] =", memory
-
     ! Major inversion loop.
     do it = 1, ipar%ninversions
 
@@ -479,7 +466,7 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
       if (it > 1) call jinv%reset(myrank)
 
       ! Solve joint inverse problem.
-      call jinv%solve(ipar, iarr, model, delta_model, myrank, nbproc)
+      call jinv%solve(ipar, iarr, model, delta_model, memory_inv, myrank, nbproc)
 
       ! Update the local models.
       if (SOLVE_PROBLEM(1)) call model(1)%update(delta_model(:, :, 1))
@@ -584,6 +571,16 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   !******************************
 
   deallocate(delta_model)
+
+  !----------------------------------------------------------------
+  ! Print memory usage stats.
+  !----------------------------------------------------------------
+  if (myrank == 0) then
+    print *, "MEMORY USED (forward) [GB] =", memory_fwd
+    print *, "MEMORY USED (inversion) [GB] =", memory_inv
+    print *, "MEMORY USED (total) [GB] =", max(memory_fwd, memory_inv)
+  endif
+
 
 end subroutine solve_problem_joint_gravmag
 

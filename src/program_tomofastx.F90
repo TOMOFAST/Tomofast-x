@@ -57,7 +57,7 @@ program program_tomofastx
   call MPI_COMM_RANK(MPI_COMM_WORLD, myrank, ierr)
   call MPI_COMM_SIZE(MPI_COMM_WORLD, nbproc, ierr)
 
-  memory = get_max_mem_usage()
+  memory = get_current_mem_usage()
   if (myrank == 0) print *, "MEMORY USED (mpi init) [GB] =", memory
 
   !----------------------------------------------------------------------------
@@ -93,9 +93,6 @@ program program_tomofastx
     ! Gravity and Magnetism problem.
     call solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   endif
-
-  memory = get_max_mem_usage()
-  if (myrank == 0) print *, "MEMORY USED (end) [GB] =", memory
 
   if (myrank == 0) print *, "THE END."
 

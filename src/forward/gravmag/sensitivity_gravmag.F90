@@ -34,6 +34,7 @@ module sensitivity_gravmag
   use parallel_tools
   use string, only: str
   use sort
+  use memory_tools
 
   implicit none
 
@@ -78,12 +79,13 @@ end function get_nel_compressed
 !===============================================================================================================
 ! Calculates the sensitivity kernel (parallelized by data) and writes it to files.
 !===============================================================================================================
-subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myrank, nbproc)
+subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, memory, myrank, nbproc)
   class(t_parameters_base), intent(in) :: par
   type(t_grid), intent(in) :: grid_full
   type(t_data), intent(in) :: data
   real(kind=CUSTOM_REAL), intent(in) :: column_weight(par%nelements)
   integer, intent(in) :: myrank, nbproc
+  real(kind=CUSTOM_REAL), intent(out) :: memory
 
   type(t_magnetic_field) :: mag_field
   integer :: i, k, p, d, nel, ierr
@@ -403,6 +405,12 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, myran
 
     close(77)
   endif
+
+  !---------------------------------------------------------------------------------------------
+  ! Measure the memory usage for the forward problem.
+  !---------------------------------------------------------------------------------------------
+  memory = get_current_mem_usage()
+  if (myrank == 0) print *, "MEMORY USED (forward problem) [GB] =", memory
 
   !---------------------------------------------------------------------------------------------
   deallocate(sensit_line_full)

@@ -390,12 +390,13 @@ end subroutine calculate_b_RHS
 ! Joint inversion of two problems.
 ! It is also used for single inversions.
 !================================================================================================
-subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbproc)
+subroutine joint_inversion_solve(this, par, arr, model, delta_model, memory, myrank, nbproc)
   class(t_joint_inversion), intent(inout) :: this
   type(t_parameters_inversion), intent(in) :: par
   type(t_inversion_arrays), intent(in) :: arr(2)
   type(t_model), intent(inout) :: model(2)
   integer, intent(in) :: myrank, nbproc
+  real(kind=CUSTOM_REAL), intent(out) :: memory
 
   real(kind=CUSTOM_REAL), intent(out) :: delta_model(par%nelements, par%nmodel_components, 2)
 
@@ -537,7 +538,7 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, myrank, nbp
     call lsqr_solve_sensit(size(this%b_RHS), size(delta_model), par%niter, par%rmin, par%gamma, par%target_misfit, &
                            this%matrix_sensit, this%matrix_cons, this%b_RHS, delta_model, &
                            SOLVE_PROBLEM, par%nelements, par%nx, par%ny, par%nz, par%nmodel_components, &
-                           par%compression_type, this%WAVELET_DOMAIN, myrank, nbproc)
+                           par%compression_type, this%WAVELET_DOMAIN, memory, myrank, nbproc)
   else
     call exit_MPI("Unknown solver type!", myrank, 0)
   endif

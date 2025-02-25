@@ -26,6 +26,7 @@ module lsqr_solver
   use mpi_tools, only: exit_MPI
   use sparse_matrix
   use wavelet_utils
+  use memory_tools
 
   implicit none
 
@@ -46,7 +47,7 @@ contains
 subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit, &
                              matrix_sensit, matrix_cons, u, x, &
                              SOLVE_PROBLEM, nelements, nx, ny, nz, ncomponents, compression_type, &
-                             WAVELET_DOMAIN, myrank, nbproc)
+                             WAVELET_DOMAIN, memory, myrank, nbproc)
   integer, intent(in) :: nlines, ncolumns, niter
   real(kind=CUSTOM_REAL), intent(in) :: rmin, gamma, target_misfit
   logical, intent(in) :: SOLVE_PROBLEM(2)
@@ -59,6 +60,7 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
   real(kind=CUSTOM_REAL), intent(inout) :: x(ncolumns)
   ! Use the right-hand side for solver calculations to avoid memory allocation.
   real(kind=CUSTOM_REAL), intent(inout) :: u(nlines)
+  real(kind=CUSTOM_REAL), intent(out) :: memory
 
   ! Local variables.
   integer :: iter, ierr
@@ -68,15 +70,16 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
   real(kind=CUSTOM_REAL) :: misfit
   integer :: nlines_sensit
   logical :: CALC_MISFIT
+  integer, save :: counter = 0
 
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v, w
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v2
   ! Buffer for the full model (for one problem and one component), for wavelet transform.
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: v1_full
-
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: b0_sensit, Sx
 
   if (myrank == 0) print *, 'Entered subroutine lsqr_solve_sensit, gamma =', gamma
+  counter = counter + 1
 
   ! Sanity check.
   if (matrix_sensit%get_total_row_number() + matrix_cons%get_total_row_number() /= nlines .or. &
@@ -285,6 +288,16 @@ subroutine lsqr_solve_sensit(nlines, ncolumns, niter, rmin, gamma, target_misfit
       exit
     endif
   enddo
+
+  !---------------------------------------------------------------------------------------------
+  ! Measure the memory usage for the inverse problem.
+  !---------------------------------------------------------------------------------------------
+  if (counter == 1) then
+  ! Perform the memory measurement only at the first major iteration.
+    memory = get_current_mem_usage()
+    if (myrank == 0) print *, "MEMORY USED (inverse problem) [GB] =", memory
+  endif
+  !---------------------------------------------------------------------------------------------
 
   if (target_misfit > 0.d0) then
     if (myrank == 0) print *, 'Finished lsqr solver, r =', r, ' misfit =', misfit, ' iter =', iter - 1
