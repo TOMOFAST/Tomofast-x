@@ -107,7 +107,6 @@ subroutine grid_allocate(this, nx, ny, nz, z_axis_dir, myrank)
   integer :: shm_group_size
 !  integer :: color, key
   integer :: shape_arr(1)
-  type(MPI_Info) :: MPI_INFO_NULL
 
   this%nx = nx
   this%ny = ny
