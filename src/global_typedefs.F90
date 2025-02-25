@@ -14,8 +14,7 @@
 
 module global_typedefs
 
-  !use mpi
-  use mpi_f08
+  use mpi
 
   implicit none
 
@@ -29,7 +28,7 @@ module global_typedefs
   ! set to MPI_REAL to run in single precision
   ! set to MPI_DOUBLE_PRECISION to run in double precision
   ! integer, parameter :: CUSTOM_MPI_TYPE = MPI_REAL
-  type(MPI_Datatype), parameter :: CUSTOM_MPI_TYPE = MPI_DOUBLE_PRECISION
+  integer, parameter :: CUSTOM_MPI_TYPE = MPI_DOUBLE_PRECISION
 
   integer, parameter :: SIZE_REAL = 4, SIZE_DOUBLE = 8
   integer, parameter :: SIZE_INT  = 4

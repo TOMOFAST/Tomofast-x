@@ -36,10 +36,10 @@ module grid
     integer :: z_axis_dir
 
     ! Shared memory variables.
-    type(MPI_Comm) :: comm_shm
+    integer :: comm_shm
     integer :: shm_rank
-    type(MPI_Win) :: win_X1, win_Y1, win_Z1
-    type(MPI_Win) :: win_X2, win_Y2, win_Z2
+    integer :: win_X1, win_Y1, win_Z1
+    integer :: win_X2, win_Y2, win_Z2
     type(c_ptr) :: baseptr_X1, baseptr_Y1, baseptr_Z1
     type(c_ptr) :: baseptr_X2, baseptr_Y2, baseptr_Z2
 
