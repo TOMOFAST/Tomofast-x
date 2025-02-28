@@ -883,6 +883,7 @@ subroutine partition_sensitivity_kernel(par, problem_type, myrank, nbproc, nelem
   integer(kind=8) :: pos0
   integer :: cpu, p
   integer :: nel_at_cpu(nbproc)
+  integer :: cumulative_nelements_at_cpu(nbproc)
 
   !---------------------------------------------------------------------------------------------
   ! Allocate memory.
@@ -934,6 +935,12 @@ subroutine partition_sensitivity_kernel(par, problem_type, myrank, nbproc, nelem
 
   ndata_smaller = get_nsmaller(ndata_loc, myrank, nbproc)
 
+  ! Pre-compute cumulative sum of nelements per CPU.
+  cumulative_nelements_at_cpu = nelements_at_cpu(1)
+  do i = 2, nbproc
+    cumulative_nelements_at_cpu(i) = cumulative_nelements_at_cpu(i - 1) + nelements_at_cpu(i)
+  enddo
+
   ! Loop over the local data chunk within a file.
   do i = 1, ndata_loc
     idata_glob = ndata_smaller + i
@@ -981,7 +988,7 @@ subroutine partition_sensitivity_kernel(par, problem_type, myrank, nbproc, nelem
         nel_at_cpu = 0
         cpu = 1
         do p = 1, nel
-          do while (sensit_columns(p) > sum(nelements_at_cpu(1:cpu)))
+          do while (cpu <= nbproc .and. sensit_columns(p) > cumulative_nelements_at_cpu(cpu))
             cpu = cpu + 1
           enddo
           nel_at_cpu(cpu) = nel_at_cpu(cpu) + 1
