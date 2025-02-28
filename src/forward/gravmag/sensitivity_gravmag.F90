@@ -988,7 +988,7 @@ subroutine partition_sensitivity_kernel(par, problem_type, myrank, nbproc, nelem
         nel_at_cpu = 0
         cpu = 1
         do p = 1, nel
-          do while (cpu <= nbproc .and. sensit_columns(p) > cumulative_nelements_at_cpu(cpu))
+          do while (cpu < nbproc .and. sensit_columns(p) > cumulative_nelements_at_cpu(cpu))
             cpu = cpu + 1
           enddo
           nel_at_cpu(cpu) = nel_at_cpu(cpu) + 1
