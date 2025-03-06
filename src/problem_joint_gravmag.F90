@@ -207,12 +207,6 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     call calculate_new_partitioning(mpar, nnz, nelements_at_cpu, 2, myrank, nbproc)
   endif
 
-  if (gpar%sensit_read == 0 .or. gpar%sensit_read == 2) then
-  ! Calculate and write the partitioning of sensitivity kernel.
-    if (SOLVE_PROBLEM(1)) call partition_sensitivity_kernel(gpar, 1, myrank, nbproc, nelements_at_cpu)
-    if (SOLVE_PROBLEM(2)) call partition_sensitivity_kernel(mpar, 2, myrank, nbproc, nelements_at_cpu)
-  endif
-
   ! Update the nelements for the nnz load balancing.
   nelements_new = nelements_at_cpu(myrank + 1)
   if (SOLVE_PROBLEM(1)) gpar%nelements = nelements_new
@@ -242,10 +236,10 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   ! Reading the sensitivity kernel and depth weight from files.
   if (SOLVE_PROBLEM(1)) &
     call read_sensitivity_kernel(gpar, jinv%matrix_sensit, iarr(1)%column_weight, ipar%problem_weight(1), &
-                                 data(1)%weight, 1, myrank, nbproc)
+                                 data(1)%weight, 1, myrank, nbproc, nelements_at_cpu)
   if (SOLVE_PROBLEM(2)) &
     call read_sensitivity_kernel(mpar, jinv%matrix_sensit, iarr(2)%column_weight, ipar%problem_weight(2), &
-                                 data(2)%weight, 2, myrank, nbproc)
+                                 data(2)%weight, 2, myrank, nbproc, nelements_at_cpu)
 
   call jinv%matrix_sensit%finalize(myrank)
 
