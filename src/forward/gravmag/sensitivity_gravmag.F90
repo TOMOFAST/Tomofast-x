@@ -314,8 +314,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, memor
         ! Write the sensitivity line to file.
         write(77) idata, nel, k, d
         if (nel > 0) then
-          write(77) sensit_columns(1:nel)
-          write(77) sensit_compressed(1:nel)
+          write(77) sensit_columns(1:nel), sensit_compressed(1:nel)
         endif
       enddo ! nmodel_components loop
     enddo ! ndata_components loop
@@ -693,6 +692,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   integer :: nel_at_cpu(nbproc)
   integer :: cumulative_nelements_at_cpu(nbproc)
   integer :: displs(nbproc)
+  real(kind=MATRIX_PRECISION) :: combined_weight
 
   param_shift(1) = 0
   param_shift(2) = par%nelements * par%nmodel_components
@@ -726,18 +726,18 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
   ! Loop over the MPI ranks (as the sensitivity kernel is stored parallelized by data in a separate file for each rank).
   do rank = 0, nbproc - 1
-    ! Form the file name (containing the MPI rank).
-    filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(rank))
-
-    if (par%sensit_read /= 0) then
-      filename_full = trim(par%sensit_path)//filename
-    else
-      filename_full = trim(path_output)//"/SENSIT/"//filename
-    endif
-
-    if (myrank == 0 .and. rank == 0) print *, 'Reading the sensitivity file (new) ', trim(filename_full)
-
     if (myrank == 0) then
+      ! Form the file name (containing the MPI rank).
+      filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(rank))
+
+      if (par%sensit_read /= 0) then
+        filename_full = trim(par%sensit_path)//filename
+      else
+        filename_full = trim(path_output)//"/SENSIT/"//filename
+      endif
+
+      if (rank == 0) print *, 'Reading the sensitivity file (new) ', trim(filename_full)
+
       open(78, file=trim(filename_full), status='old', access='stream', form='unformatted', action='read', &
            iostat=ierr, iomsg=msg)
 
@@ -817,6 +817,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
           ! The number of non-zero matrix elements on this rank.
           ncol = nel_at_cpu(myrank + 1)
 
+          !------------------------------------------------------------------------
           ! Scatter the matrix parts to other ranks.
           if (myrank == 0) then
             call MPI_SCATTERV(sensit_columns, nel_at_cpu, displs, MPI_INTEGER, &
@@ -837,14 +838,14 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
           ! Column index shift.
           index_shift = param_shift(problem_type) + (k - 1) * par%nelements - nsmaller
 
-          ! The column index in a big (joint) parallel sparse matrix.
-          sensit_columns(1:ncol) = sensit_columns(1:ncol) + index_shift
+          ! A combined problem weight with the data weight.
+          combined_weight = real(problem_weight * data_weight(d, idata_glob), MATRIX_PRECISION)
 
-          ! Apply the problem weight.
-          sensit_compressed(1:ncol) = sensit_compressed(1:ncol) * real(problem_weight, MATRIX_PRECISION)
-
-          ! Apply the data error.
-          sensit_compressed(1:ncol) = sensit_compressed(1:ncol) * real(data_weight(d, idata_glob), MATRIX_PRECISION)
+          ! Apply both shift and weights in a single loop
+          do j = 1, ncol
+            sensit_columns(j) = sensit_columns(j) + index_shift
+            sensit_compressed(j) = sensit_compressed(j) * combined_weight
+          enddo
 
           ! Add a complete matrix row.
           call sensit_matrix%add_row(ncol, sensit_compressed(1:ncol), sensit_columns(1:ncol), myrank)
