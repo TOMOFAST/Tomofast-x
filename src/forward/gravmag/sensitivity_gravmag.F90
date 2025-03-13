@@ -684,6 +684,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   character(len=256) :: msg
 
   integer :: ndata_loc, ndata_read, nelements_total_read, myrank_read, nbproc_read
+  integer :: nbproc_sensit
   integer :: idata, nel, idata_glob, model_component, data_component
   integer(kind=8) :: nnz
   integer :: param_shift(2)
@@ -714,6 +715,13 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   if (ierr /= 0) call exit_MPI("Dynamic memory allocation error in read_sensitivity_kernel!", myrank, ierr)
 
   !---------------------------------------------------------------------------------------------
+  ! Read sensitivity metadata and retrieve nbproc_sensit.
+  !---------------------------------------------------------------------------------------------
+  call read_sensitivity_metadata(par, nbproc_sensit, problem_type, myrank)
+
+  if (myrank == 0) print *, "nbproc_sensit =", nbproc_sensit
+
+  !---------------------------------------------------------------------------------------------
   ! Reading the sensitivity kernel files.
   !---------------------------------------------------------------------------------------------
   nelements_total = par%nx * par%ny * par%nz
@@ -725,10 +733,10 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
   nnz = 0
 
   ! Loop over the MPI ranks (as the sensitivity kernel is stored parallelized by data in a separate file for each rank).
-  do rank = 0, nbproc - 1
+  do rank = 0, nbproc_sensit - 1
     if (myrank == 0) then
       ! Form the file name (containing the MPI rank).
-      filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(rank))
+      filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc_sensit))//"_"//trim(str(rank))
 
       if (par%sensit_read /= 0) then
         filename_full = trim(par%sensit_path)//filename
@@ -749,7 +757,7 @@ subroutine read_sensitivity_kernel(par, sensit_matrix, column_weight, problem_we
 
       ! Consistency check.
       if (ndata_read /= par%ndata .or. nelements_total_read /= nelements_total &
-          .or. myrank_read /= rank .or. nbproc_read /= nbproc) then
+          .or. myrank_read /= rank .or. nbproc_read /= nbproc_sensit) then
         call exit_MPI("Wrong file header in read_sensitivity_kernel!", myrank, 0)
       endif
     endif ! myrank == 0
