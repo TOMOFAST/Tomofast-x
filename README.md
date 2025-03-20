@@ -58,6 +58,10 @@ For details on other output files, see the User Manual in the ``docs`` folder.
 
 ### Publications using the code
 
+- R. Martin, V. Ogarko, J. Giraud, B. Plazolles, P. Angrand, S. Rousse, and M. Macouin (2025),
+"Gravity data inversion of the Pyrenees range using Taguchi sensitivity analysis and ADMM bound constraints based on seismic data", 
+Geophysical Journal International, 240(1): 829–858, https://doi.org/10.1093/gji/ggae410
+
 - V. Ogarko, K. Frankcombe, T. Liu, J. Giraud, R. Martin, and M. Jessell (2024),
 "Tomofast-x 2.0: an open-source parallel code for inversion of potential field data with topography using wavelet compression", Geosci. Model Dev., 17, 2325–2345, 
 https://doi.org/10.5194/gmd-17-2325-2024
