@@ -52,6 +52,10 @@ module magnetic_field
       procedure, private, nopass  :: sharmbox
       procedure, private, nopass  :: dircos
 
+      procedure, private, nopass  :: tensorbox
+      procedure, private, nopass  :: calc_tensor_iii
+      procedure, private, nopass  :: calc_tensor_iij
+
     end type t_magnetic_field
 
 contains
@@ -127,10 +131,16 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
   real(kind=SENSIT_REAL) :: tx(3), ty(3), tz(3)
   double precision :: mx, my, mz
 
+  real(kind=SENSIT_REAL) :: mtensor(3, 3, 3)
+  real(kind=SENSIT_REAL) :: internal_mtensor(3, 3, 3)
+
   integer :: j
   real(kind=SENSIT_REAL) :: temp_tx(3), temp_ty(3), temp_tz(3)
   real(kind=SENSIT_REAL) :: temp_x1(6), temp_x2(6), temp_y1(6), temp_y2(6), temp_z1(6), temp_z2(6)
   real(kind=SENSIT_REAL) :: width, min_clr
+
+  ! Clear mtensor for each data observation point
+  mtensor = 0.0
 
   do i = 1, nelements
     ! Calculate the magnetic tensor.
@@ -205,8 +215,10 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
         tx = 0.d0
         ty = 0.d0
         tz = 0.d0
+        internal_mtensor = 0.d0
 
         do j = 1, 6
+          if (ndata_components <= 3) then
             call this%sharmbox(real(Xdata, SENSIT_REAL), &
                                real(Ydata, SENSIT_REAL), &
                                real(Zdata, SENSIT_REAL), &
@@ -221,25 +233,55 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
             tx = tx + temp_tx
             ty = ty + temp_ty
             tz = tz + temp_tz
-        enddo
-    else
-    ! Point is outside the model grid.
 
-        call this%sharmbox(real(Xdata, SENSIT_REAL), &
-                           real(Ydata, SENSIT_REAL), &
-                           real(Zdata, SENSIT_REAL), &
-                           real(grid%X1(i), SENSIT_REAL), &
-                           real(grid%Y1(i), SENSIT_REAL), &
-                           real(grid%Z1(i), SENSIT_REAL), &
-                           real(grid%X2(i), SENSIT_REAL), &
-                           real(grid%Y2(i), SENSIT_REAL), &
-                           real(grid%Z2(i), SENSIT_REAL), &
-                           tx, ty, tz)
+          else
+            call this%tensorbox(real(Xdata, SENSIT_REAL), &
+                               real(Ydata, SENSIT_REAL), &
+                               real(Zdata, SENSIT_REAL), &
+                               real(temp_x1(j), SENSIT_REAL), &
+                               real(temp_y1(j), SENSIT_REAL), &
+                               real(temp_z1(j), SENSIT_REAL), &
+                               real(temp_x2(j), SENSIT_REAL), &
+                               real(temp_y2(j), SENSIT_REAL), &
+                               real(temp_z2(j), SENSIT_REAL), &
+                               internal_mtensor)
+
+            mtensor = mtensor + internal_mtensor
+
+          endif
+        enddo
+
+    else
+    ! Point is outside the voxel.
+        if (ndata_components <= 3) then
+          call this%sharmbox(real(Xdata, SENSIT_REAL), &
+                            real(Ydata, SENSIT_REAL), &
+                            real(Zdata, SENSIT_REAL), &
+                            real(grid%X1(i), SENSIT_REAL), &
+                            real(grid%Y1(i), SENSIT_REAL), &
+                            real(grid%Z1(i), SENSIT_REAL), &
+                            real(grid%X2(i), SENSIT_REAL), &
+                            real(grid%Y2(i), SENSIT_REAL), &
+                            real(grid%Z2(i), SENSIT_REAL), &
+                            tx, ty, tz)
+
+        else
+          call this%tensorbox(real(Xdata, SENSIT_REAL), &
+                            real(Ydata, SENSIT_REAL), &
+                            real(Zdata, SENSIT_REAL), &
+                            real(grid%X1(i), SENSIT_REAL), &
+                            real(grid%Y1(i), SENSIT_REAL), &
+                            real(grid%Z1(i), SENSIT_REAL), &
+                            real(grid%X2(i), SENSIT_REAL), &
+                            real(grid%Y2(i), SENSIT_REAL), &
+                            real(grid%Z2(i), SENSIT_REAL), &
+                            mtensor)
+
+        endif
     endif
 
     if (nmodel_components == 1) then
     ! Susceptibility model.
-
       mx = sum(tx * this%magv)
       my = sum(ty * this%magv)
       mz = sum(tz * this%magv)
@@ -272,6 +314,38 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
           sensit_line(i, k, 3) = tz(k)
         enddo
 
+      else if (ndata_components == 6) then
+        ! Note: Mz kernel term multiplied by -1 to switch to elevation space as required by the equations
+        ! bxx kernal parts
+        sensit_line(i, 1, 1) = mtensor(1, 1, 1)
+        sensit_line(i, 2, 1) = mtensor(1, 1, 2)
+        sensit_line(i, 3, 1) = mtensor(1, 1, 3) * -1.0
+
+        ! byy kernal parts
+        sensit_line(i, 1, 2) = mtensor(1, 2, 2)
+        sensit_line(i, 2, 2) = mtensor(2, 2, 2)
+        sensit_line(i, 3, 2) = mtensor(2, 2, 3) * -1.0
+
+        ! bzz kernal parts
+        sensit_line(i, 1, 3) = mtensor(1, 3, 3)
+        sensit_line(i, 2, 3) = mtensor(2, 3, 3)
+        sensit_line(i, 3, 3) = mtensor(3, 3, 3) * -1.0
+
+        ! bxy kernal parts
+        sensit_line(i, 1, 4) = mtensor(1, 1, 2)
+        sensit_line(i, 2, 4) = mtensor(1, 2, 2)
+        sensit_line(i, 3, 4) = mtensor(1, 2, 3) * -1.0
+
+        ! byz kernal parts - flipped to correct inverted output
+        sensit_line(i, 1, 5) = mtensor(1, 2, 3) * -1.0
+        sensit_line(i, 2, 5) = mtensor(2, 2, 3) * -1.0
+        sensit_line(i, 3, 5) = mtensor(2, 3, 3)
+
+        ! bxz kernal parts - flipped to correct inverted output
+        sensit_line(i, 1, 6) = mtensor(1, 1, 3) * -1.0
+        sensit_line(i, 2, 6) = mtensor(1, 2, 3) * -1.0
+        sensit_line(i, 3, 6) = mtensor(1, 3, 3)
+
       else
         print *, "Wrong number of data components in magnetic_field_magprism!"
         stop
@@ -289,6 +363,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
   else if (nmodel_components == 3) then
     ! The input magnetisation vector is in A/m and the output data is in nanotesla.
     sensit_line = (mu0 * T2nT) * sensit_line
+
   endif
 
   ! Convert to SI.
@@ -443,5 +518,146 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
   ts_z(1) = ts_x(3)
 
 end subroutine sharmbox
+
+! ======================================================================
+! Calculates the kernels required for magnetic tensor mag
+! When multiplied by the magnetisation vector, gives the derivative of the mag components in nT/m
+!
+! Units:
+!   coordinates:        m
+!   field intensity:    nT
+!   incl/decl/azi:      deg
+!   magnetisation:      Amp/m
+!
+! Inputs
+!   x0, y0, z0    observation point coordinates
+!   x1, x2        prism west-east coordinates respectively
+!   y1, y2        prism south-north coordinates respectively
+!   z1, z2        prism top-bottom coordinates respectively
+!
+! returns
+!   mtensor_ijk   where i,j,k, are of the order {x,y,z} => {1,2,3}
+!
+! ======================================================================
+subroutine tensorbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, mtensor)
+  real(kind=SENSIT_REAL), intent(in) :: x0, y0, z0, x1, y1, z1, x2, y2, z2
+  real(kind=SENSIT_REAL), intent(out) :: mtensor(3, 3, 3)
+
+  real(kind=SENSIT_REAL) :: temp_mtensor(3, 3, 3)
+  real(kind=SENSIT_REAL) :: rx, ry, rz
+  real(kind=SENSIT_REAL) :: rx_sq, ry_sq, rz_sq, r
+  integer :: i, j, k
+
+  temp_mtensor = 0.0
+
+  do i = 0, 1
+    ! Relative easting
+    if (i == 0) then
+      rx = x2 - x0 ! East face
+    else
+      rx = x1 - x0 ! West face
+    end if
+    rx_sq = rx * rx
+
+    do j = 0, 1
+      ! Relative northing
+      if (j == 0) then
+        ry = y2 - y0 ! North face
+      else
+        ry = y1 - y0 ! South face
+      end if
+      ry_sq = ry * ry
+
+      do k = 0, 1
+        ! Relative z
+        ! Order of operations flipped to account for formula working in elevation space
+        if (k == 0) then
+          rz = z0 - z1 ! Top face
+        else
+          rz = z0 - z2 ! Bottom face
+        end if
+        rz_sq = rz * rz
+
+        ! Dist
+        r = sqrt(rx_sq + ry_sq + rz_sq)
+
+        ! Calculate the 10 required kernels
+        ! u_xxx
+        temp_mtensor(1 ,1 ,1) = calc_tensor_iii(rx, ry, rz, r)
+
+        ! u_xxy
+        temp_mtensor(1, 1, 2) = calc_tensor_iij(rx, ry, rz, r)
+
+        ! u_xxz
+        temp_mtensor(1, 1, 3) = calc_tensor_iij(rx, rz, ry, r)
+
+        ! u_xyy
+        temp_mtensor(1, 2, 2) = calc_tensor_iij(ry, rx, rz, r)
+
+        ! u_xyz
+        temp_mtensor(1, 2, 3) = -1.0/r
+
+        ! u_xzz
+        temp_mtensor(1, 3, 3) = calc_tensor_iij(rz, rx, ry, r)
+
+        ! u_yyy
+        temp_mtensor(2, 2, 2) = calc_tensor_iii(ry, rz, rx, r)
+
+        ! u_yyz
+        temp_mtensor(2, 2, 3) = calc_tensor_iij(ry, rz, rx, r)
+
+        ! u_yzz
+        temp_mtensor(2, 3, 3) = calc_tensor_iij(rz, ry, rx, r)
+
+        ! u_zzz
+        temp_mtensor(3, 3, 3) = calc_tensor_iii(rz, ry, rx, r)
+
+        ! Aggregate the tensor over all prisms for a specific data observation point
+        mtensor = mtensor + (-1.0)**(i + j + k) * temp_mtensor
+
+      enddo
+    enddo
+  enddo
+
+end subroutine tensorbox
+
+! ======================================================================
+! evaluates the diagonal 3rd order kernels of a prism
+! ======================================================================
+pure function calc_tensor_iii(r_i, r_j, r_k, r) result(val)
+  real(kind=SENSIT_REAL), intent(in) :: r_i, r_j, r_k, r
+  real(kind=SENSIT_REAL) :: i_sq, j_sq, k_sq, num, den
+  real(kind=SENSIT_REAL) :: val
+
+  if (((r_i == 0.) .and. (r_j == 0.)) .or. ((r_i == 0.) .and. (r_k == 0.))) then
+    val = 0.
+
+  else
+    i_sq = r_i * r_i
+    j_sq = r_j * r_j
+    k_sq = r_k * r_k
+
+    num = -r_j * r_k * (2.0 * i_sq + j_sq + k_sq)
+    den = (i_sq + j_sq) * (i_sq + k_sq) * r
+    val = num / den
+
+  endif
+
+end function calc_tensor_iii
+
+! ======================================================================
+! evaluates the non-diagonal 3rd order kernels of a prism
+! ======================================================================
+pure function calc_tensor_iij(r_i, r_j, r_k, r) result(val)
+  real(kind=SENSIT_REAL), intent(in) :: r_i, r_j, r_k, r
+  real(kind=SENSIT_REAL) :: val
+
+  if ((r_i == 0.0) .and. (r_j == 0.0)) then
+    val = 0.0
+  else
+    val = -r_i / ((r_k + r) * r)
+  endif
+
+end function calc_tensor_iij
 
 end module magnetic_field
