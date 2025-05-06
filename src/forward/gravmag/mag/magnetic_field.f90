@@ -139,10 +139,11 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
   real(kind=SENSIT_REAL) :: temp_x1(6), temp_x2(6), temp_y1(6), temp_y2(6), temp_z1(6), temp_z2(6)
   real(kind=SENSIT_REAL) :: width, min_clr
 
-  ! Clear mtensor for each data observation point
-  mtensor = 0.0
 
   do i = 1, nelements
+    ! Clear mtensor for each data observation point
+    mtensor = 0.d0
+
     ! Calculate the magnetic tensor.
 
     ! Check if the point is inside the model grid.
