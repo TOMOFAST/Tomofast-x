@@ -138,6 +138,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
   real(kind=SENSIT_REAL) :: temp_tx(3), temp_ty(3), temp_tz(3)
   real(kind=SENSIT_REAL) :: temp_x1(6), temp_x2(6), temp_y1(6), temp_y2(6), temp_z1(6), temp_z2(6)
   real(kind=SENSIT_REAL) :: width, min_clr
+  logical :: inside_x, inside_y, inside_z
 
 
   do i = 1, nelements
@@ -147,9 +148,10 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
     ! Calculate the magnetic tensor.
 
     ! Check if the point is inside the model grid.
-    if ((grid%X1(i) < Xdata) .and. (grid%X2(i) > Xdata) .and. &
-        (grid%Y1(i) < Ydata) .and. (grid%Y2(i) > Ydata) .and. &
-        (grid%Z1(i) < Zdata) .and. (grid%Z2(i) > Zdata)) then
+    inside_x = (grid%X1(i) < Xdata) .and. (grid%X2(i) > Xdata)
+    inside_y = (grid%Y1(i) < Ydata) .and. (grid%Y2(i) > Ydata)
+    inside_z = (grid%Z1(i) < Zdata) .and. (grid%Z2(i) > Zdata)
+    if (inside_x .and. inside_y .and. inside_z) then
 
         ! Default void width.
         width = 0.1
@@ -547,37 +549,39 @@ subroutine tensorbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, mtensor)
   real(kind=SENSIT_REAL) :: temp_mtensor(3, 3, 3)
   real(kind=SENSIT_REAL) :: rx, ry, rz
   real(kind=SENSIT_REAL) :: rx_sq, ry_sq, rz_sq, r
+  real(kind=SENSIT_REAL) :: rx_arr(2), ry_arr(2), rz_arr(2)
+  real(kind=SENSIT_REAL) :: rx_sq_arr(2), ry_sq_arr(2), rz_sq_arr(2)
   integer :: i, j, k
 
   temp_mtensor = 0.0
 
+  ! Relative easting
+  rx_arr(1) = (x2 - x0) ! East face
+  rx_arr(2) = (x1 - x0) ! West face
+  rx_sq_arr = rx_arr**2
+
+  ! Relative northing
+  ry_arr(1) = (y2 - y0) ! North face
+  ry_arr(2) = (y1 - y0) ! South face
+  ry_sq_arr = ry_arr**2
+
+  ! Relative z
+  ! Order of operations flipped to account for formula working in elevation space
+  rz_arr(1) = (z0 - z1) ! Top face
+  rz_arr(2) = (z0 - z2) ! Bottom face
+  rz_sq_arr = rz_arr**2
+
   do i = 0, 1
-    ! Relative easting
-    if (i == 0) then
-      rx = x2 - x0 ! East face
-    else
-      rx = x1 - x0 ! West face
-    end if
-    rx_sq = rx * rx
+    rx = rx_arr(i+1)
+    rx_sq = rx_sq_arr(i+1)
 
     do j = 0, 1
-      ! Relative northing
-      if (j == 0) then
-        ry = y2 - y0 ! North face
-      else
-        ry = y1 - y0 ! South face
-      end if
-      ry_sq = ry * ry
+      ry = ry_arr(j+1)
+      ry_sq = ry_sq_arr(j+1)
 
       do k = 0, 1
-        ! Relative z
-        ! Order of operations flipped to account for formula working in elevation space
-        if (k == 0) then
-          rz = z0 - z1 ! Top face
-        else
-          rz = z0 - z2 ! Bottom face
-        end if
-        rz_sq = rz * rz
+        rz = rz_arr(k+1)
+        rz_sq = rz_sq_arr(k+1)
 
         ! Dist
         r = sqrt(rx_sq + ry_sq + rz_sq)
@@ -629,9 +633,13 @@ pure function calc_tensor_iii(r_i, r_j, r_k, r) result(val)
   real(kind=SENSIT_REAL), intent(in) :: r_i, r_j, r_k, r
   real(kind=SENSIT_REAL) :: i_sq, j_sq, k_sq, num, den
   real(kind=SENSIT_REAL) :: val
+  logical :: bool1, bool2
 
-  if (((r_i == 0.) .and. (r_j == 0.)) .or. ((r_i == 0.) .and. (r_k == 0.))) then
-    val = 0.
+  bool1 = (r_i == 0.d0) .and. (r_j == 0.d0)
+  bool2 = (r_i == 0.d0) .and. (r_k == 0.d0)
+
+  if (bool1 .or. bool2) then
+    val = 0.d0
 
   else
     i_sq = r_i * r_i
