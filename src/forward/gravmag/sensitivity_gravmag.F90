@@ -203,6 +203,11 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, memor
           call gradiprism_zz(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
                              sensit_line_full)
 
+        else if (par%ndata_components == 2) then
+          ! Falcon 2 component data.
+          call gradiprism_falcon(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
+                               sensit_line_full(:, 1, 1), sensit_line_full(:, 1, 2), myrank)
+
         else if (par%ndata_components == 6) then
           ! Full tensor.
           call gradiprism_full(nelements_total, grid_full, data%X(idata), data%Y(idata), data%Z(idata), &
