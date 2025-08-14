@@ -50,6 +50,7 @@ module magnetic_field
       procedure, public, pass     :: magprism => magnetic_field_magprism
 
       procedure, private, nopass  :: sharmbox
+      procedure, private, nopass  :: sharmbox2
       procedure, private, nopass  :: dircos
 
       procedure, private, nopass  :: tensorbox
@@ -249,7 +250,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
 
         do j = 1, 6
           if (ndata_components <= 3) then
-            call this%sharmbox(real(Xdata, SENSIT_REAL), &
+            call this%sharmbox2(real(Xdata, SENSIT_REAL), &
                                real(Ydata, SENSIT_REAL), &
                                real(Zdata, SENSIT_REAL), &
                                real(temp_x1(j), SENSIT_REAL), &
@@ -258,7 +259,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
                                real(temp_x2(j), SENSIT_REAL), &
                                real(temp_y2(j), SENSIT_REAL), &
                                real(temp_z2(j), SENSIT_REAL), &
-                               temp_tx, temp_ty, temp_tz, dummy_znodes, .true., 1)!, 1)
+                               temp_tx, temp_ty, temp_tz)!, dummy_znodes, .true., 1)!, 1)
 
             tx = tx + temp_tx
             ty = ty + temp_ty
@@ -284,7 +285,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
     else
     ! Point is outside the voxel.
         if (ndata_components <= 3) then
-          call this%sharmbox(real(Xdata, SENSIT_REAL), &
+          call this%sharmbox2(real(Xdata, SENSIT_REAL), &
                             real(Ydata, SENSIT_REAL), &
                             real(Zdata, SENSIT_REAL), &
                             real(grid%X1(i), SENSIT_REAL), &
@@ -293,7 +294,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
                             real(grid%X2(i), SENSIT_REAL), &
                             real(grid%Y2(i), SENSIT_REAL), &
                             real(grid%Z2(i), SENSIT_REAL), &
-                            tx, ty, tz, znodes, l_calcznodes, xy_ind)!, nele_xylayer)
+                            tx, ty, tz)!, znodes, l_calcznodes, xy_ind)!, nele_xylayer)
 
         else
           call this%tensorbox(real(Xdata, SENSIT_REAL), &
@@ -444,15 +445,15 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   integer, intent(in) :: xy_ind!, nele_xylayer
   integer :: znodes_i!, prev_znodes_i
 
-  print *, x1, x2
-  print *, y1, y2
-  print *, z1, z2
+  !print *, x1, x2
+  !print *, y1, y2
+  !print *, z1, z2
 
   eps = 1.e-8
   znodes_i = (xy_ind - 1) * 12 + 1
   !prev_znodes_i = (i_ele - nele_xylayer - 1) * 12 + 1
 
-  print *, xy_ind, znodes_i
+  !print *, xy_ind, znodes_i
 
   ! Check for bad znode values, force recalc if so
   !if ((.not. l_firstlayer) .and. (znodes(znodes_i) < -9999.0)) then
@@ -534,14 +535,14 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   znodes(znodes_i + 3) = at6
 
 
-  print *, 'xx at1', at1
-  print *, 'xx at2', at2
-  print *, 'xx at3', at3
-  print *, 'xx at4', at4
-  print *, 'xx at5', at5
-  print *, 'xx at6', at6
-  print *, 'xx at7', at7
-  print *, 'xx at8', at8
+  !print *, 'xx at1', at1
+  !print *, 'xx at2', at2
+  !print *, 'xx at3', at3
+  !print *, 'xx at4', at4
+  !print *, 'xx at5', at5
+  !print *, 'xx at6', at6
+  !print *, 'xx at7', at7
+  !print *, 'xx at8', at8
 
   ! ts_xx
   ! C6 - C8 + C4 - C2 + C7 - C5 + C1 - C3
@@ -567,10 +568,10 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   lg3 = log((rz2 + arg6 + eps) / (rz1 + arg7 + eps))
   lg4 = log((rz2 + arg5 + eps) / (rz1 + arg8 + eps))
 
-  print *, 'yx lg1', lg1
-  print *, 'yx lg2', lg2
-  print *, 'yx lg3', lg3
-  print *, 'yx lg4', lg4
+  !print *, 'yx lg1', lg1
+  !print *, 'yx lg2', lg2
+  !print *, 'yx lg3', lg3
+  !print *, 'yx lg4', lg4
 
   ! ts_yx
   !ts_y(1) = log((rz2 + arg2 + eps) / (rz1 + arg3 + eps)) - &
@@ -611,14 +612,14 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   znodes(znodes_i + 6) = at5
   znodes(znodes_i + 7) = at6
 
-  print *, 'yy at1', at1
-  print *, 'yy at2', at2
-  print *, 'yy at3', at3
-  print *, 'yy at4', at4
-  print *, 'yy at5', at5
-  print *, 'yy at6', at6
-  print *, 'yy at7', at7
-  print *, 'yy at8', at8
+  !print *, 'yy at1', at1
+  !print *, 'yy at2', at2
+  !print *, 'yy at3', at3
+  !print *, 'yy at4', at4
+  !print *, 'yy at5', at5
+  !print *, 'yy at6', at6
+  !print *, 'yy at7', at7
+  !print *, 'yy at8', at8
 
   ! ts_yy
   !ts_y(2) = atan2(rx1 * rz2, (ry2 * arg1 + eps)) - &
@@ -678,10 +679,10 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   znodes(znodes_i + 8) = lg2
   znodes(znodes_i + 9) = lg3
 
-  print *, 'yz lg1', lg1
-  print *, 'yz lg2', lg2
-  print *, 'yz lg3', lg3
-  print *, 'yz lg4', lg4
+  !print *, 'yz lg1', lg1
+  !print *, 'yz lg2', lg2
+  !print *, 'yz lg3', lg3
+  !print *, 'yz lg4', lg4
 
   ! ts_yz
   !ts_y(3) = log((rx1 + arg1 + eps) / (rx2 + arg2 + eps)) - &
@@ -732,10 +733,10 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   znodes(znodes_i + 10) = lg2
   znodes(znodes_i + 11) = lg3
 
-  print *, 'xz lg1', lg1
-  print *, 'xz lg2', lg2
-  print *, 'xz lg3', lg3
-  print *, 'xz lg4', lg4
+  !print *, 'xz lg1', lg1
+  !print *, 'xz lg2', lg2
+  !print *, 'xz lg3', lg3
+  !print *, 'xz lg4', lg4
 
   ! ts_xz
   !ts_x(3) = log((ry1 + arg1 + eps) / (ry2 + arg2 + eps)) - &
@@ -762,11 +763,93 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   ! ts_zx
   ts_z(1) = ts_x(3)
 
-  print *, 'tsx', ts_x
-  print *, 'tsy', ts_y
-  print *, 'tsz', ts_z
+  !print *, 'tsx', ts_x
+  !print *, 'tsy', ts_y
+  !print *, 'tsz', ts_z
 
 end subroutine sharmbox
+
+subroutine sharmbox2(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)!, znodes, l_calcznodes, xy_ind)!, nele_xylayer)
+  real(kind=SENSIT_REAL), intent(in) :: x0, y0, z0, x1, y1, z1, x2, y2, z2
+  real(kind=SENSIT_REAL), intent(out) :: ts_x(3), ts_y(3), ts_z(3)
+  !logical, intent(in) :: l_calcznodes
+  !integer, intent(in) :: xy_ind
+
+  integer :: i, j, k, ind, sig
+  real(kind=SENSIT_REAL) :: rx, ry, rz, rxsq, rysq, rzsq, r, eps
+  real(kind=SENSIT_REAL) :: rx_arr(2), ry_arr(2), rz_arr(2)
+  !real(kind=SENSIT_REAL) :: rxsq_arr(2), rysq_arr(2), rzsq_arr(2)
+  real(kind=SENSIT_REAL) :: cur_node(5,8), tmp_sum(5)
+  !real(kind=SENSIT_REAL), intent(inout) :: znodes(:)
+
+  ! do something with unsued variables so the compiler is happy
+  !if (l_calcznodes) then
+  !  znodes = xy_ind
+  !  znodes = -9999.9
+  !endif
+
+  eps = 1e-12
+
+  rx_arr = (/ x1 - x0, x2 - x0 /)
+  ry_arr = (/ y1 - y0, y2 - y0 /)
+  rz_arr = (/ z1 - z0, z2 - z0 /)
+
+  do i = 1, 2
+    rx = rx_arr(i)
+    rxsq = rx * rx
+
+    do j = 1, 2
+      ry = ry_arr(j)
+      rysq = ry * ry
+
+      do k = 1, 2
+        ! i j k   ind corner  xx    yx    yy    yz    xz     sum sig
+        ! ==========================================================
+        ! 1 1 1   1   C1       at7  -lg32  at7  -lg41 -lg41  3   -
+        ! 1 1 2   2   C5      -at6   lg31 -at6   lg31  lg31  4   +
+        ! 1 2 1   3   C3      -at8   lg22 -at4   lg11  lg42  4   +
+        ! 1 2 2   4   C7       at5  -lg21  at1  -lg21 -lg32  5   -
+        ! 2 1 1   5   C2      -at4   lg42 -at8   lg42  lg11  4   +
+        ! 2 1 2   6   C6       at1  -lg41  at5  -lg32 -lg21  5   -
+        ! 2 2 1   7   C4       at3  -lg12  at3  -lg12 -lg12  5   -
+        ! 2 2 2   8   C8      -at2   lg11 -at2   lg22  lg22  6   +
+
+        ! atan2s: at1 - at2 + at3 - at4 + at5 - at6 + at7 - at8
+
+        ! logs:   (lg11 - lg12) - (lg21 - lg22) + (lg31 - lg32) - (lg41 - lg42)
+
+        ind = (i - 1) * 4 + (k - 1) * 2 + (j - 1) * 1 + 1
+        sig = (-1) ** (i + j + k)
+
+        rz = rz_arr(k)
+        rzsq = rz * rz
+
+        r = sqrt(rxsq + rysq + rzsq)
+
+        cur_node(1, ind) = -sig * atan2(ry * rz, rx * r + eps) ! xx
+        cur_node(2, ind) =  sig * log(rz + r + eps)            ! yx
+        cur_node(3, ind) = -sig * atan2(rx * rz, ry * r + eps) ! yy
+        cur_node(4, ind) =  sig * log(rx + r + eps)            ! yz
+        cur_node(5, ind) =  sig * log(ry + r + eps)            ! xz
+      enddo
+    enddo
+  enddo
+
+  ! finalize tensor
+  tmp_sum = SUM(cur_node, DIM=2)
+  ts_x(1) = tmp_sum(1) ! xx
+  ts_y(1) = tmp_sum(2) ! yx
+  ts_y(2) = tmp_sum(3) ! yy
+  ts_y(3) = tmp_sum(4) ! yz
+  ts_x(3) = tmp_sum(5) ! xz
+
+  ts_z(3) = -(ts_x(1) + ts_y(2)) ! zz = -(xx + yy)
+  ts_z(2) = ts_y(3) ! zy = yz
+  ts_x(2) = ts_y(1) ! xy = yx
+  ts_z(1) = ts_x(3) ! zx = xz
+
+
+end subroutine sharmbox2
 
 ! ======================================================================
 ! Calculates the kernels required for magnetic tensor mag
@@ -807,6 +890,8 @@ subroutine tensorbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, mtensor, tensorZnodes, 
   !print *, x1, x2
   !print *, y1, y2
   !print *, z1, z2
+
+  print *, 'why are you in here'
 
   temp_mtensor = 0.0
   znodes_i = (xy_ind - 1) * 40 + 1
