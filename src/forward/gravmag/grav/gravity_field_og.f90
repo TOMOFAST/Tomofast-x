@@ -160,14 +160,11 @@ subroutine graviprism_z(nelements, grid, Xdata, Ydata, Zdata, LineZ, myrank)
   integer :: i, k, l, m
 
   logical :: l_calcznodes
-  integer :: xy_ind, offset, znode_i
-  integer(8) :: nele_xylayer
-  !double precision :: znodes(grid%nx * grid%ny * 12)
-  double precision, allocatable :: znodes(:)
+  integer :: nele_xylayer, xy_ind, offset, znode_i
+  double precision :: znodes(grid%nx * grid%ny * 12)
 
-  nele_xylayer = int(grid%nx, 8) * int(grid%ny, 8)
-  ALLOCATE(znodes(nele_xylayer * 12_8))
-  znodes = -9999.9_8
+  znodes = -9999.9
+  nele_xylayer = grid%nx * grid%ny
 
   do i = 1, nelements
     xy_ind = MERGE(MOD(i, nele_xylayer), nele_xylayer, (MOD(i, nele_xylayer) > 0))
@@ -257,8 +254,6 @@ subroutine graviprism_z(nelements, grid, Xdata, Ydata, Zdata, LineZ, myrank)
     ! Store element in full matrix line
     LineZ(i) = real(G_grav * gz, CUSTOM_REAL)
   enddo
-
-  DEALLOCATE(znodes)
 
 end subroutine graviprism_z
 
