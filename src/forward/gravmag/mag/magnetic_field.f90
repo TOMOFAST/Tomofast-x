@@ -143,14 +143,13 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
   real(kind=SENSIT_REAL), allocatable :: znodes(:), dummy_znodes(:)
   logical :: l_calcznodes
   integer :: nele_xylayer, xy_ind, len_znode
-  real(kind=SENSIT_REAL), parameter :: dodgy_real = 0.0
 
   ! Allocate and initialize znode array length depending on # of components (to feed to sharmbox or tensorbox)
   len_znode = merge(12, 40, ndata_components <= 3)
   nele_xylayer = grid%nx * grid%ny
 
-  allocate(znodes(nele_xylayer * len_znode), source=dodgy_real)
-  allocate(dummy_znodes(len_znode), source=dodgy_real)
+  allocate(znodes(nele_xylayer * len_znode))
+  allocate(dummy_znodes(len_znode))
 
   do i = 1, nelements
     ! Clear mtensor for each data observation point
@@ -161,9 +160,8 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
 
     ! Check if the znode values need to be calculated
     ! They need to be calculated if:
-    ! 1. It's the first layer or
-    ! 2. The znodes above the current voxel are invalid
-    l_calcznodes = (i <= nele_xylayer) .or. (znodes((xy_ind - 1) * len_znode + 1) == dodgy_real)
+    ! 1. It's the first layer
+    l_calcznodes = (i <= nele_xylayer)
 
     ! Calculate the magnetic tensor.
 
@@ -173,9 +171,6 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
     inside_z = (grid%Z1(i) < Zdata) .and. (grid%Z2(i) > Zdata)
 
     if (inside_x .and. inside_y .and. inside_z) then
-
-        ! Update znode voxel index leading value with invalid to force znode recalculation on the next layer
-        znodes((xy_ind - 1) * len_znode + 1) = dodgy_real
 
         ! Default void width.
         width = 0.1
@@ -246,36 +241,99 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
 
         do j = 1, 6
           if (ndata_components <= 3) then
-            call this%sharmbox(real(Xdata, SENSIT_REAL), &
-                               real(Ydata, SENSIT_REAL), &
-                               real(Zdata, SENSIT_REAL), &
-                               real(temp_x1(j), SENSIT_REAL), &
-                               real(temp_y1(j), SENSIT_REAL), &
-                               real(temp_z1(j), SENSIT_REAL), &
-                               real(temp_x2(j), SENSIT_REAL), &
-                               real(temp_y2(j), SENSIT_REAL), &
-                               real(temp_z2(j), SENSIT_REAL), &
-                               temp_tx, temp_ty, temp_tz, dummy_znodes, .true., 1)
+
+            ! If top sub-voxel, load znodes
+            if (j == 1) then
+              call this%sharmbox(real(Xdata, SENSIT_REAL), &
+                                real(Ydata, SENSIT_REAL), &
+                                real(Zdata, SENSIT_REAL), &
+                                real(temp_x1(j), SENSIT_REAL), &
+                                real(temp_y1(j), SENSIT_REAL), &
+                                real(temp_z1(j), SENSIT_REAL), &
+                                real(temp_x2(j), SENSIT_REAL), &
+                                real(temp_y2(j), SENSIT_REAL), &
+                                real(temp_z2(j), SENSIT_REAL), &
+                                temp_tx, temp_ty, temp_tz, znodes, l_calcznodes, xy_ind)
+
+            ! If bottom sub-voxel, save znodes
+            else if (j == 2) then
+              call this%sharmbox(real(Xdata, SENSIT_REAL), &
+                                real(Ydata, SENSIT_REAL), &
+                                real(Zdata, SENSIT_REAL), &
+                                real(temp_x1(j), SENSIT_REAL), &
+                                real(temp_y1(j), SENSIT_REAL), &
+                                real(temp_z1(j), SENSIT_REAL), &
+                                real(temp_x2(j), SENSIT_REAL), &
+                                real(temp_y2(j), SENSIT_REAL), &
+                                real(temp_z2(j), SENSIT_REAL), &
+                                temp_tx, temp_ty, temp_tz, znodes, .true., xy_ind)
+
+            ! Else feed in dummy_znodes
+            else
+              call this%sharmbox(real(Xdata, SENSIT_REAL), &
+                                real(Ydata, SENSIT_REAL), &
+                                real(Zdata, SENSIT_REAL), &
+                                real(temp_x1(j), SENSIT_REAL), &
+                                real(temp_y1(j), SENSIT_REAL), &
+                                real(temp_z1(j), SENSIT_REAL), &
+                                real(temp_x2(j), SENSIT_REAL), &
+                                real(temp_y2(j), SENSIT_REAL), &
+                                real(temp_z2(j), SENSIT_REAL), &
+                                temp_tx, temp_ty, temp_tz, dummy_znodes, .true., 1)
+
+            endif
 
             tx = tx + temp_tx
             ty = ty + temp_ty
             tz = tz + temp_tz
 
           else
-            call this%tensorbox(real(Xdata, SENSIT_REAL), &
-                               real(Ydata, SENSIT_REAL), &
-                               real(Zdata, SENSIT_REAL), &
-                               real(temp_x1(j), SENSIT_REAL), &
-                               real(temp_y1(j), SENSIT_REAL), &
-                               real(temp_z1(j), SENSIT_REAL), &
-                               real(temp_x2(j), SENSIT_REAL), &
-                               real(temp_y2(j), SENSIT_REAL), &
-                               real(temp_z2(j), SENSIT_REAL), &
-                               internal_mtensor, dummy_znodes, .true., 1)
+
+            ! If top sub-voxel, load znodes
+            if (j == 1) then
+              call this%tensorbox(real(Xdata, SENSIT_REAL), &
+                                real(Ydata, SENSIT_REAL), &
+                                real(Zdata, SENSIT_REAL), &
+                                real(temp_x1(j), SENSIT_REAL), &
+                                real(temp_y1(j), SENSIT_REAL), &
+                                real(temp_z1(j), SENSIT_REAL), &
+                                real(temp_x2(j), SENSIT_REAL), &
+                                real(temp_y2(j), SENSIT_REAL), &
+                                real(temp_z2(j), SENSIT_REAL), &
+                                internal_mtensor, znodes, l_calcznodes, xy_ind)
+
+            ! If bottom sub-voxel, save znodes
+            else if (j == 2) then
+              call this%tensorbox(real(Xdata, SENSIT_REAL), &
+                                real(Ydata, SENSIT_REAL), &
+                                real(Zdata, SENSIT_REAL), &
+                                real(temp_x1(j), SENSIT_REAL), &
+                                real(temp_y1(j), SENSIT_REAL), &
+                                real(temp_z1(j), SENSIT_REAL), &
+                                real(temp_x2(j), SENSIT_REAL), &
+                                real(temp_y2(j), SENSIT_REAL), &
+                                real(temp_z2(j), SENSIT_REAL), &
+                                internal_mtensor, znodes, .true., xy_ind)
+
+            ! Else feed in dummy_znodes
+            else
+              call this%tensorbox(real(Xdata, SENSIT_REAL), &
+                                real(Ydata, SENSIT_REAL), &
+                                real(Zdata, SENSIT_REAL), &
+                                real(temp_x1(j), SENSIT_REAL), &
+                                real(temp_y1(j), SENSIT_REAL), &
+                                real(temp_z1(j), SENSIT_REAL), &
+                                real(temp_x2(j), SENSIT_REAL), &
+                                real(temp_y2(j), SENSIT_REAL), &
+                                real(temp_z2(j), SENSIT_REAL), &
+                                internal_mtensor, dummy_znodes, .true., 1)
+
+            endif
 
             mtensor = mtensor + internal_mtensor
 
           endif
+
         enddo
 
     else
