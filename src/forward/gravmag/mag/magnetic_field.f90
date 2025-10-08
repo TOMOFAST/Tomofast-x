@@ -329,7 +329,7 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
   real(kind=SENSIT_REAL) :: R1, R2, R3, R4
   real(kind=SENSIT_REAL) :: eps
 
-  eps = 1.e-8
+  eps = 0.
 
   ! Relative coordinates to obs.
   ! Voxel runs from x1 to x2, y1 to y2, z1 to z2.
@@ -340,6 +340,13 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
   ry2 = y2 - y0 + eps; ! ry2 = -v1
   rz1 = z1 - z0 + eps; ! rz1 = -w2
   rz2 = z2 - z0 + eps; ! rz2 = -w1
+
+  if (rx1 == 0. .or. rx2 == 0. .or. &
+      ry1 == 0. .or. ry2 == 0. .or. &
+      rz1 == 0. .or. rz2 == 0.) then
+    print *, "The model grid boundaries coincide with the data position, for data at x0, y0, z0 = ", x0, y0, z0
+    stop
+  endif
 
   ! Squares.
   rx1sq = rx1 ** 2; rx2sq = rx2 ** 2;
