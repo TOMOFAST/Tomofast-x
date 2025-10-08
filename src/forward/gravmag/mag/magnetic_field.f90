@@ -327,7 +327,7 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
   real(kind=SENSIT_REAL) :: rx1sq, rx2sq, ry1sq, ry2sq, rz1sq, rz2sq
   real(kind=SENSIT_REAL) :: arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8
   real(kind=SENSIT_REAL) :: R1, R2, R3, R4
-  real(kind=SENSIT_REAL) :: eps
+  real(kind=SENSIT_REAL) :: eps, eps2
 
   eps = 0.
 
@@ -341,10 +341,24 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z)
   rz1 = z1 - z0 + eps; ! rz1 = -w2
   rz2 = z2 - z0 + eps; ! rz2 = -w1
 
-  if (rx1 == 0. .or. rx2 == 0. .or. &
-      ry1 == 0. .or. ry2 == 0. .or. &
-      rz1 == 0. .or. rz2 == 0.) then
-    print *, "The model grid boundaries coincide with the data position, for data at x0, y0, z0 = ", x0, y0, z0
+  eps2 = 1.e-8
+
+  ! Only adjust the Z-boundary (due to for possible topography matches).
+  if (rz1 == 0.) rz1 = rz1 + eps2
+  if (rz2 == 0.) rz2 = rz2 + eps2
+
+  if (rx1 == 0. .or. rx2 == 0.) then
+    print *, "The model grid X-boundary coincides with the data position, for data at x0, y0, z0 = ", x0, y0, z0
+    stop
+  endif
+
+  if (ry1 == 0. .or. ry2 == 0.) then
+    print *, "The model grid Y-boundary coincides with the data position, for data at x0, y0, z0 = ", x0, y0, z0
+    stop
+  endif
+
+  if (rz1 == 0. .or. rz2 == 0.) then
+    print *, "The model grid Z-boundary coincides with the data position, for data at x0, y0, z0 = ", x0, y0, z0
     stop
   endif
 
