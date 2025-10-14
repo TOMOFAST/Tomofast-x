@@ -570,17 +570,11 @@ subroutine visualisation_paraview_points(filename, myrank, ndata, ncomponents, v
   ! Convert data units.
   point_data = point_data / real(units_mult, 4)
 
-  if (ncomponents == 3) then
-    if (INVERT_Z_AXIS) then
-      point_data(3, :) = -point_data(3, :)
-    endif
-  endif
-
   write(333) point_data
 
   if (ncomponents == 3) then
     ! Add component names to the vector data.
-    call add_component_names(333, INVERT_Z_AXIS)
+    call add_component_names(333, .false.)
   endif
 
   close(333)
