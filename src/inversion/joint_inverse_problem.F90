@@ -496,8 +496,18 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, memory, myr
   ! ***** ADMM method *****
   do i = 1, 2
     if (this%add_admm(i)) then
+      if (par%nmodel_components == 1) then
+        k = 1
+      else if (par%nmodel_components == 3) then
+        ! Adding bounds on Mz (to control inclination - positive or negative).
+        k = 3
+      else
+        call exit_MPI("Wrong number of model components!", myrank, 0)
+      endif
+      damping_param_shift = param_shift(i) + (k - 1) * par%nelements
+
       call this%admm_method(i)%iterate_admm_arrays(model(i)%nlithos, model(i)%min_bound, model(i)%max_bound, &
-                                                   model(i)%val(:, 1), this%x0_ADMM(i)%val)
+                                                   model(i)%val(:, k), this%x0_ADMM(i)%val)
 
       ! Use the L2 norm for the ADMM constraints.
       norm_power = 2.0d0
@@ -506,11 +516,11 @@ subroutine joint_inversion_solve(this, par, arr, model, delta_model, memory, myr
                               par%compression_type, par%nx, par%ny, par%nz)
 
       call damping%add(this%matrix_cons, size(this%b_RHS(lc:)), this%b_RHS(lc:), arr(i)%column_weight, &
-                       model(i)%val(:, 1), this%x0_ADMM(i)%val, param_shift(i), &
+                       model(i)%val(:, k), this%x0_ADMM(i)%val, damping_param_shift, &
                        this%WAVELET_DOMAIN, myrank, nbproc, model(i)%bound_weight)
 
       ! Calculate the ADMM cost in parallel.
-      call calculate_cost(par%nelements, this%admm_method(i)%z, model(i)%val(:, 1), this%admm_cost(i), .true., nbproc)
+      call calculate_cost(par%nelements, this%admm_method(i)%z, model(i)%val(:, k), this%admm_cost(i), .true., nbproc)
 
       if (myrank == 0) print *, "ADMM cost |x - z| / |z| =", this%admm_cost(i)
     endif
