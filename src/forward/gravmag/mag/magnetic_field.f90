@@ -143,14 +143,13 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
   real(kind=SENSIT_REAL), allocatable :: znodes(:), dummy_znodes(:)
   logical :: l_calcznodes
   integer :: nele_xylayer, xy_ind, len_znode
-  real(kind=SENSIT_REAL), parameter :: dodgy_real = 0.0
 
   ! Allocate and initialize znode array length depending on # of components (to feed to sharmbox or tensorbox)
   len_znode = merge(12, 40, ndata_components <= 3)
   nele_xylayer = grid%nx * grid%ny
 
-  allocate(znodes(nele_xylayer * len_znode), source=dodgy_real)
-  allocate(dummy_znodes(len_znode), source=dodgy_real)
+  allocate(znodes(nele_xylayer * len_znode))
+  allocate(dummy_znodes(len_znode))
 
   do i = 1, nelements
     ! Clear mtensor for each data observation point
@@ -161,9 +160,8 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
 
     ! Check if the znode values need to be calculated
     ! They need to be calculated if:
-    ! 1. It's the first layer or
-    ! 2. The znodes above the current voxel are invalid
-    l_calcznodes = (i <= nele_xylayer) .or. (znodes((xy_ind - 1) * len_znode + 1) == dodgy_real)
+    ! 1. It's the first layer
+    l_calcznodes = (i <= nele_xylayer)
 
     ! Calculate the magnetic tensor.
 
@@ -173,9 +171,6 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
     inside_z = (grid%Z1(i) < Zdata) .and. (grid%Z2(i) > Zdata)
 
     if (inside_x .and. inside_y .and. inside_z) then
-
-        ! Update znode voxel index leading value with invalid to force znode recalculation on the next layer
-        znodes((xy_ind - 1) * len_znode + 1) = dodgy_real
 
         ! Default void width.
         width = 0.1
@@ -246,36 +241,99 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
 
         do j = 1, 6
           if (ndata_components <= 3) then
-            call this%sharmbox(real(Xdata, SENSIT_REAL), &
-                               real(Ydata, SENSIT_REAL), &
-                               real(Zdata, SENSIT_REAL), &
-                               real(temp_x1(j), SENSIT_REAL), &
-                               real(temp_y1(j), SENSIT_REAL), &
-                               real(temp_z1(j), SENSIT_REAL), &
-                               real(temp_x2(j), SENSIT_REAL), &
-                               real(temp_y2(j), SENSIT_REAL), &
-                               real(temp_z2(j), SENSIT_REAL), &
-                               temp_tx, temp_ty, temp_tz, dummy_znodes, .true., 1)
+
+            ! If top sub-voxel, load znodes
+            if (j == 1) then
+              call this%sharmbox(real(Xdata, SENSIT_REAL), &
+                                real(Ydata, SENSIT_REAL), &
+                                real(Zdata, SENSIT_REAL), &
+                                real(temp_x1(j), SENSIT_REAL), &
+                                real(temp_y1(j), SENSIT_REAL), &
+                                real(temp_z1(j), SENSIT_REAL), &
+                                real(temp_x2(j), SENSIT_REAL), &
+                                real(temp_y2(j), SENSIT_REAL), &
+                                real(temp_z2(j), SENSIT_REAL), &
+                                temp_tx, temp_ty, temp_tz, znodes, l_calcznodes, xy_ind)
+
+            ! If bottom sub-voxel, save znodes
+            else if (j == 2) then
+              call this%sharmbox(real(Xdata, SENSIT_REAL), &
+                                real(Ydata, SENSIT_REAL), &
+                                real(Zdata, SENSIT_REAL), &
+                                real(temp_x1(j), SENSIT_REAL), &
+                                real(temp_y1(j), SENSIT_REAL), &
+                                real(temp_z1(j), SENSIT_REAL), &
+                                real(temp_x2(j), SENSIT_REAL), &
+                                real(temp_y2(j), SENSIT_REAL), &
+                                real(temp_z2(j), SENSIT_REAL), &
+                                temp_tx, temp_ty, temp_tz, znodes, .true., xy_ind)
+
+            ! Else feed in dummy_znodes
+            else
+              call this%sharmbox(real(Xdata, SENSIT_REAL), &
+                                real(Ydata, SENSIT_REAL), &
+                                real(Zdata, SENSIT_REAL), &
+                                real(temp_x1(j), SENSIT_REAL), &
+                                real(temp_y1(j), SENSIT_REAL), &
+                                real(temp_z1(j), SENSIT_REAL), &
+                                real(temp_x2(j), SENSIT_REAL), &
+                                real(temp_y2(j), SENSIT_REAL), &
+                                real(temp_z2(j), SENSIT_REAL), &
+                                temp_tx, temp_ty, temp_tz, dummy_znodes, .true., 1)
+
+            endif
 
             tx = tx + temp_tx
             ty = ty + temp_ty
             tz = tz + temp_tz
 
           else
-            call this%tensorbox(real(Xdata, SENSIT_REAL), &
-                               real(Ydata, SENSIT_REAL), &
-                               real(Zdata, SENSIT_REAL), &
-                               real(temp_x1(j), SENSIT_REAL), &
-                               real(temp_y1(j), SENSIT_REAL), &
-                               real(temp_z1(j), SENSIT_REAL), &
-                               real(temp_x2(j), SENSIT_REAL), &
-                               real(temp_y2(j), SENSIT_REAL), &
-                               real(temp_z2(j), SENSIT_REAL), &
-                               internal_mtensor, dummy_znodes, .true., 1)
+
+            ! If top sub-voxel, load znodes
+            if (j == 1) then
+              call this%tensorbox(real(Xdata, SENSIT_REAL), &
+                                real(Ydata, SENSIT_REAL), &
+                                real(Zdata, SENSIT_REAL), &
+                                real(temp_x1(j), SENSIT_REAL), &
+                                real(temp_y1(j), SENSIT_REAL), &
+                                real(temp_z1(j), SENSIT_REAL), &
+                                real(temp_x2(j), SENSIT_REAL), &
+                                real(temp_y2(j), SENSIT_REAL), &
+                                real(temp_z2(j), SENSIT_REAL), &
+                                internal_mtensor, znodes, l_calcznodes, xy_ind)
+
+            ! If bottom sub-voxel, save znodes
+            else if (j == 2) then
+              call this%tensorbox(real(Xdata, SENSIT_REAL), &
+                                real(Ydata, SENSIT_REAL), &
+                                real(Zdata, SENSIT_REAL), &
+                                real(temp_x1(j), SENSIT_REAL), &
+                                real(temp_y1(j), SENSIT_REAL), &
+                                real(temp_z1(j), SENSIT_REAL), &
+                                real(temp_x2(j), SENSIT_REAL), &
+                                real(temp_y2(j), SENSIT_REAL), &
+                                real(temp_z2(j), SENSIT_REAL), &
+                                internal_mtensor, znodes, .true., xy_ind)
+
+            ! Else feed in dummy_znodes
+            else
+              call this%tensorbox(real(Xdata, SENSIT_REAL), &
+                                real(Ydata, SENSIT_REAL), &
+                                real(Zdata, SENSIT_REAL), &
+                                real(temp_x1(j), SENSIT_REAL), &
+                                real(temp_y1(j), SENSIT_REAL), &
+                                real(temp_z1(j), SENSIT_REAL), &
+                                real(temp_x2(j), SENSIT_REAL), &
+                                real(temp_y2(j), SENSIT_REAL), &
+                                real(temp_z2(j), SENSIT_REAL), &
+                                internal_mtensor, dummy_znodes, .true., 1)
+
+            endif
 
             mtensor = mtensor + internal_mtensor
 
           endif
+
         enddo
 
     else
@@ -441,7 +499,7 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   integer, intent(in) :: xy_ind
   integer :: znodes_i
 
-  eps = 1.e-8
+  eps = 0.0_8! 1.e-8
   znodes_i = (xy_ind - 1) * 12 + 1
 
   ! Relative coordinates to obs.
@@ -515,27 +573,6 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   znodes(znodes_i + 1) = at2
   znodes(znodes_i + 2) = at5
   znodes(znodes_i + 3) = at6
-
-  !print *, 'xx at1', at1
-  !print *, 'xx at2', at2
-  !print *, 'xx at3', at3
-  !print *, 'xx at4', at4
-  !print *, 'xx at5', at5
-  !print *, 'xx at6', at6
-  !print *, 'xx at7', at7
-  !print *, 'xx at8', at8
-
-  ! ts_xx
-  ! C6 - C8 + C4 - C2 + C7 - C5 + C1 - C3
-  !ts_x(1) = atan2(ry1 * rz2, (rx2 * arg5 + eps)) - & ! atan2(-inf/inf)
-  !          atan2(ry2 * rz2, (rx2 * arg2 + eps)) + & ! -atan2(-inf/inf)
-  !          atan2(ry2 * rz1, (rx2 * arg3 + eps)) - &
-  !          atan2(ry1 * rz1, (rx2 * arg8 + eps)) + &
-  !          atan2(ry2 * rz2, (rx1 * arg1 + eps)) - & ! atan2(-inf/inf)
-  !          atan2(ry1 * rz2, (rx1 * arg6 + eps)) + & ! -atan2(-inf/inf)
-  !          atan2(ry1 * rz1, (rx1 * arg7 + eps)) - &
-  !          atan2(ry2 * rz1, (rx1 * arg4 + eps))
-
   ts_x(1) = at1 - at2 + at3 - at4 + at5 - at6 + at7 - at8
 
   ! mapping
@@ -548,18 +585,6 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   lg2 = log((rz2 + arg1 + eps) / (rz1 + arg4 + eps))
   lg3 = log((rz2 + arg6 + eps) / (rz1 + arg7 + eps))
   lg4 = log((rz2 + arg5 + eps) / (rz1 + arg8 + eps))
-
-  !print *, 'yx lg1', lg1
-  !print *, 'yx lg2', lg2
-  !print *, 'yx lg3', lg3
-  !print *, 'yx lg4', lg4
-
-  ! ts_yx
-  !ts_y(1) = log((rz2 + arg2 + eps) / (rz1 + arg3 + eps)) - &
-  !          log((rz2 + arg1 + eps) / (rz1 + arg4 + eps)) + &
-  !          log((rz2 + arg6 + eps) / (rz1 + arg7 + eps)) - &
-  !          log((rz2 + arg5 + eps) / (rz1 + arg8 + eps))
-
   ts_y(1) = lg1 - lg2 + lg3 - lg4
 
   ! mapping
@@ -592,26 +617,6 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   znodes(znodes_i + 5) = at2
   znodes(znodes_i + 6) = at5
   znodes(znodes_i + 7) = at6
-
-  !print *, 'yy at1', at1
-  !print *, 'yy at2', at2
-  !print *, 'yy at3', at3
-  !print *, 'yy at4', at4
-  !print *, 'yy at5', at5
-  !print *, 'yy at6', at6
-  !print *, 'yy at7', at7
-  !print *, 'yy at8', at8
-
-  ! ts_yy
-  !ts_y(2) = atan2(rx1 * rz2, (ry2 * arg1 + eps)) - &
-  !          atan2(rx2 * rz2, (ry2 * arg2 + eps)) + &
-  !          atan2(rx2 * rz1, (ry2 * arg3 + eps)) - &
-  !          atan2(rx1 * rz1, (ry2 * arg4 + eps)) + &
-  !          atan2(rx2 * rz2, (ry1 * arg5 + eps)) - &
-  !          atan2(rx1 * rz2, (ry1 * arg6 + eps)) + &
-  !          atan2(rx1 * rz1, (ry1 * arg7 + eps)) - &
-  !          atan2(rx2 * rz1, (ry1 * arg8 + eps))
-
   ts_y(2) = at1 - at2 + at3 - at4 + at5 - at6 + at7 - at8
 
   ! mapping
@@ -659,18 +664,6 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
 
   znodes(znodes_i + 8) = lg2
   znodes(znodes_i + 9) = lg3
-
-  !print *, 'yz lg1', lg1
-  !print *, 'yz lg2', lg2
-  !print *, 'yz lg3', lg3
-  !print *, 'yz lg4', lg4
-
-  ! ts_yz
-  !ts_y(3) = log((rx1 + arg1 + eps) / (rx2 + arg2 + eps)) - &
-  !          log((rx1 + arg3 + eps) / (rx2 + arg4 + eps)) + &
-  !          log((rx1 + arg7 + eps) / (rx2 + arg8 + eps)) - &
-  !          log((rx1 + arg5 + eps) / (rx2 + arg6 + eps))
-
   ts_y(3) = lg1 - lg2 + lg3 - lg4
 
   ! mapping
@@ -713,23 +706,8 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
 
   znodes(znodes_i + 10) = lg2
   znodes(znodes_i + 11) = lg3
-
-  !print *, 'xz lg1', lg1
-  !print *, 'xz lg2', lg2
-  !print *, 'xz lg3', lg3
-  !print *, 'xz lg4', lg4
-
-  ! ts_xz
-  !ts_x(3) = log((ry1 + arg1 + eps) / (ry2 + arg2 + eps)) - &
-  !          log((ry1 + arg3 + eps) / (ry2 + arg4 + eps)) + &
-  !          log((ry1 + arg7 + eps) / (ry2 + arg8 + eps)) - &
-  !          log((ry1 + arg5 + eps) / (ry2 + arg6 + eps))
-
   ts_x(3) = lg1 - lg2 + lg3 - lg4
 
-  ! mapping
-  ! lg2 -> lg1
-  ! lg3 -> lg4
 
   ! Filling the rest of the tensor.
   ! ts_zz
@@ -743,10 +721,6 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
 
   ! ts_zx
   ts_z(1) = ts_x(3)
-
-  !print *, 'tsx', ts_x
-  !print *, 'tsy', ts_y
-  !print *, 'tsz', ts_z
 
 end subroutine sharmbox
 
@@ -814,8 +788,6 @@ subroutine tensorbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, mtensor, tensorZnodes, 
       ry_sq = ry_sq_arr(j+1)
 
       do k = 0, 1
-        !print *, i, j, k
-
         ! i j
         ! 0 0 -> 0
         ! 0 1 -> 1
