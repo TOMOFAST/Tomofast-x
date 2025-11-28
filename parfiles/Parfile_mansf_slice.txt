@@ -9,14 +9,17 @@ MODEL GRID parameters
 ===================================================================================
 # nx ny nz
 modelGrid.size                      = 2 128 32
-modelGrid.grav.file                 = data/gravmag/mansf_slice/true_model_grav_3litho.txt
+modelGrid.grav.file                 = data/gravmag/mansf_slice/true_model_grav_3litho-grid.txt
 
 ===================================================================================
 DATA parameters
 ===================================================================================
 forward.data.grav.nData             = 256
 forward.data.grav.dataGridFile      = data/gravmag/mansf_slice/data_grid.txt
-forward.data.grav.dataValuesFile    = output/mansf_slice/data/grav_calc_read_data.txt
+
+# Disable this part when using field data (set flag to zero).
+forward.data.grav.useSyntheticModelForDataValues = 1
+forward.data.grav.syntheticModelFile = data/gravmag/mansf_slice/true_model_grav_3litho-values.txt
 
 ===================================================================================
 DEPTH WEIGHTING

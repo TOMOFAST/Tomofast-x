@@ -49,8 +49,6 @@ forward.data.grav.nData             = 0
 forward.data.magn.nData             = 0
 forward.data.grav.dataGridFile      = None
 forward.data.magn.dataGridFile      = None
-forward.data.grav.dataValuesFile    = None
-forward.data.magn.dataValuesFile    = None
 forward.data.grav.nDataComponents   = 1
 forward.data.magn.nDataComponents   = 1
 
@@ -63,6 +61,12 @@ forward.data.grav.useError = 0
 forward.data.magn.useError = 0
 forward.data.grav.errorFile = None
 forward.data.magn.errorFile = None
+
+# Synthetic model (for tests).
+forward.data.grav.useSyntheticModelForDataValues = 0
+forward.data.magn.useSyntheticModelForDataValues = 0
+forward.data.grav.syntheticModelFile = None
+forward.data.magn.syntheticModelFile = None
 
 ===================================================================================
 MAGNETIC FIELD constants

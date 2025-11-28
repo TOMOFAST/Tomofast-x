@@ -238,6 +238,9 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   gpar%vtk_model_label = "rho"
   mpar%vtk_model_label = "k"
 
+  gpar%model_files = "NILL"
+  mpar%model_files = "NILL"
+
   ! MODEL GRID parameters.
   gpar%nx = 0
   gpar%ny = 0
@@ -245,8 +248,8 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   mpar%nx = 0
   mpar%ny = 0
   mpar%nz = 0
-  gpar%model_files(1) = "NILL"
-  mpar%model_files(1) = "NILL"
+  gpar%model_grid_file = "NILL"
+  mpar%model_grid_file = "NILL"
   gpar%nmodel_components = 1
   mpar%nmodel_components = 1
 
@@ -261,6 +264,9 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   mpar%ndata_components = 1
   gpar%data_type = 1
   mpar%data_type = 1
+
+  gpar%useSyntheticModelForDataValues = .false.
+  mpar%useSyntheticModelForDataValues = .false.
 
   ! Data error.
   gpar%use_data_error = 0
@@ -308,16 +314,12 @@ subroutine set_default_parameters(gpar, mpar, ipar)
   mpar%number_prior_models = 1
   gpar%prior_model_val = 0.d0
   mpar%prior_model_val = 0.d0
-  gpar%model_files(2) = "NILL"
-  mpar%model_files(2) = "NILL"
 
   ! STARTING MODEL parameters.
   gpar%start_model_type = 1 ! 1-set value, 2-read from file.
   mpar%start_model_type = 1
   gpar%start_model_val = 0.d0
   mpar%start_model_val = 0.d0
-  gpar%model_files(3) = "NILL"
-  mpar%model_files(3) = "NILL"
 
   ! INVERSION parameters.
   ipar%ninversions = 10
@@ -421,6 +423,7 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
   integer :: symbol_index, i
   integer :: ios
   logical :: global_bounds_defined
+  integer :: useSyntheticModelForDataValuesInt
 
   open(unit=10, file=trim(parfile_path), status='old', iostat=itmp, action='read')
   if (itmp /= 0) call exit_MPI("Parfile """ // trim(parfile_path) // """ cannot be opened!", myrank, 0)
@@ -493,12 +496,12 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
         mpar%nz = gpar%nz
 
       case("modelGrid.grav.file")
-        call read_filename(10, gpar%model_files(1))
-        call print_arg(myrank, parname, gpar%model_files(1))
+        call read_filename(10, gpar%model_grid_file)
+        call print_arg(myrank, parname, gpar%model_grid_file)
 
       case("modelGrid.magn.file")
-        call read_filename(10, mpar%model_files(1))
-        call print_arg(myrank, parname, mpar%model_files(1))
+        call read_filename(10, mpar%model_grid_file)
+        call print_arg(myrank, parname, mpar%model_grid_file)
 
       case("modelGrid.magn.nModelComponents")
         read(10, *) mpar%nmodel_components
@@ -521,14 +524,6 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
       case("forward.data.magn.dataGridFile")
         call read_filename(10, mpar%data_grid_file)
         call print_arg(myrank, parname, mpar%data_grid_file)
-
-      case("forward.data.grav.dataValuesFile")
-        call read_filename(10, gpar%data_file)
-        call print_arg(myrank, parname, gpar%data_file)
-
-      case("forward.data.magn.dataValuesFile")
-        call read_filename(10, mpar%data_file)
-        call print_arg(myrank, parname, mpar%data_file)
 
       case("forward.data.grav.nDataComponents")
         read(10, *) gpar%ndata_components
@@ -557,6 +552,34 @@ subroutine read_parfile(parfile_path, gpar, mpar, ipar, myrank)
       case("forward.data.magn.errorFile")
         call read_filename(10, mpar%data_error_file)
         call print_arg(myrank, parname, mpar%data_error_file)
+
+      case("forward.data.grav.useSyntheticModelForDataValues")
+        read(10, *) useSyntheticModelForDataValuesInt
+        call print_arg(myrank, parname, useSyntheticModelForDataValuesInt)
+
+        if (useSyntheticModelForDataValuesInt == 0) then
+          gpar%useSyntheticModelForDataValues = .false.
+        else
+          gpar%useSyntheticModelForDataValues = .true.
+        endif
+
+      case("forward.data.magn.useSyntheticModelForDataValues")
+        read(10, *) useSyntheticModelForDataValuesInt
+        call print_arg(myrank, parname, useSyntheticModelForDataValuesInt)
+
+        if (useSyntheticModelForDataValuesInt == 0) then
+          mpar%useSyntheticModelForDataValues = .false.
+        else
+          mpar%useSyntheticModelForDataValues = .true.
+        endif
+
+      case("forward.data.grav.syntheticModelFile")
+        call read_filename(10, gpar%model_files(1))
+        call print_arg(myrank, parname, gpar%model_files(1))
+
+      case("forward.data.magn.syntheticModelFile")
+        call read_filename(10, mpar%model_files(1))
+        call print_arg(myrank, parname, mpar%model_files(1))
 
       ! MAGNETIC FIELD constants ---------------------------
 

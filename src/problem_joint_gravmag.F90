@@ -100,11 +100,15 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   real(kind=CUSTOM_REAL), allocatable :: delta_model(:, :, :)
   ! Memory usage.
   real(kind=CUSTOM_REAL) :: memory_fwd, memory_inv
+  logical :: useSynthModel(2)
 
   if (myrank == 0) print *, "Solving problem grav/mag."
 
   memory_fwd = 0.d0
   memory_inv = 0.d0
+
+  useSynthModel(1) = gpar%useSyntheticModelForDataValues
+  useSynthModel(2) = mpar%useSyntheticModelForDataValues
 
   do i = 1, 2
     SOLVE_PROBLEM(i) = (ipar%problem_weight(i) /= 0.d0)
@@ -137,8 +141,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call model(2)%grid_full%allocate(ipar%nx, ipar%ny, ipar%nz, mpar%z_axis_dir, myrank)
 
   ! Reading the full model grid.
-  if (SOLVE_PROBLEM(1)) call read_model_grid(model(1)%grid_full, ipar%nmodel_components, gpar%model_files(1), myrank)
-  if (SOLVE_PROBLEM(2)) call read_model_grid(model(2)%grid_full, ipar%nmodel_components, mpar%model_files(1), myrank)
+  if (SOLVE_PROBLEM(1)) call read_model_grid(model(1)%grid_full, ipar%nmodel_components, gpar%model_grid_file, myrank)
+  if (SOLVE_PROBLEM(2)) call read_model_grid(model(2)%grid_full, ipar%nmodel_components, mpar%model_grid_file, myrank)
 
   ! (II) DATA ALLOCATION. -----------------------------------------------------------------
 
@@ -267,15 +271,23 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     endif
   enddo
 
-  ! READING THE READ MODEL (SYNTHETIC) -----------------------------------------------------------------
+  ! READING THE SYNTHETIC MODEL -------------------------------------------------------------------------
 
-  ! Reading the read model - that is stored in the model grid file.
-  if (SOLVE_PROBLEM(1)) call set_model(model(1), 2, 0.d0, gpar%model_files(1), 1, myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call set_model(model(2), 2, 0.d0, mpar%model_files(1), 1, myrank, nbproc)
+  ! Reading the syntetic model.
+  if (SOLVE_PROBLEM(1) .and. useSynthModel(1)) then
+    call set_model(model(1), 2, 0.d0, gpar%model_files(1), myrank, nbproc)
+  endif
+  if (SOLVE_PROBLEM(2) .and. useSynthModel(2)) then
+    call set_model(model(2), 2, 0.d0, mpar%model_files(1), myrank, nbproc)
+  endif
 
-  ! Write the model read to a file for Paraview visualization.
-  if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_read_', .false., .false., myrank, nbproc)
-  if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_read_', .false., .false., myrank, nbproc)
+  ! Write the syntetic model for Paraview visualisation.
+  if (SOLVE_PROBLEM(1) .and. useSynthModel(1)) then
+    call model_write(model(1), 'grav_synth_', .false., .false., myrank, nbproc)
+  endif
+  if (SOLVE_PROBLEM(2) .and. useSynthModel(2)) then
+    call model_write(model(2), 'mag_synth_', .false., .false., myrank, nbproc)
+  endif
 
   ! SETTING THE ADMM BOUNDS -----------------------------------------------------------------------------
 
@@ -312,22 +324,37 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   call jinv%calculate_matrix_partitioning(ipar, line_start, line_end, param_shift)
 
   !-------------------------------------------------------------------------------------------------------
-  ! Calculate the data from the read model.
+  ! Calculate the data from synthetic model.
   do i = 1, 2
-    if (SOLVE_PROBLEM(i)) call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
-      ipar%problem_weight(i), iarr(i)%column_weight, data(i)%weight, data(i)%val_calc, ipar%compression_type, &
-      line_start(i), param_shift(i), myrank, nbproc)
+    if (SOLVE_PROBLEM(i) .and. useSynthModel(i)) then
+      call model(i)%calculate_data(ipar%ndata(i), ipar%ndata_components(i), jinv%matrix_sensit, &
+        ipar%problem_weight(i), iarr(i)%column_weight, data(i)%weight, data(i)%val_calc, ipar%compression_type, &
+        line_start(i), param_shift(i), myrank, nbproc)
+    endif
   enddo
 
-  ! Write data calculated from the read model.
-  if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_read_', 2, myrank)
-  if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_read_', 2, myrank)
+  ! Write data calculated from synthetic model.
+  if (SOLVE_PROBLEM(1) .and. useSynthModel(1)) call data(1)%write('grav_calc_synth_', 2, myrank)
+  if (SOLVE_PROBLEM(2) .and. useSynthModel(2)) call data(2)%write('mag_calc_synth_', 2, myrank)
 
-  ! Reading the data. Read here to allow the use of the above calculated data from the (synthetic) model read.
+  ! Define the data file.
+  if (SOLVE_PROBLEM(1) .and. useSynthModel(1)) then
+    gpar%data_file = trim(path_output)//'/data/grav_calc_synth_data.txt'
+  else
+    gpar%data_file = gpar%data_grid_file
+  endif
+
+  if (SOLVE_PROBLEM(2) .and. useSynthModel(2)) then
+    mpar%data_file = trim(path_output)//'/data/mag_calc_synth_data.txt'
+  else
+    mpar%data_file = mpar%data_grid_file
+  endif
+
+  ! Reading the data. Read here to allow the use of the above calculated data from synthetic model.
   if (SOLVE_PROBLEM(1)) call data(1)%read(gpar%data_file, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%read(mpar%data_file, myrank)
 
-  ! Write the observed (measured) data.
+  ! Write the observed data.
   if (SOLVE_PROBLEM(1)) call data(1)%write('grav_observed_', 1, myrank)
   if (SOLVE_PROBLEM(2)) call data(2)%write('mag_observed_', 1, myrank)
 
@@ -364,9 +391,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     ! SETTING PRIOR MODEL FOR INVERSION -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) &
-      call set_model(model(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, 2, myrank, nbproc)
+      call set_model(model(1), gpar%prior_model_type, gpar%prior_model_val, grav_prior_model_filename, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) &
-      call set_model(model(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, 2, myrank, nbproc)
+      call set_model(model(2), mpar%prior_model_type, mpar%prior_model_val, mag_prior_model_filename, myrank, nbproc)
 
     ! Set the prior model.
     if (SOLVE_PROBLEM(1)) model(1)%val_prior = model(1)%val
@@ -390,9 +417,9 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
     ! SETTING STARTING MODEL FOR INVERSION -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) &
-      call set_model(model(1), gpar%start_model_type, gpar%start_model_val, gpar%model_files(3), 2, myrank, nbproc)
+      call set_model(model(1), gpar%start_model_type, gpar%start_model_val, gpar%model_files(3), myrank, nbproc)
     if (SOLVE_PROBLEM(2)) &
-      call set_model(model(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), 2, myrank, nbproc)
+      call set_model(model(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), myrank, nbproc)
 
     ! Write the starting model to a file for visualization.
     if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_starting_', .false., .false., myrank, nbproc)

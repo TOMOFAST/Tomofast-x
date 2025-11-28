@@ -52,9 +52,9 @@ contains
 !========================================================================================
 ! Sets the model values: via a constant from Parfile or via reading it from file.
 !========================================================================================
-subroutine set_model(model, model_type, model_val, model_file, file_format, myrank, nbproc)
+subroutine set_model(model, model_type, model_val, model_file, myrank, nbproc)
   type(t_model), intent(inout) :: model
-  integer, intent(in) :: model_type, file_format, myrank, nbproc
+  integer, intent(in) :: model_type, myrank, nbproc
   real(kind=CUSTOM_REAL), intent(in) :: model_val
   character(len=256), intent(in) :: model_file
 
@@ -65,7 +65,7 @@ subroutine set_model(model, model_type, model_val, model_file, file_format, myra
 
     else if (model_type == 2) then
       ! Reading from file.
-      call model_read(model, model_file, file_format, myrank)
+      call model_read(model, model_file, myrank)
 
     else
       call exit_MPI("Unknown model type in set_model!", myrank, model_type)
@@ -82,13 +82,11 @@ end subroutine set_model
 
 !================================================================================================
 ! Read the model from a file.
-! file_format = 1: reading the model from the 7th column (stored in the model grid file).
-! file_format > 1: reading the model from the 1st column.
 !================================================================================================
-subroutine model_read(model, file_name, file_format, myrank)
+subroutine model_read(model, file_name, myrank)
   class(t_model), intent(inout) :: model
   character(len=*), intent(in) :: file_name
-  integer, intent(in) :: file_format, myrank
+  integer, intent(in) :: myrank
 
   integer :: i, nelements_read
   integer :: ierr
@@ -115,21 +113,15 @@ subroutine model_read(model, file_name, file_format, myrank)
                     //"nelements_read="//str(nelements_read)//new_line('a') &
                     //"nelements_total="//str(model%nelements_total), myrank, 0)
 
-    ! Reading the model only (without grid).
+    ! Reading the model.
     do i = 1, model%nelements_total
       ! Note we read an array of val.
-      if (file_format == 1) then
-        ! Old format (model is stored with the grid).
-        read(10, *, iostat=ierr) dummy, val, i_, j_, k_
-      else
-        ! New format (model is stored without grid).
-        read(10, *, iostat=ierr) val
-      endif
+      read(10, *, iostat=ierr) val
 
       ! Set the model value.
       model%val_full(i, :) = val
 
-      if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read_voxels!", myrank, ierr)
+      if (ierr /= 0) call exit_MPI("Problem while reading the model file in model_read!", myrank, ierr)
     enddo
 
     close(10)
@@ -184,20 +176,20 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
     do p = 1, nelements_total
       read(10, *, iostat=ierr) grid%X1(p), grid%X2(p), &
                                grid%Y1(p), grid%Y2(p), &
-                               grid%Z1(p), grid%Z2(p), &
-                               val, &
-                               i, j, k
+                               grid%Z1(p), grid%Z2(p)
 
       if (ierr /= 0) call exit_MPI("Problem while reading the grid file in grid_read!", myrank, ierr)
 
+      ! TODO: Temporarily disabled index sanity check - bring it back when the model grid format conversion is done.
+
       ! Sanity check.
-      if (i < 1 .or. j < 1 .or. k < 1 .or. &
-          i > grid%nx .or. j > grid%ny .or. k > grid%nz) then
-        call exit_MPI("The model grid dimensions in the Parfile are inconsistent with the model 3D indexes!"//new_line('a') &
-                  //"i ="//str(i)//new_line('a') &
-                  //"j ="//str(j)//new_line('a') &
-                  //"k ="//str(k), myrank, 0)
-      endif
+!      if (i < 1 .or. j < 1 .or. k < 1 .or. &
+!          i > grid%nx .or. j > grid%ny .or. k > grid%nz) then
+!        call exit_MPI("The model grid dimensions in the Parfile are inconsistent with the model 3D indexes!"//new_line('a') &
+!                  //"i ="//str(i)//new_line('a') &
+!                  //"j ="//str(j)//new_line('a') &
+!                  //"k ="//str(k), myrank, 0)
+!      endif
 
       ! Sanity check.
       if (grid%X1(p) >= grid%X2(p) .or. &
@@ -206,15 +198,15 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
         call exit_MPI("The grid is not correctly defined (X1 >= X2 or Y1 >= Y2 or Z1 >= Z2)!", myrank, 0)
       endif
 
-      ! Test that the grid cell order is i-j-k.
-      if (p == 1 .and. (i /= 1 .or. j /= 1 .or. k /= 1)) correct_order = .false.
-      if (p == 2 .and. (i /= 2 .or. j /= 1 .or. k /= 1)) correct_order = .false.
-      if (p == grid%nx + 1 .and. (i /= 1 .or. j /= 2 .or. k /= 1)) correct_order = .false.
-      if (p == grid%nx * grid%ny + 1 .and. (i /= 1 .or. j /= 1 .or. k /= 2)) correct_order = .false.
-
-      if (.not. correct_order) then
-        call exit_MPI("Wrong cell order in the model grid file! Use the i-j-k order (i is the fastest index)!", myrank, 0)
-      endif
+       ! Test that the grid cell order is i-j-k.
+!      if (p == 1 .and. (i /= 1 .or. j /= 1 .or. k /= 1)) correct_order = .false.
+!      if (p == 2 .and. (i /= 2 .or. j /= 1 .or. k /= 1)) correct_order = .false.
+!      if (p == grid%nx + 1 .and. (i /= 1 .or. j /= 2 .or. k /= 1)) correct_order = .false.
+!      if (p == grid%nx * grid%ny + 1 .and. (i /= 1 .or. j /= 1 .or. k /= 2)) correct_order = .false.
+!
+!      if (.not. correct_order) then
+!        call exit_MPI("Wrong cell order in the model grid file! Use the i-j-k order (i is the fastest index)!", myrank, 0)
+!      endif
 
     enddo
     close(10)
