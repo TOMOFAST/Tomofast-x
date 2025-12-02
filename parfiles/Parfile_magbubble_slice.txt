@@ -9,14 +9,13 @@ MODEL GRID parameters
 ==================================================================================
 # nx ny nz
 modelGrid.size                        = 10 116 150
-modelGrid.magn.file                   = data/gravmag/magbubble_slice/meshgrid.txt
+modelGrid.magn.file                   = data/gravmag/magbubble_slice/meshgrid-grid.txt
 
 ==================================================================================
 DATA parameters
 ==================================================================================
 forward.data.magn.nData                = 1160
 forward.data.magn.dataGridFile         = data/gravmag/magbubble_slice/mag.obs
-forward.data.magn.dataValuesFile       = data/gravmag/magbubble_slice/mag.obs
 
 ==================================================================================
 MAGNETIC FIELD constants
