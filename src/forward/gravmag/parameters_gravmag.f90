@@ -137,7 +137,7 @@ subroutine parameters_base_broadcast(this, myrank)
   call MPI_Bcast(this%model_files, size(this%model_files) * 256, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%model_grid_file, 256, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
 
-  call MPI_Bcast(this%useSyntheticModelForDataValues, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_Bcast(this%useSyntheticModelForDataValues, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, ierr)
 
   call MPI_Bcast(this%prior_model_type, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call MPI_Bcast(this%number_prior_models, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)

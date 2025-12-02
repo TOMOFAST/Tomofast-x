@@ -141,8 +141,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call model(2)%grid_full%allocate(ipar%nx, ipar%ny, ipar%nz, mpar%z_axis_dir, myrank)
 
   ! Reading the full model grid.
-  if (SOLVE_PROBLEM(1)) call read_model_grid(model(1)%grid_full, ipar%nmodel_components, gpar%model_grid_file, myrank)
-  if (SOLVE_PROBLEM(2)) call read_model_grid(model(2)%grid_full, ipar%nmodel_components, mpar%model_grid_file, myrank)
+  if (SOLVE_PROBLEM(1)) call read_model_grid(model(1)%grid_full, gpar%model_grid_file, myrank)
+  if (SOLVE_PROBLEM(2)) call read_model_grid(model(2)%grid_full, mpar%model_grid_file, myrank)
 
   ! (II) DATA ALLOCATION. -----------------------------------------------------------------
 

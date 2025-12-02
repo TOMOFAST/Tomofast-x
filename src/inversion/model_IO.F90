@@ -91,8 +91,7 @@ subroutine model_read(model, file_name, myrank)
   integer :: i, nelements_read
   integer :: ierr
   character(len=256) :: msg
-  real(kind=CUSTOM_REAL) :: dummy(6), val(model%ncomponents)
-  integer :: i_, j_, k_
+  real(kind=CUSTOM_REAL) :: val(model%ncomponents)
 
   if (myrank == 0) then
   ! Reading the full model by the master CPU only.
@@ -132,9 +131,8 @@ end subroutine model_read
 !================================================================================================
 ! Read the model grid from a file.
 !================================================================================================
-subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
+subroutine read_model_grid(grid, file_name, myrank)
   class(t_grid), intent(inout) :: grid
-  integer, intent(in) :: nmodel_components
   character(len=*), intent(in) :: file_name
   integer, intent(in) :: myrank
 
