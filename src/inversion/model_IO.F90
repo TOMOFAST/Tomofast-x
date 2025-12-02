@@ -140,19 +140,21 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
 
   integer :: p, nelements_read
   integer :: i, j, k
+  integer :: ir, jr, kr
   integer :: nelements_total
   integer :: ierr
   character(len=256) :: msg
   real(kind=CUSTOM_REAL) :: tmp
-  real(kind=CUSTOM_REAL) :: val(nmodel_components)
-  logical :: correct_order
+  character(len=512) :: line
+  integer :: ncols
+  real(kind=CUSTOM_REAL) :: dummy1, dummy2, dummy3
 
   ! Synchronize processes (for shared memory reading).
   call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
   if (grid%shm_rank == 0) then
   ! Reading the full grid by zero rank at each group.
-    print *, 'Reading model grid from file ', trim(file_name)
+    if (myrank == 0) print *, 'Reading model grid from file: ', trim(file_name)
 
     open(10, file=trim(file_name), status='old', action='read', iostat=ierr, iomsg=msg)
 
@@ -170,44 +172,54 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
                     //"nelements_read="//str(nelements_read)//new_line('a') &
                     //"nelements_total="//str(nelements_total), myrank, 0)
 
-    correct_order = .true.
+    ! Determine file format from the first line.
+    read(10, '(A)') line
+    ncols = count_columns(line)
+    backspace(10)
+
+    if (myrank == 0) print *, 'Number of columns detected: ', ncols
+
+    p = 0
 
     ! Reading the full grid.
-    do p = 1, nelements_total
-      read(10, *, iostat=ierr) grid%X1(p), grid%X2(p), &
-                               grid%Y1(p), grid%Y2(p), &
-                               grid%Z1(p), grid%Z2(p)
+    do k = 1, grid%nz
+      do j = 1, grid%ny
+        do i = 1, grid%nx
+          p = p + 1
 
-      if (ierr /= 0) call exit_MPI("Problem while reading the grid file in grid_read!", myrank, ierr)
+          ! Select the grid format.
+          select case (ncols)
+            case(9)
+              read(10, *, iostat=ierr) grid%X1(p), grid%X2(p), grid%Y1(p), grid%Y2(p), &
+                                       grid%Z1(p), grid%Z2(p), ir, jr, kr
 
-      ! TODO: Temporarily disabled index sanity check - bring it back when the model grid format conversion is done.
+            case(10)
+              read(10, *, iostat=ierr) grid%X1(p), grid%X2(p), grid%Y1(p), grid%Y2(p), &
+                                       grid%Z1(p), grid%Z2(p), dummy1, ir, jr, kr
 
-      ! Sanity check.
-!      if (i < 1 .or. j < 1 .or. k < 1 .or. &
-!          i > grid%nx .or. j > grid%ny .or. k > grid%nz) then
-!        call exit_MPI("The model grid dimensions in the Parfile are inconsistent with the model 3D indexes!"//new_line('a') &
-!                  //"i ="//str(i)//new_line('a') &
-!                  //"j ="//str(j)//new_line('a') &
-!                  //"k ="//str(k), myrank, 0)
-!      endif
+            case(12)
+              read(10, *, iostat=ierr) grid%X1(p), grid%X2(p), grid%Y1(p), grid%Y2(p), &
+                                       grid%Z1(p), grid%Z2(p), dummy1, dummy2, dummy3, &
+                                       ir, jr, kr
+            case default
+              call exit_MPI("Unexpected number of columns in the model grid file:", myrank, ncols)
+          end select
 
-      ! Sanity check.
-      if (grid%X1(p) >= grid%X2(p) .or. &
-          grid%Y1(p) >= grid%Y2(p) .or. &
-          grid%Z1(p) >= grid%Z2(p)) then
-        call exit_MPI("The grid is not correctly defined (X1 >= X2 or Y1 >= Y2 or Z1 >= Z2)!", myrank, 0)
-      endif
+          if (ierr /= 0) call exit_MPI("Problem while reading the grid file in grid_read!", myrank, ierr)
 
-       ! Test that the grid cell order is i-j-k.
-!      if (p == 1 .and. (i /= 1 .or. j /= 1 .or. k /= 1)) correct_order = .false.
-!      if (p == 2 .and. (i /= 2 .or. j /= 1 .or. k /= 1)) correct_order = .false.
-!      if (p == grid%nx + 1 .and. (i /= 1 .or. j /= 2 .or. k /= 1)) correct_order = .false.
-!      if (p == grid%nx * grid%ny + 1 .and. (i /= 1 .or. j /= 1 .or. k /= 2)) correct_order = .false.
-!
-!      if (.not. correct_order) then
-!        call exit_MPI("Wrong cell order in the model grid file! Use the i-j-k order (i is the fastest index)!", myrank, 0)
-!      endif
+          ! Sanity check.
+          if (grid%X1(p) >= grid%X2(p) .or. &
+              grid%Y1(p) >= grid%Y2(p) .or. &
+              grid%Z1(p) >= grid%Z2(p)) then
+            call exit_MPI("The grid is not correctly defined (X1 >= X2 or Y1 >= Y2 or Z1 >= Z2)!", myrank, 0)
+          endif
 
+          ! Sanity check.
+          if (i /= ir .or. j /= jr .or. k /= kr) then
+            call exit_MPI("Wrong cell order in the model grid file! Use the i-j-k order (i is the fastest index)!", myrank, 0)
+          endif
+        enddo
+      enddo
     enddo
     close(10)
 
@@ -228,6 +240,33 @@ subroutine read_model_grid(grid, nmodel_components, file_name, myrank)
   call MPI_Barrier(MPI_COMM_WORLD, ierr)
 
 end subroutine read_model_grid
+
+!========================================================================================
+! Retunrs the number of columns in a line.
+! Columns can be separated by multiply spaces or tabs.
+!========================================================================================
+integer function count_columns(line)
+  character(len=*), intent(in) :: line
+
+  integer :: i, n
+  logical :: in_token
+
+  n = 0
+  in_token = .false.
+
+  do i = 1, len_trim(line)
+    if (line(i:i) /= ' ' .and. line(i:i) /= char(9)) then
+      if (.not. in_token) then
+        in_token = .true.
+        n = n + 1
+      endif
+    else
+      in_token = .false.
+    endif
+  enddo
+
+  count_columns = n
+end function count_columns
 
 !========================================================================================
 ! Sets the model bounds (for the ADMM).
