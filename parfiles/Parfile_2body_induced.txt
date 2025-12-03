@@ -10,7 +10,7 @@ MODEL GRID parameters
 # nx ny nz
 # mag
 modelGrid.size                      = 67 67 30
-modelGrid.magn.file                 = ./data/gravmag/2body_magnet/induced/meshgrid_padded_2depth_true.txt
+modelGrid.magn.file                 = ./data/gravmag/2body_magnet/induced/meshgrid_padded_2depth_true-grid.txt
 modelGrid.magn.nModelComponents     = 3
 
 ===================================================================================
@@ -18,8 +18,10 @@ DATA parameters
 ===================================================================================
 forward.data.magn.nData               = 1681
 forward.data.magn.dataGridFile        = ./data/gravmag/2body_magnet/induced/dummy.obs
-forward.data.magn.dataValuesFile      = ./output/2body_induced/data/mag_calc_read_data.txt
 forward.data.magn.nDataComponents     = 1
+
+forward.data.magn.useSyntheticModelForDataValues = 1
+forward.data.magn.syntheticModelFile = ./data/gravmag/2body_magnet/induced/meshgrid_padded_2depth_true-values.txt
 
 ===================================================================================
 MAGNETIC FIELD constants
