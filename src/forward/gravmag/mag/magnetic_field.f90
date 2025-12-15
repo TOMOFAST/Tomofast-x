@@ -141,34 +141,36 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
   logical :: inside_x, inside_y, inside_z
 
   real(kind=SENSIT_REAL), allocatable :: znodes(:), dummy_znodes(:)
-  logical :: l_calcznodes
+  logical :: calcznodes
   integer :: nele_xylayer, xy_ind, len_znode
 
-  ! Allocate and initialize znode array length depending on # of components (to feed to sharmbox or tensorbox)
+  ! Allocate and initialize znode array length depending on # of components (to feed to sharmbox or tensorbox).
   len_znode = merge(12, 40, ndata_components <= 3)
   nele_xylayer = grid%nx * grid%ny
 
-  ! Check if the mesh is stacked in the correct form or else Znode optimisation will be incorrect
-  ! The code can be adapted to accomodate backwards layering but for the time being the program will exit
-  if (grid%Z1(1) > grid%Z1(1 + nele_xylayer)) then
-    print *, 'Mesh Z layers are stacked in the wrong direction, make sure the iz = 1 layer corresponds to the surface'
-    stop
+  ! Check if the mesh is stacked in the correct form or else Znode optimisation will be incorrect.
+  ! The code can be adapted to accomodate backwards layering but for the time being the program will exit.
+  if (nelements > nele_xylayer) then
+    if (grid%Z1(1) > grid%Z1(1 + nele_xylayer)) then
+      print *, 'Mesh Z layers are stacked in the wrong direction, make sure the iz = 1 layer corresponds to the surface!'
+      stop
+    endif
   endif
 
   allocate(znodes(nele_xylayer * len_znode))
   allocate(dummy_znodes(len_znode))
 
   do i = 1, nelements
-    ! Clear mtensor for each data observation point
+    ! Clear mtensor for each data observation point.
     mtensor = 0.d0
 
-    ! Find the cell's index on the X-Y plane
+    ! Find the cell's index on the X-Y plane.
     xy_ind = merge(mod(i, nele_xylayer), nele_xylayer, (mod(i, nele_xylayer) > 0))
 
-    ! Check if the znode values need to be calculated
+    ! Check if the znode values need to be calculated.
     ! They need to be calculated if:
-    ! 1. It's the first layer
-    l_calcznodes = (i <= nele_xylayer)
+    ! 1. It's the first layer.
+    calcznodes = (i <= nele_xylayer)
 
     ! Calculate the magnetic tensor.
 
@@ -249,7 +251,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
         do j = 1, 6
           if (ndata_components <= 3) then
 
-            ! If top sub-voxel, load znodes
+            ! If top sub-voxel, load znodes.
             if (j == 1) then
               call this%sharmbox(real(Xdata, SENSIT_REAL), &
                                 real(Ydata, SENSIT_REAL), &
@@ -260,9 +262,9 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
                                 real(temp_x2(j), SENSIT_REAL), &
                                 real(temp_y2(j), SENSIT_REAL), &
                                 real(temp_z2(j), SENSIT_REAL), &
-                                temp_tx, temp_ty, temp_tz, znodes, l_calcznodes, xy_ind)
+                                temp_tx, temp_ty, temp_tz, znodes, calcznodes, xy_ind)
 
-            ! If bottom sub-voxel, save znodes
+            ! If bottom sub-voxel, save znodes.
             else if (j == 2) then
               call this%sharmbox(real(Xdata, SENSIT_REAL), &
                                 real(Ydata, SENSIT_REAL), &
@@ -275,7 +277,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
                                 real(temp_z2(j), SENSIT_REAL), &
                                 temp_tx, temp_ty, temp_tz, znodes, .true., xy_ind)
 
-            ! Else feed in dummy_znodes
+            ! Else feed in dummy_znodes.
             else
               call this%sharmbox(real(Xdata, SENSIT_REAL), &
                                 real(Ydata, SENSIT_REAL), &
@@ -296,7 +298,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
 
           else
 
-            ! If top sub-voxel, load znodes
+            ! If top sub-voxel, load znodes.
             if (j == 1) then
               call this%tensorbox(real(Xdata, SENSIT_REAL), &
                                 real(Ydata, SENSIT_REAL), &
@@ -307,9 +309,9 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
                                 real(temp_x2(j), SENSIT_REAL), &
                                 real(temp_y2(j), SENSIT_REAL), &
                                 real(temp_z2(j), SENSIT_REAL), &
-                                internal_mtensor, znodes, l_calcznodes, xy_ind)
+                                internal_mtensor, znodes, calcznodes, xy_ind)
 
-            ! If bottom sub-voxel, save znodes
+            ! If bottom sub-voxel, save znodes.
             else if (j == 2) then
               call this%tensorbox(real(Xdata, SENSIT_REAL), &
                                 real(Ydata, SENSIT_REAL), &
@@ -322,7 +324,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
                                 real(temp_z2(j), SENSIT_REAL), &
                                 internal_mtensor, znodes, .true., xy_ind)
 
-            ! Else feed in dummy_znodes
+            ! Else feed in dummy_znodes.
             else
               call this%tensorbox(real(Xdata, SENSIT_REAL), &
                                 real(Ydata, SENSIT_REAL), &
@@ -355,7 +357,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
                             real(grid%X2(i), SENSIT_REAL), &
                             real(grid%Y2(i), SENSIT_REAL), &
                             real(grid%Z2(i), SENSIT_REAL), &
-                            tx, ty, tz, znodes, l_calcznodes, xy_ind)
+                            tx, ty, tz, znodes, calcznodes, xy_ind)
 
         else
           call this%tensorbox(real(Xdata, SENSIT_REAL), &
@@ -367,7 +369,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
                             real(grid%X2(i), SENSIT_REAL), &
                             real(grid%Y2(i), SENSIT_REAL), &
                             real(grid%Z2(i), SENSIT_REAL), &
-                            mtensor, znodes, l_calcznodes, xy_ind)
+                            mtensor, znodes, calcznodes, xy_ind)
 
         endif
     endif
@@ -407,33 +409,33 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
         enddo
 
       else if (ndata_components == 5) then
-        ! Note: Mz kernel term multiplied by -1 to switch to elevation space as required by the equations
-        ! bxx kernal parts - bxx dropped for 5c tests
+        ! Note: Mz kernel term multiplied by -1 to switch to elevation space as required by the equations.
+        ! bxx kernal parts - bxx dropped for 5c tests.
         !sensit_line(i, 1, 1) = mtensor(1, 1, 1)
         !sensit_line(i, 2, 1) = mtensor(1, 1, 2)
         !sensit_line(i, 3, 1) = mtensor(1, 1, 3) * -1.0
 
-        ! byy kernal parts
+        ! byy kernal parts.
         sensit_line(i, 1, 1) = mtensor(4)!mtensor(1, 2, 2)
         sensit_line(i, 2, 1) = mtensor(7)!mtensor(2, 2, 2)
         sensit_line(i, 3, 1) = mtensor(8) * -1.0!mtensor(2, 2, 3) * -1.0
 
-        ! bzz kernal parts
+        ! bzz kernal parts.
         sensit_line(i, 1, 2) = mtensor(6)!mtensor(1, 3, 3)
         sensit_line(i, 2, 2) = mtensor(9)!mtensor(2, 3, 3)
         sensit_line(i, 3, 2) = mtensor(10) * -1.0!mtensor(3, 3, 3) * -1.0
 
-        ! bxy kernal parts
+        ! bxy kernal parts.
         sensit_line(i, 1, 3) = mtensor(2)!mtensor(1, 1, 2)
         sensit_line(i, 2, 3) = mtensor(4)!mtensor(1, 2, 2)
         sensit_line(i, 3, 3) = mtensor(5) * -1.0!mtensor(1, 2, 3) * -1.0
 
-        ! byz kernal parts - flipped to correct inverted output
+        ! byz kernal parts - flipped to correct inverted output.
         sensit_line(i, 1, 4) = mtensor(5) * -1.0!mtensor(1, 2, 3) * -1.0
         sensit_line(i, 2, 4) = mtensor(8) * -1.0!mtensor(2, 2, 3) * -1.0
         sensit_line(i, 3, 4) = mtensor(9)!mtensor(2, 3, 3)
 
-        ! bxz kernal parts - flipped to correct inverted output
+        ! bxz kernal parts - flipped to correct inverted output.
         sensit_line(i, 1, 5) = mtensor(3) * -1.0!mtensor(1, 1, 3) * -1.0
         sensit_line(i, 2, 5) = mtensor(5) * -1.0!mtensor(1, 2, 3) * -1.0
         sensit_line(i, 3, 5) = mtensor(6)!mtensor(1, 3, 3)
@@ -461,7 +463,7 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
   ! Convert to SI.
   sensit_line = sensit_line / (4.d0 * PI)
 
-  ! Cleanup
+  ! Cleanup.
   deallocate(dummy_znodes)
   deallocate(znodes)
 
@@ -479,17 +481,17 @@ end subroutine magnetic_field_magprism
 !   mag suscept.:       cgs
 !
 ! Inputs:
-!   x0, y0, z0      coordinates of the observation point
-!   x1, y1, z1      coordinates of one of the corners on the top face, where z1 is the depth
-!   x2, y2, z2      coordinates of the opposite corner on the bottom face, where z2 is the depth
+!   x0, y0, z0      coordinates of the observation point.
+!   x1, y1, z1      coordinates of one of the corners on the top face, where z1 is the depth.
+!   x2, y2, z2      coordinates of the opposite corner on the bottom face, where z2 is the depth.
 !
 ! Outputs:
 !   tx = [txx txy txz]
 !   ty = [tyx tyy tyz]
 !   tz = [tzx tzy tzz]
-!   components of the magnetic tensor
+!   components of the magnetic tensor.
 !===================================================================================
-subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes, l_calcznodes, xy_ind)!, nele_xylayer)
+subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes, calcznodes, xy_ind)!, nele_xylayer)
   real(kind=SENSIT_REAL), intent(in) :: x0, y0, z0, x1, y1, z1, x2, y2, z2
 
   real(kind=SENSIT_REAL), intent(out) :: ts_x(3), ts_y(3), ts_z(3)
@@ -502,7 +504,7 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   real(kind=SENSIT_REAL) :: at1, at2, at3, at4, at5, at6, at7, at8, lg1, lg2, lg3, lg4
 
   real(kind=SENSIT_REAL), intent(inout) :: znodes(:)
-  logical, intent(in) :: l_calcznodes
+  logical, intent(in) :: calcznodes
   integer, intent(in) :: xy_ind
   integer :: znodes_i
 
@@ -530,14 +532,14 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   R4 = ry1sq + rx1sq ! -v2**2 + -u2**2 -> R4
 
   ! Lets assume:
-  ! C1 = SW corner of voxel top face (+Z axis)
-  ! C2 = SE corner of voxel top face
-  ! C3 = NW corner of voxel top face
-  ! C4 = NE corner of voxel top face
-  ! C5 = SW corner of voxel bottom face
-  ! C6 = SE corner of voxel bottom face
-  ! C7 = NW corner of voxel bottom face
-  ! C8 = NE corner of voxel bottom face
+  ! C1 = SW corner of voxel top face (+Z axis).
+  ! C2 = SE corner of voxel top face.
+  ! C3 = NW corner of voxel top face.
+  ! C4 = NE corner of voxel top face.
+  ! C5 = SW corner of voxel bottom face.
+  ! C6 = SE corner of voxel bottom face.
+  ! C7 = NW corner of voxel bottom face.
+  ! C8 = NE corner of voxel bottom face.
 
   arg1 = sqrt(rz2sq + R2) ! C7
   arg2 = sqrt(rz2sq + R1) ! C8
@@ -557,8 +559,8 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   !at7 = atan2(ry1 * rz1, (rx1 * arg7 + eps))
   !at8 = atan2(ry2 * rz1, (rx1 * arg4 + eps))
 
-  if (l_calcznodes) then
-    !arg3 = sqrt(rz1sq + R1) ! C4 ! Commented out because these are still needed for ts_yx
+  if (calcznodes) then
+    !arg3 = sqrt(rz1sq + R1) ! C4 ! Commented out because these are still needed for ts_yx.
     !arg4 = sqrt(rz1sq + R2) ! C3
     !arg7 = sqrt(rz1sq + R4) ! C1
     !arg8 = sqrt(rz1sq + R3) ! C2
@@ -582,7 +584,7 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   znodes(znodes_i + 3) = at6
   ts_x(1) = at1 - at2 + at3 - at4 + at5 - at6 + at7 - at8
 
-  ! mapping
+  ! mapping.
   ! at1 -> at4
   ! at2 -> at3
   ! at5 -> at8
@@ -594,8 +596,8 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   lg4 = log((rz2 + arg5 + eps) / (rz1 + arg8 + eps))
   ts_y(1) = lg1 - lg2 + lg3 - lg4
 
-  ! mapping
-  ! no matches
+  ! mapping.
+  ! no matches.
 
   at1 = atan2(rx1 * rz2, (ry2 * arg1 + eps))
   at2 = atan2(rx2 * rz2, (ry2 * arg2 + eps))
@@ -606,7 +608,7 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   !at7 = atan2(rx1 * rz1, (ry1 * arg7 + eps))
   !at8 = atan2(rx2 * rz1, (ry1 * arg8 + eps))
 
-  if (l_calcznodes) then
+  if (calcznodes) then
     at3 = atan2(rx2 * rz1, (ry2 * arg3 + eps))
     at4 = atan2(rx1 * rz1, (ry2 * arg4 + eps))
     at7 = atan2(rx1 * rz1, (ry1 * arg7 + eps))
@@ -626,7 +628,7 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   znodes(znodes_i + 7) = at6
   ts_y(2) = at1 - at2 + at3 - at4 + at5 - at6 + at7 - at8
 
-  ! mapping
+  ! mapping.
   ! at1 -> at4
   ! at2 -> at3
   ! at5 -> at8
@@ -654,7 +656,7 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   lg3 = log((rx1 + arg7 + eps) / (rx2 + arg8 + eps))
   !lg4 = log((rx1 + arg5 + eps) / (rx2 + arg6 + eps))
 
-  if (l_calcznodes) then
+  if (calcznodes) then
     arg1 = sqrt(rx1sq + R1)
     arg2 = sqrt(rx2sq + R1)
     arg5 = sqrt(rx1sq + R3)
@@ -673,7 +675,7 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   znodes(znodes_i + 9) = lg3
   ts_y(3) = lg1 - lg2 + lg3 - lg4
 
-  ! mapping
+  ! mapping.
   ! lg2 -> lg1
   ! lg3 -> lg4
 
@@ -696,7 +698,7 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
   lg3 = log((ry1 + arg7 + eps) / (ry2 + arg8 + eps))
   !lg4 = log((ry1 + arg5 + eps) / (ry2 + arg6 + eps))
 
-  if (l_calcznodes) then
+  if (calcznodes) then
     arg1 = sqrt(ry1sq + R1)
     arg2 = sqrt(ry2sq + R1)
     arg5 = sqrt(ry1sq + R3)
@@ -717,23 +719,23 @@ subroutine sharmbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, ts_x, ts_y, ts_z, znodes
 
 
   ! Filling the rest of the tensor.
-  ! ts_zz
+  ! ts_zz.
   ts_z(3) = -1 * (ts_x(1) + ts_y(2)) ! Gauss
 
-  ! ts_zy
+  ! ts_zy.
   ts_z(2) = ts_y(3)
 
-  ! ts_xy
+  ! ts_xy.
   ts_x(2) = ts_y(1)
 
-  ! ts_zx
+  ! ts_zx.
   ts_z(1) = ts_x(3)
 
 end subroutine sharmbox
 
 ! ======================================================================
-! Calculates the kernels required for magnetic tensor mag
-! When multiplied by the magnetisation vector, gives the derivative of the mag components in nT/m
+! Calculates the kernels required for magnetic tensor mag.
+! When multiplied by the magnetisation vector, gives the derivative of the mag components in nT/m.
 !
 ! Units:
 !   coordinates:        m
@@ -742,16 +744,16 @@ end subroutine sharmbox
 !   magnetisation:      Amp/m
 !
 ! Inputs
-!   x0, y0, z0    observation point coordinates
-!   x1, x2        prism west-east coordinates respectively
-!   y1, y2        prism south-north coordinates respectively
-!   z1, z2        prism top-bottom coordinates respectively
+!   x0, y0, z0    observation point coordinates.
+!   x1, x2        prism west-east coordinates respectively.
+!   y1, y2        prism south-north coordinates respectively.
+!   z1, z2        prism top-bottom coordinates respectively.
 !
 ! returns
 !   mtensor_ijk   where i,j,k, are of the order {x,y,z} => {1,2,3}
 !
 ! ======================================================================
-subroutine tensorbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, mtensor, tensorZnodes, l_calcznodes, xy_ind)
+subroutine tensorbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, mtensor, tensorZnodes, calcznodes, xy_ind)
   real(kind=SENSIT_REAL), intent(in) :: x0, y0, z0, x1, y1, z1, x2, y2, z2
   real(kind=SENSIT_REAL), intent(out) :: mtensor(10)!mtensor(3, 3, 3)
 
@@ -763,27 +765,27 @@ subroutine tensorbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, mtensor, tensorZnodes, 
   integer :: i, j, k
 
   real(kind=SENSIT_REAL), intent(inout) :: tensorZnodes(:)
-  logical, intent(in) :: l_calcznodes
+  logical, intent(in) :: calcznodes
   integer, intent(in) :: xy_ind
   integer :: znodes_i, offset
 
   temp_mtensor = 0.0
   znodes_i = (xy_ind - 1) * 40 + 1
 
-  ! Relative easting
-  rx_arr(1) = (x2 - x0) ! East face
-  rx_arr(2) = (x1 - x0) ! West face
+  ! Relative easting.
+  rx_arr(1) = (x2 - x0) ! East face.
+  rx_arr(2) = (x1 - x0) ! West face.
   rx_sq_arr = rx_arr**2
 
-  ! Relative northing
-  ry_arr(1) = (y2 - y0) ! North face
-  ry_arr(2) = (y1 - y0) ! South face
+  ! Relative northing.
+  ry_arr(1) = (y2 - y0) ! North face.
+  ry_arr(2) = (y1 - y0) ! South face.
   ry_sq_arr = ry_arr**2
 
-  ! Relative z
-  ! Order of operations flipped to account for formula working in elevation space
-  rz_arr(1) = (z0 - z1) ! Top face
-  rz_arr(2) = (z0 - z2) ! Bottom face
+  ! Relative z.
+  ! Order of operations flipped to account for formula working in elevation space.
+  rz_arr(1) = (z0 - z1) ! Top face.
+  rz_arr(2) = (z0 - z2) ! Bottom face.
   rz_sq_arr = rz_arr**2
 
   do i = 0, 1
@@ -802,13 +804,13 @@ subroutine tensorbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, mtensor, tensorZnodes, 
         ! 1 1 -> 3
         offset = ((i * 2) + (j * 1)) * 10 + znodes_i
 
-        ! control flags
+        ! control flags.
         ! calc = T, k = 0 -> calc
         ! calc = T, k = 1 -> calc, save
         ! calc = F, k = 0 -> load
         ! calc = F, k = 1 -> calc, save
 
-        if (.not. ((l_calcznodes == .false.) .and. (k == 0))) then
+        if (.not. ((calcznodes == .false.) .and. (k == 0))) then
 
           rz = rz_arr(k+1)
           rz_sq = rz_sq_arr(k+1)
@@ -816,7 +818,7 @@ subroutine tensorbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, mtensor, tensorZnodes, 
           ! Dist
           r = sqrt(rx_sq + ry_sq + rz_sq)
 
-          ! Calculate the 10 required kernels
+          ! Calculate the 10 required kernels.
           ! order
           ! 1   2   3   4   5   6   7   8   9   10
           ! xxx xxy xxz xyy xyz xzz yyy yyz yzz zzz
@@ -871,7 +873,7 @@ subroutine tensorbox(x0, y0, z0, x1, y1, z1, x2, y2, z2, mtensor, tensorZnodes, 
 
         endif
 
-        ! Aggregate the tensor over all prisms for a specific data observation point
+        ! Aggregate the tensor over all prisms for a specific data observation point.
         mtensor = mtensor + (-1.0)**(i + j + k) * temp_mtensor
 
       enddo
