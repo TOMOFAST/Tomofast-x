@@ -148,6 +148,13 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
   len_znode = merge(12, 40, ndata_components <= 3)
   nele_xylayer = grid%nx * grid%ny
 
+  ! Check if the mesh is stacked in the correct form or else Znode optimisation will be incorrect
+  ! The code can be adapted to accomodate backwards layering but for the time being the program will exit
+  if (grid%Z1(1) > grid%Z1(1 + nele_xylayer)) then
+    print *, 'Mesh Z layers are stacked in the wrong direction, make sure the iz = 1 layer corresponds to the surface'
+    stop
+  endif
+
   allocate(znodes(nele_xylayer * len_znode))
   allocate(dummy_znodes(len_znode))
 
