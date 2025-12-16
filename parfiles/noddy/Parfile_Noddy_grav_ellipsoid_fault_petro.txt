@@ -8,14 +8,16 @@ MODEL GRID parameters
 ===================================================================================
 # nx ny nz
 modelGrid.size                      = 40 40 20
-modelGrid.grav.file                 = data/gravmag/ellipsoid/grav/fault/model_grid.txt
+modelGrid.grav.file                 = data/gravmag/ellipsoid/model_grid.txt
 
 ===================================================================================
 DATA parameters
 ===================================================================================
 forward.data.grav.nData             = 1600
-forward.data.grav.dataGridFile      = data/gravmag/ellipsoid/grav/fault/data_grid.txt
-forward.data.grav.dataValuesFile    = output/Noddy_grav_ellipsoid_fault_petro/data/grav_calc_read_data.txt
+forward.data.grav.dataGridFile      = data/gravmag/ellipsoid/data_grid.txt
+
+forward.data.grav.useSyntheticModelForDataValues = 1
+forward.data.grav.syntheticModelFile = data/gravmag/ellipsoid/grav/fault/model_grid-values.txt
 
 ===================================================================================
 DEPTH WEIGHTING
