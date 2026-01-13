@@ -7,6 +7,10 @@ Authors: Vitaliy Ogarko, Jeremie Giraud, Roland Martin, Kim Frankcombe, Taige Li
 
 Optimized for both shared and distributed memory systems, Tomofast-x can run in parallel on desktops and supercomputers, ensuring scalability across different computing environments. It also features parallel wavelet compression of the sensitivity kernel, reducing memory usage and enhancing performance. Furthermore, Tomofast-x supports the inversion of models with arbitrary surface topography, making it highly versatile for various geological scenarios.
 
+### Documentation
+
+For detailed usage instructions and comprehensive documentation, please refer to the **[Tomofast-x User Manual](https://github.com/TOMOFAST/Tomofast-manual)**.
+
 ### Citing Tomofast-x
 
 If you use the code (or any of its components), please cite the following two papers, which provide detailed explanations of Tomofast-x's geophysical calculations and examples of its application:
