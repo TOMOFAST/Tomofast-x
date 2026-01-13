@@ -9,14 +9,13 @@ MODEL GRID parameters
 ===================================================================================
 # nx ny nz
 modelGrid.size                      = 13 133 33
-modelGrid.magn.file                 = data/gravmag/hamersley/mag_prior.txt
+modelGrid.magn.file                 = data/gravmag/hamersley/mag_grid.txt
 
 ===================================================================================
 DATA parameters
 ===================================================================================
 forward.data.magn.nData             = 113
 forward.data.magn.dataGridFile      = data/gravmag/hamersley/mag_observed_data.txt
-forward.data.magn.dataValuesFile    = data/gravmag/hamersley/mag_observed_data.txt
 
 ===================================================================================
 DEPTH WEIGHTING
