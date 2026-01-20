@@ -35,12 +35,12 @@ make
 
 To run the code with your parameter file:
 ```shell
-mpirun -np <Number-of-cores> ./tomofastx -j <Parfile path>
+mpirun -np <Number-of-cores> ./tomofastx -p <Parfile path>
 ```
 
 To run unit tests (serial and parallel):
 ```shell
-./runtests.sh
+mpirun -np 1 ./runtests.sh
 mpirun -np 3 ./runtests.sh
 ```
 
@@ -53,7 +53,7 @@ The output data is stored in the folder ``output``. The full output folder path 
 
 To run the test example:
 ```shell
-./tomofastx -j ./parfiles/Parfile_mansf_slice.txt
+mpirun -np 1 ./tomofastx -p ./parfiles/Parfile_mansf_slice.txt
 ```
 
 If the code runs successfully you will see in the end of the screen log the messages "*Writing the full model...*", and "*THE END*".
