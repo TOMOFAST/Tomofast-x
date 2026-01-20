@@ -210,8 +210,8 @@ clean:
 ifeq ($(WINDOWS), 0)
 	rm -rf *.o *.mod ${EXEC} $(OBJDIR)
 else
-	del /Q *.o *.mod ${EXEC} 2>nul
-	rmdir /S /Q $(OBJDIR) 2>nul
+	-del /Q *.o *.mod ${EXEC} 2>nul
+	-rmdir /S /Q $(OBJDIR) 2>nul
 endif
 
 # targets to clean up all object directories
