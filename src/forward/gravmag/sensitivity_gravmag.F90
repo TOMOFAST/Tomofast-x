@@ -21,6 +21,7 @@ module sensitivity_gravmag
 
   use global_typedefs
   use mpi_tools, only: exit_MPI
+  use file_utils, only: create_directory
   use parameters_mag
   use parameters_grav
   use magnetic_field
@@ -139,7 +140,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, memor
   !---------------------------------------------------------------------------------------------
   ! Define the output file.
   !---------------------------------------------------------------------------------------------
-  call execute_command_line('mkdir -p "'//trim(path_output)//'/SENSIT"')
+  call create_directory(trim(path_output)//'/SENSIT')
 
   filename = "sensit_"//SUFFIX(problem_type)//"_"//trim(str(nbproc))//"_"//trim(str(myrank))
   filename_full = trim(path_output)//"/SENSIT/"//filename
@@ -457,7 +458,7 @@ subroutine write_depth_weight(par, column_weight, myrank, nbproc)
     end select
 
     ! Create the sensit folder.
-    call execute_command_line('mkdir -p "'//trim(path_output)//'/SENSIT"')
+    call create_directory(trim(path_output)//'/SENSIT')
 
     ! The output file name.
     filename = "sensit_"//SUFFIX(problem_type)//"_weight"

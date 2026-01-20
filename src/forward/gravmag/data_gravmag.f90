@@ -21,6 +21,7 @@ module data_gravmag
 
   use global_typedefs
   use mpi_tools, only: exit_MPI
+  use file_utils, only: create_directory
   use string
   use paraview
 
@@ -303,7 +304,7 @@ subroutine data_write(this, name_prefix, which, myrank)
   ! Write files by master CPU only.
   if (myrank == 0) then
     ! Create a data directory.
-    call execute_command_line('mkdir -p "'//trim(path_output)//'/data"')
+    call create_directory(trim(path_output)//'/data')
 
     file_name  = trim(path_output)//'/data/'//name_prefix//'data.txt'
 

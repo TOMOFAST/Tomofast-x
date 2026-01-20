@@ -21,6 +21,7 @@ module init_parameters
 
   use global_typedefs
   use mpi_tools, only: exit_MPI
+  use file_utils, only: create_directory
   use parameters_grav
   use parameters_mag
   use parameters_inversion
@@ -141,7 +142,7 @@ subroutine initialize_parameters(problem_type, gpar, mpar, ipar, myrank, nbproc)
     call read_parfile(parfile_path, gpar, mpar, ipar, myrank)
 
     ! Create the output directory. If it already exists there is no problem.
-    call execute_command_line('mkdir -p "'//trim(path_output)//'"')
+    call create_directory(trim(path_output))
 
     ! Copy the Parfile to the output folder.
     call copy_file(parfile_path, trim(path_output)//'/Parfile_copy.txt')

@@ -16,22 +16,35 @@
 # Compiler and linker flags.
 ################################################################################
 
+# Set to 1 for Windows, 0 for Linux
+WINDOWS = 0
+
 # Compiler choice: 1 - GCC, 2 - Intel.
 COMPILER = 1
+
+# Always use Intel compiler for Windows.
+ifeq ($(WINDOWS), 1)
+  COMPILER = 2
+endif
 
 # Use MPI Fortran compiler and linker wrappers.
 ifeq ($(COMPILER), 1)
   FC = mpif90
   #FC = /usr/bin/mpif90.openmpi
 else
-  FC = mpiifx # For Intel compiler (mpiifort is deprecated).
+  # Intel compiler (mpiifort is deprecated).
+  FC = mpiifx
 endif
 
 # obj directory
 OBJDIR = obj
 
 # Executable name.
-EXEC = tomofastx
+ifeq ($(WINDOWS), 0)
+	EXEC = tomofastx
+else
+	EXEC = tomofastx.exe
+endif
 
 ifeq ($(COMPILER), 1)
   # GNU gfortran pseudo-optimized.
@@ -47,8 +60,13 @@ ifeq ($(COMPILER), 1)
   # Adding vectorisation report for GNU compiler.
   #FFLAGS := $(OPT_INFO) $(FFLAGS)
 else
-  # Intel compiler optimized for speed for production runs.
-  FFLAGS = -convert big_endian -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn interfaces -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check nobounds -O3 -xHost -module $(OBJDIR)
+  ifeq ($(WINDOWS), 0)
+    # Intel compiler optimized for speed for production runs.
+    FFLAGS = -convert big_endian -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn interfaces -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check nobounds -O3 -xHost -module $(OBJDIR)
+  else
+    # Windows flags.
+    FFLAGS = -fpp -DWINDOWS -DUSE_FLUSH6 -convert:big_endian -warn:declarations -assume:buffered_io -assume:byterecl -warn:truncated_source -warn:interfaces -warn:unused -warn:declarations -warn:alignments -warn:ignore_loc -warn:usage -Qftz -fpe:0 -check:nobounds -O3 -QxHost -module:$(OBJDIR)
+  endif
 
   # Intel compiler with full checking options to debug (slow but very useful to check everything).
   #FFLAGS = -convert big_endian -implicitnone -assume buffered_io -assume byterecl -warn truncated_source -warn interfaces -warn unused -warn declarations -warn alignments -warn ignore_loc -warn usage -DUSE_FLUSH6 -ftz -fpe0 -check all -debug -g -O0 -traceback -ftrapuv -module $(OBJDIR)
@@ -93,6 +111,7 @@ SRC_LIST_LIBS = \
 ftnunit.f90
 
 SRC_LIST_UTILS = \
+file_utils.F90 \
 mpi_tools.F90 \
 costs.f90 \
 vector.f90 \
@@ -169,8 +188,13 @@ OBJ_LIST = $(OBJ_LIST_2:%.c=$(OBJDIR)/%.o)
 
 # Targets to create the object directory if it does not exist.
 $(OBJ_LIST): | $(OBJDIR)
+
 $(OBJDIR):
+ifeq ($(WINDOWS), 0)
 	@test -d $(OBJDIR) || (rm -f $(OBJDIR); mkdir -p $(OBJDIR))
+else
+	@if not exist $(OBJDIR) mkdir $(OBJDIR)
+endif
 
 # Implicit rules for object files.
 $(OBJDIR)/%.o: %.F90
@@ -178,14 +202,17 @@ $(OBJDIR)/%.o: %.F90
 $(OBJDIR)/%.o: %.f90
 	$(FC) $(FFLAGS) -o $@ -c $<
 
-
 # Target to build the actual executable.
 ${EXEC}: $(OBJ_LIST)
 	 $(FC) $(FFLAGS) -o ${EXEC} $(OBJ_LIST) $(LIBS_FULL)
 
-
 clean:
+ifeq ($(WINDOWS), 0)
 	rm -rf *.o *.mod ${EXEC} $(OBJDIR)
+else
+	del /Q *.o *.mod ${EXEC} 2>nul
+	rmdir /S /Q $(OBJDIR) 2>nul
+endif
 
 # targets to clean up all object directories
 purge: clean

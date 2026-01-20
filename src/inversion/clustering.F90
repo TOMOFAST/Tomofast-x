@@ -21,6 +21,7 @@ module clustering
 
   use global_typedefs
   use mpi_tools, only: exit_MPI
+  use file_utils, only: create_directory
   use sparse_matrix
   use model
   use string, only: str
@@ -367,7 +368,7 @@ subroutine clustering_write_data(this, file_name, myrank)
 
   if (myrank == 0) then
     ! Create a directory.
-    call execute_command_line('mkdir -p "'//trim(path_output)//'/model"')
+    call create_directory(trim(path_output)//'/model')
 
     filename_full = trim(path_output)//"/model/"//file_name
 

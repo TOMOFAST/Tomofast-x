@@ -21,6 +21,7 @@ module model_IO
 
   use global_typedefs
   use mpi_tools, only: exit_MPI
+  use file_utils, only: create_directory
   use paraview
   use string, only: str
   use parallel_tools
@@ -512,7 +513,7 @@ subroutine model_write_ascii_format(model, file_name, myrank)
 
   if (myrank == 0) then
     ! Create a directory.
-    call execute_command_line('mkdir -p "'//trim(path_output)//'/model"')
+    call create_directory(trim(path_output)//'/model')
 
     filename_full = trim(path_output)//"/model/"//file_name
 
