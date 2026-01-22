@@ -23,15 +23,9 @@ https://doi.org/10.5194/gmd-17-2325-2024
 "Structural, petrophysical, and geological constraints in potential field inversion using the Tomofast-x v1.0 open-source code", 
 Geosci. Model Dev., 14, 6681–6709, https://doi.org/10.5194/gmd-14-6681-2021
 
-### Compiling and running
+### Installing and running
 
-To compile the code you need: GCC or Intel compiler, and the MPI library (such as OpenMPI).
-
-The Makefile is located in the root folder and is used to compile Tomofast-x. Compilation is a required step before running inversions. 
-To compile the code, navigate to the code directory and run the following command: 
-```shell
-make
-```
+See the [Installation instructions](https://github.com/TOMOFAST/Tomofast-manual/blob/main/install.md) for detailed installation instructions.
 
 To run the code with your parameter file:
 ```shell
