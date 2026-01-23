@@ -338,7 +338,7 @@ subroutine data_write(this, name_prefix, which, myrank)
     !------------------------------------------------------------------------------------
     ! Write data in VTK format for Paraview.
     !------------------------------------------------------------------------------------
-    filename  = 'data_'//name_prefix(1:len(name_prefix) - 1)//'.vtk'
+    filename  = 'data_'//name_prefix//'.vtk'
 
     INVERT_Z_AXIS = .true.
 

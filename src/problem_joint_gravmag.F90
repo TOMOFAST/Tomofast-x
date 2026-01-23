@@ -264,12 +264,15 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
 
   !-----------------------------------------------------------------------------------------------------
   ! Writing the column weight for Paraview visualisation.
-  do i = 1, 2
-    if (SOLVE_PROBLEM(i)) then
-      model(i)%val(:, 1) = iarr(i)%column_weight
-      call model_write(model(i), merge('grav_weight_', 'magn_weight_', i == 1), .true., .false., myrank, nbproc)
-    endif
-  enddo
+  if (SOLVE_PROBLEM(1) .and. gpar%apply_local_weight > 0) then
+    model(1)%val(:, 1) = iarr(1)%column_weight
+    call model_write(model(1), 'grav_weight_', .true., .false., myrank, nbproc)
+  endif
+
+  if (SOLVE_PROBLEM(2) .and. mpar%apply_local_weight > 0) then
+    model(2)%val(:, 1) = iarr(2)%column_weight
+    call model_write(model(2), 'mag_weight_', .true., .false., myrank, nbproc)
+  endif
 
   ! READING THE SYNTHETIC MODEL -------------------------------------------------------------------------
 
@@ -399,9 +402,11 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(1)) model(1)%val_prior = model(1)%val
     if (SOLVE_PROBLEM(2)) model(2)%val_prior = model(2)%val
 
-    ! Write the prior model to a file for visualization.
-    if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_prior_', .false., .false., myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_prior_', .false., .false., myrank, nbproc)
+    ! Write the prior model to a vtk file for visualization.
+    if (SOLVE_PROBLEM(1) .and. gpar%prior_model_type > 1) &
+      call model_write(model(1), 'grav_prior_', .false., .false., myrank, nbproc)
+    if (SOLVE_PROBLEM(2) .and. mpar%prior_model_type > 1) &
+      call model_write(model(2), 'mag_prior_', .false., .false., myrank, nbproc)
 
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the prior model.
@@ -421,9 +426,11 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     if (SOLVE_PROBLEM(2)) &
       call set_model(model(2), mpar%start_model_type, mpar%start_model_val, mpar%model_files(3), myrank, nbproc)
 
-    ! Write the starting model to a file for visualization.
-    if (SOLVE_PROBLEM(1)) call model_write(model(1), 'grav_starting_', .false., .false., myrank, nbproc)
-    if (SOLVE_PROBLEM(2)) call model_write(model(2), 'mag_starting_', .false., .false., myrank, nbproc)
+    ! Write the starting model to a vtk file for visualization.
+    if (SOLVE_PROBLEM(1) .and. gpar%start_model_type > 1) &
+      call model_write(model(1), 'grav_starting_', .false., .false., myrank, nbproc)
+    if (SOLVE_PROBLEM(2) .and. mpar%start_model_type > 1) &
+      call model_write(model(2), 'mag_starting_', .false., .false., myrank, nbproc)
 
     !-----------------------------------------------------------------------------------------
     ! Calculate data from the starting model.
