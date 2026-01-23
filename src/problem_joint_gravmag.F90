@@ -334,18 +334,18 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   enddo
 
   ! Write data calculated from synthetic model.
-  if (SOLVE_PROBLEM(1) .and. useSynthModel(1)) call data(1)%write('grav_calc_synth_', 2, myrank)
-  if (SOLVE_PROBLEM(2) .and. useSynthModel(2)) call data(2)%write('mag_calc_synth_', 2, myrank)
+  if (SOLVE_PROBLEM(1) .and. useSynthModel(1)) call data(1)%write('grav_synthetic', 2, myrank)
+  if (SOLVE_PROBLEM(2) .and. useSynthModel(2)) call data(2)%write('mag_synthetic', 2, myrank)
 
   ! Define the data file.
   if (SOLVE_PROBLEM(1) .and. useSynthModel(1)) then
-    gpar%data_file = trim(path_output)//'/data/grav_calc_synth_data.txt'
+    gpar%data_file = trim(path_output)//'/data/grav_synthetic.txt'
   else
     gpar%data_file = gpar%data_grid_file
   endif
 
   if (SOLVE_PROBLEM(2) .and. useSynthModel(2)) then
-    mpar%data_file = trim(path_output)//'/data/mag_calc_synth_data.txt'
+    mpar%data_file = trim(path_output)//'/data/mag_synthetic.txt'
   else
     mpar%data_file = mpar%data_grid_file
   endif
@@ -355,8 +355,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
   if (SOLVE_PROBLEM(2)) call data(2)%read(mpar%data_file, myrank)
 
   ! Write the observed data.
-  if (SOLVE_PROBLEM(1)) call data(1)%write('grav_observed_', 1, myrank)
-  if (SOLVE_PROBLEM(2)) call data(2)%write('mag_observed_', 1, myrank)
+  if (SOLVE_PROBLEM(1)) call data(1)%write('grav_observed', 1, myrank)
+  if (SOLVE_PROBLEM(2)) call data(2)%write('mag_observed', 1, myrank)
 
   !-----------------------------------------------------------------------------------------
   number_prior_models = gpar%number_prior_models
@@ -412,8 +412,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     enddo
 
     ! Write data calculated from the prior model.
-    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_prior_', 2, myrank)
-    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_prior_', 2, myrank)
+    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_prior', 2, myrank)
+    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_prior', 2, myrank)
 
     ! SETTING STARTING MODEL FOR INVERSION -----------------------------------------------------
     if (SOLVE_PROBLEM(1)) &
@@ -434,8 +434,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     enddo
 
     ! Write data calculated from the starting model.
-    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_starting_', 2, myrank)
-    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_starting_', 2, myrank)
+    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_starting', 2, myrank)
+    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_starting', 2, myrank)
 
     !-----------------------------------------------------------------------------------------
     ! Calculate costs for the models (damping term in the cost function).
@@ -556,8 +556,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     endif
 
     ! Write data calculated from final model.
-    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_calc_final_', 2, myrank)
-    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_calc_final_', 2, myrank)
+    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_final', 2, myrank)
+    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_final', 2, myrank)
 
     ! Calculate final data residual.
     do i = 1, 2
@@ -567,8 +567,8 @@ subroutine solve_problem_joint_gravmag(gpar, mpar, ipar, myrank, nbproc)
     enddo
 
     ! Write final data residual.
-    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_misfit_final_', 2, myrank)
-    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_misfit_final_', 2, myrank)
+    if (SOLVE_PROBLEM(1)) call data(1)%write('grav_misfit', 2, myrank)
+    if (SOLVE_PROBLEM(2)) call data(2)%write('mag_misfit', 2, myrank)
 
     if (jinv%add_cross_grad) then
       if (myrank == 0) then

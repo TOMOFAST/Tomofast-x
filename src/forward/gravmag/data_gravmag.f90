@@ -296,7 +296,7 @@ subroutine data_write(this, name_prefix, which, myrank)
   integer, intent(in) :: which, myrank
 
   integer :: i, ierr
-  character(len=512) :: file_name
+  character(len=512) :: filename
   logical :: INVERT_Z_AXIS
   ! Temporary array for writing data to file.
   real(kind=CUSTOM_REAL), allocatable :: val(:, :)
@@ -306,9 +306,9 @@ subroutine data_write(this, name_prefix, which, myrank)
     ! Create a data directory.
     call create_directory(trim(path_output)//'/data')
 
-    file_name  = trim(path_output)//'/data/'//name_prefix//'data.txt'
+    filename = trim(path_output)//'/data/'//name_prefix//'.txt'
 
-    print *, 'Writing data to file '//trim(file_name)
+    print *, 'Writing data to file '//trim(filename)
 
     allocate(val(this%ncomponents, this%ndata), source=0._CUSTOM_REAL, stat=ierr)
 
@@ -321,7 +321,7 @@ subroutine data_write(this, name_prefix, which, myrank)
     ! Units conversion.
     val = val / this%units_mult
 
-    open(10, file=trim(file_name), access='stream', form='formatted', status='replace', action='write')
+    open(10, file=trim(filename), access='stream', form='formatted', status='replace', action='write')
 
     ! Writing a header line.
     write(10, *) this%ndata
@@ -338,15 +338,15 @@ subroutine data_write(this, name_prefix, which, myrank)
     !------------------------------------------------------------------------------------
     ! Write data in VTK format for Paraview.
     !------------------------------------------------------------------------------------
-    file_name  = 'data_'//name_prefix(1:len(name_prefix) - 1)//'.vtk'
+    filename  = 'data_'//name_prefix(1:len(name_prefix) - 1)//'.vtk'
 
     INVERT_Z_AXIS = .true.
 
     if (which == 1) then
-      call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
+      call visualisation_paraview_points(filename, myrank, this%ndata, this%ncomponents, &
                                          this%val_meas, this%X, this%Y, this%Z, INVERT_Z_AXIS, this%units_mult)
     else
-      call visualisation_paraview_points(file_name, myrank, this%ndata, this%ncomponents, &
+      call visualisation_paraview_points(filename, myrank, this%ndata, this%ncomponents, &
                                          this%val_calc, this%X, this%Y, this%Z, INVERT_Z_AXIS, this%units_mult)
     endif
   endif
