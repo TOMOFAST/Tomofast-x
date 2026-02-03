@@ -40,19 +40,19 @@ mpirun -np 3 ./runtests.sh
 
 ### Running the examples
 
-The input data is contained in the folder ``data``.  
-The input parameter file (Parfile) which contains all the parameters of the inversion, is stored in the folder: ``parfiles``.  
-The output data is stored in the folder ``output``. The full output folder path is specified in the Parfile parameter ``global.outputFolderPath``.
+#### Browser-based examples
 
+You can run examples in your browser without local installation using our [Google Colab notebook](https://colab.research.google.com/github/TOMOFAST/Tomofast-examples/blob/main/Tomofast-x_examples.ipynb), which includes visualization of output models.
+
+#### Local execution
 
 To run the test example:
-```shell
+```bash
 mpirun -np 1 ./tomofastx -p ./parfiles/Parfile_mansf_slice.txt
 ```
 
-If the code runs successfully you will see in the end of the screen log the messages "*Writing the full model...*", and "*THE END*".
-To visualize the final model, open in Paraview the file ``Paraview/grav_final_model3D_full.vtk``, located in the output folder.
-For details on other output files, see the User Manual in the ``docs`` folder. 
+If the code runs successfully you will see at the end of the screen log the messages "Writing the full model...", and "THE END". To visualize the final model, open in Paraview the file `Paraview/grav_final_model3D_full.vtk`, located in the output folder. For details on other output files, see the [Tomofast-x User Manual](https://github.com/TOMOFAST/Tomofast-manual).
+
 
 ### Publications using the code
 
