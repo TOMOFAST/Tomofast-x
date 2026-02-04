@@ -111,9 +111,8 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, memor
   integer, allocatable :: sensit_nnz(:)
   integer(kind=8) :: sensit_nnz_sum
 
-  real(kind=CUSTOM_REAL) :: cost_full, cost_compressed
+  real(kind=CUSTOM_REAL) :: cost_full, cost_discarded
   real(kind=CUSTOM_REAL) :: error_r_i, error_r_sum, error_r_sum_loc
-  real(kind=CUSTOM_REAL) :: relative_threshold, relative_threshold_sum, relative_threshold_sum_loc
 
   ! The full column weight.
   real(kind=CUSTOM_REAL), allocatable :: column_weight_full(:)
@@ -185,7 +184,6 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, memor
 
   nnz_data = 0
   error_r_sum_loc = 0.d0
-  relative_threshold_sum_loc = 0.d0
 
   ! Loop over the local data lines.
   do i = 1, ndata_loc
@@ -258,7 +256,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, memor
           endif
 
           nel = 0
-          cost_compressed = 0.d0
+          cost_discarded = 0.d0
           do p = 1, nelements_total
             if (abs(sensit_line_full(p, k, d)) > threshold) then
               ! Store sensitivity elements greater than the wavelet threshold.
@@ -267,8 +265,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, memor
               sensit_compressed(nel) = real(sensit_line_full(p, k, d), MATRIX_PRECISION)
 
               sensit_nnz(p) = sensit_nnz(p) + 1
-
-              cost_compressed = cost_compressed + sensit_line_full(p, k, d)**2
+            else
+              ! Accumulate the cost of discarded wavelet coefficients.
+              cost_discarded = cost_discarded + sensit_line_full(p, k, d)**2
             endif
           enddo
 
@@ -280,19 +279,10 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, memor
           !--------------------------------------------------------------------------------------
           ! Calculate compression statistics.
           !--------------------------------------------------------------------------------------
-          if (nel_compressed == nelements_total) then
-            ! Assign the error directly as the formula is numerically unstable for this case.
-            error_r_i = 0.d0
-          else
-            ! Compression error for this row. See Eq.(19) in Li & Oldenburg, GJI (2003) 152, 251–265.
-            error_r_i = sqrt(1.d0 - cost_compressed / cost_full)
-          endif
-
-          ! Relative threshold.
-          relative_threshold = threshold / abs(sensit_line_sorted(nelements_total))
+          ! Compression error for this row. See Eq.(19) in Li & Oldenburg, GJI (2003) 152, 251–265.
+          error_r_i = sqrt(cost_discarded / cost_full)
 
           error_r_sum_loc = error_r_sum_loc + error_r_i
-          relative_threshold_sum_loc = relative_threshold_sum_loc + relative_threshold
 
         else
         ! No compression.
@@ -355,18 +345,14 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, memor
   !---------------------------------------------------------------------------------------------
   if (par%compression_type > 0) then
     call MPI_Allreduce(error_r_sum_loc, error_r_sum, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
-    call MPI_Allreduce(relative_threshold_sum_loc, relative_threshold_sum, 1, CUSTOM_MPI_TYPE, MPI_SUM, MPI_COMM_WORLD, ierr)
 
     ! Calculate the average over all rows (compressions).
     comp_error = error_r_sum / dble(par%ndata * par%ndata_components * par%nmodel_components)
-    relative_threshold = relative_threshold_sum / dble(par%ndata * par%ndata_components * par%nmodel_components)
   else
     comp_error = 0.d0
-    relative_threshold = 0.d0
   endif
 
   if (myrank == 0) print *, 'COMPRESSION ERROR, r = ', comp_error
-  if (myrank == 0) print *, 'Relative threshold, e = ', relative_threshold
 
   !---------------------------------------------------------------------------------------------
   ! Write the metadata file.
