@@ -1,4 +1,4 @@
-![Windows](https://img.shields.io/badge/Windows-blue)
+![Windows](https://img.shields.io/badge/Windows-blue)![WSL](https://img.shields.io/badge/WSL-blue)![MacOSX](https://img.shields.io/badge/MacOSX-blue)![Linux](https://img.shields.io/badge/Linux-blue)
 
 # Tomofast-x v.2.0
 
