@@ -1,4 +1,4 @@
-![Windows](https://img.shields.io)![WSL](https://img.shields.io)![macOS](https://img.shields.io)![Linux](https://img.shields.io)
+![Windows]([https://img.shields.io/Windows](https://img.shields.io/badge/any_text-you_like-blue))![WSL](https://img.shields.io)![macOS](https://img.shields.io)![Linux](https://img.shields.io)
 # Tomofast-x v.2.0
 
 A parallel inversion code for 3D geophysical potential field data, supporting joint and constrained inversion.  
