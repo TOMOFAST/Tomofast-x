@@ -128,6 +128,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   integer, intent(in) :: myrank
 
   integer :: i
+  real(kind=CUSTOM_REAL) :: effective_clustering_weight(2)
 
   do i = 1, 2
     if (par%alpha(i) == 0.d0 .or. par%problem_weight(i) == 0.d0) then
@@ -151,7 +152,15 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
     this%add_cross_grad = .true.
   endif
 
-  if (par%clustering_weight_glob(1) == 0.d0 .and. par%clustering_weight_glob(2) == 0.d0) then
+  do i = 1, 2
+    if (par%problem_weight(i) == 0.d0) then
+      effective_clustering_weight(i) = 0.d0
+    else
+      effective_clustering_weight(i) = par%clustering_weight_glob(i)
+    endif
+  enddo
+
+  if (effective_clustering_weight(1) == 0.d0 .and. effective_clustering_weight(2) == 0.d0) then
     this%add_clustering = .false.
   else
     this%add_clustering = .true.
@@ -177,8 +186,7 @@ subroutine joint_inversion_initialize(this, par, nnz_sensit, myrank)
   endif
 
   if (this%add_clustering) then
-    ! Allocate memory for clustering constraints.
-    call this%clustering%initialize(par%nelements_total, par%nelements, par%clustering_weight_glob, &
+    call this%clustering%initialize(par%nelements_total, par%nelements, effective_clustering_weight, &
                                     par%nclusters, par%clustering_opt_type, par%clustering_constraints_type, myrank)
     call this%clustering%read_mixtures(par%mixture_file, par%cell_weights_file, myrank)
   endif
@@ -322,8 +330,13 @@ subroutine joint_inversion_initialize2(this, par, arr, model, myrank, nbproc)
   enddo
 
   if (this%add_clustering) then
-    nl = nl + 2 * par%nelements_total
-    nnz = nnz + 2 * par%nelements
+    ! Count rows only for active problems (non-zero clustering weight and problem weight).
+    do i = 1, 2
+      if (this%clustering%is_active(i)) then
+        nl = nl + par%nelements_total
+        nnz = nnz + par%nelements
+      endif
+    enddo
   endif
 
   !--------------------------------------------------------------------------------------
@@ -618,10 +631,12 @@ subroutine joint_inversion_add_clustering_constraints(this, arr, model, myrank, 
 
   integer :: i, lc
 
-  ! Starting line for constraints.
   lc = this%ndata_lines + 1
 
   do i = 1, 2
+    ! Skip if clustering is inactive for this problem (zero clustering weight or zero problem weight).
+    if (.not. this%clustering%is_active(i)) cycle
+
     call this%clustering%add(model(1), model(2), arr(1)%column_weight, arr(2)%column_weight, &
                              this%matrix_cons, this%b_RHS(lc:), i, myrank, nbproc)
 

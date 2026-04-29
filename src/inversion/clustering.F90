@@ -46,9 +46,6 @@ module clustering
     ! Clustering weight (on the clustering term in the cost function).
     real(kind=CUSTOM_REAL) :: weight_glob(2)
 
-    ! Clustering weights (for individual problems).
-    real(kind=CUSTOM_REAL) :: weight_loc(2)
-
     ! Number of mixtures for clustering constraints.
     integer :: nclusters
 
@@ -90,6 +87,7 @@ module clustering
     procedure, public, pass :: write_data => clustering_write_data
 
     procedure, public, pass :: add => clustering_add
+    procedure, public, pass :: is_active => clustering_is_active
     procedure, public, pass :: get_cost => clustering_get_cost
     procedure, public, pass :: get_probabilities => clustering_get_probabilities
 
@@ -126,15 +124,6 @@ subroutine clustering_initialize(this, nelements_total, nelements, weight_glob, 
   this%constraints_type = constraints_type
 
   this%cost = 0.d0
-
-  do i = 1, 2
-  ! This way we use 1D Gaussians when one of the global clustering weight is zero.
-    if (weight_glob(i) == 0.d0) then
-      this%weight_loc(i) = 0.d0
-    else
-      this%weight_loc(i) = 1.d0
-    endif
-  enddo
 
   ierr = 0
 
@@ -300,6 +289,18 @@ pure function clustering_get_probabilities(this) result(res)
 
 end function clustering_get_probabilities
 
+!==================================================================================================
+! Returns true if the clustering is active for a given problem type.
+!==================================================================================================
+pure function clustering_is_active(this, problem_type) result(res)
+  class(t_clustering), intent(in) :: this
+  integer, intent(in) :: problem_type
+  logical :: res
+
+  res = (this%weight_glob(problem_type) /= 0.d0)
+
+end function clustering_is_active
+
 !================================================================================================
 ! Write clustering mixtures values (to plot the function).
 ! Also calculate the integral of the function.
@@ -412,16 +413,16 @@ subroutine clustering_add(this, model1, model2, column_weight1, column_weight2, 
   integer :: row_beg, row_end, nsmaller
   integer :: i, p, ind
 
-  ! Update the full models.
-  call model1%update_full(.true., myrank, nbproc)
-  call model2%update_full(.true., myrank, nbproc)
+  ! Update the full models (only for active problems).
+  if (this%weight_glob(1) /= 0.d0) call model1%update_full(.true., myrank, nbproc)
+  if (this%weight_glob(2) /= 0.d0) call model2%update_full(.true., myrank, nbproc)
 
   ! Calculate 'Cp-weights'.
   do i = 1, 2
     !Cp_weight(i) = maxval(this%mixture_sigma(i, :))
     Cp_weight(i) = 1.d0
 
-    if (this%weight_loc(i) == 0.d0) then
+    if (this%weight_glob(i) == 0.d0) then
     ! Single domain inversion.
       Cp_weight(i) = 0.d0
     endif
@@ -436,8 +437,18 @@ subroutine clustering_add(this, model1, model2, column_weight1, column_weight2, 
   ! Add matrix lines (Jacobian).
   do p = 1, this%nelements_total
 
-    model_val(1) = model1%val_full(p, 1)
-    model_val(2) = model2%val_full(p, 1)
+    ! Read model values only for active (allocated) models.
+    if (this%weight_glob(1) /= 0.d0) then
+      model_val(1) = model1%val_full(p, 1)
+    else
+      model_val(1) = 0.d0
+    endif
+
+    if (this%weight_glob(2) /= 0.d0) then
+      model_val(2) = model2%val_full(p, 1)
+    else
+      model_val(2) = 0.d0
+    endif
 
     call this%calculate_Gaussian_mixture(model_val, gauss, deriv, gauss_loc, this%cell_weight(p, :))
 
@@ -455,13 +466,12 @@ subroutine clustering_add(this, model1, model2, column_weight1, column_weight2, 
       ! Calculate element local index.
       ind = p - nsmaller
 
-      matrix_val(1) = this%weight_glob(1) * column_weight1(ind) * deriv(1) * Cp_weight(1)
-      matrix_val(2) = this%weight_glob(2) * column_weight2(ind) * deriv(2) * Cp_weight(2)
-
       if (problem_type == 1) then
+        matrix_val(1) = this%weight_glob(1) * column_weight1(ind) * deriv(1) * Cp_weight(1)
         call matrix%add(matrix_val(1), ind, myrank)
 
       else if (problem_type == 2) then
+        matrix_val(2) = this%weight_glob(2) * column_weight2(ind) * deriv(2) * Cp_weight(2)
         call matrix%add(matrix_val(2), ind + this%nelements, myrank)
       endif
     endif
@@ -471,7 +481,7 @@ subroutine clustering_add(this, model1, model2, column_weight1, column_weight2, 
     if (this%optimization_type == 1) then
     ! Normal case: minimizing ||A_max - f(x)||^2.
 
-      ! Note: for least-squares we can switch the sign inside breakets.
+      ! Note: for least-squares we can switch the sign inside brackets.
       func_val = (gauss - this%mixture_max(p))
 
     else if (this%optimization_type == 2) then
@@ -614,7 +624,7 @@ subroutine clustering_calculate_Gaussian_mixture(this, val, gauss, deriv, gauss_
 
   do i = 1, this%nclusters
     gauss_loc(i) = cluster_weight(i) * &
-                   this%calculate_Gaussian(this%mixture_mu(:, i), this%mixture_sigma(:, i), this%weight_loc, val)
+                   this%calculate_Gaussian(this%mixture_mu(:, i), this%mixture_sigma(:, i), this%weight_glob, val)
 
     gauss = gauss + gauss_loc(i)
 
