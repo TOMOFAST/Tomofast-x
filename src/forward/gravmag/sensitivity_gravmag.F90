@@ -391,6 +391,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, memor
     close(77)
   endif
 
+  ! Prevent race condition: rank 0 must write sensit_nnz before calculate_new_partitioning reads it.
+  call MPI_Barrier(MPI_COMM_WORLD, ierr)
+
   !---------------------------------------------------------------------------------------------
   ! Measure the memory usage for the forward problem.
   !---------------------------------------------------------------------------------------------
