@@ -92,19 +92,18 @@ subroutine dircos(incl, decl, azim, a, b, c)
   double precision, intent(in)    :: incl, decl, azim
   double precision, intent(out)   :: a, b, c
 
-  double precision :: xincl, xdecl, xazim
+  double precision :: xincl, xdecl
   double precision :: incl2, decl2
 
-  ! Convert North to cartesian X-axis.
-  decl2 = mod(450.d0 - decl,  360.d0)
+  ! Adjust declination so that Cartesian X=East, Y=North.
+  decl2 = mod(450.d0 - (decl - azim),  360.d0)
   incl2 = incl
 
   xincl = incl2 * d2rad
   xdecl = decl2 * d2rad
-  xazim = azim * d2rad
 
-  a = cos(xincl) * cos(xdecl - xazim)
-  b = cos(xincl) * sin(xdecl - xazim)
+  a = cos(xincl) * cos(xdecl)
+  b = cos(xincl) * sin(xdecl)
   c = sin(xincl)
 
 end subroutine dircos
