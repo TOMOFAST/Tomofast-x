@@ -88,7 +88,7 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, memor
   real(kind=CUSTOM_REAL), intent(out) :: memory
 
   type(t_magnetic_field) :: mag_field
-  integer :: i, k, p, d, nel, ierr
+  integer :: i, k, p, d, nel, step, ierr
   integer :: nelements_total, nel_compressed
   integer(kind=8) :: nnz_data
   integer :: problem_type
@@ -311,8 +311,9 @@ subroutine calculate_and_write_sensit(par, grid_full, data, column_weight, memor
     enddo ! ndata_components loop
 
     ! Print the progress.
-    if (myrank == 0 .and. mod(i, max(int(0.1d0 * ndata_loc), 1)) == 0) then
-      print *, 'Percent completed: ', int(dble(i) / dble(ndata_loc) * 100.d0)
+    step = max(int(0.1d0 * ndata_loc), 1)
+    if (myrank == 0 .and. mod(i, step) == 0) then
+      print *, 'Percent completed: ', (i / step) * 10
     endif
 
   enddo ! data loop
