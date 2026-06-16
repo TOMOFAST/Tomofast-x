@@ -55,9 +55,7 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   real(kind=CUSTOM_REAL) :: distX_sq(2), distY_sq(2), distZ_sq(2)
   real(kind=CUSTOM_REAL) :: dhx, dhy, dhz, dfactor
   real(kind=CUSTOM_REAL) :: Rij(8), R0
-  real(kind=CUSTOM_REAL) :: dVj
   real(kind=CUSTOM_REAL) :: integral, wr
-  real(kind=CUSTOM_REAL) :: dist, mindist
   integer :: nsmaller, p
 
   if (myrank == 0) print *, 'Calculating the depth weight, type = ', par%depth_weighting_type
@@ -80,10 +78,27 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
 
   else if (par%depth_weighting_type == 2) then
   ! Distance weighting.
-  ! Based on Eq.(19) in Li & Oldenburg, Joint inversion of surface and three‐component borehole magnetic data, GEOPHYSICS 65, 540–552 (2000).
+  ! Based on Eq.(19) in Li & Oldenburg, Joint inversion of surface and three-component
+  ! borehole magnetic data, GEOPHYSICS 65, 540-552 (2000).
+  !
+  ! Modification w.r.t. Eq.(19): we do NOT include the cell volume dVj inside the
+  ! integral. Instead, the cell volume is reintroduced as a sqrt(dVj) factor in the common scaling
+  ! block below. For beta = 1 this modification changes nothing (the two forms differ only by the factor V^((beta-1)/2)).
+  !
+  ! Reason: the weight defines the (squared) model norm, so the volume must enter
+  ! it linearly. This preserves consistency under cell splitting/merging on
+  ! non-uniform meshes -- merging k equal cells of volume V into one cell of
+  ! volume k*V must leave the model penalty unchanged:
+  !
+  !   k * (m * w * sqrt(V))^2 = (m * w * sqrt(k*V))^2.
+  !
+  ! Keeping dVj inside the integral as in Eq.(19) raises the volume to the power
+  ! beta in the weight, which breaks this identity for beta /= 1 and produces
+  ! artefacts at the boundary between core and (larger) padding cells.
 
-    ! A small constant for integral validity.
-    R0 = 0.1d0 ! 0.1 meter
+    ! Regularization length for the 1/R^p singularity: a small fraction of the top-layer cell height, so it scales with the model.
+    ! Assumes cell 1 lies in the top (shallowest) layer.
+    R0 = 0.01d0 * abs(grid_full%Z2(1) - grid_full%Z1(1))
 
     ! A factor to move the cell corner points inside a cell.
     dfactor = 0.25d0
@@ -91,9 +106,6 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
     do i = 1, par%nelements
       ! Full grid index.
       p = nsmaller + i
-
-      ! Cell colume.
-      dVj = grid_full%get_cell_volume(p)
 
       ! Shifts to make the integral points to lie inside the cell volume.
       dhx = dfactor * abs(grid_full%X2(p) - grid_full%X1(p))
@@ -128,36 +140,13 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
         do ind = 1, 8
           integral = integral + 1.d0 / (Rij(ind) + R0)**par%depth_weighting_power
         enddo
-        integral = integral * dVj / 8.d0
+        integral = integral / 8.d0
 
         wr = wr + integral**2.d0
 
       enddo ! data loop
 
-      iarr%column_weight(i) = (1.d0 / sqrt(dVj)) * wr**(par%depth_weighting_beta / 4.d0)
-    enddo ! cells loop
-
-  else if (par%depth_weighting_type == 3) then
-    ! A small constant for division validity.
-    R0 = 0.01d0
-
-    do i = 1, par%nelements
-      ! Full grid index.
-      p = nsmaller + i
-
-      ! Calculate the minimum distance from a cell center to data.
-      mindist = 1.d30
-      do j = 1, par%ndata
-        dist = sqrt((grid_full%get_X_cell_center(p) - data%X(j))**2.d0 + &
-                    (grid_full%get_Y_cell_center(p) - data%Y(j))**2.d0 + &
-                    (grid_full%get_Z_cell_center(p) - data%Z(j))**2.d0)
-
-        if (dist < mindist) then
-          mindist = dist
-        endif
-      enddo ! data loop
-
-      iarr%column_weight(i) = sqrt(1.d0 / (mindist + R0)**par%depth_weighting_power)
+      iarr%column_weight(i) = wr**(par%depth_weighting_beta / 4.d0)
     enddo ! cells loop
 
   else
