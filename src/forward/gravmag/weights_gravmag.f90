@@ -51,11 +51,8 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   type(t_inversion_arrays), intent(inout) :: iarr
 
   integer :: i, j
-  integer :: ii, jj, kk, ind
-  real(kind=CUSTOM_REAL) :: distX_sq(2), distY_sq(2), distZ_sq(2)
-  real(kind=CUSTOM_REAL) :: dhx, dhy, dhz, dfactor
-  real(kind=CUSTOM_REAL) :: Rij(8), R0
-  real(kind=CUSTOM_REAL) :: integral, wr
+  real(kind=CUSTOM_REAL) :: R0
+  real(kind=CUSTOM_REAL) :: dist, kernel, wr
   integer :: nsmaller, p
 
   if (myrank == 0) print *, 'Calculating the depth weight, type = ', par%depth_weighting_type
@@ -97,53 +94,23 @@ subroutine calculate_depth_weight(par, iarr, grid_full, data, myrank, nbproc)
   ! artefacts at the boundary between core and (larger) padding cells.
 
     ! Regularization length for the 1/R^p singularity: a small fraction of the top-layer cell height, so it scales with the model.
-    ! Assumes cell 1 lies in the top (shallowest) layer.
     R0 = 0.01d0 * abs(grid_full%Z2(1) - grid_full%Z1(1))
-
-    ! A factor to move the cell corner points inside a cell.
-    dfactor = 0.25d0
 
     do i = 1, par%nelements
       ! Full grid index.
       p = nsmaller + i
 
-      ! Shifts to make the integral points to lie inside the cell volume.
-      dhx = dfactor * abs(grid_full%X2(p) - grid_full%X1(p))
-      dhy = dfactor * abs(grid_full%Y2(p) - grid_full%Y1(p))
-      dhz = dfactor * abs(grid_full%Z2(p) - grid_full%Z1(p))
-
       wr = 0.d0
 
       do j = 1, par%ndata
+        ! Distance from the cell centre to the data location.
+        dist = sqrt((grid_full%get_X_cell_center(p) - data%X(j))**2.d0 + &
+                    (grid_full%get_Y_cell_center(p) - data%Y(j))**2.d0 + &
+                    (grid_full%get_Z_cell_center(p) - data%Z(j))**2.d0)
 
-        ! The squared 1D distances along each cell dimension.
-        distX_sq(1) = (grid_full%X1(p) + dhx - data%X(j))**2.d0
-        distY_sq(1) = (grid_full%Y1(p) + dhy - data%Y(j))**2.d0
-        distZ_sq(1) = (grid_full%Z1(p) + dhz - data%Z(j))**2.d0
+        kernel = 1.d0 / (dist + R0)**par%depth_weighting_power
 
-        distX_sq(2) = (grid_full%X2(p) - dhx - data%X(j))**2.d0
-        distY_sq(2) = (grid_full%Y2(p) - dhy - data%Y(j))**2.d0
-        distZ_sq(2) = (grid_full%Z2(p) - dhz - data%Z(j))**2.d0
-
-        ! Calculate the distance from 8 points inside a cell to the data location.
-        ind = 0
-        do ii = 1, 2
-          do jj = 1, 2
-            do kk = 1, 2
-              ind = ind + 1
-              Rij(ind) = sqrt(distX_sq(ii) + distY_sq(jj) + distZ_sq(kk))
-            enddo
-          enddo
-        enddo
-
-        integral = 0.d0
-        do ind = 1, 8
-          integral = integral + 1.d0 / (Rij(ind) + R0)**par%depth_weighting_power
-        enddo
-        integral = integral / 8.d0
-
-        wr = wr + integral**2.d0
-
+        wr = wr + kernel**2.d0
       enddo ! data loop
 
       iarr%column_weight(i) = wr**(par%depth_weighting_beta / 4.d0)
