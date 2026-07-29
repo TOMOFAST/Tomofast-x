@@ -14,7 +14,7 @@
 
 !========================================================================================
 ! A class to work with sparse matrices that are
-! stored using Compressed Sparse Row (CSR) format.
+! stored using Doubly Compressed Sparse Row (DCSR) format.
 !
 ! Vitaliy Ogarko, UWA, CET, Australia.
 !========================================================================================
@@ -239,7 +239,7 @@ subroutine sparse_matrix_add_row(this, nel_add, values, columns, myrank)
   integer, intent(in) :: myrank
 
   ! Sanity check.
- if (this%nel + nel_add > this%nnz) &
+  if (this%nel + nel_add > this%nnz) &
     call exit_MPI("Error in total number of elements in sparse_matrix_add_row!", myrank, 0)
 
   this%sa(this%nel + 1 : this%nel + nel_add) = values
@@ -420,7 +420,7 @@ subroutine sparse_matrix_normalize_columns(this, column_norm)
   column_norm = 0._CUSTOM_REAL
 
   ! Calculate the column norm.
-  do i = 1, this%nl
+  do i = 1, this%nl_nonempty
     do k = this%ijl(i), this%ijl(i + 1) - 1
       j = this%ija(k)
       column_norm(j) = column_norm(j) + this%sa(k)**2
@@ -430,7 +430,7 @@ subroutine sparse_matrix_normalize_columns(this, column_norm)
   column_norm = sqrt(column_norm)
 
   ! Normalize matrix columns.
-  do i = 1, this%nl
+  do i = 1, this%nl_nonempty
     do k = this%ijl(i), this%ijl(i + 1) - 1
       j = this%ija(k)
 
