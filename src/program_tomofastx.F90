@@ -72,7 +72,7 @@ program program_tomofastx
 
   !----------------------------------------------------------------------------
   ! INITIALIZATION.
-  if (myrank == 0) print *, "Started Tomofast-x, version >= 2.0.11"
+  if (myrank == 0) print *, "Started Tomofast-x, version >= 2.0.11.1"
 
   if (command_argument_count() /= 2) then
     if (myrank == 0) print *, "Usage: tomofastx -p <Parfile_path>"

@@ -255,16 +255,16 @@ subroutine sparse_matrix_new_row(this, myrank)
   class(t_sparse_matrix), intent(inout) :: this
   integer, intent(in) :: myrank
 
-  ! Sanity check.
-  if (this%nl_current >= this%nl_nonempty_allocated) &
-    call exit_MPI("Error in number of rows in sparse_matrix_new_row!"//new_line('a') &
-                  //"nl_current="//str(this%nl_current)//new_line('a') &
-                  //"nl="//str(this%nl), myrank, 0)
-
   this%nl_current_all = this%nl_current_all + 1
 
   ! Store only non-empty rows.
   if (this%nel > this%nel_last) then
+    ! Sanity check.
+    if (this%nl_current >= this%nl_nonempty_allocated) &
+      call exit_MPI("Error in number of rows in sparse_matrix_new_row!"//new_line('a') &
+                    //"nl_current="//str(this%nl_current)//new_line('a') &
+                    //"nl_nonempty_allocated="//str(this%nl_nonempty_allocated), myrank, 0)
+
     this%nl_current = this%nl_current + 1
     this%ijl(this%nl_current) = this%nel_last + 1
 
