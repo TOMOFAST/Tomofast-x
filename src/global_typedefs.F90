@@ -14,7 +14,12 @@
 
 module global_typedefs
 
+#ifdef NO_MPI
+  ! Single-process build (see mpi_stub.F90); parallelism comes from OpenMP.
+  use mpi_stub_defs
+#else
   use mpi
+#endif
 
   implicit none
 

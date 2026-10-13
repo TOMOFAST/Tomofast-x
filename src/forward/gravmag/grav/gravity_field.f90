@@ -58,6 +58,8 @@ subroutine graviprism_full(nelements, grid, Xdata, Ydata, Zdata, LineX, LineY, L
   double precision :: dmu, Rs
   integer :: i, k, l, m
 
+!$omp parallel do schedule(static) &
+!$omp private(XX, YY, ZZ, arg1, arg2, arg3, arg4, arg5, arg6, gx, gy, gz, dmu, Rs, k, l, m)
   do i = 1, nelements
 
     XX(1) = dble(Xdata - grid%X1(i))
@@ -146,6 +148,8 @@ subroutine graviprism_z(nelements, grid, Xdata, Ydata, Zdata, LineZ, myrank)
   double precision :: dmu, Rs
   integer :: i, k, l, m
 
+!$omp parallel do schedule(static) &
+!$omp private(XX, YY, ZZ, arg3, arg4, arg5, gz, dmu, Rs, k, l, m)
   do i = 1, nelements
 
     XX(1) = dble(Xdata - grid%X1(i))
@@ -229,6 +233,9 @@ subroutine gradiprism_full(nelements, grid, Xdata, Ydata, Zdata, LineXX, LineYY,
   double precision :: dmu, Rs
   integer :: i, k, l, m
 
+!$omp parallel do schedule(static) &
+!$omp private(XX, YY, ZZ, vxx, vxy, vyy, vzx, vyz, vzz, gxx, gxy, gyy, gzx, gyz, gzz) &
+!$omp private(arg1, arg2, arg3, arg21, arg22, arg31, arg32, dmu, Rs, k, l, m)
   do i = 1, nelements
 
     XX(1) = dble(Xdata - grid%X1(i))
@@ -328,6 +335,8 @@ subroutine gradiprism_zz(nelements, grid, Xdata, Ydata, Zdata, LineZZ)
   double precision :: dmu, Rs
   integer :: i, k, l, m
 
+!$omp parallel do schedule(static) &
+!$omp private(XX, YY, ZZ, vzz, gzz, dmu, Rs, k, l, m)
   do i = 1, nelements
 
     XX(1) = dble(Xdata - grid%X1(i))

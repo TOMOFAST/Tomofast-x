@@ -131,6 +131,9 @@ subroutine magnetic_field_magprism(this, nelements, nmodel_components, ndata_com
   real(kind=SENSIT_REAL) :: temp_x1(6), temp_x2(6), temp_y1(6), temp_y2(6), temp_z1(6), temp_z2(6)
   real(kind=SENSIT_REAL) :: width, min_clr
 
+!$omp parallel do schedule(static) &
+!$omp private(tx, ty, tz, mx, my, mz, j, k, temp_tx, temp_ty, temp_tz) &
+!$omp private(temp_x1, temp_x2, temp_y1, temp_y2, temp_z1, temp_z2, width, min_clr)
   do i = 1, nelements
     ! Calculate the magnetic tensor.
 

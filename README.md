@@ -40,6 +40,31 @@ mpirun -np 1 ./runtests.sh
 mpirun -np 3 ./runtests.sh
 ```
 
+#### Build without MPI (OpenMP)
+
+MPI is optional. To build with only a Fortran compiler (no MPI library), run:
+```shell
+make USE_MPI=0
+OMP_NUM_THREADS=<Number-of-threads> ./tomofastx -p <Parfile path>
+```
+This build runs one process and uses OpenMP threads for the sensitivity kernel and the sparse matrix products.
+Use `make USE_MPI=0 USE_OPENMP=0` for a serial build, or `make USE_OPENMP=1` for MPI with OpenMP threads.
+Each build configuration uses its own object directory, so you can switch between them without `make clean`.
+The transpose matrix-vector product gives each thread a private copy of the result vector.
+Its memory use grows with the number of threads, and the sum order (and so the last bits of the result) can change with the thread count.
+MPI with OpenMP threads (`USE_OPENMP=1` with MPI) is experimental: the code calls `MPI_Init`, not `MPI_Init_thread`.
+If the stack is too small, set `OMP_STACKSIZE` or `ulimit -s unlimited`.
+
+##### Windows
+
+Option 1: gfortran from [MSYS2](https://www.msys2.org). In the "MSYS2 UCRT64" shell:
+```shell
+pacman -S mingw-w64-ucrt-x86_64-gcc-fortran mingw-w64-ucrt-x86_64-libgomp make
+make WINDOWS=1 COMPILER=1 USE_MPI=0
+OMP_NUM_THREADS=4 ./tomofastx.exe -p parfiles/Parfile_mansf_slice.txt
+```
+Option 2: Intel oneAPI `ifx`. In the oneAPI command prompt, run `make WINDOWS=1 USE_MPI=0`.
+
 ### Running the examples
 
 #### Browser-based examples
