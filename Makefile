@@ -65,7 +65,14 @@ else
 endif
 
 # obj directory
+# Use a separate object directory per build configuration, so that changing USE_MPI or USE_OPENMP never reuses stale objects.
 OBJDIR = obj
+ifeq ($(USE_MPI), 0)
+  OBJDIR := $(OBJDIR)_nompi
+endif
+ifeq ($(USE_OPENMP), 1)
+  OBJDIR := $(OBJDIR)_omp
+endif
 
 # Executable name.
 ifeq ($(WINDOWS), 0)
@@ -185,7 +192,7 @@ sort.f90
 # Source files for inversion.
 SRC_LIST_INVERSION = \
 parameters_inversion.f90 \
-sparse_matrix.f90 \
+sparse_matrix.F90 \
 wavelet_utils.F90 \
 grid.F90 \
 model.F90 \
@@ -274,10 +281,13 @@ ${EXEC}: $(OBJ_LIST)
 
 clean:
 ifeq ($(WINSHELL), 0)
-	rm -rf *.o *.mod ${EXEC} $(OBJDIR)
+	rm -rf *.o *.mod ${EXEC} obj obj_nompi obj_nompi_omp obj_omp
 else
 	-del /Q *.o *.mod ${EXEC} 2>nul
-	-rmdir /S /Q $(OBJDIR) 2>nul
+	-rmdir /S /Q obj 2>nul
+	-rmdir /S /Q obj_nompi 2>nul
+	-rmdir /S /Q obj_nompi_omp 2>nul
+	-rmdir /S /Q obj_omp 2>nul
 endif
 
 # targets to clean up all object directories

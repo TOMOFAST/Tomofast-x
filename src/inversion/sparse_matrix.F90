@@ -20,6 +20,13 @@
 !========================================================================================
 module sparse_matrix
 
+! OpenMP directives are not allowed in pure procedures, so keep 'pure' only when OpenMP is off.
+#ifdef _OPENMP
+#define PURE_IF_NO_OMP
+#else
+#define PURE_IF_NO_OMP pure
+#endif
+
   use global_typedefs
   use mpi_tools, only: exit_MPI
   use string, only: str
@@ -295,7 +302,7 @@ end subroutine sparse_matrix_add_empty_rows
 !=========================================================================
 ! Computes the product between the sparse matrix and vector x: b = Ax.
 !=========================================================================
-subroutine sparse_matrix_mult_vector(this, x, b)
+PURE_IF_NO_OMP subroutine sparse_matrix_mult_vector(this, x, b)
   class(t_sparse_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: x(this%ncolumns)
 
@@ -310,7 +317,7 @@ end subroutine sparse_matrix_mult_vector
 ! Computes the product between the sparse matrix and vector x,
 ! and adds the result as: b = b + Ax.
 !=========================================================================
-subroutine sparse_matrix_add_mult_vector(this, x, b)
+PURE_IF_NO_OMP subroutine sparse_matrix_add_mult_vector(this, x, b)
   class(t_sparse_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: x(this%ncolumns)
 
@@ -372,7 +379,7 @@ end subroutine sparse_matrix_part_mult_vector
 ! Computes the product between the transpose of sparse matrix and vector x:
 ! b = A'x.
 !============================================================================
-subroutine sparse_matrix_trans_mult_vector(this, x, b)
+PURE_IF_NO_OMP subroutine sparse_matrix_trans_mult_vector(this, x, b)
   class(t_sparse_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: x(this%nl)
 
@@ -387,7 +394,7 @@ end subroutine sparse_matrix_trans_mult_vector
 ! Computes the product between the transpose of sparse matrix and vector x,
 ! and adds the result as: b = b + A'x.
 !============================================================================
-subroutine sparse_matrix_add_trans_mult_vector(this, x, b)
+PURE_IF_NO_OMP subroutine sparse_matrix_add_trans_mult_vector(this, x, b)
   class(t_sparse_matrix), intent(in) :: this
   real(kind=CUSTOM_REAL), intent(in) :: x(this%nl)
 
