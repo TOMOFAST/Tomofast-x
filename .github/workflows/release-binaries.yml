@@ -1,0 +1,186 @@
+# Builds standalone Tomofast-x binaries (OpenMP, no MPI) for macOS Apple Silicon,
+# macOS Intel and Windows x64, tests them, and attaches them to the GitHub Release
+# when a version tag (v*) is pushed. It can also be run by hand from the Actions tab,
+# in which case the zips are kept as workflow artifacts only.
+
+name: Release binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - openmp  # TEMP: CI test, remove before merging
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    name: macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set version name
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=dev-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install gfortran
+        run: |
+          brew install gcc || brew upgrade gcc || true
+          GCC_PREFIX="$(brew --prefix gcc)"
+          GFORTRAN="$(ls "$GCC_PREFIX"/bin/gfortran-[0-9]* | sort -V | tail -n 1)"
+          # The Makefile calls plain "gfortran", which Homebrew only installs with a version suffix.
+          mkdir -p "$RUNNER_TEMP/bin"
+          ln -sf "$GFORTRAN" "$RUNNER_TEMP/bin/gfortran"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          echo "GCC_LIB_DIR=$GCC_PREFIX/lib/gcc/current" >> "$GITHUB_ENV"
+          "$GFORTRAN" --version
+
+      - name: Build (OpenMP, no MPI)
+        run: |
+          [ "$(uname -m)" = "${{ matrix.arch }}" ] || { echo "Runner is $(uname -m), expected ${{ matrix.arch }}"; exit 1; }
+          make USE_MPI=0
+          file tomofastx
+
+      - name: Assemble bundle
+        run: |
+          BUNDLE="tomofastx-${VERSION}-macos-${{ matrix.arch }}"
+          echo "BUNDLE=$BUNDLE" >> "$GITHUB_ENV"
+          mkdir -p "$BUNDLE/parfiles" "$BUNDLE/data/gravmag"
+          cp tomofastx "$BUNDLE/"
+          cp parfiles/Parfile_mansf_slice.txt "$BUNDLE/parfiles/"
+          cp -R data/gravmag/mansf_slice "$BUNDLE/data/gravmag/"
+          cp LICENSE .github/release/README.txt "$BUNDLE/"
+          bash .github/scripts/bundle_macos_libs.sh "$BUNDLE" tomofastx "$GCC_LIB_DIR" "$(brew --prefix gcc)/lib"
+          echo "Minimum macOS version of the bundled files:"
+          for f in "$BUNDLE/tomofastx" "$BUNDLE"/lib/*.dylib; do
+            echo "  $(basename "$f"): $(vtool -show-build "$f" 2>/dev/null | awk '/minos/{print $2}' | head -n 1)"
+          done
+
+      - name: Hide the compiler libraries
+        # Proves the bundle does not depend on the Homebrew gcc install.
+        run: mv "$GCC_LIB_DIR" "$RUNNER_TEMP/hidden-gcc-libs"
+
+      - name: Test the bundle
+        run: bash .github/scripts/run_checks.sh "$BUNDLE" tomofastx
+
+      - name: Zip
+        run: ditto -c -k --keepParent "$BUNDLE" "$BUNDLE.zip"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ${{ env.BUNDLE }}
+          path: ${{ env.BUNDLE }}.zip
+          if-no-files-found: error
+
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            make
+            mingw-w64-ucrt-x86_64-gcc-fortran
+            mingw-w64-ucrt-x86_64-libgomp
+
+      - name: Set version name
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=dev-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build (OpenMP, no MPI, static runtime)
+        run: |
+          gfortran --version
+          make WINDOWS=1 COMPILER=1 USE_MPI=0
+
+      - name: Check the exe needs only Windows system DLLs
+        run: |
+          objdump -p tomofastx.exe | grep "DLL Name" | tee dlls.txt
+          # gfortran, OpenMP, quadmath, gcc and winpthread DLLs all start with "lib".
+          if grep -qi "DLL Name: lib" dlls.txt; then
+            echo "The exe depends on compiler runtime DLLs; it must be statically linked."
+            exit 1
+          fi
+
+      - name: Assemble bundle
+        run: |
+          BUNDLE="tomofastx-${VERSION}-windows-x64"
+          echo "BUNDLE=$BUNDLE" >> "$GITHUB_ENV"
+          mkdir -p "$BUNDLE/parfiles" "$BUNDLE/data/gravmag"
+          cp tomofastx.exe "$BUNDLE/"
+          cp parfiles/Parfile_mansf_slice.txt "$BUNDLE/parfiles/"
+          cp -R data/gravmag/mansf_slice "$BUNDLE/data/gravmag/"
+          cp LICENSE .github/release/README.txt "$BUNDLE/"
+          # Windows line endings, so the text files open cleanly in Notepad.
+          sed -i 's/$/\r/' "$BUNDLE/README.txt" "$BUNDLE/LICENSE"
+
+      - name: Test the bundle
+        run: bash .github/scripts/run_checks.sh "$BUNDLE" tomofastx.exe
+
+      - name: Run the example outside MSYS2
+        # Plain PowerShell, without the MSYS2 folders on PATH, as a user would run it.
+        shell: pwsh
+        run: |
+          $env:OMP_NUM_THREADS = 2
+          $work = Join-Path $env:RUNNER_TEMP "pwsh-check"
+          New-Item -ItemType Directory -Force $work | Out-Null
+          Copy-Item -Recurse "$env:BUNDLE\*" $work
+          Set-Location $work
+          .\tomofastx.exe -p parfiles\Parfile_mansf_slice.txt | Tee-Object example.log
+          if ($LASTEXITCODE -ne 0) { throw "tomofastx.exe exited with $LASTEXITCODE" }
+          if (-not (Select-String -Quiet "THE END" example.log)) { throw "Example did not finish." }
+          if (-not (Test-Path output\mansf_slice\Paraview\grav_final_model3D_full.vtk)) { throw "Final model missing." }
+
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path "$env:BUNDLE" -DestinationPath "$env:BUNDLE.zip"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ${{ env.BUNDLE }}
+          path: ${{ env.BUNDLE }}.zip
+          if-no-files-found: error
+
+  release:
+    name: Attach to GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          fail_on_unmatched_files: true
