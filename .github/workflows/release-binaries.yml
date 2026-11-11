@@ -28,6 +28,13 @@ jobs:
             arch: arm64
           - runner: macos-15-intel
             arch: x86_64
+    defaults:
+      run:
+        # Login shell, so the conda environment is active.
+        shell: bash -el {0}
+    env:
+      # Oldest macOS the binaries support (Big Sur, the first with Apple Silicon).
+      MACOSX_DEPLOYMENT_TARGET: '11.0'
     steps:
       - uses: actions/checkout@v5
 
@@ -39,21 +46,19 @@ jobs:
             echo "VERSION=dev-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
           fi
 
-      - name: Install gfortran
-        run: |
-          brew install gcc || brew upgrade gcc || true
-          GCC_PREFIX="$(brew --prefix gcc)"
-          GFORTRAN="$(ls "$GCC_PREFIX"/bin/gfortran-[0-9]* | sort -V | tail -n 1)"
-          # The Makefile calls plain "gfortran", which Homebrew only installs with a version suffix.
-          mkdir -p "$RUNNER_TEMP/bin"
-          ln -sf "$GFORTRAN" "$RUNNER_TEMP/bin/gfortran"
-          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-          echo "GCC_LIB_DIR=$GCC_PREFIX/lib/gcc/current" >> "$GITHUB_ENV"
-          "$GFORTRAN" --version
+      - name: Install gfortran (conda-forge)
+        # conda-forge's compiler runtime targets old macOS versions, unlike Homebrew's,
+        # whose libraries only run on the macOS version of the build machine.
+        uses: mamba-org/setup-micromamba@v3
+        with:
+          environment-name: build
+          create-args: gfortran make
+          init-shell: bash
 
       - name: Build (OpenMP, no MPI)
         run: |
           [ "$(uname -m)" = "${{ matrix.arch }}" ] || { echo "Runner is $(uname -m), expected ${{ matrix.arch }}"; exit 1; }
+          gfortran --version
           make USE_MPI=0
           file tomofastx
 
@@ -66,23 +71,35 @@ jobs:
           cp parfiles/Parfile_mansf_slice.txt "$BUNDLE/parfiles/"
           cp -R data/gravmag/mansf_slice "$BUNDLE/data/gravmag/"
           cp LICENSE .github/release/README.txt "$BUNDLE/"
-          bash .github/scripts/bundle_macos_libs.sh "$BUNDLE" tomofastx "$GCC_LIB_DIR" "$(brew --prefix gcc)/lib"
+          bash .github/scripts/bundle_macos_libs.sh "$BUNDLE" tomofastx "$CONDA_PREFIX/lib"
           echo "Minimum macOS version of the bundled files:"
+          bad=0
           for f in "$BUNDLE/tomofastx" "$BUNDLE"/lib/*.dylib; do
-            echo "  $(basename "$f"): $(vtool -show-build "$f" 2>/dev/null | awk '/minos/{print $2}' | head -n 1)"
+            minos=$(vtool -show-build "$f" 2>/dev/null | awk '/minos/{print $2}' | head -n 1)
+            echo "  $(basename "$f"): $minos"
+            # Fail if any file needs a newer macOS than the deployment target.
+            if [ "$(printf '%s\n' "$minos" "$MACOSX_DEPLOYMENT_TARGET" | sort -V | tail -n 1)" != "$MACOSX_DEPLOYMENT_TARGET" ]; then bad=1; fi
+          done
+          [ "$bad" -eq 0 ] || { echo "Some files need a newer macOS than $MACOSX_DEPLOYMENT_TARGET."; exit 1; }
+
+      - name: Hide the compiler
+        # Proves the bundle does not depend on the conda environment or Homebrew's gcc.
+        run: |
+          mv "$CONDA_PREFIX" "$RUNNER_TEMP/hidden-conda-env"
+          for d in /opt/homebrew/opt/gcc /usr/local/opt/gcc; do
+            [ -e "$d" ] && sudo mv "$(cd "$d" && pwd -P)" "$RUNNER_TEMP/hidden-brew-gcc-$(basename "$(dirname "$d")")" || true
           done
 
-      - name: Hide the compiler libraries
-        # Proves the bundle does not depend on the Homebrew gcc install.
-        run: mv "$GCC_LIB_DIR" "$RUNNER_TEMP/hidden-gcc-libs"
-
       - name: Test the bundle
+        # A plain (non-login) shell, since the conda environment has been moved away.
+        shell: bash
         run: bash .github/scripts/run_checks.sh "$BUNDLE" tomofastx
 
       - name: Zip
+        shell: bash
         run: ditto -c -k --keepParent "$BUNDLE" "$BUNDLE.zip"
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ env.BUNDLE }}
           path: ${{ env.BUNDLE }}.zip
@@ -161,7 +178,7 @@ jobs:
         shell: pwsh
         run: Compress-Archive -Path "$env:BUNDLE" -DestinationPath "$env:BUNDLE.zip"
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ env.BUNDLE }}
           path: ${{ env.BUNDLE }}.zip
@@ -175,7 +192,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
