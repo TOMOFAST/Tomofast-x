@@ -9,8 +9,6 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - openmp  # TEMP: CI test, remove before merging
   workflow_dispatch:
 
 permissions:

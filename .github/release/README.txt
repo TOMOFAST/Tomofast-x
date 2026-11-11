@@ -5,6 +5,8 @@ This is a standalone build of Tomofast-x. It needs no compiler, MPI or other
 libraries: everything it uses is in this folder. It runs as one process and uses
 OpenMP threads for parallelism (built with "make USE_MPI=0").
 
+Runs on macOS 11 (Big Sur) or later, and on 64-bit Windows 10 or later.
+
 For the source code, documentation and more examples, see
   https://github.com/TOMOFAST/Tomofast-x
   https://github.com/TOMOFAST/Tomofast-manual
