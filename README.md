@@ -27,6 +27,30 @@ Geosci. Model Dev., 14, 6681–6709, https://doi.org/10.5194/gmd-14-6681-2021
 
 ### Installing and running
 
+#### Pre-built binaries
+
+Ready-to-run versions for macOS and Windows are on the [Releases page](https://github.com/TOMOFAST/Tomofast-x/releases). They need no compiler, MPI or other libraries. Download the zip for your system:
+
+| Download | System |
+|---|---|
+| `tomofastx-<version>-macos-arm64.zip` | Apple Silicon Mac (M1 and later), macOS 11 or later |
+| `tomofastx-<version>-macos-x86_64.zip` | Intel Mac, macOS 11 or later |
+| `tomofastx-<version>-windows-x64.zip` | 64-bit Windows 10 or later |
+
+Unzip it and run the included example from the unzipped folder:
+```shell
+# macOS
+OMP_NUM_THREADS=4 ./tomofastx -p parfiles/Parfile_mansf_slice.txt
+# Windows (Command Prompt)
+set OMP_NUM_THREADS=4
+tomofastx.exe -p parfiles\Parfile_mansf_slice.txt
+```
+These builds run as one process and use OpenMP threads for parallelism (see [Build without MPI](#build-without-mpi-openmp)); set `OMP_NUM_THREADS` to the number of cores to use. For running across several machines with MPI, build from source as described below. The macOS binaries are not notarised by Apple; if macOS refuses to open them, run `xattr -dr com.apple.quarantine .` in the unzipped folder. The `README.txt` in each zip has more details.
+
+The binaries are built and tested by the [Release binaries](.github/workflows/release-binaries.yml) workflow whenever a version tag (`v*`) is pushed.
+
+#### Building from source
+
 See the [Installation instructions](https://github.com/TOMOFAST/Tomofast-manual/blob/main/install.md) for detailed installation instructions.
 
 To run the code with your parameter file:
